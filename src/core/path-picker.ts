@@ -1,0 +1,797 @@
+/**
+ * 统一路径选择器（ticket 128，ADR-0061）：设置面板所有路径类输入的统一样式组件。
+ * - 卡片弹窗：标题头 + 搜索框 + vault 全部文件夹列表（滚动）+ 底部（selinfo / 清空(多选) / 下一步）；
+ *   遮罩 + ESC 关闭（esc-manager 层级），无关闭按钮（主窗口规范：弹窗不放关闭按钮，靠遮罩 + ESC）。
+ * - 数据源 = 全部 vault 文件夹：vault.getFiles() 聚合所有父目录 + 库根（''，显示「（库根目录）」）
+ *   + vault.adapter.list() 递归补齐空目录与点前缀隐藏目录（如 CONFIG/.ENCRYPT——vault.getFiles
+ *   对点前缀不索引，只能经 adapter 列目录补齐）；去重排序。
+ * - 搜索即时过滤（包含匹配，大小写不敏感；输入恰好等于某目录 → 显示全量）；
+ * - 单选：点选高亮 + 确定提交；多选：点击切换勾选，确定回调全量列表。
+ * - ticket 133 列表排序：已选置顶（仅打开时按初始已选定序一次，点击勾选不重排）→ 库根第二梯队 →
+ *   其余目录整体反转（原 sort() 码点升序逆排 → 中文在前、英文在后；英文组内小写在前、大写在后）。
+ * - ticket 133 设置行：空态只显示紧凑「选择…/添加…」按钮（无「未选择」灰字）；已选态按钮移出 DOM、
+ *   chip 文本点击重开选择器、✕ 保留清除；移动端名称/描述与控件区同行（控件区恒 1 子元素）。
+ * - 移动端近全屏（≤768 顶对齐避让软键盘 + 底部 safe-area）。
+ * - z-index 动态发号（ADR-0067）：每次打开新建 DOM，创建即显示，谁后开谁在上。
+ * - 宿主皮肤通道（2026-09-12，ADR-0127）：skinClassName 同时挂 mask 与 popup（body 下两个
+ *   兄弟节点）。浮层在面板根之外，够不着面板作用域的 --sp-* token —— 皮肤类须**自带一份
+ *   token 声明**再消费（先例 `.bz-item-menu.bz-home-menu`），见 settings-panel/styles.css
+ *   `.bz-sp-skin` 段。设置面板内的路径行传 'bz-sp-skin' 即得面板观感，其余入口不传 = 现状。
+ */
+import { Setting } from 'obsidian';
+import { getApp } from './app';
+import { createOverlay } from './dom';
+import { escManager, type EscHandle } from './esc-manager';
+import { notifySaveError, notifyActionError } from './notice';
+import { uiChip } from './ui/chip';
+
+export interface PathPickerOptions {
+  /** 弹窗标题（缺省「选择文件夹」） */
+  title?: string;
+  /** single = 单选（点选高亮 + 确定提交）；multi = 多选（勾选累加）。缺省 single */
+  mode?: 'single' | 'multi';
+  /** 列表上方补充说明 */
+  desc?: string;
+  /** 当前已选目录（初始高亮/勾选） */
+  selected?: string[];
+  /** 确定按钮文案（缺省「下一步」——两段式语义：先选目录，再进入下一步确认清单） */
+  okText?: string;
+  /** 确定回调（list = 清洗后的目录清单；单选长度 0 或 1；'' = 库根目录） */
+  onConfirm: (list: string[]) => void;
+  /** 宿主皮肤类（空格分隔可多类；同时挂 mask 与 popup）。缺省 = core 皮（Obsidian 主题变量）；
+   *  设置面板传 'bz-sp-skin' → 面板双皮（--sp-*）。皮肤类自带 token 声明，见文件头说明。 */
+  skinClassName?: string;
+}
+
+/* ==================== 数据层 ==================== */
+
+/** 环境目录剪枝（ticket 128 性能修复）：这些目录名（任意层级）不可能是业务目标，
+ *  聚合与递归一律跳过整棵子树——大 vault 的 node_modules/.store 依赖树动辄数千目录，
+ *  是选择器打开缓慢的根因。点前缀业务目录（如 CONFIG/.ENCRYPT）不在此列，照常收录。 */
+const EXCLUDED_DIR_NAMES = new Set(['.obsidian', '.trash', 'node_modules', '.git']);
+
+/** 路径任一段命中环境目录 → true（该目录及其子树整体排除） */
+export function isExcludedPath(p: string): boolean {
+  if (!p) return false;
+  for (const seg of p.split('/')) {
+    if (EXCLUDED_DIR_NAMES.has(seg)) return true;
+  }
+  return false;
+}
+
+/** 由文件路径集合聚合全部祖先目录（含库根 ''；环境目录子树整体排除）；排序去重 */
+export function foldersFromFiles(paths: string[]): string[] {
+  const out = new Set<string>(['']);
+  for (const p of paths) {
+    // 文件位于环境目录子树内（如 node_modules 下的 README）→ 整个文件跳过：
+    // 若只剪「命中环境名的目录段」，其上层祖先（CODE、CODE/x）会因不含环境段而漏网
+    if (isExcludedPath(p)) continue;
+    const sep = p.lastIndexOf('/');
+    if (sep === -1) continue;
+    let dir = p.slice(0, sep);
+    while (dir) {
+      if (!isExcludedPath(dir)) out.add(dir);
+      const i = dir.lastIndexOf('/');
+      dir = i === -1 ? '' : dir.slice(0, i);
+    }
+  }
+  return [...out].sort();
+}
+
+/**
+ * 聚合 vault 全部文件夹（含空目录与点前缀隐藏目录）。
+ * 1. vault.getFiles() 聚合所有父目录（不含空目录、不含点前缀目录——Obsidian 不对点前缀索引）；
+ * 2. vault.adapter.list() 从根递归列目录补齐（磁盘直读，空目录与 .ENCRYPT 等一览无余）；
+ * 3. 库根 '' 恒在（显示「（库根目录）」）。
+ * 环境目录子树（EXCLUDED_DIR_NAMES）整体剪枝：列表显示不依赖本函数完成（openPathPicker
+ * 先用文件聚合快速首渲染），本函数在后台补齐后合并。
+ * adapter 异常（老环境/只读测试替身缺方法）静默回落纯文件聚合。幂等、可重复调用。
+ */
+export async function collectVaultFolders(app: any): Promise<string[]> {
+  const out = new Set<string>(['']);
+  try {
+    const files = ((app?.vault?.getFiles?.() ?? []) as Array<{ path: string }>).map((f) => f.path);
+    for (const p of foldersFromFiles(files)) out.add(p);
+  } catch {
+    /* 环境异常静默 */
+  }
+  const adapter = app?.vault?.adapter;
+  if (adapter && typeof adapter.list === 'function') {
+    const walk = async (dir: string, depth: number): Promise<void> => {
+      if (depth > 40) return; // 防御性深度上限（vault 目录层深远超常规）
+      let listed: { folders?: string[] } | null = null;
+      try {
+        listed = await adapter.list(dir);
+      } catch {
+        // 根目录（''）在部分 adapter 实现不合法：回退 '/' 再试一次；仍失败静默跳过该分支
+        if (dir === '') {
+          try {
+            listed = await adapter.list('/');
+          } catch {
+            return;
+          }
+        } else {
+          return;
+        }
+      }
+      for (const f of listed?.folders ?? []) {
+        const p = String(f).replace(/^\/+|\/+$/g, '');
+        if (!p) continue;
+        // 环境目录整棵子树剪枝（node_modules 依赖树动辄数千目录，逐层 list 是打开缓慢根因）
+        if (isExcludedPath(p)) continue;
+        // 去重仅跳过「已收集」，仍须递归（文件聚合已知的目录下可能藏着空目录/点前缀目录）
+        if (!out.has(p)) out.add(p);
+        await walk(p, depth + 1);
+      }
+    };
+    try {
+      await walk('', 0);
+    } catch {
+      /* 静默 */
+    }
+  }
+  return [...out].sort();
+}
+
+/** 清洗选择集：trim / 去首尾斜杠 / 去重（'' 与纯斜杠串 = 库根目录保留；纯空白项与其余空项丢弃） */
+export function normalizePicked(list: string[]): string[] {
+  const out: string[] = [];
+  for (const item of list) {
+    const raw = String(item);
+    if (raw === '') {
+      if (!out.includes('')) out.push('');
+      continue;
+    }
+    const trimmed = raw.trim();
+    if (trimmed === '') continue; // 纯空白残留 → 丢弃
+    const p = trimmed.replace(/^\/+|\/+$/g, '');
+    if (p === '') {
+      if (!out.includes('')) out.push(''); // 纯斜杠串（'/'）→ 库根
+      continue;
+    }
+    if (!out.includes(p)) out.push(p);
+  }
+  return out;
+}
+
+/* ==================== chips 渲染（设置行内与选择器共用） ==================== */
+
+/** 已选目录 chips 渲染：✕ 移除后 onChange 回传最新列表；onChipClick 提供时 chip 文本可点重开选择器（ticket 133）。
+ *  emptyText 传 '' 时不渲染空态占位文字（ticket 133：设置行空态只显示选择按钮）。
+ *  ✕ 按钮事件不冒泡到文本点击（onclick 挂在 name 节点上）。 */
+export function renderPathChips(
+  container: HTMLElement,
+  selected: string[],
+  onChange: (list: string[]) => void,
+  emptyText = '未选择',
+  onChipClick?: (path: string) => void
+): void {
+  container.innerHTML = '';
+  container.classList.add('bz-path-picker-chips');
+  if (selected.length === 0) {
+    if (!emptyText) return;
+    const empty = document.createElement('span');
+    empty.className = 'bz-path-picker-chips-empty';
+    empty.textContent = emptyText;
+    container.appendChild(empty);
+    return;
+  }
+  for (const path of selected) {
+    const label = path === '' ? '（库根目录）' : path;
+    const chip = document.createElement('span');
+    chip.className = 'bz-path-picker-chip' + (onChipClick ? ' bz-path-picker-chip--click' : '');
+    chip.title = label;
+    const name = document.createElement('span');
+    name.className = 'bz-path-picker-chip-name';
+    name.textContent = label;
+    if (onChipClick) name.onclick = () => onChipClick(path);
+    const x = document.createElement('button');
+    x.className = 'bz-path-picker-chip-x';
+    x.textContent = '✕';
+    x.setAttribute('aria-label', `移除 ${label}`);
+    x.onclick = () => onChange(selected.filter((p) => p !== path));
+    chip.appendChild(name);
+    chip.appendChild(x);
+    container.appendChild(chip);
+  }
+}
+
+/* ==================== 设置行助手（chips + 选择…/添加…按钮，无手输输入框） ==================== */
+
+export interface PathSettingRowOptions {
+  /** 挂载容器（分组卡片 body / 设置页容器） */
+  parent: HTMLElement;
+  name: string;
+  desc?: string;
+  /** single = 单值（chips 至多一个，✕ 清除即未选择）；multi = 多值 */
+  mode: 'single' | 'multi';
+  /** 当前值：单值 = 路径字符串（'' = 未选择）；多值 = 数组 */
+  value: string | string[];
+  /** 选择器标题（缺省用 name） */
+  pickerTitle?: string;
+  /** 选择器内补充说明 */
+  pickerDesc?: string;
+  /** 按钮文案（缺省：single → 「选择…」；multi → 「添加…」） */
+  buttonText?: string;
+  /** 确定按钮文案（透传选择器） */
+  okText?: string;
+  /** 绑定值为空时的回落展示 chip（锁定态，只显示实际生效目录、不落盘；点击重开选择器改显式值）。
+   *  与设置面板 settings-panel/renderer.ts 的 fallbackChip 同一语义——两个渲染器必须同口径，
+   *  否则同一个 schema 在「域内 ⚙️ 弹窗」和「设置面板」显示两种样子（2026-10-31 图片目录行踩到）。 */
+  fallbackChip?: string;
+  /** 空态文案（ticket 133 起废弃：设置行空态只显示按钮、不渲染占位文字；字段保留兼容 schema 传参，实现不再读取） */
+  emptyText?: string;
+  /** 选择器确定 / chip ✕ 移除后的统一回调（list = 最新目录清单；单值 [] = 未选择）。
+   *  返回 string[]（或其 Promise）= 改写/否决后的最终清单（如异步确认被取消时回退旧值），
+   *  行内 chips 与按钮以该返回值重渲染；返回 void = 以 list 为准。 */
+  onChange: (list: string[]) => void | string[] | Promise<void | string[]>;
+}
+
+/** 构建路径设置行：Setting（名称/描述）+ 控件区——空态：紧凑「选择…/添加…」按钮（无「未选择」灰字）；
+ *  已选态：按钮移出 DOM，chips 文本点击重开选择器、✕ 清除（ticket 133）。
+ *  控件区恒 1 子元素 → markSettingSplitRows 不挂 .bz-setting-split → 移动端名称/描述与控件区同行。
+ *  不保留手输文本框（ADR-0061 拍板 3：路径一律经选择器录入，限 vault 内）。
+ *  返回 { refresh } 供外部按需重渲染 chips（如设置被其他入口改动后回同步）。 */
+export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: () => void; settingEl: HTMLElement } {
+  const readValue = (): string[] => {
+    const v = opts.value;
+    return Array.isArray(v) ? [...v] : v ? [v] : [];
+  };
+  let current = readValue();
+  const setting = new Setting(opts.parent).setName(opts.name);
+  if (opts.desc) setting.setDesc(opts.desc);
+  // ticket 133 兜底：移动端路径行恒单行（CSS 层保证，不依赖控件区子元素计数——即使按钮未及时移出也不拆两行）
+  setting.settingEl.classList.add('bz-path-picker-setting-row');
+  const chipsWrap = document.createElement('div');
+  chipsWrap.className = 'bz-path-picker-chips--setting';
+
+  /** 统一变更入口：onChange 返回 Promise 时异步解析改写清单后重渲染；同步返回（含 void）立即重渲染。
+   *  N6：域回调同步抛错 / 异步 reject → 人话提示 + 保持旧选中（current 未动，renderAll 回滚 chips）
+   *  ——原先 unhandled rejection：chips 停留旧值且无任何提示。 */
+  const apply = (list: string[]): void | Promise<void> => {
+    try {
+      const res = opts.onChange(list);
+      if (res && typeof (res as { then?: unknown }).then === 'function') {
+        return Promise.resolve(res as Promise<void | string[]>)
+          .then((final) => {
+            current = Array.isArray(final) ? final : list;
+            renderAll();
+          })
+          .catch((e) => {
+            notifySaveError(e, opts.name);
+            renderAll(); // 回滚：current 保持旧选中
+          });
+      }
+      current = Array.isArray(res) ? res : list;
+      renderAll();
+    } catch (e) {
+      notifySaveError(e, opts.name);
+      renderAll(); // 回滚：current 保持旧选中
+    }
+  };
+
+  const openPicker = () =>
+    openPathPicker({
+      title: opts.pickerTitle || opts.name,
+      desc: opts.pickerDesc,
+      mode: opts.mode,
+      selected: current,
+      okText: opts.okText,
+      onConfirm: (list) => {
+        void apply(list);
+      },
+    });
+
+  const render = () => {
+    renderPathChips(chipsWrap, current, (next) => {
+      void apply(next);
+    }, '', openPicker);
+    // 空值 + 有回落值：挂「实际生效目录」锁定 chip（不可移除，点击可直接去设显式值）。
+    // 与设置面板 renderer 的 fallbackChip 同形同义——用户不该因为入口不同就看到两种样子。
+    if (current.length === 0 && opts.fallbackChip) {
+      chipsWrap.appendChild(
+        uiChip({
+          label: opts.fallbackChip,
+          locked: true,
+          title: '未单独设置时的实际生效目录（点击可改为显式设置）',
+          onClick: openPicker,
+        })
+      );
+    }
+  };
+
+  let btn: HTMLButtonElement | null = null;
+  setting.addButton((b) => {
+    b
+      .setButtonText(opts.buttonText || (opts.mode === 'multi' ? '添加…' : '选择…'))
+      .onClick(openPicker);
+    // ticket 133：紧凑次级按钮（不再 setCta——去掉 Obsidian 原生 accent 大按钮风），样式见 styles.css
+    b.buttonEl.classList.add('bz-path-picker-btn--slim');
+    btn = b.buttonEl;
+  });
+
+  // chips 并入控件区
+  const control = setting.settingEl.querySelector('.setting-item-control');
+  if (control) control.appendChild(chipsWrap);
+
+  // ticket 133 已选态：① 行级 data-filled 标志——CSS 据此隐藏选择按钮（[data-filled='1']），
+  // 不依赖按钮元素移除时序（双保险，任何环境下有值即不可见）；② 按钮移出 DOM（控件区干净）。
+  // 空态（含 ✕ 清除后）恢复按钮 + data-filled='0'
+  const syncBtn = () => {
+    setting.settingEl.dataset.filled = current.length > 0 ? '1' : '0';
+    if (!btn || !control) return;
+    if (current.length === 0) {
+      if (!btn.isConnected) control.appendChild(btn);
+    } else if (btn.isConnected) {
+      btn.remove();
+    }
+  };
+
+  const renderAll = () => {
+    syncBtn();
+    render();
+  };
+  const refresh = () => {
+    current = readValue();
+    renderAll();
+  };
+  renderAll();
+  return { refresh, settingEl: setting.settingEl };
+}
+
+/* ==================== 卡片弹窗 ==================== */
+
+let currentMask: HTMLElement | null = null;
+let currentPopup: HTMLElement | null = null;
+let currentHandle: EscHandle | null = null;
+let focusTimer: number | null = null;
+/** R7：打开前焦点快照，关闭时还原（键盘用户关选择器后落回触发处，不再落到 body） */
+let focusRestore: HTMLElement | null = null;
+
+/** 关闭当前选择器（无则静默）；取消语义：不回调 onConfirm。
+ *  mask 与 popup 是 body 下两个独立兄弟节点（createOverlay 分别 append），必须都移除，
+ *  否则孤儿 popup 残留在 DOM（同名 id 会被后续 getElementById 误命中）。 */
+export function closePathPicker(): void {
+  if (currentMask) {
+    currentMask.remove();
+    currentMask = null;
+  }
+  if (currentPopup) {
+    currentPopup.remove();
+    currentPopup = null;
+  }
+  if (currentHandle) {
+    currentHandle.unregister();
+    currentHandle = null;
+  }
+  if (focusTimer !== null) {
+    window.clearTimeout(focusTimer);
+    focusTimer = null;
+  }
+  // R7：还原打开前焦点（元素仍连接时；被外部清理时跳过）
+  if (focusRestore) {
+    const el = focusRestore;
+    focusRestore = null;
+    if (el.isConnected) el.focus();
+  }
+}
+
+/** 打开目录选择器（幂等：已开先关） */
+export function openPathPicker(opts: PathPickerOptions): void {
+  closePathPicker(); // 旧实例先关（其焦点还原先行，本实例快照取还原后的落点）
+  focusRestore = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const app = getApp();
+  const mode = opts.mode || 'single';
+  const selected = new Set(normalizePicked(opts.selected || []));
+  // ticket 133：已选置顶的定格快照——只在打开时按初始已选定序一次，点击勾选/取消不重排（防移动端点错）
+  const pinnedAtOpen = [...selected];
+
+  const { mask, popup } = createOverlay({
+    maskId: 'bz-path-picker-mask',
+    popupId: 'bz-path-picker-popup',
+    // ticket 133：桌面/移动端统一一张居中卡——左右各 16px 外边距，宽视口封顶 440px（不分两套样式）
+    width: 'min(calc(100vw - 32px), 440px)',
+    maxWidth: 440,
+    onMaskClick: () => closePathPicker(),
+  });
+  currentMask = mask;
+  currentPopup = popup;
+  // 宿主皮肤类同时挂 mask 与 popup（body 下两个兄弟节点，各自作用域独立）——皮肤类自带的
+  // token 声明因此对两者都生效（遮罩底色 tint 与弹窗材质同皮）
+  const skinClasses = (opts.skinClassName || '').split(/\s+/).filter(Boolean);
+  if (skinClasses.length) {
+    mask.classList.add(...skinClasses);
+    popup.classList.add(...skinClasses);
+  }
+  popup.classList.add('bz-path-picker');
+  popup.style.height = 'min(560px, 82vh)'; // 功能性几何（铁律 8：显隐/动态计算内联，视觉样式收敛 CSS）
+
+  // 头部：标题 + （可选）说明；无关闭按钮
+  const head = document.createElement('div');
+  head.className = 'bz-path-picker-head';
+  const title = document.createElement('h3');
+  title.className = 'bz-path-picker-title';
+  title.textContent = opts.title || '选择文件夹';
+  head.appendChild(title);
+  if (opts.desc) {
+    const desc = document.createElement('div');
+    desc.className = 'bz-path-picker-desc';
+    desc.textContent = opts.desc;
+    head.appendChild(desc);
+  }
+
+  // 搜索框（聚焦不遮列表：弹窗定高 flex 布局，列表 flex:1 恒可见）
+  const search = document.createElement('input');
+  search.type = 'text';
+  search.className = 'bz-path-picker-search';
+  search.placeholder = '搜索目录…';
+  search.spellcheck = false;
+  search.setAttribute('aria-label', '搜索目录');
+
+  // 目录列表（滚动）
+  const listEl = document.createElement('div');
+  listEl.className = 'bz-path-picker-list';
+  const state: { folders: string[]; q: string } = { folders: [], q: '' };
+
+  // 底部：已选信息 + 清空(多选) + 确定
+  const foot = document.createElement('div');
+  foot.className = 'bz-path-picker-foot';
+  const selinfo = document.createElement('span');
+  selinfo.className = 'bz-path-picker-selinfo';
+  const btns = document.createElement('div');
+  btns.className = 'bz-path-picker-foot-btns';
+  foot.appendChild(selinfo);
+  foot.appendChild(btns);
+
+  const mkBtn = (label: string, primary: boolean, onclick: () => void): HTMLButtonElement => {
+    const b = document.createElement('button');
+    b.textContent = label;
+    b.className = 'bz-path-picker-btn' + (primary ? ' bz-path-picker-btn--primary' : '');
+    b.onclick = onclick;
+    btns.appendChild(b);
+    return b;
+  };
+  if (mode === 'multi') mkBtn('清空', false, () => { selected.clear(); renderList(); updateSel(); });
+  // 效率#11：确定提交收口成 submit（搜索框 Enter 单选直提复用）
+  const submit = (): void => {
+    const list = normalizePicked([...selected]);
+    closePathPicker();
+    opts.onConfirm(list);
+  };
+  // 效率#10：新建文件夹——选不到「还不存在的目录」时就地补建（以当前搜索词为名，建在
+  // 选中目录/库根下；vault.createFolder 逐级补齐父目录），成功后刷新列表并自动勾选。
+  // 搜索词为空时禁用（无名字可建）
+  const newBtn = mkBtn('新建文件夹', false, () => {
+    const name = state.q.trim().replace(/^\/+|\/+$/g, '');
+    if (!name) return;
+    const parent = [...selected][0] ?? '';
+    const full = parent ? `${parent}/${name}` : name;
+    void (async () => {
+      if (!state.folders.includes(full)) {
+        await app.vault.createFolder(full);
+        // 手动并入列表（后台聚合是慢速路径，不等它）；已存在则只勾选
+        if (!state.folders.includes(full)) state.folders.push(full);
+      }
+      if (mode === 'single') selected.clear();
+      selected.add(full);
+      renderList();
+      updateSel();
+    })().catch((e) => notifyActionError(e, `新建文件夹 ${full}`));
+  });
+  newBtn.disabled = !state.q.trim();
+  mkBtn(opts.okText || '下一步', true, submit);
+
+  // ticket 133 排序：已选置顶（pinnedAtOpen 快照）→ 库根第二梯队 → 其余整体反转（中文在前、英文在后）
+  function orderedList(): string[] {
+    const pinned: string[] = [];
+    const rest: string[] = [];
+    const pinSet = new Set(pinnedAtOpen);
+    for (const f of state.folders) {
+      if (pinSet.has(f)) pinned.push(f);
+      else rest.push(f);
+    }
+    const rootIdx = rest.indexOf('');
+    const root = rootIdx >= 0 ? rest.splice(rootIdx, 1)[0] : null;
+    rest.reverse();
+    return [...pinned, ...(root === null ? [] : [root]), ...rest];
+  }
+
+  function renderList(): void {
+    listEl.innerHTML = '';
+    const q = state.q.trim().toLowerCase();
+    // 输入恰好等于某目录 → 视为「已选中」，显示完整列表（预填已选时不把列表滤掉）
+    const exact = !!q && state.folders.includes(q);
+    // 渲染上限（ticket 128 性能修复）：大 vault 全量数千目录时逐条建 DOM 会卡死交互——
+    // 只渲染前 LIMIT 条，超出显示「输入关键词缩小范围」提示（计数不受限，提示给全量）
+    const LIMIT = 300;
+    let n = 0;
+    let total = 0;
+    for (const folder of orderedList()) {
+      if (q && !exact && !folder.toLowerCase().includes(q)) continue;
+      total++;
+      if (n >= LIMIT) continue;
+      n++;
+      const on = selected.has(folder);
+      const row = document.createElement('div');
+      row.className = 'bz-path-picker-row' + (on ? ' bz-path-picker-row--sel' : '');
+      row.dataset.path = folder;
+      row.setAttribute('role', mode === 'multi' ? 'checkbox' : 'option');
+      row.setAttribute('aria-checked', on ? 'true' : 'false');
+      const box = document.createElement('span');
+      box.className = 'bz-path-picker-check';
+      box.textContent = on ? '✓' : '';
+      const name = document.createElement('span');
+      name.className = 'bz-path-picker-name';
+      name.textContent = folder === '' ? '（库根目录）' : folder;
+      name.title = folder === '' ? '（库根目录）' : folder;
+      row.appendChild(box);
+      row.appendChild(name);
+      row.onclick = () => {
+        if (mode === 'single') {
+          selected.clear();
+          selected.add(folder);
+        } else if (selected.has(folder)) {
+          selected.delete(folder);
+        } else {
+          selected.add(folder);
+        }
+        renderList();
+        updateSel();
+      };
+      // R7：键盘可达——行挂 tabindex，Enter/Space 复用点击（单选此前完全无法用键盘选定）
+      row.tabIndex = 0;
+      row.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          row.click();
+        }
+      });
+      if (mode === 'single') {
+        // 效率#11：单选双击直选提交（「搜索 → 双击确认」的目录选择惯例，免第二步点确定）
+        row.ondblclick = () => {
+          row.click();
+          submit();
+        };
+      }
+      listEl.appendChild(row);
+    }
+    if (!total) {
+      const empty = document.createElement('div');
+      empty.className = 'bz-path-picker-empty';
+      empty.textContent = '没有匹配的目录';
+      listEl.appendChild(empty);
+    } else if (total > LIMIT) {
+      const more = document.createElement('div');
+      more.className = 'bz-path-picker-empty';
+      more.textContent = `已显示前 ${LIMIT} 个（共 ${total} 个匹配目录），请输入关键词缩小范围`;
+      listEl.appendChild(more);
+    }
+  }
+  function updateSel(): void {
+    if (mode === 'single') {
+      const first = [...selected][0];
+      selinfo.textContent = first === undefined ? '未选择' : first === '' ? '已选（库根目录）' : `已选 ${first}`;
+    } else {
+      selinfo.textContent = `已选 ${selected.size} 项`;
+    }
+  }
+
+  search.oninput = () => {
+    state.q = search.value;
+    newBtn.disabled = !state.q.trim(); // 效率#10：搜索词为名，空词不可建
+    renderList();
+  };
+  // 效率#11：Enter = 选中当前可见首行（single 直选提交；multi 勾选不关）——键盘闭环免伸手拿鼠标
+  search.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter') return;
+    const first = listEl.querySelector<HTMLElement>('.bz-path-picker-row');
+    if (!first) return;
+    ev.preventDefault();
+    first.click();
+    if (mode === 'single') submit();
+  });
+
+  // 快速首渲染（ticket 128 性能修复）：文件聚合毫秒级完成，立即显示绝大多数业务目录，
+  // 弹窗打开即可选；adapter 递归补齐（空目录/点前缀目录）在后台完成后合并替换
+  try {
+    const files = ((app?.vault?.getFiles?.() ?? []) as Array<{ path: string }>).map((f) => f.path);
+    state.folders = foldersFromFiles(files);
+  } catch {
+    /* 环境异常静默——等待 adapter 补齐 */
+  }
+
+  // 后台补齐：adapter 递归（含空目录/点前缀目录，环境目录已剪枝）；关闭后迟到的聚合直接丢弃。
+  // 补齐合并完成后在 popup 挂 data-ready="1"——测试/调用方可据此区分「快速首渲染」与「全量聚合完成」
+  void collectVaultFolders(app).then((folders) => {
+    if (!mask.isConnected) return;
+    state.folders = folders;
+    popup.dataset.ready = '1';
+    renderList();
+  });
+
+  renderList();
+  updateSel();
+  popup.append(head, search, listEl, foot);
+  document.body.appendChild(mask);
+  document.body.appendChild(popup);
+  mask.style.display = 'block';
+  popup.style.display = 'flex';
+
+  currentHandle = escManager.register('bz-path-picker', {
+    isVisible: () => !!currentMask,
+    close: () => closePathPicker(),
+  });
+  // 打开聚焦搜索框（30ms 等 DOM 挂载；聚焦不遮列表——定高布局列表恒可见）
+  focusTimer = window.setTimeout(() => {
+    focusTimer = null;
+    if (mask.isConnected) search.focus();
+  }, 30);
+}
+
+/* ==================== 系统文件夹选择器（vault 外，issue 457） ==================== */
+
+/**
+ * 系统文件夹选择器：走宿主原生目录对话框，可选 **vault 之外** 的目录（脸谱数据源这类
+ * 「外部工具产出目录」用；vault 内目录一律走 openPathPicker，库内路径可渲染、库外不可）。
+ *
+ * 原生链（无 Obsidian API，逐级兜底）：
+ * 1. Electron 远程对话框：`@electron/remote`.dialog.showOpenDialog（新版宿主）→
+ *    `electron.remote`.dialog（旧版宿主）；用户取消 → null。
+ * 2. `<input type="file" webkitdirectory>`：选中目录内任一文件后取父目录。Electron ≥32
+ *    已删 `File.path`，故路径经 `electron.webUtils.getPathForFile` 取（两条都试）。
+ * 3. 都不行（移动端 / 浏览器）→ null，调用侧按「用户取消」处理，不弹错。
+ *
+ * 返回值统一正斜杠归一（域侧一律 `${dir}/${name}` 拼接，Windows 反斜杠混拼易漏）。
+ * （历史）旧评审壳曾经 setSystemFolderPicker 注入构造目录演示同一交互。
+ */
+export type SystemFolderPicker = () => Promise<string | null>;
+
+/** 注入点（仅测试用；插件端不注入 = 原生链） */
+let systemPickerImpl: SystemFolderPicker | null = null;
+
+/** 注入演示级选择器（传 null 复原原生链） */
+export function setSystemFolderPicker(fn: SystemFolderPicker | null): void {
+  systemPickerImpl = fn;
+}
+
+/** 取宿主 node 侧模块（非桌面宿主无 require → null） */
+function requireNode(moduleName: string): any {
+  try {
+    const w = window as unknown as { require?: (m: string) => unknown };
+    return w.require ? w.require(moduleName) ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 路径归一：反斜杠 → 正斜杠、去尾斜杠（保留根盘符 `D:`） */
+function normalizeSystemPath(p: string): string {
+  const s = String(p ?? '').trim().replace(/\\/g, '/');
+  return s.length > 1 ? s.replace(/\/+$/, '') : s;
+}
+
+/** 取父目录（输入 = 目录内任一文件的绝对路径） */
+function parentDirOf(filePath: string): string {
+  const s = String(filePath).replace(/\\/g, '/');
+  const i = s.lastIndexOf('/');
+  return i <= 0 ? s : s.slice(0, i);
+}
+
+/**
+ * File 对象的磁盘绝对路径：旧 Electron 的 `File.path` → 新 Electron 的 `webUtils.getPathForFile`。
+ *
+ * 导出是因为凡是从 `<input type="file">` 反推磁盘位置的地方都得走这两条 ——
+ * Electron ≥32 删了 `File.path`，只读它的写法在新宿主上一律拿到空串（工具坞
+ * 「导入脚本」就栽在这里）。别在外面对 `file.path` 再写一遍。
+ */
+export function fileDiskPath(f: File): string {
+  const legacy = (f as File & { path?: string }).path;
+  if (typeof legacy === 'string' && legacy) return legacy;
+  const webUtils = requireNode('electron')?.webUtils;
+  if (webUtils?.getPathForFile) {
+    try {
+      return String(webUtils.getPathForFile(f) ?? '');
+    } catch {
+      /* 取不到当没有 */
+    }
+  }
+  return '';
+}
+
+/** 兜底链二：webkitdirectory 输入框（选中目录内任一文件，取其父目录） */
+function pickDirViaInput(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.setAttribute('webkitdirectory', '');
+    input.setAttribute('directory', '');
+    input.style.display = 'none';
+    document.body.appendChild(input);
+    let settled = false;
+    const finish = (v: string | null): void => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('focus', onFocus);
+      input.remove();
+      resolve(v);
+    };
+    // 取消检测：对话框关闭后窗口回焦、而 change 未派发（迟 200ms 让 change 先行）
+    const onFocus = (): void => {
+      window.setTimeout(() => {
+        const f = input.files?.[0];
+        if (!f) finish(null);
+      }, 200);
+    };
+    input.addEventListener('change', () => {
+      const f = input.files?.[0];
+      const p = f ? fileDiskPath(f) : '';
+      finish(p ? parentDirOf(p) : null);
+    });
+    window.addEventListener('focus', onFocus);
+    input.click();
+  });
+}
+
+/** 原生链：Electron 对话框优先，webkitdirectory 兜底 */
+async function nativePickSystemFolder(): Promise<string | null> {
+  const remote =
+    requireNode('@electron/remote') ??
+    (requireNode('electron') as { remote?: unknown } | null)?.remote ??
+    null;
+  const dialog = (remote as { dialog?: { showOpenDialog?: (o: unknown) => Promise<{ canceled?: boolean; filePaths?: string[] }> } } | null)?.dialog;
+  if (dialog?.showOpenDialog) {
+    const res = await dialog.showOpenDialog({
+      title: '选择文件夹',
+      properties: ['openDirectory', 'dontAddToRecent'],
+    });
+    const picked = res?.filePaths?.[0];
+    if (picked && !res?.canceled) return normalizeSystemPath(picked);
+    return null; // 用户取消：不再落兜底（否则会连开两次对话框）
+  }
+  return pickDirViaInput();
+}
+
+/** 弹出系统文件夹选择器。返回绝对路径（正斜杠归一）；null = 取消 / 环境不支持（不弹错） */
+export async function pickSystemFolder(): Promise<string | null> {
+  try {
+    const pick = systemPickerImpl ?? nativePickSystemFolder;
+    const dir = await pick();
+    return dir ? normalizeSystemPath(dir) : null;
+  } catch (e) {
+    notifyActionError(e, '选择文件夹');
+    return null;
+  }
+}
+
+/** 文件多选过滤器（name = 组名，ext = 不带点的扩展名表） */
+export interface PickFilesFilter {
+  name: string;
+  ext: string[];
+}
+
+/**
+ * 弹出系统**文件**多选对话框（vault 内外都行；509 补充素材的图片 / 录音导入用）。
+ * 只走 Electron 原生链（多文件路径无 input 兜底——Electron ≥32 已删 File.path）；
+ * 取消 / 环境不支持返回空数组（不弹错）。路径正斜杠归一。
+ */
+export async function pickSystemFiles(title: string, filters: PickFilesFilter[]): Promise<string[]> {
+  const remote =
+    requireNode('@electron/remote') ??
+    (requireNode('electron') as { remote?: unknown } | null)?.remote ??
+    null;
+  const dialog = (remote as { dialog?: { showOpenDialog?: (o: unknown) => Promise<{ canceled?: boolean; filePaths?: string[] }> } } | null)?.dialog;
+  if (!dialog?.showOpenDialog) return [];
+  try {
+    const res = await dialog.showOpenDialog({
+      title,
+      properties: ['openFile', 'multiSelections', 'dontAddToRecent'],
+      // Electron 认 extensions 字段（PickFilesFilter.ext 是域侧叫法，这里做一次映射）
+      filters: filters.map((f) => ({ name: f.name, extensions: f.ext })),
+    });
+    if (res?.canceled) return [];
+    return (res?.filePaths ?? []).map((p) => normalizeSystemPath(p)).filter(Boolean);
+  } catch (e) {
+    notifyActionError(e, '选择文件');
+    return [];
+  }
+}

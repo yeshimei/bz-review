@@ -1,0 +1,78 @@
+import { describe, expect, it, afterEach } from 'vitest';
+import {
+  FREE_CARD_LIMIT,
+  FREE_NOTE_LIMIT,
+  canAddCard,
+  canAddNote,
+  licenseSummary,
+  quotaBlock,
+  refreshLicense,
+  remainingCards,
+  remainingNotes,
+} from '../src/data/entitlement';
+import { HAS_KEYS, signCode } from './helpers/sign';
+
+afterEach(async () => {
+  await refreshLicense('');
+});
+
+describe('基础版上限', () => {
+  it('两类分别是 20 篇与 50 条', () => {
+    expect(FREE_NOTE_LIMIT).toBe(20);
+    expect(FREE_CARD_LIMIT).toBe(50);
+  });
+
+  it('笔记：第 20 篇还能加，第 21 篇开始拦', () => {
+    expect(canAddNote(0)).toBe(true);
+    expect(canAddNote(19)).toBe(true);
+    expect(canAddNote(20)).toBe(false);
+    expect(canAddNote(21)).toBe(false);
+  });
+
+  it('划线卡：第 50 条还能加，第 51 条开始拦', () => {
+    expect(canAddCard(49)).toBe(true);
+    expect(canAddCard(50)).toBe(false);
+  });
+
+  it('老数据超过上限时按已满处理，但不要求删除', () => {
+    const block = quotaBlock('note', { notes: 300, cards: 0 });
+    expect(block.ok).toBe(false);
+    expect(block.message).toContain('300');
+    expect(block.message).not.toContain('删除');
+  });
+
+  it('两类各数各的：笔记满了不影响划线卡', () => {
+    expect(quotaBlock('note', { notes: 20, cards: 0 }).ok).toBe(false);
+    expect(quotaBlock('card', { notes: 20, cards: 0 }).ok).toBe(true);
+  });
+
+  it('还剩几个：已满给 0，不会给负数', () => {
+    expect(remainingNotes(0)).toBe(20);
+    expect(remainingNotes(25)).toBe(0);
+    expect(remainingCards(50)).toBe(0);
+  });
+});
+
+describe('高级版', () => {
+  it.runIf(HAS_KEYS)('有效码激活后两类都不限', async () => {
+    const state = await refreshLicense(signCode({ id: 'REV-2026-0100', name: '测试' }));
+    expect(state.paid).toBe(true);
+    expect(canAddNote(9999)).toBe(true);
+    expect(canAddCard(9999)).toBe(true);
+    expect(remainingNotes(9999)).toBe(Infinity);
+    expect(licenseSummary()).toContain('高级版');
+  });
+
+  it.runIf(HAS_KEYS)('过期码不会把人留在高级版', async () => {
+    const state = await refreshLicense(signCode({ id: 'REV-2026-0101', exp: Date.now() - 1000 }));
+    expect(state.paid).toBe(false);
+    expect(canAddNote(20)).toBe(false);
+    expect(licenseSummary()).toContain('已过期');
+  });
+
+  it('填错码只降级，不抛错', async () => {
+    const state = await refreshLicense('这不是码');
+    expect(state.paid).toBe(false);
+    expect(canAddNote(19)).toBe(true);
+  });
+});
