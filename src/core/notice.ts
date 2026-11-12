@@ -24,8 +24,7 @@
  * - 点击通知本体即关闭（含常驻帧；2026-09-19 拍板：常驻帧 ✕ 关闭钮退役，点本体即关）
  * - z-index 动态发号（ADR-0067）：每次弹出抬顶容器——toast 永远盖过最新打开的 overlay
  */
-import { allocZ } from './z-order';
-import { tryGetSettings } from './settings-provider';
+import { allocZ } from './z-order';import { tryGetSettings } from './settings-provider';
 
 import { markOwned } from './scope';
 export type NoticeType =
@@ -609,8 +608,12 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
   // 「一碰就没」的误关风险让位于单一点按出口的直觉
   el.addEventListener('click', () => hideNow(n));
 
-  // 抬顶（ADR-0067）：toast 与 overlay 共享动态层级空间，弹出时重发号保证永远可见
-  container.style.zIndex = String(allocZ());
+  /* 固定最高层，不再跟着 allocZ 发号。
+     原来 toast 每次弹出重发一个号，但面板是后创建的、号更大——常驻的逾期通知
+     于是被面板整个盖住（DOM 在、opacity 1，视觉上那块却是空白）；反过来，打开
+     过一次弹窗之后 toast 的号又比面板大，就压住面板头行的按钮。同一屏里两种错法，
+     取决于你在这之前开过哪些弹层。toast 本来就该永远在最上面，直接钉死。 */
+  container.style.zIndex = '2147483000';
   container.appendChild(el);
 
   live.push(n);
