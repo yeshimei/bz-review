@@ -14,6 +14,7 @@ import { allocZ } from '../z-order';
 import { notifyFloatClosed } from '../home-return';
 import { firstFocusable, trapFocus } from './focus-trap';
 
+import { markOwned } from '../scope';
 /**
  * bindFormSubmit（效率基元，diary 写链路效率#2 首个消费方）：弹窗表单回车提交。
  * - Ctrl/⌘+Enter：恒提交（textarea / 按钮聚焦 / 无聚焦都在内）；
@@ -150,6 +151,7 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
     });
   }
 
+  markOwned(mask);
   document.body.appendChild(mask);
   // 聚焦 popup 内首个可交互元素（跳过隐藏项；移动端跳过 input/textarea 防软键盘）
   if (focusEnabled) firstFocusable(popup)?.focus();

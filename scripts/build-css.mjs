@@ -5,12 +5,14 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { scopeCss, findUnscopedSelectors } from "./css-scope.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PLUGIN_DIR = process.env.BZ_REVIEW_VAULT_DIR || "E:/Obsidian/叫我包仔/.obsidian/plugins/bz-review";
 
+// normalize.css 不再参与构建：它是标准的全局浏览器重置（html / body / button / a …），
+// 在 Obsidian 里等于改写宿主界面。插件自己的基线走 core/reset.css，已限定在 [data-bzrv] 内。
 const SOURCES = [
-  "src/core/vendor/normalize.css",
   "src/core/reset.css",
   "src/core/styles.css",
   "src/core/ui/tokens.css",
@@ -37,7 +39,18 @@ export function buildStyles() {
     if (!text.endsWith("\n")) text += "\n";
     parts.push(text);
   }
-  const css = parts.join("");
+  // 作用域化：除「纯变量块 + @keyframes」外，所有选择器前面加 [data-bzrv]，
+  // 让样式只落在本插件自己的 DOM 子树里（Obsidian 所有插件的样式共用一张表）。
+  const css = scopeCss(parts.join(""));
+
+  // 构建期硬断言：一旦有人写出裸选择器，构建直接失败，防止污染回潮。
+  const bad = findUnscopedSelectors(css);
+  if (bad.length) {
+    throw new Error(
+      `样式未作用域化（${bad.length} 条）：${bad.slice(0, 8).join(' | ')}${bad.length > 8 ? ' …' : ''}`
+    );
+  }
+
   fs.writeFileSync(path.join(ROOT, "styles.css"), css, "utf8");
   if (fs.existsSync(PLUGIN_DIR)) {
     fs.copyFileSync(path.join(ROOT, "styles.css"), path.join(PLUGIN_DIR, "styles.css"));

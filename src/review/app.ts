@@ -16,6 +16,7 @@ import { DEFAULT_W } from './fsrs';
 import { DEFAULT_R_THRESHOLD, isDueToday, isEarlyDue, roundQueue } from './queue';
 import { computeStats } from './stats';
 import { emitDomainEvent } from '../core/domain-bus';
+import { markOwned } from '../core/scope';
 import { diskPathStat } from '../core/storage';
 
 /** item 5：普通复习离篇宽限期（ms）——持续离篇超过此时长才算中断；测试可注入 */
@@ -823,7 +824,7 @@ export const reviewApp = {
       }
       const target = el.querySelector('div.tree-item-inner') as HTMLElement | null;
       if (!target) continue;
-      const badge = target.querySelector('.review-stage-badge');
+      const badge = target.querySelector('.bzrv-stage-badge');
       if (badge) badge.remove();
 
       const item = itemByPath.get(path);
@@ -877,9 +878,11 @@ export const reviewApp = {
       }
       if (badgeIcon || timeText) {
         const badgeEl = document.createElement('span');
-        badgeEl.className = 'review-stage-badge';
+        badgeEl.className = 'bzrv-stage-badge';
+        // 寄生在 Obsidian 自己的文件树/标签里，不在插件容器内：自己挂作用域锚点
+        markOwned(badgeEl);
         if (badgeIcon) {
-          // item 14：徽标用 lucide（uiIcon 工厂；尺寸走域样式 .review-stage-badge svg）
+          // item 14：徽标用 lucide（uiIcon 工厂；尺寸走域样式 .bzrv-stage-badge svg）
           const { uiIcon } = await import('../core/ui');
           badgeEl.appendChild(uiIcon(badgeIcon));
         } else {
@@ -913,7 +916,7 @@ export const reviewApp = {
       const target = els.get(path)?.querySelector('div.tree-item-inner') as HTMLElement | null;
       if (target) {
         target.style.color = '';
-        target.querySelector('.review-stage-badge')?.remove();
+        target.querySelector('.bzrv-stage-badge')?.remove();
       }
     }
     this._styledPaths.clear();

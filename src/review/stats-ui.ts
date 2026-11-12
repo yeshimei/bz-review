@@ -26,6 +26,7 @@ import { computeStats, loadDistribution, historyOf, dateKey, RATING_NAMES, RATIN
 import { DEFAULT_W, currentR as fsrsCurrentR } from './fsrs';
 import { motionStats, motionHistory } from './motion';
 
+import { markOwned } from '../core/scope';
 let statsMask: HTMLElement | null = null;
 let statsPopup: HTMLElement | null = null;
 let statsEsc: { unregister: () => void } | null = null;
@@ -140,7 +141,9 @@ function renderStatsModal(app: App, dm: ReviewDataManager, items: ReviewItem[], 
   body.className = 'bz-bzrv-stats-body';
   statsPopup.appendChild(body);
 
+  markOwned(statsMask);
   document.body.appendChild(statsMask);
+  markOwned(statsPopup);
   document.body.appendChild(statsPopup);
 
 
@@ -294,7 +297,9 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   body.className = 'bz-bzrv-history-body';
   histPopup.appendChild(body);
 
+  markOwned(histMask);
   document.body.appendChild(histMask);
+  markOwned(histPopup);
   document.body.appendChild(histPopup);
 
   // 无标题栏：内容直接顶到卡片；关闭 = 点遮罩（issue 271 统一）

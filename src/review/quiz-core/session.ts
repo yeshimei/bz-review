@@ -22,6 +22,7 @@ import type { QuizQuestion } from './manager';
 import type { AIService } from '../../core/ai';
 import { motionQuizCard, motionQuizJudge } from '../motion';
 
+import { markOwned } from '../../core/scope';
 /** 复习联动结果：一轮做题会话完成后的统计（复习域经 onComplete 接收） */
 export interface QuizReviewResults {
   correct: number;
@@ -258,6 +259,7 @@ export class QuizMasterUI {
     popup.appendChild(optionsContainer);
 
     mask.appendChild(popup);
+    markOwned(mask);
     document.body.appendChild(mask);
     // R4：题头/选项的 lucide 占位统一兑现（本弹窗此前无图标消费）
     mountIcons(popup);

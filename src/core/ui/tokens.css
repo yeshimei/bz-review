@@ -111,8 +111,17 @@
 }
 
 /* ── 暗色（默认）── */
-.theme-dark {
+/* 只声明 --bzrv-* 变量：变量名已带私有前缀，宿主和其它插件读不到也写不进来，
+   所以选择器保持 .theme-dark（要命中 body 上的主题类）不构成污染。
+   color-scheme 是普通属性、会真的改宿主滚动条配色，单独收到容器上。 */
+[data-bzrv] {
   color-scheme: dark;
+}
+body.theme-light [data-bzrv] {
+  color-scheme: light;
+}
+
+.theme-dark {
 
   /* 表面：以近黑为底、逐层抬升 */
   --bzrv-surface-0: #101014;
@@ -158,7 +167,6 @@
 
 /* ── 亮色 ── */
 .theme-light {
-  color-scheme: light;
 
   --bzrv-surface-0: #f2f2f4;
   --bzrv-surface-1: #fafafa;

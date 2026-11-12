@@ -10,6 +10,7 @@ import type ReviewPlugin from './main';
 import { GROUP_ID, PURCHASE_URL, licenseSummary } from './data/entitlement';
 import { migrateFromBz } from './data/migrate';
 import { t } from './i18n';
+import { markOwned } from './core/scope';
 
 export class ReviewSettingTab extends PluginSettingTab {
   private readonly review: ReviewPlugin;
@@ -22,7 +23,9 @@ export class ReviewSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.addClass('bzr-settings');
+    // 设置页在自己的 DOM 里，同样要挂作用域锚点，否则 [data-bzrv] 前缀的样式落不到
+    markOwned(containerEl);
+    containerEl.addClass('bzrv-settings');
 
     this.renderLicense(containerEl);
     this.renderData(containerEl);

@@ -312,9 +312,10 @@
 .bzrv-review-history-rating { font-weight: 500; min-width: 32px; }
 .bzrv-review-history-stage { color: var(--bzrv-text-3); font-size: 12px; }
 
-/* item 14：文件树徽标的 lucide 图标尺寸（统计/历史关闭钮已退役 issue 271） */
-.review-stage-badge .bzrv-ic { display: inline-flex; width: 1em; height: 1em; vertical-align: -0.12em; }
-.review-stage-badge .bzrv-ic svg { width: 100%; height: 100%; }
+/* item 14：文件树徽标的 lucide 图标尺寸（统计/历史关闭钮已退役 issue 271）
+   徽标寄生在 Obsidian 文件树里、不在面板容器内，所以直接连写 [data-bzrv] 认领自己。 */
+[data-bzrv].bzrv-stage-badge .bzrv-ic { display: inline-flex; width: 1em; height: 1em; vertical-align: -0.12em; }
+[data-bzrv].bzrv-stage-badge .bzrv-ic svg { width: 100%; height: 100%; }
 
 /* ==================== 触控热区（设计手册 §8.2，触屏 pointer:coarse） ====================
    ::after 外扩已收编 core .bzrv-touch-target（components.css，模板挂类）：信息行/设置 chip

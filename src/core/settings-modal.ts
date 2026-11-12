@@ -18,6 +18,7 @@ import { renderSettingsInto } from './settings-schema';
 import { trapFocus } from './ui/focus-trap';
 import type { SettingsSchema } from './settings-schema';
 
+import { markOwned } from './scope';
 /** 弹窗内可交互元素选择器（读屏/焦点管理的通用口径） */
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -180,7 +181,9 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
 
   popup.appendChild(header);
   popup.appendChild(content);
+  markOwned(mask);
   document.body.appendChild(mask);
+  markOwned(popup);
   document.body.appendChild(popup);
   mask.style.display = 'block';
   popup.style.display = 'flex';

@@ -32,12 +32,17 @@ import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entit
 import { ReviewSettingTab } from './settings-tab';
 import { migrateFromBz } from './data/migrate';
 import { t } from './i18n';
+import { installScopeGuard } from './core/scope';
 
 export default class ReviewPlugin extends Plugin {
   settings: BzSettings;
 
   async onload(): Promise<void> {
     await this.loadSettings();
+
+    // 样式作用域兜底：捕捉没走 markOwned 的自有节点（内联 HTML、第三方插入），
+    // 给它们补上 data-bzrv，否则这些节点拿不到本插件的样式。
+    this.register(installScopeGuard());
 
     setApp(this.app);
     setSettingsProvider(() => this.settings);

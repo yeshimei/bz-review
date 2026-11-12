@@ -12,6 +12,7 @@ import { escManager } from '../esc-manager';
 import { bindMaskDismiss } from '../mask-dismiss';
 import { allocZ } from '../z-order';
 
+import { markOwned } from '../scope';
 /** 多图模式的一张（单图模式即长度 1 的特例） */
 export interface BzLightboxItem {
   src: string;              // 媒体地址（img / video / audio）
@@ -156,6 +157,7 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   mask.appendChild(head);
   mask.appendChild(mediaBox);
   mask.appendChild(foot);
+  markOwned(mask);
   document.body.appendChild(mask);
   lockBodyScroll(true);
   show(idx);

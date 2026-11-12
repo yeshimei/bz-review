@@ -59,6 +59,7 @@ import { isCardItem } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { QuizMasterUI } from './quiz-core/session';
 
+import { markOwned } from '../core/scope';
 export { reviewSettingsSchema } from './settings-schema';
 // item 6：isDueToday 下沉 queue.ts 纯函数（ui 保留 re-export 签名兼容）
 export { isDueToday };
@@ -153,6 +154,8 @@ export class UIManager {
     this.popup.appendChild(content);
     this.entriesContainer = content;
 
+    markOwned(this.mask);
+    markOwned(this.popup);
     document.body.appendChild(this.mask);
     document.body.appendChild(this.popup);
   }
@@ -743,6 +746,7 @@ export function mountFloatingRatingBar(opts: {
     if (prevFocus && typeof prevFocus.focus === 'function' && prevFocus !== document.body) prevFocus.focus();
     else el.blur();
   });
+  markOwned(el);
   document.body.appendChild(el);
   motionRatingBar(el); // 底部弹升入场（保留 translateX(-50%) 居中）
   el.focus({ preventScroll: true });

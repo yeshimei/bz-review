@@ -33,6 +33,7 @@ import { escapeHtml } from './utils';
 import { allocZ } from './z-order';
 import { trapFocus } from './ui/focus-trap';
 
+import { markOwned } from './scope';
 export interface FlowDialogAction {
   /** 按钮文案（纯文本语义，渲染前 escapeHtml） */
   label: string;
@@ -183,6 +184,7 @@ export function openFlowDialog(opts: FlowDialogOptions): Promise<string | undefi
     }
 
     mask.appendChild(popup);
+    markOwned(mask);
     document.body.appendChild(mask);
 
     const escHandle = escManager.register('q3-confirm', {

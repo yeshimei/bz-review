@@ -18,6 +18,7 @@ import { deriveAnalysis } from './data';
 import { analysisHtml, analysisFixedHtml } from './view';
 import { bindAnalysis, type RaHandle } from './engine';
 
+import { markOwned } from '../../core/scope';
 let raOvl: HTMLElement | null = null;
 let raHandle: RaHandle | null = null;
 let raEsc: { unregister(): void } | null = null;
@@ -96,6 +97,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
     close.textContent = '✕';
     ovl.querySelector<HTMLElement>('.bzrv-ra-box')?.appendChild(close);
   }
+  markOwned(ovl);
   document.body.appendChild(ovl);
   topifyZ(ovl); // 显示即发号（ADR-0067）：叠在复习面板之上，关掉即销号
   raOvl = ovl;

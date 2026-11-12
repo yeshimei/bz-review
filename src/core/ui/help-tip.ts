@@ -26,6 +26,7 @@
 import { escManager } from '../esc-manager';
 import { topifyZ } from '../z-order';
 
+import { markOwned } from '../scope';
 export interface BzHelpTipOpts {
   /** 说明正文（一段普通文字；要分段用 `\n`） */
   text: string;
@@ -147,6 +148,7 @@ export function attachHelpTip(anchor: HTMLElement, opts: BzHelpTipOpts): void {
       overLayer = false;
       if (!pinned) scheduleClose();
     });
+    markOwned(pop);
     document.body.appendChild(pop);
     topifyZ(pop); // 动态发号（ADR-0067）：面板/弹窗/通知各层之上
     layer = pop;

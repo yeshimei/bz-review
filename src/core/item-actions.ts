@@ -27,6 +27,7 @@ import { allocZ } from './z-order';
 import { isMobileEnv } from './mobile';
 import { setIcon, type IconName } from 'obsidian';
 
+import { markOwned } from './scope';
 export interface ItemAction {
   /** Obsidian 内置 lucide 图标 id（如 'pencil'/'trash-2'/'star'），经 setIcon 渲染原生 SVG；尺寸由 styles.css 控制 */
   icon: IconName;
@@ -347,6 +348,7 @@ export function openItemMenu(
   }
   // 动态发号（ADR-0067）：每次右键新建，创建即显示
   m.style.zIndex = String(allocZ());
+  markOwned(m);
   document.body.appendChild(m);
   positionMenu(m, x, y);
   m.style.visibility = 'visible';
@@ -451,7 +453,9 @@ export function openItemSheet(actions: ItemAction[], opts?: ItemActionsOptions, 
   // 动态发号（ADR-0067）：遮罩在下、本体在上（每次打开新建，创建即显示）
   mask.style.zIndex = String(allocZ());
   sheet.style.zIndex = String(allocZ());
+  markOwned(mask);
   document.body.appendChild(mask);
+  markOwned(sheet);
   document.body.appendChild(sheet);
   popupEl = sheet;
   sheetMask = mask;

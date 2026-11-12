@@ -27,6 +27,7 @@
 import { allocZ } from './z-order';
 import { tryGetSettings } from './settings-provider';
 
+import { markOwned } from './scope';
 export type NoticeType =
   | 'info'
   | 'success'
@@ -281,6 +282,7 @@ function ensureContainer(): HTMLElement | null {
   if (!container) {
     container = document.createElement('div');
     container.id = 'bzrv-notice-container';
+    markOwned(container);
     document.body.appendChild(container);
   }
   return container;

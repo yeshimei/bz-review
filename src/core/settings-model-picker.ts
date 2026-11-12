@@ -8,6 +8,7 @@ import { createOverlay } from './dom';
 import { escManager } from './esc-manager';
 import type { ModelOption } from './ai-models';
 
+import { markOwned } from './scope';
 export interface ModelPickerOptions {
   /** 服务商 label（弹窗标题/来源展示） */
   providerLabel: string;
@@ -113,7 +114,9 @@ export function openModelPicker(opts: ModelPickerOptions): void {
 
   popup.appendChild(header);
   popup.appendChild(content);
+  markOwned(mask);
   document.body.appendChild(mask);
+  markOwned(popup);
   document.body.appendChild(popup);
   mask.style.display = 'block';
   popup.style.display = 'flex';

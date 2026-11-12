@@ -25,6 +25,7 @@ import { escManager, type EscHandle } from './esc-manager';
 import { notifySaveError, notifyActionError } from './notice';
 import { uiChip } from './ui/chip';
 
+import { markOwned } from './scope';
 export interface PathPickerOptions {
   /** 弹窗标题（缺省「选择文件夹」） */
   title?: string;
@@ -612,7 +613,9 @@ export function openPathPicker(opts: PathPickerOptions): void {
   renderList();
   updateSel();
   popup.append(head, search, listEl, foot);
+  markOwned(mask);
   document.body.appendChild(mask);
+  markOwned(popup);
   document.body.appendChild(popup);
   mask.style.display = 'block';
   popup.style.display = 'flex';
@@ -706,6 +709,7 @@ function pickDirViaInput(): Promise<string | null> {
     input.setAttribute('webkitdirectory', '');
     input.setAttribute('directory', '');
     input.style.display = 'none';
+    markOwned(input);
     document.body.appendChild(input);
     let settled = false;
     const finish = (v: string | null): void => {

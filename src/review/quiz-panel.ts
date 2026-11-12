@@ -19,6 +19,7 @@ import { getApp } from '../core/app';
 import { bindMaskDismiss } from '../core/mask-dismiss';
 import { notice, notify } from '../core/notice';
 import { escManager } from '../core/esc-manager';
+import { markOwned } from '../core/scope';
 import { trapPanelFocus } from '../core/ui/focus-trap';
 import { topifyZ } from '../core/z-order';
 import { emitDomainEvent } from '../core/domain-bus';
@@ -113,6 +114,8 @@ class QuizPracticePanel {
     this.content.className = 'bzrv-quiz-practice-container';
     this.popup.appendChild(this.content);
 
+    markOwned(this.mask);
+    markOwned(this.popup);
     document.body.appendChild(this.mask);
     document.body.appendChild(this.popup);
   }
