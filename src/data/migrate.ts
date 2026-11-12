@@ -11,6 +11,86 @@ import type { App } from 'obsidian';
 import { jsonFileStore, storageFile } from '../core/storage';
 import { parseBzReviewJson } from './migrate-parse';
 import { FREE_CARD_LIMIT, FREE_NOTE_LIMIT } from './entitlement';
+
+/** 复习域自己产出的数据文件（换数据目录时要跟着走） */
+export const REVIEW_DATA_FILES = ['review.json', 'review-quiz.json', 'review-fit.json'] as const;
+
+/** 空数据文件：等于没内容，可以覆盖 */
+function looksEmpty(text: string): boolean {
+  const s = String(text ?? '').trim();
+  return !s || s === '[]' || s === '{}' || s === 'null';
+}
+
+/**
+ * 逐级建目录。
+ *
+ * `adapter.mkdir` 不保证递归建父级（core/remote-asset.ts 里也记着这个坑），
+ * 所以 `A/B/C` 这种要一层层建，单次调用会在父级不存在时失败。
+ */
+async function ensureDir(app: App, dir: string): Promise<void> {
+  const parts = String(dir ?? '').split('/').filter(Boolean);
+  let cur = '';
+  for (const part of parts) {
+    cur = cur ? `${cur}/${part}` : part;
+    try {
+      await app.vault.adapter.mkdir(cur);
+    } catch {
+      /* 已存在 */
+    }
+  }
+}
+
+/**
+ * 换数据目录时把已有数据搬过去。
+ *
+ * 之前改了「数据目录」就直接存新路径，什么也不做——面板下一秒变成「今日已清空 /
+ * 还没有任何复习条目」，18 条全不见，零提示。用户唯一的结论就是数据丢了。
+ * （数据其实还在旧目录，改回去能自愈，但界面上没有任何线索。）
+ *
+ * 三条口径：
+ * - **复制不移动**：旧目录原样保留，搬错了还能改回去，不会造成不可逆损失。
+ * - **目标非空就不覆盖**：新目录已经有数据时保留新的，把名字记进 `kept`。
+ * - **源是空的就不搬**：否则换目录会把旧目录里的空壳 `[]` 也搬过去。
+ */
+export async function copyReviewData(
+  app: App,
+  fromDir: string,
+  toDir: string,
+): Promise<{ copied: string[]; kept: string[] }> {
+  const trim = (d: string): string => String(d ?? '').trim().replace(/\/+$/, '');
+  const from = trim(fromDir);
+  const to = trim(toDir);
+  const copied: string[] = [];
+  const kept: string[] = [];
+  if (!from || !to || from === to) return { copied, kept };
+  await ensureDir(app, to);
+  for (const name of REVIEW_DATA_FILES) {
+    let src = '';
+    try {
+      src = await app.vault.adapter.read(`${from}/${name}`);
+    } catch {
+      continue; // 源目录没有这个文件
+    }
+    if (looksEmpty(src)) continue;
+    let dst = '';
+    try {
+      dst = await app.vault.adapter.read(`${to}/${name}`);
+    } catch {
+      dst = '';
+    }
+    if (!looksEmpty(dst)) {
+      kept.push(name);
+      continue;
+    }
+    try {
+      await app.vault.adapter.write(`${to}/${name}`, src);
+      copied.push(name);
+    } catch {
+      kept.push(name);
+    }
+  }
+  return { copied, kept };
+}
 import type BzSettings from '../settings';
 
 export type { ParsedBzReview } from './migrate-parse';

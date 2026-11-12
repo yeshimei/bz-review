@@ -8,7 +8,8 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type ReviewPlugin from './main';
 import { GROUP_ID, PURCHASE_URL, licenseSummary } from './data/entitlement';
-import { migrateFromBz } from './data/migrate';
+import { migrateFromBz, copyReviewData } from './data/migrate';
+import { notice } from './core/notice';
 import { t } from './i18n';
 import { markOwned } from './core/scope';
 
@@ -89,8 +90,33 @@ export class ReviewSettingTab extends PluginSettingTab {
           .setPlaceholder('CONFIG/REVIEW')
           .setValue(this.review.settings.storagePath)
           .onChange(async (v) => {
-            this.review.settings.storagePath = v.trim() || 'CONFIG/REVIEW';
+            const prev = this.review.settings.storagePath;
+            const next = v.trim() || 'CONFIG/REVIEW';
+            if (next === prev) return;
+            this.review.settings.storagePath = next;
             await this.review.saveSettings();
+            /* 换目录必须把已有数据带过去。原来只改字段、什么也不搬——面板下一秒
+               变成「今日已清空」，18 条全不见，零提示，用户只会以为数据丢了。
+               复制而不是移动：旧目录原样留着，搬错了改回去就自愈。 */
+            try {
+              const { copied, kept } = await copyReviewData(this.app, prev, next);
+              if (copied.length) {
+                notice(t(
+                  `已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`,
+                  `Copied review data to ${next} (${copied.length} files); original kept`,
+                ), 'success');
+              } else if (kept.length) {
+                notice(t(
+                  `${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`,
+                  `${next} already has review data; not overwritten. Old data still in ${prev}`,
+                ), 'warning');
+              }
+            } catch {
+              notice(t(
+                `已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`,
+                `Data folder changed, but the copy failed. Old data still in ${prev}`,
+              ), 'warning');
+            }
           }),
       );
 
