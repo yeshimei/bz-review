@@ -81,6 +81,9 @@
 .bzrv-q-tag.is-early { background: color-mix(in srgb, var(--bzrv-info) 14%, transparent); color: var(--bzrv-info); }
 /* issue 253（V1 原型拍板）：待重做旗标显性化——红 tag 提示该篇首次评级∈{忘了,困难} */
 .bzrv-q-tag.is-redo { background: color-mix(in srgb, var(--bzrv-danger) 18%, transparent); color: var(--bzrv-danger); font-weight: 600; }
+/* 类型标签：划线卡 vs 笔记。两类条目在队列里长得一模一样，加点区别 */
+.bzrv-q-tag.is-kind-card { background: color-mix(in srgb, var(--bzrv-brand) 12%, transparent); color: var(--bzrv-brand); }
+.bzrv-q-tag.is-kind-note { background: var(--bzrv-surface-2); color: var(--bzrv-text-3); }
 /* item 10：空态宿主（uiEmpty 组件库类不重复定义，仅限宽居中） */
 .bzrv-q-empty-wrap { align-items: center; justify-content: center; }
 .bzrv-q-hint { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); text-align: center; padding: 18px var(--bzrv-space-sm); }

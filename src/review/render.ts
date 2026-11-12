@@ -144,6 +144,11 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
     item.isMissing ? 'missing' : '',
   ].join(' ').trim();
   const tags = [
+    /* 类型标签。两类条目在队列里长得一模一样，用户分不清「被讨厌的勇气」是那篇
+       笔记、而「被讨厌的勇气 · 第一夜」是书里的一条划线——点进去才发现不一样。 */
+    item.kind === 'card'
+      ? '<span class="bzrv-q-tag is-kind-card">划线</span>'
+      : '<span class="bzrv-q-tag is-kind-note">笔记</span>',
     item.isMissing ? `<span class="bzrv-q-tag is-missing">文件缺失</span>` : `<span class="bzrv-q-tag ${due.cls}">${due.label}</span>`,
     // R 阈值提前复习卡挂「提前」tag（与开始本轮同口径，落「今天」列）
     !item.isMissing && isEarlyDue(item, ctx.rThreshold ?? 0.9, w) ? `<span class="bzrv-q-tag is-early">提前</span>` : '',
