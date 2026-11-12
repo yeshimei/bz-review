@@ -22,6 +22,8 @@ import type { Rating } from './fsrs';
 import type { CardMode } from './card-ai';
 import { QUIZ_RATIO, pickCardQuestions } from './card-quiz';
 import type { QuizQuestion } from './quiz-core/manager';
+import { checkBlanks, renderClozeHtmlParts } from './cloze';
+import { contextPromptOf } from './context';
 import { accuracyToRating } from './sprint';
 
 /** 提示面：长划线给开头，短划线只给几个字（否则等于把答案念出来） */
@@ -111,6 +113,8 @@ export class CardSession {
   private quizFallback = false;
   /** 刚点过「重新生成」，按钮上给个反馈 */
   private regenBusy = false;
+  /** 填空作答态；null = 还没交卷 */
+  private clozeState: { answers: string[]; results: boolean[] } | null = null;
 
   constructor(opts: CardSessionOpts) {
     this.opts = opts;
@@ -127,6 +131,15 @@ export class CardSession {
       }
       if (this.isQuizMode() && this.quiz) {
         this.handleQuizKey(e);
+        return;
+      }
+      // 填空 / 上下文有各自的提示面与提交动作，不能落进下面的「空格揭示」
+      if (this.isClozeMode()) {
+        this.handleClozeKey(e);
+        return;
+      }
+      if (this.isContextMode()) {
+        this.handleContextKey(e);
         return;
       }
       if (!this.revealed && !this.isPlainMode()) {
@@ -163,6 +176,14 @@ export class CardSession {
     return this.mode() === 'quiz' && !this.quizFallback;
   }
 
+  private isClozeMode(): boolean {
+    return this.mode() === 'cloze';
+  }
+
+  private isContextMode(): boolean {
+    return this.mode() === 'context';
+  }
+
   private current(): ReviewItem | undefined {
     return this.opts.queue[this.index];
   }
@@ -187,6 +208,7 @@ export class CardSession {
     this.quiz = null;
     this.quizLoading = false;
     this.quizFallback = false;
+    this.clozeState = null;
     if (this.index >= this.opts.queue.length) {
       this.destroy();
       this.opts.onExit(true);
@@ -278,6 +300,47 @@ export class CardSession {
     }
   }
 
+  /**
+   * 填空：Enter 交卷；交卷后 1-4 评级。
+   * 没有填空内容时答案已经摆出来了，直接放行评级键——不能让用户按不动。
+   */
+  private handleClozeKey(e: KeyboardEvent): void {
+    const card = this.current()?.card;
+    if (!card || !this.clozeReady(card)) {
+      this.rateByKey(e);
+      return;
+    }
+    if (!this.clozeState) {
+      // 输入框里按 Enter 只交卷；preventDefault 掉表单默认行为。
+      // 中文输入法还在选词时（isComposing）不交卷，否则「回车选词」会被当成提交。
+      if (e.key === 'Enter' && !e.isComposing) {
+        e.preventDefault();
+        this.submitCloze();
+      }
+      return;
+    }
+    this.rateByKey(e);
+  }
+
+  /** 上下文：Enter 揭示；揭示后 1-4 评级 */
+  private handleContextKey(e: KeyboardEvent): void {
+    if (!this.revealed) {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        this.reveal();
+      }
+      return;
+    }
+    this.rateByKey(e);
+  }
+
+  private rateByKey(e: KeyboardEvent): void {
+    const hit = RATINGS.find((r) => r.key === e.key);
+    if (!hit) return;
+    e.preventDefault();
+    void this.rate(hit.value);
+  }
+
   private pickOption(i: number): void {
     const round = this.quiz;
     if (!round || round.picked !== null) return;
@@ -306,6 +369,38 @@ export class CardSession {
     await this.rate(accuracyToRating(acc));
   }
 
+  /** 交填空卷：按 data-slot 收答案，逐空判分后整页重画（答案与对错都留在状态里） */
+  private submitCloze(): void {
+    if (this.clozeState) return;
+    const card = this.current()?.card;
+    if (!card?.cloze || !this.clozeReady(card)) return;
+    const answers: string[] = [];
+    this.opts.host.querySelectorAll<HTMLInputElement>('input.bzrv-cs-slot').forEach((el) => {
+      const n = Number(el.dataset.slot);
+      if (Number.isFinite(n) && n >= 1) answers[n - 1] = el.value;
+    });
+    const { results } = checkBlanks(card.cloze, answers);
+    this.clozeState = { answers, results };
+    this.render();
+  }
+
+  /** 这张卡有没有可用的填空内容：空文本、空答案、没有占位都算没准备好 */
+  private clozeReady(card: ReviewCard): boolean {
+    const text = String(card.cloze?.text ?? '');
+    const blanks = card.cloze?.blanks;
+    if (!text.trim() || !Array.isArray(blanks) || !blanks.length) return false;
+    return renderClozeHtmlParts(text).some((p) => p.kind === 'slot');
+  }
+
+  /** 空位宽度：按答案的视觉宽度估（汉字约两格），夹在 4–20ch 之间 */
+  private slotWidth(answer: string): number {
+    let width = 0;
+    for (const ch of Array.from(String(answer ?? ''))) {
+      width += /[\u3000-\u9fff\uff01-\uff60]/.test(ch) ? 2 : 1;
+    }
+    return Math.min(20, Math.max(4, width + 1));
+  }
+
   private async regenerate(): Promise<void> {
     if (!this.opts.regenerate || this.regenBusy) return;
     const item = this.current();
@@ -320,6 +415,7 @@ export class CardSession {
         this.quiz = null;
         this.quizFallback = false;
         this.revealed = false;
+        this.clozeState = null;
         // 重生成后卡上的内容变了：把最新那条换进来
         const card = item.card ?? ({} as ReviewCard);
         if (card.key) this.qCache.delete(card.key);
@@ -342,7 +438,7 @@ export class CardSession {
     }
     const total = this.opts.queue.length;
     const pos = `${this.index + 1} / ${total}`;
-    const canRegen = this.mode() !== 'plain' && !!this.opts.regenerate;
+    const canRegen = this.mode() !== 'plain' && this.mode() !== 'context' && !!this.opts.regenerate;
 
     host.innerHTML = `
       <div class="bzrv-cs" role="group" aria-label="划线卡复习">
@@ -415,9 +511,81 @@ export class CardSession {
         ${explain}`;
     }
 
+    if (this.isClozeMode()) return this.clozeBodyHtml(card);
+    if (this.isContextMode()) return this.contextBodyHtml(card);
+
     const prompt = this.promptFor(item);
     return `
       <p class="bzrv-cs-prompt${prompt ? '' : ' is-loading'}">${prompt ? esc(prompt) : '正在生成提示…'}</p>
+      ${this.revealed ? this.answerHtml(card) : ''}`;
+  }
+
+  /**
+   * 填空：提示面只给挖空后的句子；交卷后逐空标对错、补上正确答案，再揭示原文。
+   * 没有挖空内容时直接摊开原文——复习不能停在一张空白卡片上。
+   */
+  private clozeBodyHtml(card: ReviewCard): string {
+    if (!this.clozeReady(card)) {
+      return `<p class="bzrv-cs-prompt">这张卡还没准备好填空，先看原文</p>${this.answerHtml(card)}`;
+    }
+    const text = String(card.cloze!.text);
+    const blanks = card.cloze!.blanks;
+    const state = this.clozeState;
+    const answers = state?.answers ?? [];
+    const results = state?.results ?? [];
+    const pieces = renderClozeHtmlParts(text)
+      .map((part) => {
+        if (part.kind === 'text') return esc(part.value);
+        const i = part.index - 1;
+        const cls = state ? (results[i] ? ' is-ok' : ' is-bad') : '';
+        const value = state ? esc(answers[i] ?? '') : '';
+        const locked = state ? ' readonly' : '';
+        const width = this.slotWidth(blanks[i] ?? '');
+        return `<span class="bzrv-cs-slot-n">${part.index}</span><input type="text" class="bzrv-cs-slot${cls}" data-slot="${part.index}" inputmode="text" autocomplete="off" style="width: ${width}ch" value="${value}"${locked}>`;
+      })
+      .join('');
+    if (!state) {
+      return `<p class="bzrv-cs-cloze-hint">凭上下文补全这几处</p>
+        <p class="bzrv-cs-cloze">${pieces}</p>`;
+    }
+    const wrong = blanks
+      .map((want, i) =>
+        results[i] ? '' : `<p class="bzrv-cs-slot-ans">第 ${i + 1} 空：正确答案「${esc(want)}」</p>`,
+      )
+      .join('');
+    const right = results.filter(Boolean).length;
+    const allOk = right === blanks.length;
+    return `<p class="bzrv-cs-cloze-hint">凭上下文补全这几处</p>
+      <p class="bzrv-cs-cloze">${pieces}</p>
+      ${wrong}
+      <p class="bzrv-cs-cloze-result${allOk ? ' is-ok' : ''}">${
+        allOk ? '全对' : `对了 ${right} / ${blanks.length}`
+      }</p>
+      ${this.answerHtml(card)}`;
+  }
+
+  /**
+   * 上下文：先给前后文（或当时的想法/出处），划线藏起来；揭示后接原文。
+   * 判断与文案都在 context.ts，这里只负责排版与转义。
+   */
+  private contextBodyHtml(card: ReviewCard): string {
+    const prompt = contextPromptOf(card);
+    let core: string;
+    if (prompt.real) {
+      core = `${prompt.before ? `<p class="bzrv-cs-ctx-side is-before">${esc(prompt.before)}</p>` : ''}
+        <div class="bzrv-cs-ctx-hole">（你划的是这句？）</div>
+        ${prompt.after ? `<p class="bzrv-cs-ctx-side is-after">${esc(prompt.after)}</p>` : ''}`;
+    } else if (prompt.hint) {
+      core = `<p class="bzrv-cs-hint">你当时的想法</p>
+        <blockquote class="bzrv-cs-ctx-hint">${esc(prompt.hint)}</blockquote>`;
+    } else {
+      core = `${prompt.where ? `<p class="bzrv-cs-prompt">${esc(prompt.where)}</p>` : ''}
+        <p class="bzrv-cs-hint">凭出处回忆，想不起来就翻回去</p>`;
+    }
+    return `<div class="bzrv-cs-ctx">
+        <p class="bzrv-cs-prompt">${esc(prompt.lead)}</p>
+        ${core}
+      </div>
       ${this.revealed ? this.answerHtml(card) : ''}`;
   }
 
@@ -447,6 +615,18 @@ export class CardSession {
       }（Enter）</button>`;
     }
 
+    if (this.isClozeMode()) {
+      if (!this.clozeReady(item.card!)) return this.ratingHtml();
+      if (!this.clozeState) return `<button type="button" class="bzrv-btn pri" data-act="check">对答案</button>`;
+      return this.ratingHtml();
+    }
+
+    if (this.isContextMode()) {
+      return this.revealed
+        ? this.ratingHtml()
+        : `<button type="button" class="bzrv-btn pri" data-act="reveal">想起来了，看答案</button>`;
+    }
+
     if (this.revealed) return this.ratingHtml();
     return `<button type="button" class="bzrv-btn pri" data-act="reveal">看答案</button>`;
   }
@@ -459,6 +639,7 @@ export class CardSession {
 
   private bind(host: HTMLElement): void {
     host.querySelector('[data-act="reveal"]')?.addEventListener('click', () => this.reveal());
+    host.querySelector('[data-act="check"]')?.addEventListener('click', () => this.submitCloze());
     host.querySelector('[data-act="regen"]')?.addEventListener('click', () => void this.regenerate());
     host.querySelector('[data-act="next"]')?.addEventListener('click', () => this.nextQuestion());
     host.querySelector('[data-act="finish"]')?.addEventListener('click', () => void this.finishQuiz());

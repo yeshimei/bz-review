@@ -607,3 +607,24 @@
   .bzrv-cs { padding: var(--bzrv-space-md) var(--bzrv-space-md) var(--bzrv-space-lg); }
   .bzrv-cs-rate .bzrv-btn { min-width: 0; }
 }
+
+/* ==================== 划线卡：填空 / 上下文（2026-11-13，src/review/card-session.ts） ====================
+   填空把空位做成行内输入框（16px 防 iOS 聚焦缩放），上下文用前后文夹住中间的「洞」。
+   颜色只消费 --bzrv-* token；选择器全部挂在 .bzrv-cs-* 之下，不碰全局元素。 */
+.bzrv-cs-cloze { display: block; margin: 0; font-size: var(--bzrv-font-label); line-height: 2.2; color: var(--bzrv-text-1); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bzrv-cs-cloze-hint { margin: 0; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-cs-slot { display: inline-block; box-sizing: border-box; height: auto; min-width: 4ch; max-width: 20ch; margin: 0 1px; padding: 1px 4px; border: none; border-bottom: 1px solid var(--bzrv-text-3); border-radius: 0; background: var(--bzrv-surface-2); box-shadow: none; color: var(--bzrv-text-1); font-family: inherit; font-size: 16px; line-height: 1.5; text-align: center; vertical-align: baseline; }
+.bzrv-cs-slot:focus { outline: none; border-bottom-color: var(--bzrv-brand); background: var(--bzrv-surface-1); box-shadow: none; }
+.bzrv-cs-slot.is-ok, .bzrv-cs-slot.is-ok:focus { border-bottom-color: var(--bzrv-success); color: var(--bzrv-success); }
+.bzrv-cs-slot.is-bad, .bzrv-cs-slot.is-bad:focus { border-bottom-color: var(--bzrv-danger); color: var(--bzrv-danger); }
+.bzrv-cs-slot-n { display: inline-block; margin: 0 1px 0 3px; font-size: var(--bzrv-font-caption); line-height: 1; color: var(--bzrv-text-3); vertical-align: super; }
+.bzrv-cs-slot-ans { margin: 0; font-size: var(--bzrv-font-caption); line-height: 1.55; color: var(--bzrv-danger); }
+.bzrv-cs-cloze-result { margin: 0; font-size: var(--bzrv-font-label); font-weight: 600; color: var(--bzrv-text-1); }
+.bzrv-cs-cloze-result.is-ok { color: var(--bzrv-success); }
+.bzrv-cs-ctx { display: flex; flex-direction: column; gap: var(--bzrv-space-sm); }
+.bzrv-cs-ctx > p, .bzrv-cs-ctx > blockquote { margin: 0; }
+.bzrv-cs-ctx-side { padding: 8px 12px; border-radius: var(--bzrv-radius-xs); background: var(--bzrv-surface-2); font-size: var(--bzrv-font-label); line-height: 1.8; color: var(--bzrv-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bzrv-cs-ctx-side.is-before { border-left: 2px solid var(--bzrv-border); }
+.bzrv-cs-ctx-side.is-after { border-right: 2px solid var(--bzrv-border); }
+.bzrv-cs-ctx-hole { padding: 10px 12px; border: 1px dashed var(--bzrv-border); border-radius: var(--bzrv-radius-xs); font-size: var(--bzrv-font-caption); line-height: 1.6; color: var(--bzrv-text-3); text-align: center; }
+.bzrv-cs-ctx-hint { padding: 8px 12px; border-left: 2px solid var(--bzrv-brand); border-radius: 0 var(--bzrv-radius-xs) var(--bzrv-radius-xs) 0; background: var(--bzrv-surface-2); font-size: var(--bzrv-font-meta); line-height: 1.7; color: var(--bzrv-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
