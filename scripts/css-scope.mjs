@@ -14,6 +14,54 @@
 
 const ANCHOR = '[data-bzrv]';
 
+/**
+ * 作用域后缀：挂在选择器**最后一段**上。
+ *
+ * 为什么不是 `[data-bzrv] .foo` 这种祖先前缀：弹层根节点（#bzrv-popup 等）自己
+ * 就是 `[data-bzrv]`，它是 body 的直接子元素、没有带锚点的祖先。祖先前缀会让
+ * 「根元素自己的类」全部失效——真机上表现为面板背景透明、整块样式掉光。
+ *
+ * `:is([data-bzrv], [data-bzrv] *)` 表示「自己带锚点，或某个祖先带锚点」，
+ * 两种情况都覆盖，且规则条数不变。
+ */
+const SCOPE_SUFFIX = ':is([data-bzrv], [data-bzrv] *)';
+
+/** 找选择器最后一段的起点（顶层空格 / > / + / ~ 之后） */
+function lastCompoundStart(sel) {
+  let depth = 0;
+  let cut = -1;
+  for (let i = 0; i < sel.length; i++) {
+    const c = sel[i];
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth--;
+    else if (depth === 0 && (c === ' ' || c === '>' || c === '+' || c === '~')) cut = i;
+  }
+  return cut;
+}
+
+/** 找最后一段里第一个伪类的位置（跳过属性选择器与括号内部） */
+function firstPseudoIndex(tail) {
+  let depth = 0;
+  for (let i = 0; i < tail.length; i++) {
+    const c = tail[i];
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth--;
+    else if (c === ':' && depth === 0) return i;
+  }
+  return -1;
+}
+
+/** 给一条选择器加上容器后缀（放在最后一段、伪类之前） */
+function applyScope(sel) {
+  const cut = lastCompoundStart(sel);
+  const head = sel.slice(0, cut + 1);
+  const tail = sel.slice(cut + 1);
+  if (!tail) return `${sel}${SCOPE_SUFFIX}`;
+  const p = firstPseudoIndex(tail);
+  const scoped = p < 0 ? `${tail}${SCOPE_SUFFIX}` : `${tail.slice(0, p)}${SCOPE_SUFFIX}${tail.slice(p)}`;
+  return head + scoped;
+}
+
 /** 跳过字符串字面量（"…" 或 '…'，含转义），返回新的索引 */
 function skipString(css, i) {
   const q = css[i];
@@ -61,14 +109,14 @@ function splitSelectors(prelude) {
   return parts;
 }
 
-/** 给单条选择器加容器前缀；不需要加的返回 null（表示原样保留） */
+/** 给单条选择器加容器作用域；不需要加的返回 null（表示原样保留） */
 function scopeOne(sel) {
   const s = sel.trim();
   if (!s) return null;
-  if (s.includes(ANCHOR)) return null;            // 已经自己管好了
+  if (s.includes(ANCHOR)) return null;            // 已经自己管好了（含 :is 后缀）
   if (/^#bzrv-/.test(s)) return null;             // 自有 ID 根/子树，全局唯一
   if (/^(from|to|\d+%)$/.test(s)) return null;    // keyframes 帧（兜底，正常走不到）
-  return `${ANCHOR} ${s}`;
+  return applyScope(s);
 }
 
 function scopePrelude(prelude) {
