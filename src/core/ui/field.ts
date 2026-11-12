@@ -4,10 +4,10 @@
  * ============================================================ */
 import type { BzFieldOpts, BzInputOpts } from './types';
 
-/** 文本输入（.bz-input） */
+/** 文本输入（.bzrv-input） */
 export function uiInput(opts: BzInputOpts): HTMLInputElement {
   const inp = document.createElement('input');
-  inp.className = 'bz-input' + (opts.error ? ' bz-input--error' : '');
+  inp.className = 'bzrv-input' + (opts.error ? ' bzrv-input--error' : '');
   inp.type = opts.type || 'text';
   if (opts.placeholder) inp.placeholder = opts.placeholder;
   if (opts.value !== undefined) inp.value = opts.value;
@@ -39,32 +39,32 @@ function isLabelable(ctrl: HTMLElement): boolean {
  * 字段行（标签 + 控件 + desc/error），对照 settings 行。
  *
  * 根元素**按控件类型自适应**：可标记控件用 `<label>`（点标签能聚焦/切换），其余用 `<div>` ——
- * 理由见 `isLabelable`（把自绘下拉放进 `<label>` 会让它换不了值）。两者共用 `.bz-field` 样式，
- * `.bz-field { display:flex }` 与标签名无关，观感一致。
+ * 理由见 `isLabelable`（把自绘下拉放进 `<label>` 会让它换不了值）。两者共用 `.bzrv-field` 样式，
+ * `.bzrv-field { display:flex }` 与标签名无关，观感一致。
  */
 export function uiField(opts: BzFieldOpts): HTMLElement {
   const wrap = isLabelable(opts.control)
     ? document.createElement('label')
     : document.createElement('div');
-  wrap.className = 'bz-field';
+  wrap.className = 'bzrv-field';
   if (opts.label) {
     const l = document.createElement('span');
-    l.className = 'bz-field-label';
+    l.className = 'bzrv-field-label';
     l.textContent = opts.label;
     wrap.appendChild(l);
   }
   wrap.appendChild(opts.control);
   if (opts.error) {
-    // error 边框样式仅对 .bz-input 定义（L4）：select/range 等非 input 控件不上无效类，
-    // 错误文案仍由 .bz-field-error 呈现
-    if (opts.control.classList.contains('bz-input')) opts.control.classList.add('bz-input--error');
+    // error 边框样式仅对 .bzrv-input 定义（L4）：select/range 等非 input 控件不上无效类，
+    // 错误文案仍由 .bzrv-field-error 呈现
+    if (opts.control.classList.contains('bzrv-input')) opts.control.classList.add('bzrv-input--error');
     const e = document.createElement('span');
-    e.className = 'bz-field-error';
+    e.className = 'bzrv-field-error';
     e.textContent = opts.error;
     wrap.appendChild(e);
   } else if (opts.desc) {
     const d = document.createElement('span');
-    d.className = 'bz-field-desc';
+    d.className = 'bzrv-field-desc';
     d.textContent = opts.desc;
     wrap.appendChild(d);
   }

@@ -15,7 +15,7 @@
  * - z-index 动态发号（ADR-0067）：每次打开新建 DOM，创建即显示，谁后开谁在上。
  * - 宿主皮肤通道（2026-09-12，ADR-0127）：skinClassName 同时挂 mask 与 popup（body 下两个
  *   兄弟节点）。浮层在面板根之外，够不着面板作用域的 --sp-* token —— 皮肤类须**自带一份
- *   token 声明**再消费（先例 `.bz-item-menu.bz-home-menu`），见 settings-panel/styles.css
+ *   token 声明**再消费（先例 `.bzrv-item-menu.bz-home-menu`），见 settings-panel/styles.css
  *   `.bz-sp-skin` 段。设置面板内的路径行传 'bz-sp-skin' 即得面板观感，其余入口不传 = 现状。
  */
 import { Setting } from 'obsidian';
@@ -167,11 +167,11 @@ export function renderPathChips(
   onChipClick?: (path: string) => void
 ): void {
   container.innerHTML = '';
-  container.classList.add('bz-path-picker-chips');
+  container.classList.add('bzrv-path-picker-chips');
   if (selected.length === 0) {
     if (!emptyText) return;
     const empty = document.createElement('span');
-    empty.className = 'bz-path-picker-chips-empty';
+    empty.className = 'bzrv-path-picker-chips-empty';
     empty.textContent = emptyText;
     container.appendChild(empty);
     return;
@@ -179,14 +179,14 @@ export function renderPathChips(
   for (const path of selected) {
     const label = path === '' ? '（库根目录）' : path;
     const chip = document.createElement('span');
-    chip.className = 'bz-path-picker-chip' + (onChipClick ? ' bz-path-picker-chip--click' : '');
+    chip.className = 'bzrv-path-picker-chip' + (onChipClick ? ' bzrv-path-picker-chip--click' : '');
     chip.title = label;
     const name = document.createElement('span');
-    name.className = 'bz-path-picker-chip-name';
+    name.className = 'bzrv-path-picker-chip-name';
     name.textContent = label;
     if (onChipClick) name.onclick = () => onChipClick(path);
     const x = document.createElement('button');
-    x.className = 'bz-path-picker-chip-x';
+    x.className = 'bzrv-path-picker-chip-x';
     x.textContent = '✕';
     x.setAttribute('aria-label', `移除 ${label}`);
     x.onclick = () => onChange(selected.filter((p) => p !== path));
@@ -229,7 +229,7 @@ export interface PathSettingRowOptions {
 
 /** 构建路径设置行：Setting（名称/描述）+ 控件区——空态：紧凑「选择…/添加…」按钮（无「未选择」灰字）；
  *  已选态：按钮移出 DOM，chips 文本点击重开选择器、✕ 清除（ticket 133）。
- *  控件区恒 1 子元素 → markSettingSplitRows 不挂 .bz-setting-split → 移动端名称/描述与控件区同行。
+ *  控件区恒 1 子元素 → markSettingSplitRows 不挂 .bzrv-setting-split → 移动端名称/描述与控件区同行。
  *  不保留手输文本框（ADR-0061 拍板 3：路径一律经选择器录入，限 vault 内）。
  *  返回 { refresh } 供外部按需重渲染 chips（如设置被其他入口改动后回同步）。 */
 export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: () => void; settingEl: HTMLElement } {
@@ -241,9 +241,9 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
   const setting = new Setting(opts.parent).setName(opts.name);
   if (opts.desc) setting.setDesc(opts.desc);
   // ticket 133 兜底：移动端路径行恒单行（CSS 层保证，不依赖控件区子元素计数——即使按钮未及时移出也不拆两行）
-  setting.settingEl.classList.add('bz-path-picker-setting-row');
+  setting.settingEl.classList.add('bzrv-path-picker-setting-row');
   const chipsWrap = document.createElement('div');
-  chipsWrap.className = 'bz-path-picker-chips--setting';
+  chipsWrap.className = 'bzrv-path-picker-chips--setting';
 
   /** 统一变更入口：onChange 返回 Promise 时异步解析改写清单后重渲染；同步返回（含 void）立即重渲染。
    *  N6：域回调同步抛错 / 异步 reject → 人话提示 + 保持旧选中（current 未动，renderAll 回滚 chips）
@@ -306,7 +306,7 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
       .setButtonText(opts.buttonText || (opts.mode === 'multi' ? '添加…' : '选择…'))
       .onClick(openPicker);
     // ticket 133：紧凑次级按钮（不再 setCta——去掉 Obsidian 原生 accent 大按钮风），样式见 styles.css
-    b.buttonEl.classList.add('bz-path-picker-btn--slim');
+    b.buttonEl.classList.add('bzrv-path-picker-btn--slim');
     btn = b.buttonEl;
   });
 
@@ -403,19 +403,19 @@ export function openPathPicker(opts: PathPickerOptions): void {
     mask.classList.add(...skinClasses);
     popup.classList.add(...skinClasses);
   }
-  popup.classList.add('bz-path-picker');
+  popup.classList.add('bzrv-path-picker');
   popup.style.height = 'min(560px, 82vh)'; // 功能性几何（铁律 8：显隐/动态计算内联，视觉样式收敛 CSS）
 
   // 头部：标题 + （可选）说明；无关闭按钮
   const head = document.createElement('div');
-  head.className = 'bz-path-picker-head';
+  head.className = 'bzrv-path-picker-head';
   const title = document.createElement('h3');
-  title.className = 'bz-path-picker-title';
+  title.className = 'bzrv-path-picker-title';
   title.textContent = opts.title || '选择文件夹';
   head.appendChild(title);
   if (opts.desc) {
     const desc = document.createElement('div');
-    desc.className = 'bz-path-picker-desc';
+    desc.className = 'bzrv-path-picker-desc';
     desc.textContent = opts.desc;
     head.appendChild(desc);
   }
@@ -423,30 +423,30 @@ export function openPathPicker(opts: PathPickerOptions): void {
   // 搜索框（聚焦不遮列表：弹窗定高 flex 布局，列表 flex:1 恒可见）
   const search = document.createElement('input');
   search.type = 'text';
-  search.className = 'bz-path-picker-search';
+  search.className = 'bzrv-path-picker-search';
   search.placeholder = '搜索目录…';
   search.spellcheck = false;
   search.setAttribute('aria-label', '搜索目录');
 
   // 目录列表（滚动）
   const listEl = document.createElement('div');
-  listEl.className = 'bz-path-picker-list';
+  listEl.className = 'bzrv-path-picker-list';
   const state: { folders: string[]; q: string } = { folders: [], q: '' };
 
   // 底部：已选信息 + 清空(多选) + 确定
   const foot = document.createElement('div');
-  foot.className = 'bz-path-picker-foot';
+  foot.className = 'bzrv-path-picker-foot';
   const selinfo = document.createElement('span');
-  selinfo.className = 'bz-path-picker-selinfo';
+  selinfo.className = 'bzrv-path-picker-selinfo';
   const btns = document.createElement('div');
-  btns.className = 'bz-path-picker-foot-btns';
+  btns.className = 'bzrv-path-picker-foot-btns';
   foot.appendChild(selinfo);
   foot.appendChild(btns);
 
   const mkBtn = (label: string, primary: boolean, onclick: () => void): HTMLButtonElement => {
     const b = document.createElement('button');
     b.textContent = label;
-    b.className = 'bz-path-picker-btn' + (primary ? ' bz-path-picker-btn--primary' : '');
+    b.className = 'bzrv-path-picker-btn' + (primary ? ' bzrv-path-picker-btn--primary' : '');
     b.onclick = onclick;
     btns.appendChild(b);
     return b;
@@ -513,15 +513,15 @@ export function openPathPicker(opts: PathPickerOptions): void {
       n++;
       const on = selected.has(folder);
       const row = document.createElement('div');
-      row.className = 'bz-path-picker-row' + (on ? ' bz-path-picker-row--sel' : '');
+      row.className = 'bzrv-path-picker-row' + (on ? ' bzrv-path-picker-row--sel' : '');
       row.dataset.path = folder;
       row.setAttribute('role', mode === 'multi' ? 'checkbox' : 'option');
       row.setAttribute('aria-checked', on ? 'true' : 'false');
       const box = document.createElement('span');
-      box.className = 'bz-path-picker-check';
+      box.className = 'bzrv-path-picker-check';
       box.textContent = on ? '✓' : '';
       const name = document.createElement('span');
-      name.className = 'bz-path-picker-name';
+      name.className = 'bzrv-path-picker-name';
       name.textContent = folder === '' ? '（库根目录）' : folder;
       name.title = folder === '' ? '（库根目录）' : folder;
       row.appendChild(box);
@@ -557,12 +557,12 @@ export function openPathPicker(opts: PathPickerOptions): void {
     }
     if (!total) {
       const empty = document.createElement('div');
-      empty.className = 'bz-path-picker-empty';
+      empty.className = 'bzrv-path-picker-empty';
       empty.textContent = '没有匹配的目录';
       listEl.appendChild(empty);
     } else if (total > LIMIT) {
       const more = document.createElement('div');
-      more.className = 'bz-path-picker-empty';
+      more.className = 'bzrv-path-picker-empty';
       more.textContent = `已显示前 ${LIMIT} 个（共 ${total} 个匹配目录），请输入关键词缩小范围`;
       listEl.appendChild(more);
     }
@@ -584,7 +584,7 @@ export function openPathPicker(opts: PathPickerOptions): void {
   // 效率#11：Enter = 选中当前可见首行（single 直选提交；multi 勾选不关）——键盘闭环免伸手拿鼠标
   search.addEventListener('keydown', (ev) => {
     if (ev.key !== 'Enter') return;
-    const first = listEl.querySelector<HTMLElement>('.bz-path-picker-row');
+    const first = listEl.querySelector<HTMLElement>('.bzrv-path-picker-row');
     if (!first) return;
     ev.preventDefault();
     first.click();
@@ -617,7 +617,7 @@ export function openPathPicker(opts: PathPickerOptions): void {
   mask.style.display = 'block';
   popup.style.display = 'flex';
 
-  currentHandle = escManager.register('bz-path-picker', {
+  currentHandle = escManager.register('bzrv-path-picker', {
     isVisible: () => !!currentMask,
     close: () => closePathPicker(),
   });

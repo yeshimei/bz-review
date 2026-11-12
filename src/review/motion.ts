@@ -87,7 +87,7 @@ function ensureRelative(el: HTMLElement): void {
 function seal(host: HTMLElement, text: string, big = false): void {
   ensureRelative(host);
   const s = document.createElement('span');
-  s.className = 'bz-rv-seal' + (big ? ' bz-rv-seal--big' : '');
+  s.className = 'bzrv-rv-seal' + (big ? ' bzrv-rv-seal--big' : '');
   s.setAttribute('aria-hidden', 'true');
   s.textContent = text;
   host.appendChild(s);
@@ -108,7 +108,7 @@ function ringBurst(el: HTMLElement): void {
   const pr = parent.getBoundingClientRect();
   const r = el.getBoundingClientRect();
   const ring = document.createElement('i');
-  ring.className = 'bz-rv-ring';
+  ring.className = 'bzrv-rv-ring';
   ring.setAttribute('aria-hidden', 'true');
   ring.style.left = (r.left - pr.left + r.width / 2) + 'px';
   ring.style.top = (r.top - pr.top + r.height / 2) + 'px';
@@ -128,7 +128,7 @@ function ringBurst(el: HTMLElement): void {
 function sweep(host: HTMLElement): void {
   ensureRelative(host);
   const layer = document.createElement('i');
-  layer.className = 'bz-rv-sweep';
+  layer.className = 'bzrv-rv-sweep';
   layer.setAttribute('aria-hidden', 'true');
   const band = document.createElement('u');
   layer.appendChild(band);
@@ -192,27 +192,27 @@ function popCnt(el: HTMLElement): void {
 export function motionQueueBoot(container: HTMLElement): void {
   cancelPending();
   if (reduced()) return;
-  const popup = container.closest<HTMLElement>('#review-popup');
+  const popup = container.closest<HTMLElement>('#bzrv-popup');
   if (popup) sweep(popup);
 
-  const strip = container.querySelector<HTMLElement>('.bz-q-strip');
+  const strip = container.querySelector<HTMLElement>('.bzrv-q-strip');
   if (strip) {
     after(80, () => waapi(strip,
       [{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }],
       { duration: M.base, easing: E.out, fill: 'backwards' }));
     // 今日已清空的绿点：一圈涟漪贺清账
-    const dot = strip.querySelector<HTMLElement>('.bz-q-strip-dot.ok');
+    const dot = strip.querySelector<HTMLElement>('.bzrv-q-strip-dot.ok');
     if (dot) after(420, () => ringBurst(dot));
   }
 
   // 发牌：卡序=列序（danger→warn→future，或归档单列），逐卡 52ms 接力，列间歇 120ms
-  const cols = [...container.querySelectorAll<HTMLElement>('.bz-q-col')];
+  const cols = [...container.querySelectorAll<HTMLElement>('.bzrv-q-col')];
   let t = 160;
-  const total = container.querySelectorAll('.bz-q-card').length;
+  const total = container.querySelectorAll('.bzrv-q-card').length;
   const step = total > 26 ? 24 : 52;
   let seals = 0;
   cols.forEach((col, ci) => {
-    const cards = [...col.querySelectorAll<HTMLElement>('.bz-q-card')];
+    const cards = [...col.querySelectorAll<HTMLElement>('.bzrv-q-card')];
     const danger = col.classList.contains('danger');
     cards.forEach((card, cj) => {
       const rot = ((ci * 7 + cj * 13) % 5) - 2; // -2..2deg 确定性散布（发牌手感）
@@ -228,12 +228,12 @@ export function motionQueueBoot(container: HTMLElement): void {
       }
       t += step;
     });
-    const cnt = col.querySelector<HTMLElement>('.bz-q-col-head .cnt');
+    const cnt = col.querySelector<HTMLElement>('.bzrv-q-col-head .cnt');
     if (cnt) after(Math.max(120, t - 30), () => popCnt(cnt));
     t += 120;
   });
 
-  const footer = container.querySelector<HTMLElement>('.bz-q-footer');
+  const footer = container.querySelector<HTMLElement>('.bzrv-q-footer');
   if (footer) after(t + 60, () => waapi(footer,
     [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
     { duration: M.base, easing: E.out, fill: 'backwards' }));
@@ -279,7 +279,7 @@ let lastQKey = '';
 /** 出题加载态：轻浮起（spinner 自转已有 CSS） */
 export function motionSprintLoading(host: HTMLElement): void {
   if (reduced()) return;
-  const ld = host.querySelector<HTMLElement>('.bz-sprint-loading');
+  const ld = host.querySelector<HTMLElement>('.bzrv-sprint-loading');
   if (ld) waapi(ld,
     [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
     { duration: M.base, easing: E.out, fill: 'backwards' });
@@ -296,7 +296,7 @@ export function motionQuestion(
   sig: { text: string; answered: boolean; correct: boolean },
 ): void {
   if (reduced()) return;
-  const card = host.querySelector<HTMLElement>('.bz-sprint-qcard');
+  const card = host.querySelector<HTMLElement>('.bzrv-sprint-qcard');
   if (!card) return;
 
   if (sig.text !== lastQKey) {
@@ -306,9 +306,9 @@ export function motionQuestion(
       [{ opacity: 0, transform: 'perspective(900px) rotateY(-78deg) scale(.94)' },
        { opacity: 1, transform: 'perspective(900px) rotateY(0deg) scale(1)' }],
       { duration: 430, easing: E.out, fill: 'backwards' });
-    const prog = host.querySelector<HTMLElement>('.bz-sprint-progress');
+    const prog = host.querySelector<HTMLElement>('.bzrv-sprint-progress');
     if (prog) after(120, () => popCnt(prog));
-    host.querySelectorAll<HTMLElement>('.bz-sprint-opt').forEach((el, i) => {
+    host.querySelectorAll<HTMLElement>('.bzrv-sprint-opt').forEach((el, i) => {
       after(150 + i * STAG, () => waapi(el,
         [{ opacity: 0, transform: 'translateX(-10px)' }, { opacity: 1, transform: 'none' }],
         { duration: M.base, easing: E.out, fill: 'backwards' }));
@@ -319,9 +319,9 @@ export function motionQuestion(
 
   if (sig.correct) {
     sweep(card); // 绿场高光一扫
-    const okSvg = card.querySelector<HTMLElement>('.bz-sprint-opt.is-correct .bz-mark svg');
+    const okSvg = card.querySelector<HTMLElement>('.bzrv-sprint-opt.is-correct .bzrv-mark svg');
     if (okSvg) drawStroke(okSvg, 300);
-    const okOpt = card.querySelector<HTMLElement>('.bz-sprint-opt.is-correct');
+    const okOpt = card.querySelector<HTMLElement>('.bzrv-sprint-opt.is-correct');
     if (okOpt) waapi(okOpt,
       [{ transform: 'scale(1)' }, { transform: 'scale(1.02)' }, { transform: 'scale(1)' }],
       { duration: 260, easing: E.out });
@@ -335,17 +335,17 @@ export function motionQuestion(
     { duration: 420, easing: 'ease-out' });
   waapi(card,
     [{ boxShadow: 'inset 0 0 0 0 rgba(0,0,0,0)' },
-     { boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--bz-danger, #d64545) 55%, transparent)' },
+     { boxShadow: 'inset 0 0 0 2px color-mix(in srgb, var(--bzrv-danger, #d64545) 55%, transparent)' },
      { boxShadow: 'inset 0 0 0 0 rgba(0,0,0,0)' }],
     { duration: 760, easing: E.out });
-  const bad = card.querySelector<HTMLElement>('.bz-sprint-opt.is-wrong');
+  const bad = card.querySelector<HTMLElement>('.bzrv-sprint-opt.is-wrong');
   if (bad) waapi(bad,
     [{ transform: 'translateX(0)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(3px)' }, { transform: 'none' }],
     { duration: 260, easing: 'ease-out' });
-  const okOpt = card.querySelector<HTMLElement>('.bz-sprint-opt.is-correct');
+  const okOpt = card.querySelector<HTMLElement>('.bzrv-sprint-opt.is-correct');
   if (okOpt) waapi(okOpt,
     [{ boxShadow: '0 0 0 0 rgba(0,0,0,0)' },
-     { boxShadow: '0 0 0 3px color-mix(in srgb, var(--bz-success, #3a9e5f) 45%, transparent)' },
+     { boxShadow: '0 0 0 3px color-mix(in srgb, var(--bzrv-success, #3a9e5f) 45%, transparent)' },
      { boxShadow: '0 0 0 0 rgba(0,0,0,0)' }],
     { duration: 700, easing: E.out });
 }
@@ -353,10 +353,10 @@ export function motionQuestion(
 /** 未通过中断前一记红晕（不阻断写盘/打开原文流程，纯氛围） */
 export function motionFailFlash(host: HTMLElement): void {
   if (reduced()) return;
-  const target = host.closest<HTMLElement>('#review-popup') || host;
+  const target = host.closest<HTMLElement>('#bzrv-popup') || host;
   ensureRelative(target);
   const v = document.createElement('i');
-  v.className = 'bz-rv-failflash';
+  v.className = 'bzrv-rv-failflash';
   v.setAttribute('aria-hidden', 'true');
   target.appendChild(v);
   const a = waapi(v,
@@ -370,19 +370,19 @@ export function motionFailFlash(host: HTMLElement): void {
 /** 结果卡（通过态）：对勾描线+光环 → 分数滚升 → 评级胶囊盖章 → 按钮接力 */
 export function motionResult(host: HTMLElement): void {
   if (reduced()) return;
-  const res = host.querySelector<HTMLElement>('.bz-result');
+  const res = host.querySelector<HTMLElement>('.bzrv-result');
   if (!res) return;
-  const ic = res.querySelector<HTMLElement>('.bz-result-ic');
+  const ic = res.querySelector<HTMLElement>('.bzrv-result-ic');
   const okSvg = ic?.querySelector('svg');
   if (okSvg) drawStroke(okSvg, 380);
   if (ic) after(60, () => ringBurst(ic));
-  const score = res.querySelector<HTMLElement>('.bz-result-score');
+  const score = res.querySelector<HTMLElement>('.bzrv-result-score');
   if (score) after(140, () => countUpNode(score, 620));
-  const pill = res.querySelector<HTMLElement>('.bz-result-rating');
+  const pill = res.querySelector<HTMLElement>('.bzrv-result-rating');
   if (pill) after(340, () => waapi(pill,
     [{ opacity: 0, transform: 'scale(1.8) rotate(-7deg)' }, { opacity: 1, transform: 'none' }],
     { duration: 280, easing: E.land, fill: 'backwards' }));
-  res.querySelectorAll<HTMLElement>('.bz-btn').forEach((b, i) => {
+  res.querySelectorAll<HTMLElement>('.bzrv-btn').forEach((b, i) => {
     after(430 + i * 60, () => waapi(b,
       [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
       { duration: M.base, easing: E.out, fill: 'backwards' }));
@@ -395,18 +395,18 @@ export function motionResult(host: HTMLElement): void {
  */
 export function motionSummary(host: HTMLElement, grade: string): void {
   if (reduced()) return;
-  const box = host.querySelector<HTMLElement>('.bz-summary');
+  const box = host.querySelector<HTMLElement>('.bzrv-summary');
   if (!box) return;
-  const title = box.querySelector<HTMLElement>('.bz-summary-title');
+  const title = box.querySelector<HTMLElement>('.bzrv-summary-title');
   if (title) waapi(title,
     [{ opacity: 0, transform: 'translateY(-6px)', filter: 'blur(4px)' },
      { opacity: 1, transform: 'none', filter: 'blur(0px)' }],
     { duration: M.base, easing: E.out, fill: 'backwards' });
-  box.querySelectorAll<HTMLElement>('.bz-summary-stats .st b').forEach((b, i) => {
+  box.querySelectorAll<HTMLElement>('.bzrv-summary-stats .st b').forEach((b, i) => {
     after(120 + i * 90, () => { countUpNode(b, 560); popCnt(b); });
   });
   after(460, () => seal(box, grade, true));
-  const tail = box.querySelector<HTMLElement>('.bz-summary-streak, .bz-qp-acc');
+  const tail = box.querySelector<HTMLElement>('.bzrv-summary-streak, .bzrv-qp-acc');
   if (tail) after(820, () => {
     waapi(tail,
       [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }],
@@ -418,7 +418,7 @@ export function motionSummary(host: HTMLElement, grade: string): void {
        { filter: 'drop-shadow(0 0 2px rgba(255,150,60,.3))' }],
       { duration: 900, easing: E.out });
   });
-  box.querySelectorAll<HTMLElement>('.bz-btn').forEach((b, i) => {
+  box.querySelectorAll<HTMLElement>('.bzrv-btn').forEach((b, i) => {
     after(900 + i * 70, () => waapi(b,
       [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }],
       { duration: M.base, easing: E.out, fill: 'backwards' }));
@@ -470,24 +470,24 @@ export function motionStats(body: HTMLElement): void {
 /** 复习历史：记忆回放——圆点逐个点亮、竖线生长、行浮现（依次想起） */
 export function motionHistory(body: HTMLElement): void {
   if (reduced()) return;
-  const status = body.querySelector<HTMLElement>('.bz-review-history-status');
+  const status = body.querySelector<HTMLElement>('.bzrv-review-history-status');
   if (status) waapi(status,
     [{ opacity: 0, transform: 'translateY(-4px)' }, { opacity: 1, transform: 'none' }],
     { duration: M.base, easing: E.out, fill: 'backwards' });
-  body.querySelectorAll<HTMLElement>('.bz-review-history-item').forEach((item, i) => {
+  body.querySelectorAll<HTMLElement>('.bzrv-review-history-item').forEach((item, i) => {
     after(110 + i * 110, () => {
-      const dot = item.querySelector<HTMLElement>('.bz-review-history-dot');
+      const dot = item.querySelector<HTMLElement>('.bzrv-review-history-dot');
       if (dot) waapi(dot,
         [{ transform: 'scale(0)' }, { transform: 'scale(1.5)', offset: 0.7 }, { transform: 'scale(1)' }],
         { duration: 320, easing: E.out, fill: 'backwards' });
-      const line = item.querySelector<HTMLElement>('.bz-review-history-line');
+      const line = item.querySelector<HTMLElement>('.bzrv-review-history-line');
       if (line) {
         line.style.transformOrigin = 'top center';
         waapi(line,
           [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }],
           { duration: 230, easing: E.out, fill: 'backwards' });
       }
-      const row = item.querySelector<HTMLElement>('.bz-review-history-row');
+      const row = item.querySelector<HTMLElement>('.bzrv-review-history-row');
       if (row) waapi(row,
         [{ opacity: 0, transform: 'translateX(8px)' }, { opacity: 1, transform: 'none' }],
         { duration: M.base, easing: E.out, fill: 'backwards' });
@@ -504,7 +504,7 @@ export function motionRatingBar(el: HTMLElement): void {
     [{ opacity: 0, transform: 'translateX(-50%) translateY(60px)' },
      { opacity: 1, transform: 'translateX(-50%) translateY(0)' }],
     { duration: 420, easing: 'cubic-bezier(.22,.9,.32,1.15)', fill: 'backwards' });
-  el.querySelectorAll<HTMLElement>('.bz-review-bar-btn').forEach((b, i) => {
+  el.querySelectorAll<HTMLElement>('.bzrv-review-bar-btn').forEach((b, i) => {
     after(150 + i * STAG, () => popCnt(b));
   });
 }
@@ -514,16 +514,16 @@ export function motionRatingBar(el: HTMLElement): void {
 /** 设置视图：段选板块接力浮起 + meta/foot 淡入 + 开始钮蓄力涟漪 */
 export function motionQuizSetup(content: HTMLElement): void {
   if (reduced()) return;
-  content.querySelectorAll<HTMLElement>('.bz-qp-sec').forEach((sec, i) => {
+  content.querySelectorAll<HTMLElement>('.bzrv-qp-sec').forEach((sec, i) => {
     after(i * 90, () => waapi(sec,
       [{ opacity: 0, transform: 'translateY(10px)' }, { opacity: 1, transform: 'none' }],
       { duration: M.base, easing: E.out, fill: 'backwards' }));
   });
-  const meta = content.querySelector<HTMLElement>('.bz-qp-meta');
+  const meta = content.querySelector<HTMLElement>('.bzrv-qp-meta');
   if (meta) after(300, () => waapi(meta, [{ opacity: 0 }, { opacity: 1 }], { duration: M.base, easing: E.out, fill: 'backwards' }));
-  const start = content.querySelector<HTMLElement>('.bz-qp-start');
+  const start = content.querySelector<HTMLElement>('.bzrv-qp-start');
   if (start) after(380, () => ringBurst(start));
-  const foot = content.querySelector<HTMLElement>('.bz-qp-foot');
+  const foot = content.querySelector<HTMLElement>('.bzrv-qp-foot');
   if (foot) after(460, () => waapi(foot, [{ opacity: 0 }, { opacity: 1 }], { duration: M.base, easing: E.out, fill: 'backwards' }));
 }
 
@@ -537,7 +537,7 @@ export function motionQuizSummary(content: HTMLElement, grade: string): void {
 /** 题面入场：题干俯揭示题（与冲刺的 rotateY 翻卡区分风味）+ 选项接力 */
 export function motionQuizCard(popup: HTMLElement): void {
   if (reduced()) return;
-  const q = popup.querySelector<HTMLElement>('.bz-quiz-question');
+  const q = popup.querySelector<HTMLElement>('.bzrv-quiz-question');
   if (q) waapi(q,
     [{ opacity: 0, transform: 'perspective(800px) rotateX(24deg) translateY(6px)', filter: 'blur(4px)' },
      { opacity: 1, transform: 'none', filter: 'blur(0px)' }],
@@ -565,7 +565,7 @@ export function motionQuizJudge(popup: HTMLElement, correct: boolean): void {
   const ok = popup.querySelector<HTMLElement>('.quiz-option-btn.correct');
   if (ok) waapi(ok,
     [{ boxShadow: '0 0 0 0 rgba(0,0,0,0)' },
-     { boxShadow: '0 0 0 3px color-mix(in srgb, var(--bz-success, #3a9e5f) 45%, transparent)' },
+     { boxShadow: '0 0 0 3px color-mix(in srgb, var(--bzrv-success, #3a9e5f) 45%, transparent)' },
      { boxShadow: '0 0 0 0 rgba(0,0,0,0)' }],
     { duration: 700, easing: E.out });
 }

@@ -4,10 +4,10 @@
  *   把当前最上层的 bz 主面板铺满整个 Obsidian 窗口；再执行一次或按 ESC 还原。
  *
  * 与已退役的「剪藏本全屏」（bz-clipbook-fullscreen）的区别：不再绑死某一个域——
- * 找的是挂了 .bz-main-panel 的当前主面板（core/ui/main-panel），任何域都适用；
+ * 找的是挂了 .bzrv-main-panel 的当前主面板（core/ui/main-panel），任何域都适用；
  * 番茄钟与桌宠不挂标记，天然不参与。
  *
- * 全屏只加一个类、绝不写尺寸记忆：宽度走 100vw、高度走 --bz-vvh（移动端软键盘
+ * 全屏只加一个类、绝不写尺寸记忆：宽度走 100vw、高度走 --bzrv-vvh（移动端软键盘
  * 收缩），面板自己的拖拽缩放句柄在全屏期间空转（core/ui/resize 判类早退），
  * 退出后内联宽高原样还在——用户原来的窗口大小不会被污染。
  * ============================================================ */
@@ -17,7 +17,7 @@ import { escManager } from '../esc-manager';
 import { isShown, NO_FULLSCREEN_CLASS, topMainPanel } from './main-panel';
 
 /** 全屏类（CSS 在 core/ui/components.css：只改几何，不改任何域内版式） */
-export const GLOBAL_FULL_CLASS = 'bz-global-full';
+export const GLOBAL_FULL_CLASS = 'bzrv-global-full';
 
 /** 当前被全屏的面板（只活在 DOM 生命周期内；面板关闭即随 DOM 一起失去意义） */
 let activePanel: HTMLElement | null = null;

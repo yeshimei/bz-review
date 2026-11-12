@@ -125,7 +125,7 @@ export function createSiteIcon(domain: string | null | undefined, size = 16): HT
   if (faviconFailures.has(cacheKey)) return null;
 
   const img = document.createElement('img');
-  img.className = 'bz-site-icon';
+  img.className = 'bzrv-site-icon';
   img.style.cssText = `width:${size}px; height:${size}px;`;
   img.alt = '';
   (img as any).crossOrigin = 'anonymous';
@@ -180,7 +180,7 @@ export function createIconBtn(
   b.textContent = text;
   b.title = title;
   // 规格：普通按钮 14px/22×26；关闭按钮 13px/21×25（--close 类，styles.css）
-  b.className = text === '❌' ? 'bz-icon-btn bz-icon-btn--close' : 'bz-icon-btn';
+  b.className = text === '❌' ? 'bzrv-icon-btn bzrv-icon-btn--close' : 'bzrv-icon-btn';
   if (extra) b.style.cssText = extra;
   b.onclick = onClick;
   return b;
@@ -219,14 +219,14 @@ export function createOverlay(opts: {
   pruneDetachedOverlays();
   const mask = document.createElement('div');
   mask.id = opts.maskId;
-  mask.className = 'bz-overlay-mask';
+  mask.className = 'bzrv-overlay-mask';
   mask.style.display = 'none';
   // 点遮罩关闭：手势配对判据（见 core/mask-dismiss.ts）——跨元素松手（弹窗内选字划到
   // 遮罩、遮罩上误按滑回弹窗）不算点击，只有明确的按下+抬起都在遮罩本体上才关
   if (typeof opts.onMaskClick === 'function') bindMaskDismiss(mask, opts.onMaskClick);
   const popup = document.createElement('div');
   popup.id = opts.popupId;
-  popup.className = 'bz-overlay-popup';
+  popup.className = 'bzrv-overlay-popup';
   popup.style.display = 'none';
   popup.style.width = opts.width || '90%';
   popup.style.maxWidth = (opts.maxWidth || 400) + 'px';

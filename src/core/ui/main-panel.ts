@@ -1,22 +1,22 @@
 /* ============================================================
  * bz 组件库 · 主面板标记与定位（src/core/ui/main-panel.ts）
  *
- * 各域「卡片式主界面」的根元素统一挂 .bz-main-panel（HTML 模板里直接写类，
+ * 各域「卡片式主界面」的根元素统一挂 .bzrv-main-panel（HTML 模板里直接写类，
  * 或建节点后 classList.add）。只为两件事服务：
  *   1. 通用全屏命令（core/ui/global-fullscreen）：找出当前最上层的那扇窗口放大；
  *   2. 首页返回总线（core/home-return）：判断「从首页点进来的功能还开着没有」。
  *
  * 约定：只标**主面板根**——二级弹层、报告层、分析特刊不标；桌宠不是「窗口」
  * 语义，不标。番茄钟算首页功能（关闭后要能回首页），照挂主面板标记，但另挂
- * bz-no-fullscreen 说明它不参与全屏（用户 2026-11-10 拍板：全屏只覆盖主面板、去掉番茄钟）。
+ * bzrv-no-fullscreen 说明它不参与全屏（用户 2026-11-10 拍板：全屏只覆盖主面板、去掉番茄钟）。
  * ============================================================ */
 
 /** 主面板标记类（跨域共享，样式库不接管视觉——纯语义标记） */
-export const MAIN_PANEL_CLASS = 'bz-main-panel';
+export const MAIN_PANEL_CLASS = 'bzrv-main-panel';
 
 /** 不参与通用全屏的主面板标记：番茄钟（用户 2026-11-10 拍板「全屏去掉番茄钟」）。
  *  它仍算「首页功能」，所以照挂主面板标记供首页返回总线使用；只是全屏命令跳过它。 */
-export const NO_FULLSCREEN_CLASS = 'bz-no-fullscreen';
+export const NO_FULLSCREEN_CLASS = 'bzrv-no-fullscreen';
 
 /** 元素是否真的显示在屏幕上：离场 / 自身或祖先 display:none / 隐藏 都不算。
  *  不依赖 getClientRects（jsdom 无布局引擎，恒返回空）——沿祖先链看 computed display/visibility，
@@ -38,7 +38,7 @@ export function isShown(el: HTMLElement | null | undefined): boolean {
 }
 
 /** 元素所在层叠层的 z-index：沿祖先链取最大的数值档（面板 z 发在 overlay / 根容器上）。
- *  先读 computed（浏览器会把 `var(--bz-z-overlay,1000)` 这类内联值解成数字），
+ *  先读 computed（浏览器会把 `var(--bzrv-z-overlay,1000)` 这类内联值解成数字），
  *  取不到再回退内联字符串——jsdom 等无样式引擎环境也能给出排序依据。 */
 function layerZ(el: HTMLElement): number {
   let z = 0;

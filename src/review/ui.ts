@@ -7,9 +7,9 @@
  *  - 全部 emoji 换 lucide 图标
  *  - 三区列：已逾期 / 今天到期 / 未来；只有到期（逾期/今天）条目可点击开始答题（sprint）
  *  - 「开始本轮」= 逾期 + 今天批量进入做题冲刺（forceQuizForReview 关闭时 = 普通跳转复习）
- *  - 面板容器沿用 #review-mask/#review-popup id 几何契约，壳类接组件库
- *    .bz-panel-overlay/.bz-panel-frame（ADR-0094）；内容区三区队列渲染
- *  - 整窗冲刺由 SprintSession 驱动，宿主为 #review-entries-container 内容区
+ *  - 面板容器沿用 #bzrv-mask/#bzrv-popup id 几何契约，壳类接组件库
+ *    .bzrv-panel-overlay/.bzrv-panel-frame（ADR-0094）；内容区三区队列渲染
+ *  - 整窗冲刺由 SprintSession 驱动，宿主为 #bzrv-entries 内容区
  *
  * issue 253（V1 原型为真理，旧评审壳（已退役）行为单源化）：
  *  - markup 全部出自 ./render（queueViewHtml / 冲刺视图 / 难度弹窗 / 评级条），本文件只做
@@ -22,7 +22,7 @@
  *    1-4 快捷键 + onSelect promise 兜底），旧自绘 .difficulty-dialog 不再产出
  *  - E1/C1 抽屉「移出复习计划」免确认直达 notifyUndo（效率整改 5 口径）
  *  - E6 队列重建前记录三区列滚位与焦点控件，重建后还原
- *  - C15 构造期 allocZ 删（ADR-0067 仅显示时 topifyZ 发号）；ESC 层 id 改 'bz-review-main'
+ *  - C15 构造期 allocZ 删（ADR-0067 仅显示时 topifyZ 发号）；ESC 层 id 改 'bzrv-review-main'
  *
  * 公共面（对外契约不变）：UIManager / reviewSettingsSchema（re-export）/ isPlayable / isDueToday
  */
@@ -68,7 +68,7 @@ export { isPlayableRender as isPlayable };
 /** 到期可做题判定（render 实现；本文件内部沿用旧名） */
 const isPlayable = isPlayableRender;
 
-/** 桌面面板拖拽缩放限界（ADR-0084；只挂 #review-popup，移动端真全屏不挂） */
+/** 桌面面板拖拽缩放限界（ADR-0084；只挂 #bzrv-popup，移动端真全屏不挂） */
 const PANEL = { MIN_W: 640, MIN_H: 440, MAX_W: 1280, MAX_H: 880 };
 
 // issue 253：到期标签/可做题判定等纯口径随 markup 一并迁 render.ts（dueLabelOf/isPlayable/stageTagHtml/stageNum）
@@ -128,11 +128,11 @@ export class UIManager {
 
   createMainUI(): void {
     if (this.mask && document.body.contains(this.mask)) return;
-    // 面板壳接组件库（ADR-0094）：遮罩 = .bz-panel-overlay、面板 = .bz-panel-frame；
-    // id 几何（居中定位/宽高/动画）仍由 #review-mask/#review-popup 域内规则接管
+    // 面板壳接组件库（ADR-0094）：遮罩 = .bzrv-panel-overlay、面板 = .bzrv-panel-frame；
+    // id 几何（居中定位/宽高/动画）仍由 #bzrv-mask/#bzrv-popup 域内规则接管
     this.mask = document.createElement('div');
-    this.mask.id = 'review-mask';
-    this.mask.classList.add('bz-panel-overlay');
+    this.mask.id = 'bzrv-mask';
+    this.mask.classList.add('bzrv-panel-overlay');
     this.mask.style.display = 'none';
     // C15（ADR-0067）：构造期不发号——display:none 壳不占号，showMain 时 topifyZ 统一发号
     // 点遮罩关闭：手势配对判据（core/mask-dismiss）——遮罩与面板并列挂 body，
@@ -142,14 +142,14 @@ export class UIManager {
     });
 
     this.popup = document.createElement('div');
-    this.popup.id = 'review-popup';
-    this.popup.classList.add('bz-panel-frame');
-    this.popup.classList.add('bz-main-panel');
+    this.popup.id = 'bzrv-popup';
+    this.popup.classList.add('bzrv-panel-frame');
+    this.popup.classList.add('bzrv-main-panel');
     // ≤768px 弹窗满宽近全屏：挂顶距工具类（44px 避让 Obsidian 移动端头，components.css 统一档）
-    this.popup.classList.add('bz-panel-mtop');
+    this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = 'none';
     const content = document.createElement('div');
-    content.id = 'review-entries-container';
+    content.id = 'bzrv-entries';
     this.popup.appendChild(content);
     this.entriesContainer = content;
 
@@ -160,7 +160,7 @@ export class UIManager {
   private registerEscLayer(): void {
     if (this.escHandle) return;
     // U5/C7：层 id 统一 `bz-<域>` 约定（原 'review-main' 无前缀）
-    this.escHandle = escManager.register('bz-review-main', {
+    this.escHandle = escManager.register('bzrv-review-main', {
       isVisible: () => !!this.mask && this.mask.style.display === 'block',
       close: () => this.hideMain(),
     });
@@ -234,7 +234,7 @@ export class UIManager {
     if (!container) return;
     const focusKey = captureFocusKey(container);
     const scrollTops = new Map<string, number>();
-    container.querySelectorAll<HTMLElement>('.bz-q-col').forEach((col) => {
+    container.querySelectorAll<HTMLElement>('.bzrv-q-col').forEach((col) => {
       scrollTops.set(col.className, col.scrollTop);
     });
     container.innerHTML = this.queueViewHtml(items);
@@ -243,13 +243,13 @@ export class UIManager {
       const host = container.querySelector('[data-empty-host]');
       if (host) {
         const acts = document.createElement('div');
-        acts.className = 'bz-btn-row';
+        acts.className = 'bzrv-btn-row';
         const addBtn = document.createElement('button');
-        addBtn.className = 'bz-btn bz-btn--primary';
+        addBtn.className = 'bzrv-btn bzrv-btn--primary';
         addBtn.dataset.act = 'add-current';
         addBtn.textContent = '把当前笔记加入复习';
         const helpBtn = document.createElement('button');
-        helpBtn.className = 'bz-btn bz-btn--ghost';
+        helpBtn.className = 'bzrv-btn bzrv-btn--ghost';
         helpBtn.dataset.act = 'watch-help';
         helpBtn.textContent = '如何配置监听文件夹';
         acts.appendChild(addBtn);
@@ -266,7 +266,7 @@ export class UIManager {
     }
     mountIcons(container);
     // E6 还原：先滚位（focus 用 preventScroll 不扰动），后焦点
-    container.querySelectorAll<HTMLElement>('.bz-q-col').forEach((col) => {
+    container.querySelectorAll<HTMLElement>('.bzrv-q-col').forEach((col) => {
       const top = scrollTops.get(col.className);
       if (top != null) col.scrollTop = top;
     });
@@ -311,7 +311,7 @@ export class UIManager {
     container.querySelector('[data-act="close"]')?.addEventListener('click', () => this.hideMain());
     // ⚙设置直达钮已退役（issue 254 迭代拍板）：设置走插件设置页，头行不再深链 settings-panel
     container.querySelector('[data-act="begin"]')?.addEventListener('click', () => {
-      const strip = container.querySelector<HTMLElement>('.bz-q-strip');
+      const strip = container.querySelector<HTMLElement>('.bzrv-q-strip');
       if (strip) motionChargeStrip(strip); // 蓄力涟漪：出发的召唤感
       void this.beginRound();
     });
@@ -332,7 +332,7 @@ export class UIManager {
     container.querySelector('[data-act="watch-help"]')?.addEventListener('click', () => void this.showWatchHelp());
     // 搜索框已退役（issue 254 迭代拍板）
     // 卡片点击（到期条目 → 单条冲刺；.no = 未来/不可做，div 无 disabled 用类排除）
-    container.querySelectorAll<HTMLElement>('.bz-q-card[data-id]:not(.no)').forEach((card) => {
+    container.querySelectorAll<HTMLElement>('.bzrv-q-card[data-id]:not(.no)').forEach((card) => {
       const activate = () => {
         const it = items.find((x) => x.id === card.dataset.id);
         if (it && isPlayable(it)) {
@@ -349,7 +349,7 @@ export class UIManager {
       });
     });
     // 右键/长按抽屉（保留既有统一抽屉：打开原文/查看历史/移出）
-    container.querySelectorAll('.bz-q-card[data-id]').forEach((card) => {
+    container.querySelectorAll('.bzrv-q-card[data-id]').forEach((card) => {
       this.attachDrawer(card as HTMLElement, items);
     });
   }
@@ -416,7 +416,7 @@ export class UIManager {
   /**
    * 划线卡复习：宿主内容区交给卡片会话。
    *
-   * 与做题冲刺互斥——两者都接管 `#review-entries-container`，旧的不销毁就会
+   * 与做题冲刺互斥——两者都接管 `#bzrv-entries`，旧的不销毁就会
    * 出现「卡片盖着题面、ESC 关错层」。
    *
    * `onDone`：整轮卡片走完后调用（「开始本轮」据此接上同批的笔记复习）。
@@ -700,7 +700,7 @@ export function mountFloatingRatingBar(opts: {
   onSkip: () => void;
 }): { close: () => void } {
   const el = document.createElement('div');
-  el.className = 'bz-review-bar';
+  el.className = 'bzrv-review-bar';
   el.style.zIndex = String(allocZ());
   el.innerHTML = reviewBarHtml(opts);
   el.tabIndex = -1; // 程序化 focus 落点（容器不进 Tab 序，键盘 Tab 仍直达各评级按钮）
@@ -711,7 +711,7 @@ export function mountFloatingRatingBar(opts: {
     document.removeEventListener('keydown', onDigitKey);
     el.remove();
   };
-  el.querySelectorAll<HTMLButtonElement>('.bz-review-bar-btn').forEach((btn) => {
+  el.querySelectorAll<HTMLButtonElement>('.bzrv-review-bar-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
       const r = btn.dataset.rating;
       if (r === 'skip') opts.onSkip();
@@ -726,7 +726,7 @@ export function mountFloatingRatingBar(opts: {
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
     const i = ['1', '2', '3', '4'].indexOf(e.key);
     if (i < 0) return;
-    const btn = el.querySelectorAll<HTMLButtonElement>('.bz-review-bar-btn')[i];
+    const btn = el.querySelectorAll<HTMLButtonElement>('.bzrv-review-bar-btn')[i];
     if (btn) {
       e.preventDefault();
       btn.click();

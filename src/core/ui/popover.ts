@@ -1,8 +1,8 @@
 /* ============================================================
  * bz 组件库 · 候选浮层（src/core/ui/popover.ts）
- * uiPopover：input 锚定的候选列表浮层（.bz-popover，分类/笔记/网页
- *   选择器）。视觉 = .bz-select-menu 同形制，提升为独立组件。
- * 前提：anchor 须位于 position:relative 容器内（如 .bz-search 壳）——
+ * uiPopover：input 锚定的候选列表浮层（.bzrv-popover，分类/笔记/网页
+ *   选择器）。视觉 = .bzrv-select-menu 同形制，提升为独立组件。
+ * 前提：anchor 须位于 position:relative 容器内（如 .bzrv-search 壳）——
  *   浮层绝对定位挂 anchor.parentElement，宽度随容器撑满。
  * 开合：anchor 点击开合 / 选项点击即关 / 外部点击 / Esc 关闭
  *   （交互骨架仿 uiSelect；外部点击监听随开挂、随关摘；Esc 走 escManager 层，C5）。
@@ -13,7 +13,7 @@ import { escManager } from '../esc-manager';
 
 type PopoverOption = BzPopoverOpts['options'][number];
 
-/** 候选浮层（.bz-popover），返回 open/close/setValue/setOptions/detach */
+/** 候选浮层（.bzrv-popover），返回 open/close/setValue/setOptions/detach */
 export function uiPopover(opts: BzPopoverOpts): {
   open: () => void;
   close: () => void;
@@ -38,18 +38,18 @@ export function uiPopover(opts: BzPopoverOpts): {
   const open = () => {
     if (layer) return;
     const m = document.createElement('div');
-    m.className = 'bz-popover';
+    m.className = 'bzrv-popover';
     m.setAttribute('role', 'listbox');
     if (!items.length) {
       const empty = document.createElement('div');
-      empty.className = 'bz-popover-empty';
+      empty.className = 'bzrv-popover-empty';
       empty.textContent = opts.emptyText || '无匹配项';
       m.appendChild(empty);
     } else {
       items.forEach((o) => {
         const b = document.createElement('button');
         b.type = 'button';
-        b.className = 'bz-popover-item' + (o.id === current ? ' is-on' : '');
+        b.className = 'bzrv-popover-item' + (o.id === current ? ' is-on' : '');
         b.dataset.id = o.id;
         b.setAttribute('role', 'option');
         b.setAttribute('aria-selected', String(o.id === current));
@@ -103,7 +103,7 @@ export function uiPopover(opts: BzPopoverOpts): {
     current = id;
     if (!layer) return;
     // 浮层开着时选中态跟随
-    layer.querySelectorAll<HTMLElement>('.bz-popover-item').forEach((item) => {
+    layer.querySelectorAll<HTMLElement>('.bzrv-popover-item').forEach((item) => {
       const on = item.dataset.id === id;
       item.classList.toggle('is-on', on);
       item.setAttribute('aria-selected', String(on));

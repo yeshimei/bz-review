@@ -80,7 +80,7 @@ export interface NoticeHandle {
   /** 切换类型（如 progress 完成 → success）：更新图标/配色，并接管自动消失计时 */
   setType(t: NoticeKind): void;
   /** 事后挂操作按钮（效率整改 9）：单个或数组，按 label 去重不重复挂——
-   *  progress 跑完原地变结果再补挂「查看」等出口用，域内不必再手拼 .bz-notice-action DOM */
+   *  progress 跑完原地变结果再补挂「查看」等出口用，域内不必再手拼 .bzrv-notice-action DOM */
   setAction(actions: NoticeAction | NoticeAction[]): void;
   /** 主动关闭（带退出动画） */
   hide(): void;
@@ -197,11 +197,11 @@ function defaultVariant(): NoticeVariant {
 /** 各变体的退出动画类（默认 out-drop） */
 const OUT_CLASS: Record<NoticeVariant, string> = {
   drop: 'bz-notice--out-drop',
-  pop: 'bz-notice--out-pop',
-  'slide-left': 'bz-notice--out-left',
-  'slide-right': 'bz-notice--out-right',
-  bounce: 'bz-notice--out-fade',
-  shake: 'bz-notice--out-fade',
+  pop: 'bzrv-notice--out-pop',
+  'slide-left': 'bzrv-notice--out-left',
+  'slide-right': 'bzrv-notice--out-right',
+  bounce: 'bzrv-notice--out-fade',
+  shake: 'bzrv-notice--out-fade',
 };
 
 /** 通知偏好读取（issue 297）：通知是最后兜底的报告通道，设置读取失败不得让通知本身炸掉——
@@ -244,14 +244,14 @@ function suppressedByLevel(kind: NoticeKind, opts?: NoticeOptions): boolean {
 
 /** 弹出位置类（noticePosition 设置，issue 297）：容器挂角位类，CSS 只在 769px+ 生效——
  *  移动端媒体查询（id 特异性低于 id+类）恒顶部居中不被覆盖。缺省 top-right 不挂类 */
-const POSITION_CLASSES = ['bz-notice-pos--bottom-right', 'bz-notice-pos--bottom-left', 'bz-notice-pos--top-left'] as const;
+const POSITION_CLASSES = ['bzrv-notice-pos--bottom-right', 'bzrv-notice-pos--bottom-left', 'bzrv-notice-pos--top-left'] as const;
 
 function applyPositionClass(container: HTMLElement): void {
   const pos = noticePref('noticePosition');
   container.classList.remove(...POSITION_CLASSES);
   const cls =
     pos === 'bottom-right' || pos === 'bottom-left' || pos === 'top-left'
-      ? `bz-notice-pos--${pos}`
+      ? `bzrv-notice-pos--${pos}`
       : '';
   if (cls) container.classList.add(cls);
 }
@@ -277,10 +277,10 @@ function ensureContainer(): HTMLElement | null {
   // 没有 DOM 的宿主（测试的 node 环境、启动早期 / 卸载后）不该让「说一句话」把调用方炸掉：
   // 通知是最后兜底的报告通道，兜不住就静默——它自己抛错会把被报的原始错误一起埋掉。
   if (typeof document === 'undefined' || !document?.body) return null;
-  let container = document.getElementById('bz-notice-container');
+  let container = document.getElementById('bzrv-notice-container');
   if (!container) {
     container = document.createElement('div');
-    container.id = 'bz-notice-container';
+    container.id = 'bzrv-notice-container';
     document.body.appendChild(container);
   }
   return container;
@@ -335,17 +335,17 @@ function applyTypeToEl(n: InternalNotice, kind: NoticeKind): void {
   const isProgressNow = kind === 'progress';
   // 类型类名：全部清掉再添加（防多次切换残留）
   n.el.classList.remove(
-    'bz-notice--info',
-    'bz-notice--success',
-    'bz-notice--warning',
-    'bz-notice--error',
-    'bz-notice--pause',
-    'bz-notice--delete',
-    'bz-notice--restore',
-    'bz-notice--archive',
-    'bz-notice--progress'
+    'bzrv-notice--info',
+    'bzrv-notice--success',
+    'bzrv-notice--warning',
+    'bzrv-notice--error',
+    'bzrv-notice--pause',
+    'bzrv-notice--delete',
+    'bzrv-notice--restore',
+    'bzrv-notice--archive',
+    'bzrv-notice--progress'
   );
-  n.el.classList.add('bz-notice--' + (isProgressNow ? 'progress' : kind));
+  n.el.classList.add('bzrv-notice--' + (isProgressNow ? 'progress' : kind));
   // 图标（emoji；progress 转圈）
   n.iconEl.innerHTML = '';
   if (isProgressNow) {
@@ -362,8 +362,8 @@ function hideNow(n: InternalNotice): void {
     window.clearTimeout(n.timer);
     n.timer = null;
   }
-  if (!n.el.classList.contains('bz-notice--leaving')) {
-    n.el.classList.add('bz-notice--leaving');
+  if (!n.el.classList.contains('bzrv-notice--leaving')) {
+    n.el.classList.add('bzrv-notice--leaving');
     const out = OUT_CLASS[n.variant];
     if (out) n.el.classList.add(out);
     window.setTimeout(() => removeInternal(n), LEAVE_MS);
@@ -426,7 +426,7 @@ export function cleanupNotices(): void {
     if (n.el.parentNode) n.el.parentNode.removeChild(n.el);
   }
   for (const k of Object.keys(recent)) delete recent[k];
-  const container = document.getElementById('bz-notice-container');
+  const container = document.getElementById('bzrv-notice-container');
   if (container && container.parentNode) container.parentNode.removeChild(container);
 }
 
@@ -448,7 +448,7 @@ function noopHandle(): NoticeHandle {
  *  action 点击自带 stopPropagation，不会误触发「点本体关闭」 */
 function appendActionBtn(n: InternalNotice, action: NoticeAction): void {
   const btn = document.createElement('span');
-  btn.className = 'bz-notice-action';
+  btn.className = 'bzrv-notice-action';
   btn.setAttribute('role', 'button');
   btn.tabIndex = 0;
   btn.textContent = action.label;
@@ -483,21 +483,21 @@ function makeHandle(n: InternalNotice): NoticeHandle {
     setProgress(pct: number): void {
       if (!n.progressEl) return;
       if (pct === -1) {
-        n.progressEl.classList.add('bz-notice-progress--indeterminate');
+        n.progressEl.classList.add('bzrv-notice-progress--indeterminate');
         return;
       }
-      n.progressEl.classList.remove('bz-notice-progress--indeterminate');
+      n.progressEl.classList.remove('bzrv-notice-progress--indeterminate');
       const clamped = Math.max(0, Math.min(100, pct));
       n.progressEl.style.width = clamped + '%';
       // 完成态：进度条变绿
-      if (clamped >= 100) n.progressEl.classList.add('bz-notice-progress--done');
-      else n.progressEl.classList.remove('bz-notice-progress--done');
+      if (clamped >= 100) n.progressEl.classList.add('bzrv-notice-progress--done');
+      else n.progressEl.classList.remove('bzrv-notice-progress--done');
     },
     setAction(actions: NoticeAction | NoticeAction[]): void {
       const list = Array.isArray(actions) ? actions : [actions];
       // 按 label 去重：与已挂按钮、批内重复都不重挂（同创建路径合并口径）
       const existing = new Set(
-        Array.from(n.el.querySelectorAll('.bz-notice-action')).map((el) => el.textContent || '')
+        Array.from(n.el.querySelectorAll('.bzrv-notice-action')).map((el) => el.textContent || '')
       );
       for (const a of list) {
         if (existing.has(a.label)) continue;
@@ -532,7 +532,7 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
     if (r && r.n && r.n.el.isConnected) {
       r.n.msgEl.textContent = msg;
       // 类型变化（如 progress 完成 → success）时同步切换图标/配色
-      if (r.n.isProgress !== isProgress || r.n.el.classList.contains('bz-notice--' + type) === false) {
+      if (r.n.isProgress !== isProgress || r.n.el.classList.contains('bzrv-notice--' + type) === false) {
         applyTypeToEl(r.n, kind);
       }
       // 合并期补挂 action（如 progress 原地更新为带「查看」的结果通知）；按 label 去重不重复挂
@@ -555,13 +555,13 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
   evictOldest();
 
   const el = document.createElement('div');
-  el.className = 'bz-notice bz-notice--' + (isProgress ? 'progress' : type) + ' bz-notice--in-' + variant;
+  el.className = 'bzrv-notice bzrv-notice--' + (isProgress ? 'progress' : type) + ' bzrv-notice--in-' + variant;
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
 
   // 图标（emoji 类型图标；progress 转圈）
   const icon = document.createElement('div');
-  icon.className = 'bz-notice-icon';
+  icon.className = 'bzrv-notice-icon';
   if (isProgress) {
     icon.innerHTML = SPINNER_SVG;
   } else {
@@ -570,15 +570,15 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
   el.appendChild(icon);
   // 正文（title 可选）
   const body = document.createElement('div');
-  body.className = 'bz-notice-body';
+  body.className = 'bzrv-notice-body';
   if (opts && opts.title) {
     const titleEl = document.createElement('div');
-    titleEl.className = 'bz-notice-title';
+    titleEl.className = 'bzrv-notice-title';
     titleEl.textContent = opts.title;
     body.appendChild(titleEl);
   }
   const msgEl = document.createElement('div');
-  msgEl.className = 'bz-notice-msg';
+  msgEl.className = 'bzrv-notice-msg';
   msgEl.textContent = msg;
   body.appendChild(msgEl);
   el.appendChild(body);
@@ -587,7 +587,7 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
   let progressEl: HTMLElement | null = null;
   if (isProgress) {
     progressEl = document.createElement('div');
-    progressEl.className = 'bz-notice-progress';
+    progressEl.className = 'bzrv-notice-progress';
     el.appendChild(progressEl);
   }
 

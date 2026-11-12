@@ -44,17 +44,17 @@ function qa(root: ParentNode, sel: string): HTMLElement[] {
 }
 
 export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
-  const sc = root.querySelector<HTMLElement>('.bz-ra-scroll');
+  const sc = root.querySelector<HTMLElement>('.bzrv-ra-scroll');
   const film = root.querySelector<HTMLElement>('.ra-film');
   const handle: RaHandle = { stop: (): void => undefined, goTo: (): void => undefined };
   if (!sc || !film) return handle;
   const scEl: HTMLElement = sc;
   const filmEl: HTMLElement = film;
 
-  const scenes = qa(film, '.bz-ra-scn');
+  const scenes = qa(film, '.bzrv-ra-scn');
   if (!scenes.length) return handle;
   const perfs = buildPerfs(film, data, root);
-  // 灯谱/隔扇在固定层里（2026-09-23 起挂 .bz-ra-box 下、滚动容器之外，翻幕不动）——
+  // 灯谱/隔扇在固定层里（2026-09-23 起挂 .bzrv-ra-box 下、滚动容器之外，翻幕不动）——
   // 查询一律走 root；更漏底栏已撤，barI/barN/barLine/pb 保持空值保护（找不到即跳过）
   const lamps = qa(root, '.ra-lamp');
   const shutter = root.querySelector<HTMLElement>('[data-r="shutter"]');
@@ -234,7 +234,7 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
   /** 指针归一（−1..1）认**层框逻辑**系：各幕把 px/py 直接映回画布像素，软横屏旋转态
    *  （is-rot90）视觉 rect 会把交互整个转错 90°——归一后换轴反向。cx/cy 仍是视口值
    *  （浮签等 fixed 定位消费方要的就是它）。 */
-  const boxEl = root.querySelector<HTMLElement>('.bz-ra-box');
+  const boxEl = root.querySelector<HTMLElement>('.bzrv-ra-box');
   const onPointerMove = (e: PointerEvent): void => {
     const r = (boxEl ?? root).getBoundingClientRect();
     const nx = ((e.clientX - r.left) / Math.max(1, r.width)) * 2 - 1;

@@ -1,8 +1,8 @@
 /* ============================================================
  * bz 组件库 · 下拉选择（src/core/ui/select.ts）
- * uiSelect：单行单选下拉（.bz-select，点击开合 .bz-select-menu）。
+ * uiSelect：单行单选下拉（.bzrv-select，点击开合 .bzrv-select-menu）。
  * 供选项多/文案长/行内放不下的选择行使用；短选项组请直接用
- * .bz-choice 平铺胶囊替代（设计口味：表单优先平铺，下拉兜底）。
+ * .bzrv-choice 平铺胶囊替代（设计口味：表单优先平铺，下拉兜底）。
  * 外部点击 / 再点自身 / 选中后关闭；组件自身不感知宿主结构，
  * 需要把所在容器 z 提层（菜单溢出被后续卡片遮挡）时经
  * onOpenChange 回调联动。
@@ -11,22 +11,22 @@ import type { BzSelectOpts } from './types';
 import { uiIcon } from './icon';
 import { escManager } from '../esc-manager';
 
-/** 下拉（.bz-select），返回容器 + setValue + detach 句柄 */
+/** 下拉（.bzrv-select），返回容器 + setValue + detach 句柄 */
 export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
   el: HTMLDivElement;
   setValue: (v: T) => void;
   detach: () => void;
 } {
   const el = document.createElement('div');
-  el.className = 'bz-select' + (opts.className ? ' ' + opts.className : '');
+  el.className = 'bzrv-select' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'listbox');
   el.setAttribute('aria-expanded', 'false');
   el.tabIndex = 0;
 
   const val = document.createElement('span');
-  val.className = 'bz-select-val';
+  val.className = 'bzrv-select-val';
   el.appendChild(val);
-  el.appendChild(uiIcon('chevron-down', 'bz-select-car'));
+  el.appendChild(uiIcon('chevron-down', 'bzrv-select-car'));
 
   let current = opts.value;
   let menu: HTMLDivElement | null = null;
@@ -61,20 +61,20 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
     el.setAttribute('aria-expanded', 'true');
     opts.onOpenChange?.(true);
     const m = document.createElement('div');
-    m.className = 'bz-select-menu';
+    m.className = 'bzrv-select-menu';
     m.setAttribute('role', 'listbox');
     menu = m;
     opts.options.forEach((o, i) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'bz-select-item' + (o.value === current ? ' is-on' : '');
+      b.className = 'bzrv-select-item' + (o.value === current ? ' is-on' : '');
       b.setAttribute('role', 'option');
       b.setAttribute('aria-selected', String(o.value === current));
       b.dataset.index = String(i);
       const span = document.createElement('span');
       span.textContent = o.label;
       b.appendChild(span);
-      b.appendChild(uiIcon('check', 'bz-select-item-ck'));
+      b.appendChild(uiIcon('check', 'bzrv-select-item-ck'));
       b.addEventListener('click', (ev) => {
         ev.stopPropagation(); // 选中即关（含 el/document 监听不连锁）
         setValue(o.value);
@@ -90,7 +90,7 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
     // 加宽多少 span 就分到多少）。ellipsis 下 scrollWidth 首测可能低估，迭代至收敛
     for (let round = 0; round < 3; round++) {
       let delta = 0;
-      m.querySelectorAll<HTMLElement>('.bz-select-item > span').forEach((sp) => {
+      m.querySelectorAll<HTMLElement>('.bzrv-select-item > span').forEach((sp) => {
         delta = Math.max(delta, sp.scrollWidth - sp.clientWidth);
       });
       if (delta <= 0) break;
@@ -133,7 +133,7 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
     if (menu) {
       // 菜单开着时选中态跟随（选项点击后即关，此分支兜底程序化 setValue）
       opts.options.forEach((o, i) => {
-        const item = menu?.querySelectorAll('.bz-select-item')[i] as HTMLElement | undefined;
+        const item = menu?.querySelectorAll('.bzrv-select-item')[i] as HTMLElement | undefined;
         if (!item) return;
         const on = o.value === v;
         item.classList.toggle('is-on', on);
@@ -149,7 +149,7 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
     const nextIdx = Math.min(opts.options.length - 1, Math.max(0, (curIdx < 0 ? 0 : curIdx) + delta));
     // 仅移动高亮（不落值）；Enter/Space 才提交
     opts.options.forEach((o, i) => {
-      const item = menu?.querySelectorAll('.bz-select-item')[i] as HTMLElement | undefined;
+      const item = menu?.querySelectorAll('.bzrv-select-item')[i] as HTMLElement | undefined;
       if (!item) return;
       const on = i === nextIdx;
       item.classList.toggle('is-on', on);
@@ -166,7 +166,7 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
       e.preventDefault();
       if (menu) {
         // 菜单开着：提交当前高亮项
-        const on = menu?.querySelector<HTMLElement>('.bz-select-item.is-on');
+        const on = menu?.querySelector<HTMLElement>('.bzrv-select-item.is-on');
         if (on && on !== el) {
           const v = opts.options[Number(on.dataset.index)];
           if (v) {

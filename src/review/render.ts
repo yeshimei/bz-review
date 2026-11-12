@@ -24,13 +24,13 @@ interface QuestionLike {
 
 // C4/A8：本地 ESC_MAP + esc() + icon() 已删——转义/图标占位收编 core/ui/str 单源
 // （esc / iconSpan `<i data-lucide>`；mountIcons 按 [data-lucide] 属性兑现、class 原样保留，
-// 与标签名无关，样式均挂 .bz-ic/.bz-q-ic/.bz-sprint-ic 类，span→i 无行为差异）。
-// 原 icon() 默认类 bz-q-ic 的调用点改为 iconSpan(name, 'bz-q-ic')。
+// 与标签名无关，样式均挂 .bzrv-ic/.bzrv-q-ic/.bzrv-sprint-ic 类，span→i 无行为差异）。
+// 原 icon() 默认类 bzrv-q-ic 的调用点改为 iconSpan(name, 'bzrv-q-ic')。
 
-/** 对错标记（lucide check/x 占位；尺寸随 .bz-mark 字号档） */
+/** 对错标记（lucide check/x 占位；尺寸随 .bzrv-mark 字号档） */
 export function markHtml(kind: 'ok' | 'bad', size: '' | 'lg' = ''): string {
-  if (kind === 'ok') return `<span class="bz-mark ok ${size}"><i data-lucide="check"></i></span>`;
-  return `<span class="bz-mark bad ${size}"><i data-lucide="x"></i></span>`;
+  if (kind === 'ok') return `<span class="bzrv-mark ok ${size}"><i data-lucide="check"></i></span>`;
+  return `<span class="bzrv-mark bad ${size}"><i data-lucide="x"></i></span>`;
 }
 
 /** 头行日期副题：9月9日 周三 */
@@ -87,16 +87,16 @@ export function stageNum(item: ReviewItem): string {
 
 /** 阶段标签（FSRS=R% 分档色 / 阶梯=阶段 n/10 / 已完成） */
 export function stageTagHtml(item: ReviewItem, w: number[] = DEFAULT_W, now: number = Date.now()): string {
-  if (item.completed) return '<span class="bz-q-tag is-done">已完成</span>';
+  if (item.completed) return '<span class="bzrv-q-tag is-done">已完成</span>';
   if (item.phase === 'fsrs') {
     const r = currentRPct(item, w, now);
     if (r !== null) {
       const cls = r >= 90 ? 'r-high' : r >= 70 ? 'r-mid' : 'r-low';
-      return `<span class="bz-q-tag is-r ${cls}">R=${r}%</span>`;
+      return `<span class="bzrv-q-tag is-r ${cls}">R=${r}%</span>`;
     }
-    return `<span class="bz-q-tag is-r">FSRS</span>`;
+    return `<span class="bzrv-q-tag is-r">FSRS</span>`;
   }
-  return `<span class="bz-q-tag is-stage">阶段 ${item.currentStage ?? item.stage + 1}/${TOTAL_STAGES}</span>`;
+  return `<span class="bzrv-q-tag is-stage">阶段 ${item.currentStage ?? item.stage + 1}/${TOTAL_STAGES}</span>`;
 }
 
 /** 列内排序（V1 拍板：置顶 → R 升序 → 到期时间；阶梯无 R 视为最低优先级靠后。
@@ -124,7 +124,7 @@ export interface QueueViewCtx {
 }
 
 function colHead(count: number, name: string): string {
-  return `<div class="bz-q-col-head"><span class="cnt">${count}</span><span class="name">${name}</span></div>`;
+  return `<div class="bzrv-q-col-head"><span class="cnt">${count}</span><span class="name">${name}</span></div>`;
 }
 
 export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
@@ -134,30 +134,30 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
   const canPlay = isPlayable(item, now) && !item.isMissing;
   const title = item.isCompleted ? `<s>${esc(item.name)}</s>` : esc(item.name);
   const cls = [
-    'bz-q-card',
+    'bzrv-q-card',
     item.isOverdue ? 'danger' : '',
     item.isCompleted ? 'done' : '',
     canPlay ? '' : 'no',
     item.isMissing ? 'missing' : '',
   ].join(' ').trim();
   const tags = [
-    item.isMissing ? `<span class="bz-q-tag is-missing">文件缺失</span>` : `<span class="bz-q-tag ${due.cls}">${due.label}</span>`,
+    item.isMissing ? `<span class="bzrv-q-tag is-missing">文件缺失</span>` : `<span class="bzrv-q-tag ${due.cls}">${due.label}</span>`,
     // R 阈值提前复习卡挂「提前」tag（与开始本轮同口径，落「今天」列）
-    !item.isMissing && isEarlyDue(item, ctx.rThreshold ?? 0.9, w) ? `<span class="bz-q-tag is-early">提前</span>` : '',
+    !item.isMissing && isEarlyDue(item, ctx.rThreshold ?? 0.9, w) ? `<span class="bzrv-q-tag is-early">提前</span>` : '',
     // V1 原型拍板（issue 253）：待重做旗标显性化——挂红 tag 提示「这题忘了要重做」
-    item.pendingRedo && !item.isCompleted ? `<span class="bz-q-tag is-redo">待重做</span>` : '',
+    item.pendingRedo && !item.isCompleted ? `<span class="bzrv-q-tag is-redo">待重做</span>` : '',
     stageTagHtml(item, w, now),
   ].join('');
   return `
       <div class="${cls}" data-id="${item.id}" role="button" tabindex="${canPlay ? '0' : '-1'}" aria-disabled="${canPlay ? 'false' : 'true'}">
-        <div class="bz-q-card-top"><span class="bz-q-card-title">${title}</span><span class="bz-q-card-stage">${item.isMissing ? '挂起' : stageNum(item)}</span></div>
-        <div class="bz-q-card-meta">${tags}</div>
+        <div class="bzrv-q-card-top"><span class="bzrv-q-card-title">${title}</span><span class="bzrv-q-card-stage">${item.isMissing ? '挂起' : stageNum(item)}</span></div>
+        <div class="bzrv-q-card-meta">${tags}</div>
       </div>`;
 }
 
 function cardsOf(items: ReviewItem[], ctx: QueueViewCtx): string {
   // 呈报#19-R13：列内空态统一 uiEmpty 小图标口径（emptyHtmlStr 与 core uiEmpty 同 markup 单源，
-  // 渲染后由 ui.renderEntries 的 mountIcons 兑现 inbox 图标；原纯文本 .bz-q-hint 第三形制退役）
+  // 渲染后由 ui.renderEntries 的 mountIcons 兑现 inbox 图标；原纯文本 .bzrv-q-hint 第三形制退役）
   if (!items.length) return emptyHtmlStr('inbox', '没有条目');
   return items.map((it) => cardHtml(it, ctx)).join('');
 }
@@ -171,28 +171,28 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   const col = partitionQueue(items, rt, w);
 
   const head = `
-      <div class="bz-panel-head">
-        <div class="bz-panel-brand">${iconSpan('repeat-2', 'bz-ic--sm')}</div>
-        <div class="bz-panel-title">复习计划</div>
-        <div class="bz-panel-head-pipe"></div>
-        <div class="bz-panel-head-sub">${todayLabel(new Date(now))}</div>
-        <span class="bz-panel-head-sp"></span>
-        <div class="bz-panel-head-btns">
+      <div class="bzrv-panel-head">
+        <div class="bzrv-panel-brand">${iconSpan('repeat-2', 'bzrv-ic--sm')}</div>
+        <div class="bzrv-panel-title">复习计划</div>
+        <div class="bzrv-panel-head-pipe"></div>
+        <div class="bzrv-panel-head-sub">${todayLabel(new Date(now))}</div>
+        <span class="bzrv-panel-head-sp"></span>
+        <div class="bzrv-panel-head-btns">
           <!-- ⚙设置直达钮两端退役（issue 254 迭代拍板，设置走插件设置页）；✕ 桌面隐藏
               （styles.css ≥769px 规则，点遮罩/ESC 关），仅移动端全屏保留 -->
-          <button class="bz-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bz-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
       </div>
       </div>`;
 
   // 空库 → 头行 + 清空条 + 空态宿主（uiEmpty 由 ui.ts 挂载并绑两条路动作）
   if (!items.length) {
     const strip = `
-      <div class="bz-q-strip">
-        <span class="bz-q-strip-dot ok"></span>
+      <div class="bzrv-q-strip">
+        <span class="bzrv-q-strip-dot ok"></span>
         <strong>今日已清空</strong>
-        <span class="bz-q-strip-txt">还没有任何复习条目</span>
+        <span class="bzrv-q-strip-txt">还没有任何复习条目</span>
       </div>`;
-    return `<div class="bz-q-view">${head}${strip}<div class="bz-q-cols bz-q-empty-wrap"><div data-empty-host></div></div></div>`;
+    return `<div class="bzrv-q-view">${head}${strip}<div class="bzrv-q-cols bzrv-q-empty-wrap"><div data-empty-host></div></div></div>`;
   }
 
   // item 8：今日全清（开始本轮集合为空 = 逾期/今日/提前全无）→ 绿点 +「今日已清空」+ 隐藏主按钮
@@ -202,30 +202,30 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
 
   // V1 原型拍板（issue 253）：归档视图状态条 = 绿点 +「已完成复习」+ 回队列指引（旧态误用红点「开始本轮」）
   const strip = ctx.showArchived
-    ? `<div class="bz-q-strip">
-        <span class="bz-q-strip-dot ok"></span>
+    ? `<div class="bzrv-q-strip">
+        <span class="bzrv-q-strip-dot ok"></span>
         <strong>已完成复习</strong>
       </div>`
     : clearToday
-      ? `<div class="bz-q-strip">
-        <span class="bz-q-strip-dot ok"></span>
+      ? `<div class="bzrv-q-strip">
+        <span class="bzrv-q-strip-dot ok"></span>
         <strong>今日已清空</strong>
-        <span class="bz-q-strip-txt">${futureCount ? `未来还有 ${futureCount} 篇待复习` : '没有待复习条目'}</span>
+        <span class="bzrv-q-strip-txt">${futureCount ? `未来还有 ${futureCount} 篇待复习` : '没有待复习条目'}</span>
       </div>`
-      : `<div class="bz-q-strip">
-        <span class="bz-q-strip-dot"></span>
+      : `<div class="bzrv-q-strip">
+        <span class="bzrv-q-strip-dot"></span>
         <strong>开始本轮</strong>
-        <span class="bz-q-strip-txt">今日 ${col.today.length} 篇到期 · 逾期 ${col.overdue.length} 篇顺延</span>
-        <button class="bz-btn bz-btn--primary" data-act="begin">开始本轮</button>
+        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 篇到期 · 逾期 ${col.overdue.length} 篇顺延</span>
+        <button class="bzrv-btn bzrv-btn--primary" data-act="begin">开始本轮</button>
       </div>`;
 
   // V1 拍板：列内排序 置顶 → R 升序 → 到期（sortColumn；G4：透传 ctx.w 与卡片 R 展示同权重源）
   const body = ctx.showArchived
-    ? `<div class="bz-q-cols"><div class="bz-q-col done">${colHead(col.done.length, '已完成')}${cardsOf(sortColumn(col.done, now, w), full)}</div></div>`
-    : `<div class="bz-q-cols">
-          <div class="bz-q-col danger">${colHead(col.overdue.length, '已逾期')}${cardsOf(sortColumn(col.overdue, now, w), full)}</div>
-          <div class="bz-q-col warn">${colHead(col.today.length, '今天到期')}${cardsOf(sortColumn(col.today, now, w), full)}</div>
-          <div class="bz-q-col future">${colHead(col.future.length, '未来')}${cardsOf(sortColumn(col.future, now, w), full)}</div>
+    ? `<div class="bzrv-q-cols"><div class="bzrv-q-col done">${colHead(col.done.length, '已完成')}${cardsOf(sortColumn(col.done, now, w), full)}</div></div>`
+    : `<div class="bzrv-q-cols">
+          <div class="bzrv-q-col danger">${colHead(col.overdue.length, '已逾期')}${cardsOf(sortColumn(col.overdue, now, w), full)}</div>
+          <div class="bzrv-q-col warn">${colHead(col.today.length, '今天到期')}${cardsOf(sortColumn(col.today, now, w), full)}</div>
+          <div class="bzrv-q-col future">${colHead(col.future.length, '未来')}${cardsOf(sortColumn(col.future, now, w), full)}</div>
         </div>`;
 
   // 底部信息行：整行可点（归档 → 切换归档；统计 → 打开分布），无引导小字
@@ -233,22 +233,22 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   // 归档态：左下角变「返回队列」提醒钮（issue 254 迭代拍板），点击即回队列
   const stats = computeStats(items);
   const archItem = ctx.showArchived
-    ? `<span class="bz-q-fitem bz-touch-target--lg is-back" data-act="arch" title="点此返回队列">
-        ${iconSpan('undo-2', 'bz-q-ic')}<span class="lbl">返回队列</span>
+    ? `<span class="bzrv-q-fitem bzrv-touch-target--lg is-back" data-act="arch" title="点此返回队列">
+        ${iconSpan('undo-2', 'bzrv-q-ic')}<span class="lbl">返回队列</span>
       </span>`
-    : `<span class="bz-q-fitem bz-touch-target--lg" data-act="arch" title="查看已完成复习">
-        ${iconSpan('folder', 'bz-q-ic')}<span class="lbl">已完成 <b>${col.done.length}</b> 篇</span>
+    : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="arch" title="查看已完成复习">
+        ${iconSpan('folder', 'bzrv-q-ic')}<span class="lbl">已完成 <b>${col.done.length}</b> 篇</span>
       </span>`;
   const footer = `
-      <div class="bz-q-footer">
+      <div class="bzrv-q-footer">
         ${archItem}
         <i class="sep"></i>
-        <span class="bz-q-fitem bz-touch-target--lg" data-act="stats" title="逐幕回放全馆记忆">
-          ${iconSpan('flame', 'bz-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
+        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="stats" title="逐幕回放全馆记忆">
+          ${iconSpan('flame', 'bzrv-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
         </span>
       </div>`;
 
-  return `<div class="bz-q-view">${head}${strip}${body}${footer}</div>`;
+  return `<div class="bzrv-q-view">${head}${strip}${body}${footer}</div>`;
 }
 
 // ==================== 整窗冲刺视图 ====================
@@ -261,22 +261,22 @@ export function sprintModeLabel(mode: 'round' | 'single' | 'redo'): string {
 
 /** 冲刺头行（mode 缺省 = 无副标题，兼容旧契约） */
 export function sprintHeadHtml(mode?: 'round' | 'single' | 'redo'): string {
-  const sub = mode ? `<div class="bz-sprint-sub">${sprintModeLabel(mode)}</div>` : '';
+  const sub = mode ? `<div class="bzrv-sprint-sub">${sprintModeLabel(mode)}</div>` : '';
   return `
-      <div class="bz-sprint-head">
+      <div class="bzrv-sprint-head">
         <div class="t">
-          <div class="bz-sprint-title">做题冲刺</div>
+          <div class="bzrv-sprint-title">做题冲刺</div>
           ${sub}
         </div>
         <div class="tools">
-          <button class="bz-icon-btn" data-action="skip" title="跳过此篇（不评级，移到队尾）">${iconSpan('skip-forward', 'bz-sprint-ic')}</button>
-          <button class="bz-icon-btn" data-action="quit" title="回面板">${iconSpan('x', 'bz-sprint-ic')}</button>
+          <button class="bzrv-icon-btn" data-action="skip" title="跳过此篇（不评级，移到队尾）">${iconSpan('skip-forward', 'bzrv-sprint-ic')}</button>
+          <button class="bzrv-icon-btn" data-action="quit" title="回面板">${iconSpan('x', 'bzrv-sprint-ic')}</button>
         </div>
       </div>`;
 }
 
 export function sprintLoadingHtml(): string {
-  return `<div class="bz-sprint-loading"><span class="bz-q-spinner"></span>正在获取题目…</div>`;
+  return `<div class="bzrv-sprint-loading"><span class="bzrv-q-spinner"></span>正在获取题目…</div>`;
 }
 
 /** 选项列（answered 后标对错；sel = 已选索引数组） */
@@ -301,7 +301,7 @@ function sprintOptsHtml(
           ? markHtml('bad')
           : '';
       return `
-          <div class="bz-sprint-opt${extra}${answered ? ' is-disabled' : ''}" data-i="${i}" role="button" tabindex="${answered ? '-1' : '0'}" aria-disabled="${answered ? 'true' : 'false'}">
+          <div class="bzrv-sprint-opt${extra}${answered ? ' is-disabled' : ''}" data-i="${i}" role="button" tabindex="${answered ? '-1' : '0'}" aria-disabled="${answered ? 'true' : 'false'}">
             <span class="k">${'ABCD'[i]}</span>
             <span class="t">${esc(opt)}</span>
             <span class="m">${m}</span>
@@ -326,28 +326,28 @@ export function sprintQuestionHtml(
   const lastWrong = st.answered && !st.lastCorrect && !st.remaining;
   const nextBtn =
     st.answered && !st.lastCorrect && st.remaining
-      ? `<button class="bz-btn bz-btn--primary" data-action="next">下一题 →</button>`
+      ? `<button class="bzrv-btn bzrv-btn--primary" data-action="next">下一题 →</button>`
       : lastWrong
-        ? `<button class="bz-btn bz-btn--primary" data-action="note">${iconSpan('flag', 'bz-sprint-ic')} 结束并结算</button>`
+        ? `<button class="bzrv-btn bzrv-btn--primary" data-action="note">${iconSpan('flag', 'bzrv-sprint-ic')} 结束并结算</button>`
         : '';
-  const submit = needSubmit ? `<button class="bz-btn bz-btn--primary bz-sprint-submit" data-action="submit">提交答案</button>` : '';
+  const submit = needSubmit ? `<button class="bzrv-btn bzrv-btn--primary bzrv-sprint-submit" data-action="submit">提交答案</button>` : '';
   // item 3：答错一行解析（随题存取的 explain；存量题无此字段静默不显示，零迁移）
   const explain =
     st.answered && !st.lastCorrect && question.explain
-      ? `<div class="bz-sprint-explain">${esc(question.explain)}</div>`
+      ? `<div class="bzrv-sprint-explain">${esc(question.explain)}</div>`
       : '';
 
   return `
-      <div class="bz-sprint-qtop">
-        <span class="bz-sprint-progress">${done + 1}/${total}</span>
+      <div class="bzrv-sprint-qtop">
+        <span class="bzrv-sprint-progress">${done + 1}/${total}</span>
       </div>
-      <div class="bz-sprint-qcard">
-        <div class="bz-sprint-qtype">${single ? '单选' : '多选'}</div>
-        <div class="bz-sprint-qtext">${esc(question.question)}</div>
-        <div class="bz-sprint-opts">${optsHtml}</div>
+      <div class="bzrv-sprint-qcard">
+        <div class="bzrv-sprint-qtype">${single ? '单选' : '多选'}</div>
+        <div class="bzrv-sprint-qtext">${esc(question.question)}</div>
+        <div class="bzrv-sprint-opts">${optsHtml}</div>
         ${explain}
         ${submit}
-        ${nextBtn ? `<div class="bz-sprint-qfoot">${nextBtn}</div>` : ''}
+        ${nextBtn ? `<div class="bzrv-sprint-qfoot">${nextBtn}</div>` : ''}
       </div>`;
 }
 
@@ -356,23 +356,23 @@ export function sprintAsideHtml(entries: Array<{ name: string; state: string }>)
   const rows = entries
     .map((e) => {
       const name = esc(e.name);
-      if (e.state === 'passed') return `<div class="bz-sq-item passed"><span class="nm"><s>${name}</s></span></div>`;
-      if (e.state === 'failed') return `<div class="bz-sq-item failed"><span class="nm">${name}</span></div>`;
-      if (e.state === 'doing') return `<div class="bz-sq-item doing"><span class="nm">${name}</span></div>`;
-      return `<div class="bz-sq-item"><span class="nm">${name}</span></div>`;
+      if (e.state === 'passed') return `<div class="bzrv-sq-item passed"><span class="nm"><s>${name}</s></span></div>`;
+      if (e.state === 'failed') return `<div class="bzrv-sq-item failed"><span class="nm">${name}</span></div>`;
+      if (e.state === 'doing') return `<div class="bzrv-sq-item doing"><span class="nm">${name}</span></div>`;
+      return `<div class="bzrv-sq-item"><span class="nm">${name}</span></div>`;
     })
     .join('');
   return `
-      <div class="bz-sq-head"><b>本轮队列</b></div>
-      <div class="bz-sq-list">${rows || emptyHtmlStr('inbox', '队列完毕')}</div>`;
+      <div class="bzrv-sq-head"><b>本轮队列</b></div>
+      <div class="bzrv-sq-list">${rows || emptyHtmlStr('inbox', '队列完毕')}</div>`;
 }
 
 /** 冲刺主体壳（左内容 + 右本轮队列） */
 export function sprintBodyHtml(mainHtml: string, entries: Array<{ name: string; state: string }>): string {
   return `
-      <div class="bz-sprint-body">
-        <div class="bz-sprint-main">${mainHtml}</div>
-        <aside class="bz-sprint-queue">${sprintAsideHtml(entries)}</aside>
+      <div class="bzrv-sprint-body">
+        <div class="bzrv-sprint-main">${mainHtml}</div>
+        <aside class="bzrv-sprint-queue">${sprintAsideHtml(entries)}</aside>
       </div>`;
 }
 
@@ -388,28 +388,28 @@ export function sprintResultHtml(p: {
   showEnd: boolean;
 }): string {
   const total = p.acc + p.wrong;
-  return `<div class="bz-result">
-        <div class="bz-result-ic">${markHtml('ok', 'lg')}</div>
-        <div class="bz-result-name">${esc(p.name)}</div>
-        <div class="bz-result-score">${p.acc}<span class="sl">/${total}</span></div>
-        <span class="bz-result-rating pass">${p.ratingLine}</span>
-        <button class="bz-btn bz-btn--primary bz-btn--block" data-action="next">${p.nextLabel}</button>
-        ${p.showEnd ? `<button class="bz-btn bz-btn--ghost bz-btn--block" data-action="end">结束这次复习</button>` : ''}
+  return `<div class="bzrv-result">
+        <div class="bzrv-result-ic">${markHtml('ok', 'lg')}</div>
+        <div class="bzrv-result-name">${esc(p.name)}</div>
+        <div class="bzrv-result-score">${p.acc}<span class="sl">/${total}</span></div>
+        <span class="bzrv-result-rating pass">${p.ratingLine}</span>
+        <button class="bzrv-btn bzrv-btn--primary bz-btn--block" data-action="next">${p.nextLabel}</button>
+        ${p.showEnd ? `<button class="bzrv-btn bzrv-btn--ghost bz-btn--block" data-action="end">结束这次复习</button>` : ''}
       </div>`;
 }
 
 /** 结算屏 */
 export function sprintSummaryHtml(p: { total: number; passed: number; failed: number; streak: number }): string {
   return `
-      <div class="bz-summary">
-        <div class="bz-summary-title">本轮复习完成</div>
-        <div class="bz-summary-stats">
+      <div class="bzrv-summary">
+        <div class="bzrv-summary-title">本轮复习完成</div>
+        <div class="bzrv-summary-stats">
           <div class="st"><b>${p.total}</b><span>复习篇数</span></div>
           <div class="st"><b>${p.passed}</b><span>通过</span></div>
           <div class="st ${p.failed ? 'warn' : ''}"><b>${p.failed}</b><span>未通过</span></div>
         </div>
-        ${p.streak > 0 ? `<div class="bz-summary-streak">连续复习 <b>${p.streak}</b> 天</div>` : ''}
-        <button class="bz-btn bz-btn--primary bz-btn--block" data-action="done">完成 · 回到复习计划</button>
+        ${p.streak > 0 ? `<div class="bzrv-summary-streak">连续复习 <b>${p.streak}</b> 天</div>` : ''}
+        <button class="bzrv-btn bzrv-btn--primary bz-btn--block" data-action="done">完成 · 回到复习计划</button>
       </div>`;
 }
 
@@ -444,15 +444,15 @@ const QUIZ_PRACTICE_BATCHES: Array<{ v: number; label: string }> = [
 export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
   const scopeSeg = QUIZ_PRACTICE_SCOPES.map(
     (o) =>
-      `<button type="button" class="bz-segmented-btn${o.v === ctx.scope ? ' is-on' : ''}" data-scope="${o.v}" role="radio" aria-checked="${o.v === ctx.scope}">${o.label}</button>`
+      `<button type="button" class="bzrv-segmented-btn${o.v === ctx.scope ? ' is-on' : ''}" data-scope="${o.v}" role="radio" aria-checked="${o.v === ctx.scope}">${o.label}</button>`
   ).join('');
   const batchSeg = QUIZ_PRACTICE_BATCHES.map(
     (o) =>
-      `<button type="button" class="bz-segmented-btn${o.v === ctx.batch ? ' is-on' : ''}" data-batch="${o.v}" role="radio" aria-checked="${o.v === ctx.batch}">${o.label}</button>`
+      `<button type="button" class="bzrv-segmented-btn${o.v === ctx.batch ? ' is-on' : ''}" data-batch="${o.v}" role="radio" aria-checked="${o.v === ctx.batch}">${o.label}</button>`
   ).join('');
   let detail: string;
   if (ctx.scope === 'all') {
-    detail = `<div class="bz-qp-detail">整库笔记都纳入出题范围，系统目录自动跳过</div>`;
+    detail = `<div class="bzrv-qp-detail">整库笔记都纳入出题范围，系统目录自动跳过</div>`;
   } else if (ctx.scope === 'folder') {
     // 监听文件夹名单（review-deep 一致#12）：正典应走 uiSetlist({variant:'chips', removeLabel, onRemove})，
     // 但本文件是 render 纯层——组件库 barrel 会拖入 obsidian（纯度约定白名单外），
@@ -462,13 +462,13 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
       ? ctx.folders
           .map((f) => {
             const label = f === '' ? '（库根目录）' : f;
-            return `<span class="bz-qp-chip"><span class="bz-qp-chip-name" title="${esc(label)}">${esc(label)}</span><button type="button" class="bz-qp-chip-x" data-rm-folder="${esc(f)}" aria-label="移除 ${esc(label)}">${iconSpan('x', 'bz-q-ic')}</button></span>`;
+            return `<span class="bzrv-qp-chip"><span class="bzrv-qp-chip-name" title="${esc(label)}">${esc(label)}</span><button type="button" class="bzrv-qp-chip-x" data-rm-folder="${esc(f)}" aria-label="移除 ${esc(label)}">${iconSpan('x', 'bzrv-q-ic')}</button></span>`;
           })
           .join('')
-      : `<span class="bz-qp-detail">还没选文件夹</span>`;
-    detail = `<div class="bz-qp-folder-row"><div class="bz-qp-chips">${chips}</div><button type="button" class="bz-btn bz-btn--ghost" data-act="pick-folders">${ctx.folders.length ? '改文件夹' : '选择文件夹'}</button></div>`;
+      : `<span class="bzrv-qp-detail">还没选文件夹</span>`;
+    detail = `<div class="bzrv-qp-folder-row"><div class="bzrv-qp-chips">${chips}</div><button type="button" class="bzrv-btn bzrv-btn--ghost" data-act="pick-folders">${ctx.folders.length ? '改文件夹' : '选择文件夹'}</button></div>`;
   } else {
-    detail = `<div class="bz-qp-note-field"><input type="text" class="bz-input bz-qp-note-input" data-role="note-input" placeholder="输入笔记名筛选，点选确定" value="${esc(ctx.notePath)}"></div>`;
+    detail = `<div class="bzrv-qp-note-field"><input type="text" class="bzrv-input bz-qp-note-input" data-role="note-input" placeholder="输入笔记名筛选，点选确定" value="${esc(ctx.notePath)}"></div>`;
   }
   // 题库 meta（体验修复）：范围未就绪时给引导文案（原先显示「还没有题目」
   // 与上方「还没选文件夹」矛盾）；null = 统计中/未统计，meta 行占位空。
@@ -484,28 +484,28 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
             ? `当前范围现有 <b>${ctx.bankCount}</b> 题`
             : '当前范围还没有题目，开始后会自动出题';
   return `
-    <div class="bz-qp-view">
-      <div class="bz-panel-head">
-        <div class="bz-panel-brand">${iconSpan('graduation-cap', 'bz-ic--sm')}</div>
-        <div class="bz-panel-title">做题练习</div>
-        <div class="bz-panel-head-pipe"></div>
-        <div class="bz-panel-head-sub">只刷题 · 不排期复习</div>
-        <span class="bz-panel-head-sp"></span>
-        <button class="bz-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bz-q-ic')}</button>
+    <div class="bzrv-qp-view">
+      <div class="bzrv-panel-head">
+        <div class="bzrv-panel-brand">${iconSpan('graduation-cap', 'bzrv-ic--sm')}</div>
+        <div class="bzrv-panel-title">做题练习</div>
+        <div class="bzrv-panel-head-pipe"></div>
+        <div class="bzrv-panel-head-sub">只刷题 · 不排期复习</div>
+        <span class="bzrv-panel-head-sp"></span>
+        <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
       </div>
-      <div class="bz-qp-body">
-        <div class="bz-qp-sec">
-          <div class="bz-qp-sec-label">出题范围</div>
-          <div class="bz-segmented" role="radiogroup" aria-label="出题范围">${scopeSeg}</div>
-          <div class="bz-qp-detail-wrap">${detail}</div>
+      <div class="bzrv-qp-body">
+        <div class="bzrv-qp-sec">
+          <div class="bzrv-qp-sec-label">出题范围</div>
+          <div class="bzrv-segmented" role="radiogroup" aria-label="出题范围">${scopeSeg}</div>
+          <div class="bzrv-qp-detail-wrap">${detail}</div>
         </div>
-        <div class="bz-qp-sec">
-          <div class="bz-qp-sec-label">本轮题量</div>
-          <div class="bz-segmented" role="radiogroup" aria-label="本轮题量">${batchSeg}</div>
+        <div class="bzrv-qp-sec">
+          <div class="bzrv-qp-sec-label">本轮题量</div>
+          <div class="bzrv-segmented" role="radiogroup" aria-label="本轮题量">${batchSeg}</div>
         </div>
-        <div class="bz-qp-meta" data-role="bank-meta">${meta}</div>
-        <button class="bz-btn bz-btn--primary bz-qp-start" data-act="start">开始做题</button>
-        <div class="bz-qp-foot">键位与做题家一致：1-4 / A-D 选择，Enter 提交或下一题；答对的题出库，答错的留给下次。</div>
+        <div class="bzrv-qp-meta" data-role="bank-meta">${meta}</div>
+        <button class="bzrv-btn bzrv-btn--primary bzrv-qp-start" data-act="start">开始做题</button>
+        <div class="bzrv-qp-foot">键位与做题家一致：1-4 / A-D 选择，Enter 提交或下一题；答对的题出库，答错的留给下次。</div>
       </div>
     </div>`;
 }
@@ -516,17 +516,17 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
 export function quizPracticeSummaryHtml(r: { correct: number; wrong: number; skipped: number; accuracy: number }): string {
   const answered = r.correct + r.wrong;
   return `
-    <div class="bz-summary">
-      <div class="bz-summary-title">本轮刷题小结</div>
-      <div class="bz-summary-stats">
+    <div class="bzrv-summary">
+      <div class="bzrv-summary-title">本轮刷题小结</div>
+      <div class="bzrv-summary-stats">
         <div class="st"><b>${r.correct}</b><span>答对</span></div>
         <div class="st ${r.wrong ? 'warn' : ''}"><b>${r.wrong}</b><span>答错</span></div>
         <div class="st"><b>${r.skipped}</b><span>跳过</span></div>
       </div>
-      ${answered > 0 ? `<div class="bz-qp-acc">正确率 <b>${r.accuracy}%</b></div>` : `<div class="bz-qp-acc">本轮未答题已保留</div>`}
-      <button class="bz-btn bz-btn--primary bz-btn--block" data-act="again">再来一轮</button>
-      <button class="bz-btn bz-btn--ghost bz-btn--block" data-act="finish">收工</button>
-      <div class="bz-qp-foot">答错的题留在题库，下轮再见。</div>
+      ${answered > 0 ? `<div class="bzrv-qp-acc">正确率 <b>${r.accuracy}%</b></div>` : `<div class="bzrv-qp-acc">本轮未答题已保留</div>`}
+      <button class="bzrv-btn bzrv-btn--primary bz-btn--block" data-act="again">再来一轮</button>
+      <button class="bzrv-btn bzrv-btn--ghost bz-btn--block" data-act="finish">收工</button>
+      <div class="bzrv-qp-foot">答错的题留在题库，下轮再见。</div>
     </div>`;
 }
 
@@ -536,11 +536,11 @@ export function quizPracticeSummaryHtml(r: { correct: number; wrong: number; ski
  *  （原内联映射与 sprint 结果卡两名漂移——「简单」vs「轻松」，统一为「简单」） */
 export function reviewBarHtml(p: { name: string; index: number; total: number }): string {
   const btns = ['again', 'hard', 'good', 'easy']
-    .map((r) => `<button class="bz-review-bar-btn bz-touch-target--sm is-${r}" data-rating="${r}">${RATING_NAMES[r]}</button>`)
+    .map((r) => `<button class="bzrv-review-bar-btn bzrv-touch-target--sm is-${r}" data-rating="${r}">${RATING_NAMES[r]}</button>`)
     .join('');
   return `
-    <span class="bz-review-bar-info">${esc(stripTitleMarks(p.name))}<i>(${p.index}/${p.total})</i></span>
-    <span class="bz-review-bar-act">${btns}
-      <button class="bz-review-bar-btn bz-touch-target--sm is-skip" data-rating="skip">${'跳过'}</button>
+    <span class="bzrv-review-bar-info">${esc(stripTitleMarks(p.name))}<i>(${p.index}/${p.total})</i></span>
+    <span class="bzrv-review-bar-act">${btns}
+      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-skip" data-rating="skip">${'跳过'}</button>
     </span>`;
 }

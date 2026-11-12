@@ -50,26 +50,26 @@ export type { RewardName };
 /** 名单列表（序号倒排：最新一位是最大号） */
 export function renderRewardList(names: readonly RewardName[]): HTMLOListElement {
   const ol = document.createElement('ol');
-  ol.className = 'bz-rw-names';
+  ol.className = 'bzrv-rw-names';
   const total = names.length;
   ol.innerHTML = names
     .map((it, i) => {
       const no = String(total - i).padStart(2, '0');
       const msg = it.message
-        ? `<p class="bz-rw-msg">${escapeHtml(it.message)}</p>`
+        ? `<p class="bzrv-rw-msg">${escapeHtml(it.message)}</p>`
         : '';
       // 金额位两种写法：数字补 ¥ 后缀不铺小数；字符串原样（「赞助人」这类不走赞赏码的）
       const amt = typeof it.amount === 'number'
-        ? `<span class="bz-rw-amt"><i>¥</i>${it.amount}</span>`
-        : `<span class="bz-rw-amt bz-rw-amt-text">${escapeHtml(String(it.amount))}</span>`;
+        ? `<span class="bzrv-rw-amt"><i>¥</i>${it.amount}</span>`
+        : `<span class="bzrv-rw-amt bzrv-rw-amt-text">${escapeHtml(String(it.amount))}</span>`;
       return `<li>
-        <div class="bz-rw-no">${no}</div>
+        <div class="bzrv-rw-no">${no}</div>
         <div>
-          <div class="bz-rw-who-row">
-            <div class="bz-rw-who">${escapeHtml(it.name)}</div>
-            <div class="bz-rw-meta">
+          <div class="bzrv-rw-who-row">
+            <div class="bzrv-rw-who">${escapeHtml(it.name)}</div>
+            <div class="bzrv-rw-meta">
               ${amt}
-              <span class="bz-rw-when">${escapeHtml(formatRewardDate(it.date))}</span>
+              <span class="bzrv-rw-when">${escapeHtml(formatRewardDate(it.date))}</span>
             </div>
           </div>
           ${msg}
@@ -83,8 +83,8 @@ export function renderRewardList(names: readonly RewardName[]): HTMLOListElement
 /** 空态：一张还没写过字的信笺（横线 + 金菱形 + 一行小字） */
 export function renderRewardEmpty(): HTMLDivElement {
   const el = document.createElement('div');
-  el.className = 'bz-rw-empty';
-  el.innerHTML = '<div class="bz-rw-mark"></div><p>还没有人打赏。</p>';
+  el.className = 'bzrv-rw-empty';
+  el.innerHTML = '<div class="bzrv-rw-mark"></div><p>还没有人打赏。</p>';
   return el;
 }
 
@@ -92,7 +92,7 @@ export function renderRewardEmpty(): HTMLDivElement {
  *  裸 `<a>` 在 Obsidian 里会被阅读视图接管、移动端常常点了没反应。 */
 function exitLink(text: string, url: string): HTMLAnchorElement {
   const a = document.createElement('a');
-  a.className = 'bz-rw-sponsor-link';
+  a.className = 'bzrv-rw-sponsor-link';
   a.href = url;
   a.rel = 'noopener noreferrer';
   a.textContent = text;
@@ -113,10 +113,10 @@ const FOOT_ARC =
 /** 弹窗正文（整块纸）。`onClose` 由关闭钮调用——移动端全屏时遮罩被纸盖满，没有这枚钮就只能靠 ESC */
 export function buildRewardBody(names: readonly RewardName[], onClose: () => void = () => undefined): HTMLElement {
   const root = document.createElement('div');
-  root.className = 'bz-rw';
+  root.className = 'bzrv-rw';
 
   const close = document.createElement('button');
-  close.className = 'bz-rw-close';
+  close.className = 'bzrv-rw-close';
   close.type = 'button';
   close.setAttribute('aria-label', '关闭');
   close.innerHTML =
@@ -126,23 +126,23 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   root.appendChild(close);
 
   const head = document.createElement('div');
-  head.className = 'bz-rw-head';
+  head.className = 'bzrv-rw-head';
   head.innerHTML =
-    '<div class="bz-rw-kicker">题赠</div>' +
-    `<p class="bz-rw-lead">${SUPPORT_PITCH}<br>${SUPPORT_PITCH_REST}</p>`;
+    '<div class="bzrv-rw-kicker">题赠</div>' +
+    `<p class="bzrv-rw-lead">${SUPPORT_PITCH}<br>${SUPPORT_PITCH_REST}</p>`;
   root.appendChild(head);
 
   const code = document.createElement('div');
-  code.className = 'bz-rw-code';
+  code.className = 'bzrv-rw-code';
   const box = document.createElement('div');
-  box.className = 'bz-rw-code-box';
+  box.className = 'bzrv-rw-code-box';
   const img = document.createElement('img');
   img.src = rewardCodeUrl;
   img.alt = '微信赞赏码';
   box.appendChild(img);
   code.appendChild(box);
   const ways = document.createElement('p');
-  ways.className = 'bz-rw-ways';
+  ways.className = 'bzrv-rw-ways';
   ways.textContent = '微信扫码';
   code.appendChild(ways);
 
@@ -154,9 +154,9 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   // 长得像链接，点起来不走 `<a>` 的默认跳转——Obsidian 里裸链会被阅读视图接管、
   // 移动端常常点了没反应，统一交给 core 的 openExternalUrl 兜底链（失败有人说人话）。
   const exits = document.createElement('p');
-  exits.className = 'bz-rw-exits';
+  exits.className = 'bzrv-rw-exits';
   const sep = document.createElement('span');
-  sep.className = 'bz-rw-exit-sep';
+  sep.className = 'bzrv-rw-exit-sep';
   sep.setAttribute('aria-hidden', 'true');
   sep.textContent = '·';
   exits.appendChild(exitLink('成为赞助人', SPONSOR_URL));
@@ -167,12 +167,12 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   root.appendChild(code);
 
   const list = document.createElement('div');
-  list.className = 'bz-rw-list';
+  list.className = 'bzrv-rw-list';
   list.appendChild(names.length ? renderRewardList(names) : renderRewardEmpty());
   root.appendChild(list);
 
   const foot = document.createElement('div');
-  foot.className = 'bz-rw-foot';
+  foot.className = 'bzrv-rw-foot';
   foot.innerHTML = FOOT_ARC;
   root.appendChild(foot);
 
@@ -188,7 +188,7 @@ export function openRewardDialog(): void {
   handle = uiModal({
     content: body,
     maxWidth: 520,
-    className: 'bz-rw-modal',
+    className: 'bzrv-rw-modal',
     autofocus: false,
   });
 }

@@ -6,26 +6,26 @@
 import type { BzMainHeadOpts } from './types';
 import { uiBtn } from './button';
 
-/** 主头行（.bz-main-head），返回 el + setTitle + setCount（空值隐藏计数位） */
+/** 主头行（.bzrv-main-head），返回 el + setTitle + setCount（空值隐藏计数位） */
 export function uiMainHead(opts: BzMainHeadOpts): {
   el: HTMLDivElement;
   setTitle: (t: string) => void;
   setCount: (c?: string) => void;
 } {
   const el = document.createElement('div');
-  el.className = 'bz-main-head';
+  el.className = 'bzrv-main-head';
 
   const title = document.createElement('span');
-  title.className = 'bz-main-title';
+  title.className = 'bzrv-main-title';
   title.textContent = opts.title;
   el.appendChild(title);
 
   const count = document.createElement('span');
-  count.className = 'bz-main-count';
+  count.className = 'bzrv-main-count';
   el.appendChild(count);
 
   const sp = document.createElement('span');
-  sp.className = 'bz-main-spacer';
+  sp.className = 'bzrv-main-spacer';
   el.appendChild(sp);
 
   if (opts.action) {
@@ -33,7 +33,7 @@ export function uiMainHead(opts: BzMainHeadOpts): {
       label: opts.action.label,
       icon: opts.action.icon,
       tone: 'primary',
-      className: 'bz-btn--md',
+      className: 'bzrv-btn--md',
       onClick: opts.action.onClick,
     }));
   }

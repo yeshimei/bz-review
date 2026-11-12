@@ -52,17 +52,17 @@ export function openSupportPrompt(): Promise<SupportChoice> {
     };
 
     const root = document.createElement('div');
-    root.className = 'bz-sup';
+    root.className = 'bzrv-sup';
 
     const kicker = document.createElement('div');
-    kicker.className = 'bz-sup-kicker';
+    kicker.className = 'bzrv-sup-kicker';
     kicker.textContent = '支持作者';
     root.appendChild(kicker);
 
     // 两句话分两行：这句是「作者处境」+「没有别的收入」，中间断在逗号后最自然，
     // 交给浏览器按宽度切会把「完全免费」劈成两半（窄屏实测）。
     const lead = document.createElement('p');
-    lead.className = 'bz-sup-lead';
+    lead.className = 'bzrv-sup-lead';
     lead.append(
       document.createTextNode(SUPPORT_PITCH),
       document.createElement('br'),
@@ -71,24 +71,24 @@ export function openSupportPrompt(): Promise<SupportChoice> {
     root.appendChild(lead);
 
     const note = document.createElement('p');
-    note.className = 'bz-sup-note';
+    note.className = 'bzrv-sup-note';
     note.textContent = SUPPORT_NOTE;
     root.appendChild(note);
 
     const acts = document.createElement('div');
-    acts.className = 'bz-sup-acts';
+    acts.className = 'bzrv-sup-acts';
 
     // 次序（2026-11-09 用户拍板）：「以后再说」在左、「支持作者」在右——
     // 主按钮落在阅读动线的末端，也是 iOS 弹窗里确认键的位置。
     const later = document.createElement('button');
-    later.className = 'bz-sup-btn bz-sup-later';
+    later.className = 'bzrv-sup-btn bzrv-sup-later';
     later.type = 'button';
     later.textContent = '以后再说';
     later.addEventListener('click', () => settle('dismiss'));
     acts.appendChild(later);
 
     const go = document.createElement('button');
-    go.className = 'bz-sup-btn bz-sup-go';
+    go.className = 'bzrv-sup-btn bzrv-sup-go';
     go.type = 'button';
     go.textContent = '支持作者';
     go.addEventListener('click', () => settle('support'));
@@ -102,7 +102,7 @@ export function openSupportPrompt(): Promise<SupportChoice> {
     handle = uiModal({
       content: root,
       maxWidth: 430,
-      className: 'bz-sup-modal',
+      className: 'bzrv-sup-modal',
       onClose: () => settle('dismiss'),
     });
   });

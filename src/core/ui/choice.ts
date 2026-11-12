@@ -2,7 +2,7 @@
  * bz 组件库 · 平铺单选组（src/core/ui/choice.ts）
  * 表单里替代下拉的「胶囊选项平铺」：可换行、单选、带选中态。
  * 与 uiSegmented（等宽分段条）互补——选项多/文案长时用本组件。
- * 可选每项前置色点（.bz-choice-dot，数据语义色由调用方内联直给）。
+ * 可选每项前置色点（.bzrv-choice-dot，数据语义色由调用方内联直给）。
  * float = 浮岛 segmented（issue 199 拍板）：轨道收内容宽 + 白卡滑动
  * 指示器——选中切换时指示器平滑滑到新项（transform/width 200ms）。
  * ============================================================ */
@@ -11,7 +11,7 @@ import type { BzChoiceOpts } from './types';
 /** 平铺单选组（可换行胶囊），返回容器 + setValue/detach 句柄。radiogroup + 方向键导航（L8） */
 export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDivElement; setValue: (v: T) => void; detach: () => void } {
   const el = document.createElement('div');
-  el.className = 'bz-choice' + (opts.float ? ' bz-choice--float' : '') + (opts.className ? ' ' + opts.className : '');
+  el.className = 'bzrv-choice' + (opts.float ? ' bzrv-choice--float' : '') + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
   el.setAttribute('aria-label', opts.label || '');
   const btns = new Map<T, HTMLButtonElement>();
@@ -19,7 +19,7 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
 
   // 浮岛滑动指示器（float 专属；非浮岛档无此节点，样式 display:none 兜底）
   const seg = document.createElement('span');
-  seg.className = 'bz-choice-seg';
+  seg.className = 'bzrv-choice-seg';
   let segRAF = 0;
   let segTries = 0;
   /** 量选中项位置 → 指示器 transform/width；animate=false 用于首绘（不播动画）。
@@ -28,7 +28,7 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
    *  重试上限防永不挂载/display:none 死循环 */
   const syncSeg = (animate: boolean) => {
     if (!opts.float) return;
-    const on = el.querySelector('.bz-choice-btn.is-on') as HTMLElement | null;
+    const on = el.querySelector('.bzrv-choice-btn.is-on') as HTMLElement | null;
     if (!on) return;
     const tb = el.getBoundingClientRect();
     const bb = on.getBoundingClientRect();
@@ -60,13 +60,13 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
   opts.options.forEach((o) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'bz-choice-btn' + (o.value === opts.value ? ' is-on' : '');
+    b.className = 'bzrv-choice-btn' + (o.value === opts.value ? ' is-on' : '');
     b.dataset.value = String(o.value);
     b.setAttribute('role', 'radio');
     b.setAttribute('aria-checked', String(o.value === opts.value));
     if (o.dot) {
       const d = document.createElement('span');
-      d.className = 'bz-choice-dot';
+      d.className = 'bzrv-choice-dot';
       d.style.background = o.dot;
       b.appendChild(d);
     }

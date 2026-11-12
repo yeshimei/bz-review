@@ -11,12 +11,12 @@ import { isMobileEnv } from '../mobile';
 /** 容器内可交互元素选择器（读屏/焦点管理的通用口径，settings-modal 同款） */
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-/** 元素是否不可见：自身或任一祖先挂 bz-setting-hidden / 内联 display none
+/** 元素是否不可见：自身或任一祖先挂 bzrv-setting-hidden / 内联 display none
  *  （settings-modal isItemHidden 同口径：review 做题家容器等动态隐藏场景） */
 function isHidden(el: HTMLElement): boolean {
   let cur: HTMLElement | null = el;
   while (cur && cur !== document.body) {
-    if (cur.classList.contains('bz-setting-hidden')) return true;
+    if (cur.classList.contains('bzrv-setting-hidden')) return true;
     if (cur.style.display === 'none') return true;
     cur = cur.parentElement;
   }
@@ -71,7 +71,7 @@ export function trapFocus(container: HTMLElement): () => void {
 
 /** 大面板焦点壳类（components.css 据此免画焦点圈——圈住整个视口级面板纯视觉噪音，
  *  内部控件的焦点圈不受影响） */
-export const PANEL_FOCUS_CLASS = 'bz-panel-focushost';
+export const PANEL_FOCUS_CLASS = 'bzrv-panel-focushost';
 
 /**
  * 大面板「打开即入焦 + Tab 圈闭」（呈报#13 F3+H3 全域范式，belongings 表单 uiModal

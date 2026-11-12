@@ -1,6 +1,6 @@
 /* ============================================================
  * bz 媒体灯箱（src/core/ui/lightbox.ts）
- * 在样式 .bz-lightbox（components.css）上提供全屏看图/视频。
+ * 在样式 .bzrv-lightbox（components.css）上提供全屏看图/视频。
  * 单例：同一时刻只开一个；Esc / 点背景 / ✕ 关闭。
  * 对齐 core 既有：escManager + z-order（详见下方 import）。
  * 多图模式（可选）：给 items + index 即启用 ←→ 翻图导航
@@ -69,18 +69,18 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   let idx = Math.max(0, Math.min(opts.index ?? 0, items.length - 1));
 
   const mask = document.createElement('div');
-  mask.className = 'bz-lightbox';
+  mask.className = 'bzrv-lightbox';
   // 动态发号（ADR-0067）：与 modal/overlay 共用分配器，避免固定 900 被弹窗压住的层级问题
   mask.style.zIndex = String(allocZ());
 
   // 头部（标题 + 关闭）
   const head = document.createElement('div');
-  head.className = 'bz-lightbox-head';
+  head.className = 'bzrv-lightbox-head';
   const title = document.createElement('span');
-  title.className = 'bz-lightbox-title';
+  title.className = 'bzrv-lightbox-title';
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.className = 'bz-lightbox-close';
+  closeBtn.className = 'bzrv-lightbox-close';
   closeBtn.setAttribute('aria-label', '关闭');
   closeBtn.appendChild(uiIcon('x'));
   head.appendChild(title);
@@ -93,7 +93,7 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
    *  视频被当图片塞进 <img>。无后缀兜底维持现状（显式 type 优先，audio 本就无后缀判定）。 */
   function mediaNode(item: BzLightboxItem): HTMLElement {
     const media = document.createElement('div');
-    media.className = 'bz-lightbox-media';
+    media.className = 'bzrv-lightbox-media';
     const src = item.srcOf ? item.srcOf() : item.src; // 惰性：翻到这张才算（show 每页重建走这里）
     const bareSrc = src.split('?')[0].split('#')[0];
     const type = item.type || (bareSrc.endsWith('.mp4') || bareSrc.endsWith('.webm') ? 'video' : 'image');
@@ -120,7 +120,7 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
 
   // 底部说明
   const foot = document.createElement('div');
-  foot.className = 'bz-lightbox-foot';
+  foot.className = 'bzrv-lightbox-foot';
 
   /** 摆出第 i 张：媒体 / 标题 / 底部说明原位换内容，首末位箭头禁用（不循环，边界一眼可见） */
   function show(i: number): void {
@@ -139,12 +139,12 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   if (multi) {
     prevBtn = document.createElement('button');
     prevBtn.type = 'button';
-    prevBtn.className = 'bz-lightbox-nav bz-lightbox-prev';
+    prevBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-prev';
     prevBtn.setAttribute('aria-label', '上一张');
     prevBtn.appendChild(uiIcon('chevron-left'));
     nextBtn = document.createElement('button');
     nextBtn.type = 'button';
-    nextBtn.className = 'bz-lightbox-nav bz-lightbox-next';
+    nextBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-next';
     nextBtn.setAttribute('aria-label', '下一张');
     nextBtn.appendChild(uiIcon('chevron-right'));
     prevBtn.addEventListener('click', () => show(idx - 1));
@@ -172,7 +172,7 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   }
   // ESC 经 escManager 登记统一栈序（与 uiModal 同栈，后开先关；私挂 document 监听会被
   // escManager 的 stopImmediatePropagation 抢先短路 → 改走 register）
-  escHandle = escManager.register('bz-lightbox', {
+  escHandle = escManager.register('bzrv-lightbox', {
     isVisible: () => mask.isConnected,
     close,
   });

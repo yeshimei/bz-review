@@ -7,7 +7,7 @@
  *   - 直接打开功能（命令面板 / 快捷键 / ribbon）不经过首页，关闭时不回首页。
  *
  * 为什么由 core 观察而不是逐域上报：各域面板的关闭出口五花八门（点遮罩 / ESC /
- * 按钮 / 二级页返回），逐一接一行容易漏。主面板都挂了 .bz-main-panel 标记
+ * 按钮 / 二级页返回），逐一接一行容易漏。主面板都挂了 .bzrv-main-panel 标记
  * （core/ui/main-panel），这里盯主面板的显隐变化——某次会话里出现过的
  * 「新的主面板」全部不可见了，就认为功能闭合；弹窗走 notifyFloatClosed
  * （core/ui/modal 与 core/dom 的 createOverlay 关闭时调）。
@@ -75,7 +75,7 @@ function freshPanels(): HTMLElement[] {
 function freshTopLayers(): Element[] {
   if (typeof document === 'undefined') return [];
   return Array.from(document.body.children).filter(
-    (el) => !baselineTop.has(el) && /bz-/.test(String(el.className || '')) && isShown(el as HTMLElement),
+    (el) => !baselineTop.has(el) && /bzrv-/.test(String(el.className || '')) && isShown(el as HTMLElement),
   );
 }
 

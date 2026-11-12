@@ -57,7 +57,7 @@ interface ReadySkin {
 /** 就绪表：域 → 已就绪的远端皮肤（顺序 = 清单顺序 = 展示顺序） */
 let ready = new Map<string, ReadySkin[]>();
 /** 唯一注入节点 id */
-const STYLE_ID = 'bz-skin-pack-style';
+const STYLE_ID = 'bzrv-skin-pack-style';
 
 /** 半语义版本比较：`ver >= min`（与 self-update 同口径：非数字段按 0） */
 function versionAtLeast(ver: string, min: string): boolean {

@@ -8,7 +8,7 @@
  *
  * 呈报#55（R11，2026-09-20 拍板）：统计弹窗按影院现行统计外观重刷——内容件对齐
  * cinema/analysis.ts 形制（stat-card 统计卡 / sec+sec-title+lucide 板块头 / bar-row·soft-row
- * 条形 / kv-inline 摘要 / top-row 排名行），样式 scoped 在 #review-stats-popup（styles.css），
+ * 条形 / kv-inline 摘要 / top-row 排名行），样式 scoped 在 #bzrv-stats-popup（styles.css），
  * cinema 侧零改动、不抽公共组件（拍板：先重刷，抽公共件另议）。数据驱动的评级色
  * （RATING_COLORS）仍走内联。旧 pastel 彩卡/accent 色条/竖柱图/chip 形制退役。
  *
@@ -43,11 +43,11 @@ function statCardHTML(label: string, value: any): string {
 
 /** 板块容器（cinema sec 形制：lucide 板块头 + 标题 + 延伸线；icon = 板块语义 lucide 名） */
 function sectionHTML(title: string, icon: string, body: string): string {
-  return `<div class="sec"><div class="sec-title"><i data-lucide="${icon}" class="bz-ic"></i>${esc(title)}</div>${body}</div>`;
+  return `<div class="sec"><div class="sec-title"><i data-lucide="${icon}" class="bzrv-ic"></i>${esc(title)}</div>${body}</div>`;
 }
 
 function emptyHTML(): string {
-  return '<p class="bz-stats-empty">暂无数据</p>';
+  return '<p class="bzrv-stats-empty">暂无数据</p>';
 }
 
 /** 水平条形行（cinema bar-row 形制；color 数据驱动内联——评级色/板块主题色） */
@@ -118,26 +118,26 @@ export async function showStatsModal(app: App, dm: ReviewDataManager): Promise<v
 function renderStatsModal(app: App, dm: ReviewDataManager, items: ReviewItem[], w?: number[], fit?: FittedParams | null): void {
   closeStatsModal();
   statsMask = document.createElement('div');
-  statsMask.id = 'review-stats-mask';
-  statsMask.className = 'bz-overlay-mask'; // issue 365：遮罩底/blur 收编 core 单源（弹窗 fixed 自居中不受 flex/padding 影响）
+  statsMask.id = 'bzrv-stats-mask';
+  statsMask.className = 'bzrv-overlay-mask'; // issue 365：遮罩底/blur 收编 core 单源（弹窗 fixed 自居中不受 flex/padding 影响）
   statsMask.style.display = 'block';
   bindMaskDismiss(statsMask, closeStatsModal); // 手势配对判据（core/mask-dismiss）
 
   statsPopup = document.createElement('div');
-  statsPopup.id = 'review-stats-popup';
+  statsPopup.id = 'bzrv-stats-popup';
   statsPopup.style.display = 'flex';
   topifyZ(statsMask, statsPopup); // ADR-0067：显示时发号单形制（构造期不再 allocZ 占号）
 
   const header = document.createElement('div');
-  header.className = 'bz-win-head bz-review-stats-head';
+  header.className = 'bzrv-win-head bzrv-review-stats-head';
   header.innerHTML = `
-    <h3 class="bz-review-title">复习统计</h3>
+    <h3 class="bzrv-review-title">复习统计</h3>
   `;
   statsPopup.appendChild(header);
 
   const body = document.createElement('div');
-  body.id = 'review-stats-body';
-  body.className = 'bz-review-stats-body';
+  body.id = 'bzrv-stats-body';
+  body.className = 'bz-bzrv-stats-body';
   statsPopup.appendChild(body);
 
   document.body.appendChild(statsMask);
@@ -170,7 +170,7 @@ function renderStatsModal(app: App, dm: ReviewDataManager, items: ReviewItem[], 
     });
   });
 
-  statsEsc = escManager.register('bz-review-stats', {
+  statsEsc = escManager.register('bzrv-review-stats', {
     isVisible: () => !!statsMask && statsMask.style.display === 'block',
     close: closeStatsModal,
   });
@@ -252,7 +252,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
     };
   });
   const timelineHTML = sectionHTML('复习时间线', 'history',
-    rankListHTML(tlItems) + '<div class="bz-stats-hint">点击笔记查看复习历史</div>');
+    rankListHTML(tlItems) + '<div class="bzrv-stats-hint">点击笔记查看复习历史</div>');
 
   // 最近 7 天（bar-row 水平条）
   const daily7 = stats.daily7.map((d) => ({ label: d.date.slice(5).replace('-', '/'), value: d.count }));
@@ -279,19 +279,19 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   const history = historyOf(item);
 
   histMask = document.createElement('div');
-  histMask.id = 'review-history-mask';
-  histMask.className = 'bz-overlay-mask'; // issue 365：遮罩底/blur 收编 core 单源
+  histMask.id = 'bzrv-history-mask';
+  histMask.className = 'bzrv-overlay-mask'; // issue 365：遮罩底/blur 收编 core 单源
   histMask.style.display = 'block';
   bindMaskDismiss(histMask, closeTimeline); // 手势配对判据（core/mask-dismiss）
 
   histPopup = document.createElement('div');
-  histPopup.id = 'review-history-popup';
+  histPopup.id = 'bzrv-history-popup';
   histPopup.style.display = 'flex';
   topifyZ(histMask, histPopup); // ADR-0067：显示时发号单形制（构造期不再 allocZ 占号）
 
   const body = document.createElement('div');
-  body.id = 'review-history-body';
-  body.className = 'bz-review-history-body';
+  body.id = 'bzrv-history-body';
+  body.className = 'bz-bzrv-history-body';
   histPopup.appendChild(body);
 
   document.body.appendChild(histMask);
@@ -300,7 +300,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   // 无标题栏：内容直接顶到卡片；关闭 = 点遮罩（issue 271 统一）
   // 当前状态（替代标题栏：笔记名 + 阶段/当前 R 小字，紧凑一行）
   const status = document.createElement('div');
-  status.className = 'bz-review-history-status';
+  status.className = 'bzrv-review-history-status';
   const stageText = item.phase === 'fsrs'
     ? `FSRS Lv.${(item.stage || 0) - 9 + 1}`
     : `${(item.stage || 0) + 1}/10`;
@@ -308,24 +308,24 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   const R = fsrsCurrentR(item, w || DEFAULT_W);
   const curR = R === null ? null : ` · 当前 R ${Math.round(R * 100)}%`;
   status.innerHTML = `
-    <div class="bz-review-history-name">${escapeHtml(stripTitleMarks(item.name))}</div>
-    <div class="bz-review-history-sub">${stageText} · 共 ${history.length} 次复习${curR || ''}</div>
+    <div class="bzrv-review-history-name">${escapeHtml(stripTitleMarks(item.name))}</div>
+    <div class="bzrv-review-history-sub">${stageText} · 共 ${history.length} 次复习${curR || ''}</div>
   `;
   body.appendChild(status);
 
   if (!history.length) {
     const empty = document.createElement('div');
-    empty.className = 'bz-review-history-empty';
+    empty.className = 'bzrv-review-history-empty';
     empty.textContent = '暂无复习记录';
     body.appendChild(empty);
-    histEsc = escManager.register('bz-review-history', { isVisible: () => !!histMask && histMask.style.display === 'block', close: closeTimeline });
+    histEsc = escManager.register('bzrv-review-history', { isVisible: () => !!histMask && histMask.style.display === 'block', close: closeTimeline });
     return;
   }
 
   // 时间轴竖线式（变体 D）：圆点 + 竖线连接 + 时间/评级/元数据（issue 270：静态样式收编
-  // src/review/styles.css .bz-review-history-*，圆点/评级字色为 RATING_COLORS 动态内联）
+  // src/review/styles.css .bzrv-review-history-*，圆点/评级字色为 RATING_COLORS 动态内联）
   const tl = document.createElement('div');
-  tl.className = 'bz-review-history-tl';
+  tl.className = 'bzrv-review-history-tl';
   const itemsHTML = history.map((h, i) => {
     const isLast = i === history.length - 1;
     const ratingName = RATING_NAMES[h.rating] || h.rating;
@@ -335,15 +335,15 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
     const rText = h.R !== undefined ? `R=${h.R <= 1 ? Math.round(h.R * 100) : Math.round(h.R)}%` : '';
     const sText = h.stability !== undefined ? `S=${h.stability}` : '';
     const meta = [rText, sText].filter(Boolean).join(' · ');
-    const line = isLast ? '' : '<div class="bz-review-history-line"></div>';
+    const line = isLast ? '' : '<div class="bzrv-review-history-line"></div>';
     return `
-      <div class="bz-review-history-item${isLast ? ' is-last' : ''}">
+      <div class="bzrv-review-history-item${isLast ? ' is-last' : ''}">
         ${line}
-        <div class="bz-review-history-dot" style="background:${color};"></div>
-        <div class="bz-review-history-row">
-          <span class="bz-review-history-time">${formatRelativeTime(new Date(h.timestamp))}</span>
-          <span class="bz-review-history-rating" style="color:${color};">${ratingName}</span>
-          <span class="bz-review-history-stage">阶段${h.stage}${meta ? ' · ' + meta : ''}</span>
+        <div class="bzrv-review-history-dot" style="background:${color};"></div>
+        <div class="bzrv-review-history-row">
+          <span class="bzrv-review-history-time">${formatRelativeTime(new Date(h.timestamp))}</span>
+          <span class="bzrv-review-history-rating" style="color:${color};">${ratingName}</span>
+          <span class="bzrv-review-history-stage">阶段${h.stage}${meta ? ' · ' + meta : ''}</span>
         </div>
       </div>`;
   }).join('');
@@ -351,7 +351,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   body.appendChild(tl);
   motionHistory(body); // 记忆回放：圆点逐个点亮、竖线生长
 
-  histEsc = escManager.register('bz-review-history', {
+  histEsc = escManager.register('bzrv-review-history', {
     isVisible: () => !!histMask && histMask.style.display === 'block',
     close: closeTimeline,
   });

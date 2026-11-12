@@ -240,7 +240,7 @@ export class SprintSession {
     // G2：焦点在选项上按 Enter/空格——选项自身 keydown 已处理作答（renderQuestion 绑定），
     // document 层直接放行；否则 activate 与本 handler 先后命中同一事件：
     // 答错反馈/解析/「下一题」被跳过直接翻题，末题答完直接结算（quiz-core/session.ts:283 排除 BUTTON 同惯例）
-    if (t && typeof t.closest === 'function' && t.closest('.bz-sprint-opt')) return;
+    if (t && typeof t.closest === 'function' && t.closest('.bzrv-sprint-opt')) return;
     // BUTTON 同 quiz-core/session.ts:288 惯例：焦点在按钮上 Enter 交还原生 click
     // （qfoot「下一题/提交」等），document 层不再抢路由（顺带兜住今后其他弹层按钮）
     if (t && t.tagName === 'BUTTON') return;
@@ -541,7 +541,7 @@ export class SprintSession {
     this.opts.host.querySelector('[data-action="note"]')?.addEventListener('click', () => {
       void this.finishNote();
     });
-    this.opts.host.querySelectorAll('.bz-sprint-opt').forEach((el) => {
+    this.opts.host.querySelectorAll('.bzrv-sprint-opt').forEach((el) => {
       const activate = () => this.answer(Number((el as HTMLElement).dataset.i));
       el.addEventListener('click', activate);
       el.addEventListener('keydown', (e: KeyboardEvent) => {

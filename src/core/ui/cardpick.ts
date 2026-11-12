@@ -9,7 +9,7 @@ import type { BzCardPickOpts } from './types';
 /** 卡片视觉单选组，返回容器 + setValue 句柄。radiogroup + 左右方向键导航（对齐 uiChoice L8） */
 export function uiCardChoice<T extends string>(opts: BzCardPickOpts<T>): { el: HTMLDivElement; setValue: (v: T) => void } {
   const el = document.createElement('div');
-  el.className = 'bz-cardpick' + (opts.className ? ' ' + opts.className : '');
+  el.className = 'bzrv-cardpick' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
   if (opts.label) el.setAttribute('aria-label', opts.label);
   const btns = new Map<T, HTMLButtonElement>();
@@ -27,18 +27,18 @@ export function uiCardChoice<T extends string>(opts: BzCardPickOpts<T>): { el: H
   opts.options.forEach((o) => {
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'bz-cardpick-card' + (o.value === opts.value ? ' is-on' : '');
+    card.className = 'bzrv-cardpick-card' + (o.value === opts.value ? ' is-on' : '');
     card.dataset.value = String(o.value);
     card.setAttribute('role', 'radio');
     card.setAttribute('aria-checked', String(o.value === opts.value));
     // div + 内联高度双保险（issue 210 用户实测：span 在 WebView2 下会被环境样式影响，
     // aspect-ratio/样式表高度都可能不生效——预览区塌陷成一条线）
     const prev = document.createElement('div');
-    prev.className = 'bz-cardpick-prev' + (o.prevClass ? ` ${o.prevClass}` : '');
+    prev.className = 'bzrv-cardpick-prev' + (o.prevClass ? ` ${o.prevClass}` : '');
     prev.setAttribute('aria-hidden', 'true');
     prev.style.height = '62px';
     const name = document.createElement('span');
-    name.className = 'bz-cardpick-name';
+    name.className = 'bzrv-cardpick-name';
     name.textContent = o.label;
     card.append(prev, name);
     card.addEventListener('click', () => {

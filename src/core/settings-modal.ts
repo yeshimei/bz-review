@@ -46,31 +46,31 @@ export interface SettingsModalOptions {
  *  动态显隐后可调 refreshSettingsGroupCounts 手动刷新。 */
 export function createSettingsGroup(container: HTMLElement, opts: { icon: string; name: string }): HTMLElement {
   const group = document.createElement('div');
-  group.className = 'bz-settings-group';
+  group.className = 'bzrv-settings-group';
   const head = document.createElement('div');
-  head.className = 'bz-settings-group-head';
+  head.className = 'bzrv-settings-group-head';
   const icon = document.createElement('span');
-  icon.className = 'bz-settings-group-icon';
+  icon.className = 'bzrv-settings-group-icon';
   setIcon(icon, opts.icon);
   const name = document.createElement('span');
-  name.className = 'bz-settings-group-name';
+  name.className = 'bzrv-settings-group-name';
   name.textContent = opts.name;
   const count = document.createElement('span');
-  count.className = 'bz-settings-group-count';
+  count.className = 'bzrv-settings-group-count';
   count.textContent = '0 项';
   head.append(icon, name, count);
   const body = document.createElement('div');
-  body.className = 'bz-settings-group-body';
+  body.className = 'bzrv-settings-group-body';
   group.append(head, body);
   container.appendChild(group);
   return body;
 }
 
-/** 设置项是否不可见：自身或任一祖先挂 bz-setting-hidden / 内联 display none（review 做题家容器、番茄钟自定义行等动态隐藏场景）。 */
+/** 设置项是否不可见：自身或任一祖先挂 bzrv-setting-hidden / 内联 display none（review 做题家容器、番茄钟自定义行等动态隐藏场景）。 */
 function isItemHidden(el: HTMLElement): boolean {
   let cur: HTMLElement | null = el;
   while (cur && cur !== document.body) {
-    if (cur.classList.contains('bz-setting-hidden')) return true;
+    if (cur.classList.contains('bzrv-setting-hidden')) return true;
     if (cur.style.display === 'none') return true;
     cur = cur.parentElement;
   }
@@ -81,9 +81,9 @@ function isItemHidden(el: HTMLElement): boolean {
  *  纯操作行（如「添加监听文件夹」按钮行）复用 .setting-item 布局但非设置项，约定挂 bz-setting-action-row 豁免。
  *  计数为 0 的组（纯自定义内容组，如 smartcat 皮肤网格）隐藏徽标，避免出现「0 项」。 */
 export function refreshSettingsGroupCounts(content: HTMLElement): void {
-  content.querySelectorAll('.bz-settings-group').forEach((g) => {
-    const body = g.querySelector('.bz-settings-group-body');
-    const countEl = g.querySelector('.bz-settings-group-count') as HTMLElement | null;
+  content.querySelectorAll('.bzrv-settings-group').forEach((g) => {
+    const body = g.querySelector('.bzrv-settings-group-body');
+    const countEl = g.querySelector('.bzrv-settings-group-count') as HTMLElement | null;
     if (!body || !countEl) return;
     const n = [...body.querySelectorAll('.setting-item')].filter((el) => {
       const h = el as HTMLElement;
@@ -97,9 +97,9 @@ export function refreshSettingsGroupCounts(content: HTMLElement): void {
 
 /**
  * 移动端两行式标注（ticket 128，ADR-0061）：控件区（.setting-item-control）含 ≥2 个子元素的
- * 设置行挂 .bz-setting-split 类（如「搜索框 + 下拉」等组合控件），纯 CSS 在窄视口拆成两行
+ * 设置行挂 .bzrv-setting-split 类（如「搜索框 + 下拉」等组合控件），纯 CSS 在窄视口拆成两行
  * （名称+描述一行、控件区一行并允许内部折行）；单控件行（开关/下拉/单按钮）不挂类保持原生。
- * ticket 133：路径设置行（.bz-path-picker-setting-row）直接跳过——空态控件区为「按钮 + chips 容器」
+ * ticket 133：路径设置行（.bzrv-path-picker-setting-row）直接跳过——空态控件区为「按钮 + chips 容器」
  * 两个子元素，按计数会被误标两行式；其移动端单行由兜底类 CSS 保证（src/core/styles.css）。
  * 实现口径：不依赖 `:has()`（顾虑 Obsidian 移动端 WebView 兼容性），由 JS 在 build 后遍历挂类
  * （ADRs 对票二选一中选了挂类方案）。调用点：域设置弹窗 build 后（本模块）、主设置页 display
@@ -108,9 +108,9 @@ export function refreshSettingsGroupCounts(content: HTMLElement): void {
  */
 export function markSettingSplitRows(container: HTMLElement): void {
   container.querySelectorAll('.setting-item').forEach((el) => {
-    if ((el as HTMLElement).classList.contains('bz-path-picker-setting-row')) return;
+    if ((el as HTMLElement).classList.contains('bzrv-path-picker-setting-row')) return;
     const ctl = (el as HTMLElement).querySelector('.setting-item-control');
-    (el as HTMLElement).classList.toggle('bz-setting-split', !!ctl && ctl.children.length >= 2);
+    (el as HTMLElement).classList.toggle('bzrv-setting-split', !!ctl && ctl.children.length >= 2);
   });
 }
 
@@ -138,7 +138,7 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
 
   const { mask, popup } = createOverlay({
     maskId: 'bz-settings-modal-mask',
-    popupId: 'bz-settings-modal-popup',
+    popupId: 'bzrv-settings-modal-popup',
     // z-index 动态发号（ADR-0067）：原静态层规家族表随动态层级制退役，
     // 全站规则只有一条——谁后显示谁在上（settings-modal 每次打开新建 DOM，创建即显示）
     maxWidth: opts.maxWidth,
@@ -146,15 +146,15 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
   });
 
   const header = document.createElement('div');
-  header.className = 'bz-settings-header';
+  header.className = 'bzrv-settings-header';
   const title = document.createElement('h3');
-  title.className = 'bz-settings-title';
+  title.className = 'bzrv-settings-title';
   title.textContent = opts.title;
   // 不放右上角关闭按钮（用户拍板 2026-08：弹窗不放关闭按钮，靠遮罩 + ESC，与主窗口规范一致）
   header.appendChild(title);
 
   const content = document.createElement('div');
-  content.className = 'bz-settings-content';
+  content.className = 'bzrv-settings-content';
 
   // ADR-0064 声明式渲染路径：渲染器内部完成徽标回填/两行式标注/显隐求值
   renderSettingsInto(content, opts.schema ?? { groups: [] });
@@ -167,11 +167,11 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
   if (!hasVisibleItem) {
     content.innerHTML = '';
     const empty = document.createElement('div');
-    empty.className = 'bz-settings-empty';
+    empty.className = 'bzrv-settings-empty';
     empty.textContent = opts.emptyText || '暂无设置项';
     if (opts.emptyDesc) {
       const desc = document.createElement('div');
-      desc.className = 'bz-settings-empty-desc';
+      desc.className = 'bzrv-settings-empty-desc';
       desc.textContent = opts.emptyDesc;
       empty.appendChild(desc);
     }
@@ -202,7 +202,7 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
   // 焦点圈闭（效率整改 6）：Tab 循环钳制在弹窗内，不再跑到被遮罩盖住的背景上
   const releaseFocusTrap = trapFocus(popup);
 
-  const handle = escManager.register('bz-settings-modal', {
+  const handle = escManager.register('bzrv-settings-modal', {
     isVisible: () => !!currentModal,
     close: () => closeSettingsModal(),
   });

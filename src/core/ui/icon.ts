@@ -10,7 +10,7 @@ import type { BzIconName } from './types';
 /** 生成 lucide 图标 <span>（经 setIcon 渲染；额外类挂到元素上做尺寸/语义色修饰） */
 export function uiIcon(name: BzIconName, extraClass = ''): HTMLElement {
   const i = document.createElement('span');
-  i.className = 'bz-ic' + (extraClass ? ' ' + extraClass : '');
+  i.className = 'bzrv-ic' + (extraClass ? ' ' + extraClass : '');
   setIcon(i, name);
   return i;
 }

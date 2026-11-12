@@ -5,15 +5,15 @@
  * ============================================================ */
 import type { BzProgressOpts } from './types';
 
-/** 进度条（.bz-progress），返回 el + setValue（0-100，越界钳制） */
+/** 进度条（.bzrv-progress），返回 el + setValue（0-100，越界钳制） */
 export function uiProgress(opts: BzProgressOpts = {}): {
   el: HTMLDivElement;
   setValue: (n: number) => void;
 } {
   const el = document.createElement('div');
-  const cls = ['bz-progress'];
-  if (opts.thin) cls.push('bz-progress--thin');
-  if (opts.tone) cls.push(`bz-progress--${opts.tone}`);
+  const cls = ['bzrv-progress'];
+  if (opts.thin) cls.push('bzrv-progress--thin');
+  if (opts.tone) cls.push(`bzrv-progress--${opts.tone}`);
   el.className = cls.join(' ');
 
   const fill = document.createElement('i');

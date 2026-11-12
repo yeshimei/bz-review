@@ -240,13 +240,13 @@ export function folderSetupEmpty(domain: FolderDomainId, closeBefore?: () => voi
     .join('、');
   if (need) {
     const n = document.createElement('div');
-    n.className = 'bz-empty-note';
+    n.className = 'bzrv-empty-note';
     n.textContent = `要填：${need}`;
     el.insertBefore(n, acts);
   }
   if (plan.hint) {
     const n = document.createElement('div');
-    n.className = 'bz-empty-note';
+    n.className = 'bzrv-empty-note';
     n.textContent = plan.hint;
     el.insertBefore(n, acts);
   }
@@ -259,8 +259,8 @@ export function folderSetupEmpty(domain: FolderDomainId, closeBefore?: () => voi
  * 返回 true = 已接管（调用方应当就地 return，别再把真内容画上来）；
  * false = 该域已配好，按原路渲染。
  *
- * 不套额外容器：空态本身就是 `.bz-empty`（各域自己的空态也是它），直接做容器的子元素，
- * 域里那些 `.xxx-body > .bz-empty { height:100% }` 一类的居中规则才会照常命中。
+ * 不套额外容器：空态本身就是 `.bzrv-empty`（各域自己的空态也是它），直接做容器的子元素，
+ * 域里那些 `.xxx-body > .bzrv-empty { height:100% }` 一类的居中规则才会照常命中。
  */
 export function mountFolderGate(
   container: HTMLElement | null | undefined,

@@ -14,7 +14,7 @@ export interface BzButtonOpts {
   title?: string;          // tooltip
   disabled?: boolean;
   danger?: boolean;        // 图标红（icon-btn 用）
-  chip?: boolean;          // 图标圆底档（.bz-btn--chip，issue 200 F 款入库）
+  chip?: boolean;          // 图标圆底档（.bzrv-btn--chip，issue 200 F 款入库）
   on?: boolean;            // 激活态（chip 档 .is-on：整钮品牌色）
   className?: string;      // 附加类
   onClick?: () => void;
@@ -56,14 +56,14 @@ export interface BzInputOpts {
   onInput?: (value: string) => void;
 }
 
-/** 滑条（.bz-range）：评分/数值调节，自绘轨道+滑块（抗 Obsidian 默认 range 外观） */
+/** 滑条（.bzrv-range）：评分/数值调节，自绘轨道+滑块（抗 Obsidian 默认 range 外观） */
 export interface BzRangeOpts {
   min?: number;
   max?: number;
   step?: number;
   value?: number;
   disabled?: boolean;
-  className?: string;      // 附加类（如 bz-range--lg）
+  className?: string;      // 附加类（如 bzrv-range--lg）
   onInput?: (value: number) => void;
   onChange?: (value: number) => void;
 }
@@ -79,7 +79,7 @@ export interface BzEmptyOpts {
   icon?: BzIconName;
   title: string;
   desc?: string;
-  actions?: HTMLElement;   // 按钮行容器（.bz-btn-row）
+  actions?: HTMLElement;   // 按钮行容器（.bzrv-btn-row）
 }
 
 export interface BzSegOpts<T extends string = string> {
@@ -90,7 +90,7 @@ export interface BzSegOpts<T extends string = string> {
   label?: string;          // radiogroup aria-label（可访问性）
 }
 
-/** 平铺单选组（.bz-choice）：选项胶囊可换行，单选带 is-on 态；
+/** 平铺单选组（.bzrv-choice）：选项胶囊可换行，单选带 is-on 态；
  *  float = 浮岛 segmented（轨道收内容宽 + 白卡滑动指示器，issue 199 拍板） */
 export interface BzChoiceOpts<T extends string = string> {
   options: { value: T; label: string; dot?: string }[]; // dot = 前置色点（数据语义色）
@@ -101,15 +101,15 @@ export interface BzChoiceOpts<T extends string = string> {
   float?: boolean;         // 浮岛形态：轨道 + 滑动指示器
 }
 
-/** 开关（.bz-sw）：40×22 滑块，开 = 品牌实底 */
+/** 开关（.bzrv-sw）：40×22 滑块，开 = 品牌实底 */
 export interface BzSwitchOpts {
   checked?: boolean;
   disabled?: boolean;      // 禁用（置灰 + 不响应交互）
   onChange?: (checked: boolean) => void;
 }
 
-/** 下拉选择（.bz-select）：选项多/文案长/行内放不下时的单行单选；
- *  短选项组请用 .bz-choice 平铺胶囊替代 */
+/** 下拉选择（.bzrv-select）：选项多/文案长/行内放不下时的单行单选；
+ *  短选项组请用 .bzrv-choice 平铺胶囊替代 */
 export interface BzSelectOpts<T extends string = string> {
   options: { value: T; label: string }[];
   value: T;
@@ -119,7 +119,7 @@ export interface BzSelectOpts<T extends string = string> {
   onChange: (value: T) => void;
 }
 
-/** 搜索框（.bz-search：前缀搜索图标 + 输入 + 尾部清除钮） */
+/** 搜索框（.bzrv-search：前缀搜索图标 + 输入 + 尾部清除钮） */
 export interface BzSearchOpts {
   placeholder?: string;
   value?: string;
@@ -128,29 +128,29 @@ export interface BzSearchOpts {
   clearable?: boolean;
 }
 
-/** 主头行（.bz-main-head：分组标题 + 计数 + spacer + 主按钮） */
+/** 主头行（.bzrv-main-head：分组标题 + 计数 + spacer + 主按钮） */
 export interface BzMainHeadOpts {
   title: string;
   count?: string;          // 计数文案（无则隐藏计数位）
   action?: { label: string; icon?: BzIconName; onClick?: () => void }; // 右侧主按钮（30px 中档）
 }
 
-/** 状态侧栏（.bz-rail）行项：前缀槽五选一（icon / boxedIcon / emoji / badge / dot） */
+/** 状态侧栏（.bzrv-rail）行项：前缀槽五选一（icon / boxedIcon / emoji / badge / dot） */
 export interface BzRailItem {
   id: string;
   name: string;
-  icon?: BzIconName;       // 前缀 lucide 图标（.bz-ic）
-  boxedIcon?: BzIconName;  // 前缀图标底座（.bz-rail-ic 20px 小方块）
-  emoji?: string;          // 前缀 emoji 行头（.bz-rail-emoji 14px 槽；issue 201，同 memo 场景行头）
-  badge?: { t: string; label: string; tint?: string }; // 字母/字徽标（t=文本，label=aria 名，tint=底色注入 --bz-rail-tint）
-  dot?: string;            // 状态色点（色值 → --bz-rail-tint）
+  icon?: BzIconName;       // 前缀 lucide 图标（.bzrv-ic）
+  boxedIcon?: BzIconName;  // 前缀图标底座（.bzrv-rail-ic 20px 小方块）
+  emoji?: string;          // 前缀 emoji 行头（.bzrv-rail-emoji 14px 槽；issue 201，同 memo 场景行头）
+  badge?: { t: string; label: string; tint?: string }; // 字母/字徽标（t=文本，label=aria 名，tint=底色注入 --bzrv-rail-tint）
+  dot?: string;            // 状态色点（色值 → --bzrv-rail-tint）
   count?: string | number; // 计数
-  pill?: boolean;          // 计数胶囊档（.bz-rail-count--pill）
-  unread?: string | number; // 未读气泡（真值渲染，文本入 .bz-rail-unread）
+  pill?: boolean;          // 计数胶囊档（.bzrv-rail-count--pill）
+  unread?: string | number; // 未读气泡（真值渲染，文本入 .bzrv-rail-unread）
   children?: BzRailItem[]; // 二级子列表（父项点击 = 展开收起，不触发 onSelect）
 }
 
-/** 状态侧栏（.bz-rail）：左栏分组导航 */
+/** 状态侧栏（.bzrv-rail）：左栏分组导航 */
 export interface BzRailOpts {
   groups: Array<{ label?: string; items: BzRailItem[] }>;
   activeId: string;                  // 初始选中行
@@ -158,14 +158,14 @@ export interface BzRailOpts {
   foot?: HTMLElement;                // 底部固定区内容
 }
 
-/** 移动筛选横滑条（.bz-mobstrip，≤768px 替代 rail） */
+/** 移动筛选横滑条（.bzrv-mobstrip，≤768px 替代 rail） */
 export interface BzMobStripOpts {
-  items: Array<{ id: string; label: string; dot?: string }>; // dot = 前置色点（色值 → --bz-rail-tint）
+  items: Array<{ id: string; label: string; dot?: string }>; // dot = 前置色点（色值 → --bzrv-rail-tint）
   value: string;
   onChange?: (id: string) => void;
 }
 
-/** 可移除列表（.bz-setlist）条目：稳定键 + 主文案 + 副文案（UID/URL 等，可省）+ 头像（可省） */
+/** 可移除列表（.bzrv-setlist）条目：稳定键 + 主文案 + 副文案（UID/URL 等，可省）+ 头像（可省） */
 export interface BzSetlistItem {
   key: string;
   label: string;
@@ -173,7 +173,7 @@ export interface BzSetlistItem {
   imageUrl?: string;
 }
 
-/** 可移除列表（.bz-setlist）：条目 + 四布局变体（缺省 chips 流式胶囊，2026-09-12 拍板） */
+/** 可移除列表（.bzrv-setlist）：条目 + 四布局变体（缺省 chips 流式胶囊，2026-09-12 拍板） */
 export interface BzSetlistOpts {
   items: BzSetlistItem[];
   variant?: 'rows' | 'grid' | 'chips' | 'dense'; // rows 全宽行列表 / grid 卡片网格 / chips 胶囊 / dense 紧密分隔行
@@ -183,7 +183,7 @@ export interface BzSetlistOpts {
   className?: string;
 }
 
-/** 统计卡（.bz-stat：数字 + 标签） */
+/** 统计卡（.bzrv-stat：数字 + 标签） */
 export interface BzStatOpts {
   label: string;
   num: string | number;
@@ -194,14 +194,14 @@ export interface BzStatOpts {
   onClick?: () => void;
 }
 
-/** 进度条（.bz-progress：track + i 填充） */
+/** 进度条（.bzrv-progress：track + i 填充） */
 export interface BzProgressOpts {
   value?: number;          // 0-100（钳制）
   tone?: 'ok' | 'warn' | 'danger';
   thin?: boolean;          // 3px 媒体封面档
 }
 
-/** 候选浮层（.bz-popover：input 锚定的候选列表） */
+/** 候选浮层（.bzrv-popover：input 锚定的候选列表） */
 export interface BzPopoverOpts {
   anchor: HTMLElement;     // 锚点（须位于 position:relative 容器内；浮层挂其父元素）
   options: Array<{ id: string; label: string; icon?: BzIconName }>;
@@ -210,7 +210,7 @@ export interface BzPopoverOpts {
   onPick?: (id: string) => void;
 }
 
-/** 输入联想（.bz-popover：聚焦/输入惰性弹出的候选下拉，uiSuggest） */
+/** 输入联想（.bzrv-popover：聚焦/输入惰性弹出的候选下拉，uiSuggest） */
 export interface BzSuggestOpts {
   anchor: HTMLInputElement;          // 联想锚点输入框（浮层挂其父元素）
   source: () => string[];            // 候选源（每次开/输时求值，可动态）
@@ -228,7 +228,7 @@ export interface BzSuggestOpts {
 }
 
 
-/** 卡片视觉单选组（.bz-cardpick，issue 210）：预览卡 + 名称，设置面板「看脸选」类设置项 */
+/** 卡片视觉单选组（.bzrv-cardpick，issue 210）：预览卡 + 名称，设置面板「看脸选」类设置项 */
 export interface BzCardPickOpts<T extends string = string> {
   options: { value: T; label: string; prevClass?: string }[]; // prevClass = 预览区附加类（视觉由使用方域样式提供）
   value: T;                // 当前选中（未匹配任何选项时无选中态，回落由调用方负责）

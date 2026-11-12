@@ -1,11 +1,11 @@
 /* ============================================================
  * bz 组件库 · 输入联想（src/core/ui/suggest.ts）
- * uiSuggest：input 锚定的联想候选下拉（.bz-popover）。
- * 视觉 = 样式库 .bz-popover 族（不新造类）；交互 = 三域先例收敛
+ * uiSuggest：input 锚定的联想候选下拉（.bzrv-popover）。
+ * 视觉 = 样式库 .bzrv-popover 族（不新造类）；交互 = 三域先例收敛
  *   （belongings 分类 / favorites 关联笔记 / memo 脚本·课程联想，issue 203）：
  *   聚焦/输入惰性弹出（issue 202 拍板：默认不弹）→ 现值子串过滤（上限 max）
  *   → 点选/回车回填并回调 → 外点收起 → Esc 只收下拉不穿表单。
- * 前提：anchor 须位于 position:relative 容器内（如 .bz-field）——浮层
+ * 前提：anchor 须位于 position:relative 容器内（如 .bzrv-field）——浮层
  *   绝对定位挂 anchor.parentElement。候选文本用 textContent、图标可挂元素
  *   （iconOf 返回 HTMLElement，issue 231），不经 HTML 拼接，天然免注入。
  * ============================================================ */
@@ -66,7 +66,7 @@ export function uiSuggest(opts: BzSuggestOpts): {
     matched.forEach((raw) => {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'bz-popover-item';
+      b.className = 'bzrv-popover-item';
       b.dataset.value = raw;
       b.setAttribute('role', 'option');
       const on = raw === cur; // 现值高亮（键盘导航起点；excludeCurrent 场景恒无）
@@ -74,7 +74,7 @@ export function uiSuggest(opts: BzSuggestOpts): {
       const icon = opts.iconOf?.(raw);
       if (icon) {
         const ic = document.createElement('span');
-        ic.className = 'bz-suggest-ic';
+        ic.className = 'bzrv-suggest-ic';
         if (typeof icon === 'string') ic.textContent = icon;
         else ic.appendChild(icon);
         b.appendChild(ic);
@@ -85,7 +85,7 @@ export function uiSuggest(opts: BzSuggestOpts): {
       const hint = opts.hintOf?.(raw);
       if (hint) {
         const h = document.createElement('span');
-        h.className = 'bz-suggest-hint';
+        h.className = 'bzrv-suggest-hint';
         h.textContent = hint;
         b.appendChild(h);
       }
@@ -98,7 +98,7 @@ export function uiSuggest(opts: BzSuggestOpts): {
     if (skipNextOpen) { skipNextOpen = false; return; }
     if (layer) { draw(); return; }
     const m = document.createElement('div');
-    m.className = 'bz-popover';
+    m.className = 'bzrv-popover';
     m.setAttribute('role', 'listbox');
     (anchor.parentElement || anchor).appendChild(m);
     layer = m;
@@ -106,9 +106,9 @@ export function uiSuggest(opts: BzSuggestOpts): {
     draw();
   };
 
-  const activeIdx = () => [...(layer?.querySelectorAll('.bz-popover-item') ?? [])].findIndex((o) => o.classList.contains('is-on'));
+  const activeIdx = () => [...(layer?.querySelectorAll('.bzrv-popover-item') ?? [])].findIndex((o) => o.classList.contains('is-on'));
   const moveActive = (to: number) => {
-    const items = [...(layer?.querySelectorAll('.bz-popover-item') ?? [])];
+    const items = [...(layer?.querySelectorAll('.bzrv-popover-item') ?? [])];
     if (!items.length) return;
     const next = items[Math.max(0, Math.min(items.length - 1, to))];
     items.forEach((o) => o.classList.toggle('is-on', o === next));
@@ -123,10 +123,10 @@ export function uiSuggest(opts: BzSuggestOpts): {
       moveActive(activeIdx() + 1);
       e.preventDefault();
     } else if (e.key === 'ArrowUp') {
-      moveActive(activeIdx() < 0 ? (layer.querySelectorAll('.bz-popover-item').length - 1) : activeIdx() - 1);
+      moveActive(activeIdx() < 0 ? (layer.querySelectorAll('.bzrv-popover-item').length - 1) : activeIdx() - 1);
       e.preventDefault();
     } else if (e.key === 'Enter') {
-      const on = layer.querySelector<HTMLElement>('.bz-popover-item.is-on');
+      const on = layer.querySelector<HTMLElement>('.bzrv-popover-item.is-on');
       if (on) {
         pick(on.dataset.value as string);
         e.preventDefault();

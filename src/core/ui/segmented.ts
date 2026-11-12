@@ -7,14 +7,14 @@ import type { BzSegOpts } from './types';
 /** 分段（单选多段）。radiogroup + 方向键导航（L8） */
 export function uiSegmented<T extends string>(opts: BzSegOpts<T>): { el: HTMLDivElement; setValue: (v: T) => void } {
   const el = document.createElement('div');
-  el.className = 'bz-segmented' + (opts.className ? ' ' + opts.className : '');
+  el.className = 'bzrv-segmented' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
   el.setAttribute('aria-label', opts.label || '');
   const btns = new Map<T, HTMLButtonElement>();
   opts.options.forEach((o) => {
     const b = document.createElement('button');
     b.type = 'button';
-    b.className = 'bz-segmented-btn' + (o.value === opts.value ? ' is-on' : '');
+    b.className = 'bzrv-segmented-btn' + (o.value === opts.value ? ' is-on' : '');
     // data-value = 钮的稳定键：滑动底片（core/ui/slide-pill）按键解析当前项，
     // 渲染后重解析也不会认错（值与文案无关）
     b.dataset.value = o.value;

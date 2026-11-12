@@ -11,12 +11,12 @@
  *   两三句为限。
  *
  * 与既有两件浮层的分工（别混用）：
- *   - uiPopover（.bz-popover）= input 锚定的**候选列表**（选分类/笔记）；
+ *   - uiPopover（.bzrv-popover）= input 锚定的**候选列表**（选分类/笔记）；
  *   - desc / note（.bz-sp-set-desc / -note）= 一行长度的常驻副文案；
  *   - attachHelpTip = 主动触发的说明浮窗。schema 侧声明 = 行字段 `help`。
  *
  * 浮层挂 document.body（position: fixed）而不是行内 absolute —— 设置行住在
- *   `.bz-sp-group`（overflow: hidden）+ 面板滚动区里，行内浮层会被卡片边缘裁掉。
+ *   `.bzrv-sp-group`（overflow: hidden）+ 面板滚动区里，行内浮层会被卡片边缘裁掉。
  *   位置按锚点矩形现算：默认贴标题下方、空间不足向上翻、左右夹在视口内。
  * 开合同源：开挂 document pointerdown 外点 + escManager 层级（ESC）+ 滚动即关；
  *   全局同时只留一个浮窗（新开先关旧）。
@@ -31,7 +31,7 @@ export interface BzHelpTipOpts {
   text: string;
   /**
    * 宿主皮肤类（同 openPathPicker 口径，ADR-0127）：浮窗挂 body，够不着面板作用域的
-   * `--sp-*`；设置面板传 'bz-sp-skin' 即自动同皮（皮肤类自带 token 声明 + `--bz-*` 重定向）。
+   * `--sp-*`；设置面板传 'bz-sp-skin' 即自动同皮（皮肤类自带 token 声明 + `--bzrv-*` 重定向）。
    */
   skinClassName?: string;
 }
@@ -55,7 +55,7 @@ function bodyNodes(text: string): Node[] {
     if (!line) continue;
     const isItem = line.startsWith('- ');
     const el = document.createElement('div');
-    el.className = isItem ? 'bz-help-li' : 'bz-help-p';
+    el.className = isItem ? 'bzrv-help-li' : 'bzrv-help-p';
     el.textContent = isItem ? line.slice(2).trim() : line;
     out.push(el);
   }
@@ -63,11 +63,11 @@ function bodyNodes(text: string): Node[] {
 }
 
 /**
- * 给锚点元素挂说明浮窗（就地改造：加 `.bz-help-anchor` 语义类，由样式给 cursor 与 hover 提示）。
+ * 给锚点元素挂说明浮窗（就地改造：加 `.bzrv-help-anchor` 语义类，由样式给 cursor 与 hover 提示）。
  * 浮窗按需创建：不打开时不产生任何 DOM。
  */
 export function attachHelpTip(anchor: HTMLElement, opts: BzHelpTipOpts): void {
-  anchor.classList.add('bz-help-anchor');
+  anchor.classList.add('bzrv-help-anchor');
 
   let layer: HTMLDivElement | null = null;
   let escHandle: ReturnType<typeof escManager.register> | null = null;
@@ -111,7 +111,7 @@ export function attachHelpTip(anchor: HTMLElement, opts: BzHelpTipOpts): void {
     const below = vh - r.bottom;
     const up = below < h + 12 && r.top > below;
     // 纵向钳制：优先贴锚点下方 / 上方，两个方向都不够时把整窗塞进视口（长清单也不截断，
-    // 由位置让路——浮窗不设限高、不出滚动条，见 components.css .bz-help-pop）
+    // 由位置让路——浮窗不设限高、不出滚动条，见 components.css .bzrv-help-pop）
     const top = Math.min(Math.max(12, up ? r.top - h - 8 : r.bottom + 8), Math.max(12, vh - h - 12));
     const left = Math.min(Math.max(12, r.left), Math.max(12, vw - w - 12));
     layer.style.top = `${top}px`;
@@ -139,7 +139,7 @@ export function attachHelpTip(anchor: HTMLElement, opts: BzHelpTipOpts): void {
     if (layer || !anchor.isConnected) return;
     if (currentClose && currentClose !== close) currentClose(); // 全局只留一个浮窗
     const pop = document.createElement('div');
-    pop.className = 'bz-help-pop' + (opts.skinClassName ? ' ' + opts.skinClassName : '');
+    pop.className = 'bzrv-help-pop' + (opts.skinClassName ? ' ' + opts.skinClassName : '');
     pop.setAttribute('role', 'tooltip');
     for (const n of bodyNodes(opts.text)) pop.appendChild(n);
     pop.addEventListener('mouseenter', () => { overLayer = true; });

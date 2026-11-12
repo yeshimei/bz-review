@@ -345,20 +345,20 @@ export class CardSession {
     const canRegen = this.mode() !== 'plain' && !!this.opts.regenerate;
 
     host.innerHTML = `
-      <div class="bz-cs" role="group" aria-label="划线卡复习">
-        <div class="bz-cs-head">
-          <span class="bz-cs-pos">${esc(pos)}</span>
-          <span class="bz-cs-src">${esc(sourceOf(item))}</span>
+      <div class="bzrv-cs" role="group" aria-label="划线卡复习">
+        <div class="bzrv-cs-head">
+          <span class="bzrv-cs-pos">${esc(pos)}</span>
+          <span class="bzrv-cs-src">${esc(sourceOf(item))}</span>
           ${
             canRegen
-              ? `<button type="button" class="bz-btn bz-cs-regen" data-act="regen"${
+              ? `<button type="button" class="bzrv-btn bzrv-cs-regen" data-act="regen"${
                   this.regenBusy ? ' disabled' : ''
                 }>${this.regenBusy ? '正在生成…' : '重新生成'}</button>`
               : ''
           }
         </div>
-        <div class="bz-cs-body">${this.bodyHtml(item)}</div>
-        <div class="bz-cs-foot">${this.footHtml(item)}</div>
+        <div class="bzrv-cs-body">${this.bodyHtml(item)}</div>
+        <div class="bzrv-cs-foot">${this.footHtml(item)}</div>
       </div>`;
 
     this.bind(host);
@@ -369,9 +369,9 @@ export class CardSession {
   private answerHtml(card: ReviewCard): string {
     const idea = String(card.comment ?? '').trim();
     const back = String(card.backlink ?? '').trim();
-    return `<blockquote class="bz-cs-text">${esc(card.text)}</blockquote>
-      ${idea ? `<p class="bz-cs-idea">${esc(idea)}</p>` : ''}
-      ${back ? `<a class="bz-cs-back" href="${esc(back)}">回到原文</a>` : ''}`;
+    return `<blockquote class="bzrv-cs-text">${esc(card.text)}</blockquote>
+      ${idea ? `<p class="bzrv-cs-idea">${esc(idea)}</p>` : ''}
+      ${back ? `<a class="bzrv-cs-back" href="${esc(back)}">回到原文</a>` : ''}`;
   }
 
   private bodyHtml(item: ReviewItem): string {
@@ -381,7 +381,7 @@ export class CardSession {
     if (this.isQuizMode()) {
       const round = this.quiz;
       if (!round) {
-        return `<p class="bz-cs-prompt is-loading">${
+        return `<p class="bzrv-cs-prompt is-loading">${
           this.quizFallback ? '这张卡没有题库，直接看原文' : '正在准备题目…'
         }</p>`;
       }
@@ -393,31 +393,31 @@ export class CardSession {
         .map((opt, i) => {
           /* 复用做题家的选项样式（quiz-option-btn + correct/wrong）：同一种交互
              不必再造一套配色，用户在两处看到的选择题长得一样才不会犹豫。 */
-          let cls = 'quiz-option-btn bz-cs-opt';
+          let cls = 'quiz-option-btn bzrv-cs-opt';
           if (picked !== null) {
             if (q.correctIndices.includes(i)) cls += ' correct';
             else if (picked === i) cls += ' wrong';
           }
           /* 模型给的选项常自带「A. 」序号。再加一层就成了「AA. 」，所以有就不重复加 */
           const labeled = /^[A-Da-d][.、)．\s]/.test(opt);
-          const mark = labeled ? '' : `<span class="bz-cs-opt-i">${labels[i] ?? i + 1}</span>`;
+          const mark = labeled ? '' : `<span class="bzrv-cs-opt-i">${labels[i] ?? i + 1}</span>`;
           return `<button type="button" class="${cls}" data-opt="${i}"${
             picked !== null ? ' disabled' : ''
-          }>${mark}<span class="bz-cs-opt-t">${esc(opt)}</span></button>`;
+          }>${mark}<span class="bzrv-cs-opt-t">${esc(opt)}</span></button>`;
         })
         .join('');
       const explain =
-        picked !== null && q.explain ? `<p class="bz-cs-explain">${esc(q.explain)}</p>` : '';
+        picked !== null && q.explain ? `<p class="bzrv-cs-explain">${esc(q.explain)}</p>` : '';
       return `
-        <div class="bz-cs-quiz-head">第 ${round.idx + 1} / ${round.list.length} 题</div>
-        <p class="bz-cs-question">${esc(q.question)}</p>
-        <div class="bz-cs-options">${options}</div>
+        <div class="bzrv-cs-quiz-head">第 ${round.idx + 1} / ${round.list.length} 题</div>
+        <p class="bzrv-cs-question">${esc(q.question)}</p>
+        <div class="bzrv-cs-options">${options}</div>
         ${explain}`;
     }
 
     const prompt = this.promptFor(item);
     return `
-      <p class="bz-cs-prompt${prompt ? '' : ' is-loading'}">${prompt ? esc(prompt) : '正在生成提示…'}</p>
+      <p class="bzrv-cs-prompt${prompt ? '' : ' is-loading'}">${prompt ? esc(prompt) : '正在生成提示…'}</p>
       ${this.revealed ? this.answerHtml(card) : ''}`;
   }
 
@@ -426,9 +426,9 @@ export class CardSession {
     const acc = total ? Math.round((round.correct / total) * 100) : 0;
     const rating = accuracyToRating(acc);
     return `
-      <div class="bz-cs-quiz-done">
-        <p class="bz-cs-quiz-acc">答对 ${round.correct} / ${total}</p>
-        <p class="bz-cs-quiz-rating">本次按「${RATING_NAMES[rating] ?? rating}」记</p>
+      <div class="bzrv-cs-quiz-done">
+        <p class="bzrv-cs-quiz-acc">答对 ${round.correct} / ${total}</p>
+        <p class="bzrv-cs-quiz-rating">本次按「${RATING_NAMES[rating] ?? rating}」记</p>
       </div>`;
   }
 
@@ -439,21 +439,21 @@ export class CardSession {
       const round = this.quiz;
       if (!round) return '';
       if (round.idx >= round.list.length) {
-        return `<button type="button" class="bz-btn pri" data-act="finish">记下这次结果（Enter）</button>`;
+        return `<button type="button" class="bzrv-btn pri" data-act="finish">记下这次结果（Enter）</button>`;
       }
-      if (round.picked === null) return `<span class="bz-cs-hint">按 1-4 或点选项作答</span>`;
-      return `<button type="button" class="bz-btn pri" data-act="next">${
+      if (round.picked === null) return `<span class="bzrv-cs-hint">按 1-4 或点选项作答</span>`;
+      return `<button type="button" class="bzrv-btn pri" data-act="next">${
         round.idx + 1 >= round.list.length ? '看结果' : '下一题'
       }（Enter）</button>`;
     }
 
     if (this.revealed) return this.ratingHtml();
-    return `<button type="button" class="bz-btn pri" data-act="reveal">看答案</button>`;
+    return `<button type="button" class="bzrv-btn pri" data-act="reveal">看答案</button>`;
   }
 
   private ratingHtml(): string {
-    return `<div class="bz-cs-rate">${RATINGS.map(
-      (r) => `<button type="button" class="bz-btn" data-r="${r.value}">${r.label}（${r.key}）</button>`,
+    return `<div class="bzrv-cs-rate">${RATINGS.map(
+      (r) => `<button type="button" class="bzrv-btn" data-r="${r.value}">${r.label}（${r.key}）</button>`,
     ).join('')}</div>`;
   }
 

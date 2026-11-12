@@ -51,19 +51,19 @@ export function relTime(s: string | undefined, now: number = Date.now()): string
   return `${d.getMonth() + 1}-${pad2(d.getDate())}`;
 }
 
-/** 空态字符串版（与 core/ui/empty.ts uiEmpty 同 markup 口径：bz-empty / bz-empty-ic /
- *  bz-empty-title / bz-empty-desc；icon 传空串跳过图标节点、desc 传空串跳过描述节点，
+/** 空态字符串版（与 core/ui/empty.ts uiEmpty 同 markup 口径：bz-empty / bzrv-empty-ic /
+ *  bzrv-empty-title / bzrv-empty-desc；icon 传空串跳过图标节点、desc 传空串跳过描述节点，
  *  与 DOM 版 if (opts.icon) / if (opts.desc) 对齐）。零依赖居此：icon 用 iconSpan 占位串
  *  （渲染入 DOM 后 mountIcons 兑现），不经 core/ui/empty（其 import icon.ts 拖 obsidian，
  *  render 纯层禁入）。title/desc 经 esc 转义——icon 是受信 lucide 名不转义。 */
 export function emptyHtmlStr(icon: string, title: string, desc?: string): string {
-  return `<div class="bz-empty">${icon ? iconSpan(icon, 'bz-empty-ic') : ''}<div class="bz-empty-title">${esc(title)}</div>${desc ? `<div class="bz-empty-desc">${esc(desc)}</div>` : ''}</div>`;
+  return `<div class="bzrv-empty">${icon ? iconSpan(icon, 'bzrv-empty-ic') : ''}<div class="bzrv-empty-title">${esc(title)}</div>${desc ? `<div class="bzrv-empty-desc">${esc(desc)}</div>` : ''}</div>`;
 }
 
 /** lucide 图标占位串（`<i data-lucide>`）：渲染入 DOM 后由 mountIcons 兑现成 SVG——
  *  插件 = core/ui icons.ts mountIcons（setIcon） */
 export function iconSpan(name: string, extra = ''): string {
-  return `<i data-lucide="${name}" class="bz-ic${extra ? ' ' + extra : ''}"></i>`;
+  return `<i data-lucide="${name}" class="bzrv-ic${extra ? ' ' + extra : ''}"></i>`;
 }
 
 /** stripMdExt(name)：剥离结尾 .md 扩展名（大小写不敏感；与 core/utils stripMdExt 同语义）。

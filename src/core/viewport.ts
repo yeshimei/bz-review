@@ -2,7 +2,7 @@
  * bz 共享层 · 移动端可视视口高度（src/core/viewport.ts）
  *
  * 解决的问题：手机软键盘弹出时，`100vh` **不会收缩**——它等于布局视口高度
- * （含被键盘占据的区域）。所有移动端真全屏面板（.bz-panel-mtop，13 域）都用
+ * （含被键盘占据的区域）。所有移动端真全屏面板（.bzrv-panel-mtop，13 域）都用
  * `height: 100vh` 定高，于是键盘一弹出，面板底部的输入条（memo composer /
  * secondbrain 问答框 / smartcat 聊天框）就被顶到键盘底下，输入时看不见自己
  * 在打什么。
@@ -11,8 +11,8 @@
  *   1) Obsidian 移动端 WebView 内核版本不齐，`dvh` 不一定可用；
  *   2) `dvh` 只在键盘动画结束后才稳定，有抖动。
  * 故采用「CSS `dvh` 打底 + JS `visualViewport` 精修」的双保险：
- *   - CSS：`.bz-panel-mtop { height: 100dvh }`（components.css），现代内核直接正确；
- *   - JS：本模块把 `visualViewport.height` 写进 `--bz-vvh`，CSS 变量在支持时
+ *   - CSS：`.bzrv-panel-mtop { height: 100dvh }`（components.css），现代内核直接正确；
+ *   - JS：本模块把 `visualViewport.height` 写进 `--bzrv-vvh`，CSS 变量在支持时
  *         覆盖 `dvh`，并额外扣除键盘占去的底部安全区（见 syncMobileViewport）。
  *
  * 触发时机：`visualViewport` 的 `resize`（键盘弹出/收起、旋屏、浏览器地址栏收放）
@@ -24,8 +24,8 @@
  * 「面板高度随键盘收缩」是两个诉求，未强行合并，避免动到小橘的行为单源。
  * ============================================================ */
 
-/** --bz-vvh 在 :root 上的变量名（components.css 的 .bz-panel-mtop 消费） */
-export const VVH_VAR = '--bz-vvh';
+/** --bzrv-vvh 在 :root 上的变量名（components.css 的 .bzrv-panel-mtop 消费） */
+export const VVH_VAR = '--bzrv-vvh';
 
 /** 视口高度夹取下限（px）：低于此值视为内核上报异常，忽略该帧 */
 const MIN_VVH = 120;
@@ -35,7 +35,7 @@ type Cleanup = () => void;
 let cleanup: Cleanup | null = null;
 
 /**
- * 同步一次可视视口高度到 `--bz-vvh`。
+ * 同步一次可视视口高度到 `--bzrv-vvh`。
  * 未挂载 / 无 visualViewport 时是安全的 no-op（CSS 侧 `100dvh` 兜底）。
  */
 export function syncMobileViewport(): void {

@@ -5,14 +5,14 @@
 import type { BzButtonOpts, BzIconBtnOpts } from './types';
 import { uiIcon } from './icon';
 
-/** 通用按钮（.bz-btn），样式库规格由 components.css 提供 */
+/** 通用按钮（.bzrv-btn），样式库规格由 components.css 提供 */
 export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
   const b = document.createElement('button');
   b.type = 'button';
-  const cls = ['bz-btn'];
-  if (opts.tone && opts.tone !== 'default') cls.push(`bz-btn--${opts.tone}`);
-  if (opts.size && opts.size !== 'md') cls.push(`bz-btn--${opts.size}`);
-  if (opts.chip) cls.push('bz-btn--chip');
+  const cls = ['bzrv-btn'];
+  if (opts.tone && opts.tone !== 'default') cls.push(`bzrv-btn--${opts.tone}`);
+  if (opts.size && opts.size !== 'md') cls.push(`bzrv-btn--${opts.size}`);
+  if (opts.chip) cls.push('bzrv-btn--chip');
   if (opts.on) cls.push('is-on');
   if (opts.className) cls.push(opts.className);
   b.className = cls.join(' ');
@@ -20,9 +20,9 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
   if (opts.disabled) b.disabled = true;
   if (opts.icon) {
     if (opts.chip) {
-      // 图标圆底档：图标包进 .bz-btn-chip 小圆底（issue 200 F 款入库）
+      // 图标圆底档：图标包进 .bzrv-btn-chip 小圆底（issue 200 F 款入库）
       const chip = document.createElement('span');
-      chip.className = 'bz-btn-chip';
+      chip.className = 'bzrv-btn-chip';
       chip.appendChild(uiIcon(opts.icon));
       b.appendChild(chip);
     } else {
@@ -38,15 +38,15 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
   return b;
 }
 
-/** 图标按钮（.bz-icon-btn，无文字小按钮） */
+/** 图标按钮（.bzrv-icon-btn，无文字小按钮） */
 export function uiIconBtn(opts: BzIconBtnOpts): HTMLButtonElement {
   const b = document.createElement('button');
   b.type = 'button';
-  const cls = ['bz-icon-btn'];
-  if (opts.on) cls.push('bz-icon-btn--on');
-  if (opts.lg) cls.push('bz-icon-btn--lg');
-  if (opts.xs) cls.push('bz-icon-btn--xs');
-  if (opts.close) cls.push('bz-icon-btn--close');
+  const cls = ['bzrv-icon-btn'];
+  if (opts.on) cls.push('bzrv-icon-btn--on');
+  if (opts.lg) cls.push('bzrv-icon-btn--lg');
+  if (opts.xs) cls.push('bzrv-icon-btn--xs');
+  if (opts.close) cls.push('bzrv-icon-btn--close');
   if (opts.className) cls.push(opts.className);
   b.className = cls.join(' ');
   if (opts.title) b.title = opts.title;
@@ -57,12 +57,12 @@ export function uiIconBtn(opts: BzIconBtnOpts): HTMLButtonElement {
   return b;
 }
 
-/** 按钮行容器（.bz-btn-row，右对齐） */
+/** 按钮行容器（.bzrv-btn-row，右对齐） */
 export function uiBtnRow(buttons: HTMLElement[], opts?: { center?: boolean; grow?: boolean }): HTMLDivElement {
   const row = document.createElement('div');
-  const cls = ['bz-btn-row'];
-  if (opts?.center) cls.push('bz-btn-row--center');
-  if (opts?.grow) cls.push('bz-btn-row--grow');
+  const cls = ['bzrv-btn-row'];
+  if (opts?.center) cls.push('bzrv-btn-row--center');
+  if (opts?.grow) cls.push('bzrv-btn-row--grow');
   row.className = cls.join(' ');
   buttons.forEach((x) => row.appendChild(x));
   return row;

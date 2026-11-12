@@ -1,7 +1,7 @@
 /**
  * 设置页「获取模型名」选择器弹窗（ticket 173）：点击拉取当前服务商模型列表，弹列表选择器，
  * 选中回填模型名。局部实现（Q8 拍板）：不并入 settings-modal.ts——语义不同（非域设置弹窗），
- * 复用 createOverlay 遮罩 + escManager（id bz-model-picker）。
+ * 复用 createOverlay 遮罩 + escManager（id bzrv-model-picker）。
  * 单例：同一时刻至多一个；重复调用先关旧窗。
  */
 import { createOverlay } from './dom';
@@ -45,14 +45,14 @@ export function openModelPicker(opts: ModelPickerOptions): void {
   });
 
   const header = document.createElement('div');
-  header.className = 'bz-settings-header';
+  header.className = 'bzrv-settings-header';
   const title = document.createElement('h3');
-  title.className = 'bz-settings-title';
+  title.className = 'bzrv-settings-title';
   title.textContent = `选择模型（${opts.providerLabel}）`;
   header.appendChild(title);
 
   const content = document.createElement('div');
-  content.className = 'bz-settings-content';
+  content.className = 'bzrv-settings-content';
 
   // 当前生效模型说明行（info 行语义：名称 + 描述，非可选）
   const currentInfo = document.createElement('div');
@@ -68,11 +68,11 @@ export function openModelPicker(opts: ModelPickerOptions): void {
 
   // 模型列表区：点击行即选中
   const listWrap = document.createElement('div');
-  listWrap.className = 'bz-model-picker-list';
+  listWrap.className = 'bzrv-model-picker-list';
   const cur = opts.current;
   if (opts.models.length === 0) {
     const empty = document.createElement('div');
-    empty.className = 'bz-settings-empty';
+    empty.className = 'bzrv-settings-empty';
     empty.textContent = '该服务商未返回可用模型';
     listWrap.appendChild(empty);
   } else {
@@ -84,12 +84,12 @@ export function openModelPicker(opts: ModelPickerOptions): void {
     });
     for (const m of ordered) {
       const row = document.createElement('div');
-      row.className = 'bz-model-picker-row' + (m.id === cur ? ' is-current' : '');
+      row.className = 'bzrv-model-picker-row' + (m.id === cur ? ' is-current' : '');
       const name = document.createElement('span');
-      name.className = 'bz-model-picker-name';
+      name.className = 'bzrv-model-picker-name';
       name.textContent = m.id;
       const detail = document.createElement('span');
-      detail.className = 'bz-model-picker-detail';
+      detail.className = 'bzrv-model-picker-detail';
       detail.textContent = m.detail || '';
       row.append(name, detail);
       row.onclick = () => {
@@ -120,7 +120,7 @@ export function openModelPicker(opts: ModelPickerOptions): void {
   popup.setAttribute('role', 'dialog');
   popup.setAttribute('aria-modal', 'true');
 
-  const handle = escManager.register('bz-model-picker', {
+  const handle = escManager.register('bzrv-model-picker', {
     isVisible: () => !!currentPicker,
     close: () => closeModelPicker(),
   });

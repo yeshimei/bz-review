@@ -1,7 +1,7 @@
 /* ============================================================
  * bz 组件库 · 居中模态（src/core/ui/modal.ts）
  * 对齐设计手册 §9/§10 弹窗规格（12px 圆角、shadow-lg、82vh 限高）：
- *   .bz-overlay-mask（遮罩，点关）+ .bz-overlay-popup（内容卡）
+ *   .bzrv-overlay-mask（遮罩，点关）+ .bzrv-overlay-popup（内容卡）
  * 供新体系域复用——替换各域自造的 .bz-*-mask/modal 弹窗基座。
  * ESC 经 escManager 单例注册（先开先关，后开优先）。
  * 焦点管理（R13 / 效率整改 2，对齐 settings-modal 样板）：打开聚焦 popup 内
@@ -85,11 +85,11 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
   const focusEnabled = opts.autofocus !== false;
 
   const mask = document.createElement('div');
-  mask.className = 'bz-overlay-mask';
+  mask.className = 'bzrv-overlay-mask';
   mask.style.zIndex = String(allocZ());
 
   const popup = document.createElement('div');
-  popup.className = 'bz-overlay-popup' + (opts.className ? ' ' + opts.className : '');
+  popup.className = 'bzrv-overlay-popup' + (opts.className ? ' ' + opts.className : '');
   if (opts.maxWidth) popup.style.maxWidth = `min(${opts.maxWidth}px, calc(100vw - 32px))`;
   // 读屏语义（对齐 flow-dialog 契约）：弹窗容器为模态 dialog，标题随 head 透出
   popup.setAttribute('role', 'dialog');
@@ -98,16 +98,16 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
 
   if (opts.head) {
     const head = document.createElement('div');
-    head.className = 'bz-dialog-head';
+    head.className = 'bzrv-dialog-head';
     const title = document.createElement('span');
-    title.className = 'bz-dialog-title';
+    title.className = 'bzrv-dialog-title';
     title.textContent = opts.title || '';
     head.appendChild(title);
     popup.appendChild(head);
   }
 
   const body = document.createElement('div');
-  body.className = 'bz-dialog-body';
+  body.className = 'bzrv-dialog-body';
   if (typeof opts.content === 'string') body.innerHTML = opts.content;
   else body.appendChild(opts.content);
   popup.appendChild(body);
@@ -144,7 +144,7 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
     bindMaskDismiss(mask, attemptClose);
 
     // ESC：栈顶后开先关（escManager 会做可见性判断）
-    escHandle = escManager.register('bz-modal', {
+    escHandle = escManager.register('bzrv-modal', {
       isVisible: () => mask.isConnected,
       close: attemptClose,
     });

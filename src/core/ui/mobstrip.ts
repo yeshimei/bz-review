@@ -5,13 +5,13 @@
  * ============================================================ */
 import type { BzMobStripOpts } from './types';
 
-/** 横滑条（.bz-mobstrip），返回 el + setValue（单选，程序化不触发 onChange） */
+/** 横滑条（.bzrv-mobstrip），返回 el + setValue（单选，程序化不触发 onChange） */
 export function uiMobStrip(opts: BzMobStripOpts): {
   el: HTMLDivElement;
   setValue: (id: string) => void;
 } {
   const el = document.createElement('div');
-  el.className = 'bz-mobstrip';
+  el.className = 'bzrv-mobstrip';
 
   const chips = new Map<string, HTMLButtonElement>();
   const setValue = (id: string) => {
@@ -21,12 +21,12 @@ export function uiMobStrip(opts: BzMobStripOpts): {
   opts.items.forEach((it) => {
     const chip = document.createElement('button');
     chip.type = 'button';
-    chip.className = 'bz-mobstrip-chip';
+    chip.className = 'bzrv-mobstrip-chip';
     chip.dataset.id = it.id;
     if (it.dot) {
       const dot = document.createElement('span');
-      dot.className = 'bz-mobstrip-dot';
-      dot.style.setProperty('--bz-rail-tint', it.dot);
+      dot.className = 'bzrv-mobstrip-dot';
+      dot.style.setProperty('--bzrv-rail-tint', it.dot);
       chip.appendChild(dot);
     }
     chip.appendChild(document.createTextNode(it.label));

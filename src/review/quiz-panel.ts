@@ -3,7 +3,7 @@
  *
  * - 入口 = main.ts 命令 `bz-review-quiz-open`「做题练习」（域内不 addCommand，经 review/index
  *   openQuizPractice 转发）；不进复习流程、不写排期——刷题即出口。
- * - 面板壳 = 组件库 .bz-panel-overlay / .bz-panel-frame / .bz-panel-mtop（ADR-0094）：
+ * - 面板壳 = 组件库 .bzrv-panel-overlay / .bzrv-panel-frame / .bzrv-panel-mtop（ADR-0094）：
  *   ESC 层 escManager、topifyZ 层级发号、≤768px 真全屏（域内 styles.css 只留 id 几何）；
  *   markup 单源 render.ts（quizPracticeSetupHtml / quizPracticeSummaryHtml）。
  * - 答题会话走做题会话契约 quizUI.startReviewSession / endReviewSession（引擎零改动）：
@@ -40,7 +40,7 @@ import {
 type QuizScope = 'all' | 'folder' | 'note';
 
 const MASK_ID = 'bz-quiz-practice-mask';
-const POPUP_ID = 'bz-quiz-practice-popup';
+const POPUP_ID = 'bzrv-quiz-practice-popup';
 const ESC_ID = 'review-quiz-practice';
 /** 默认本轮题量（20 题≈15 分钟一组，考试周刷一小时可连开三轮） */
 const DEFAULT_BATCH = 20;
@@ -97,7 +97,7 @@ class QuizPracticePanel {
     this.app = app;
     this.mask = document.createElement('div');
     this.mask.id = MASK_ID;
-    this.mask.classList.add('bz-panel-overlay');
+    this.mask.classList.add('bzrv-panel-overlay');
     this.mask.style.display = 'none';
     // C15（ADR-0067）：不置静态档位——present 时 topifyZ 显示即发号
     // 点遮罩关闭：手势配对判据（core/mask-dismiss）
@@ -105,12 +105,12 @@ class QuizPracticePanel {
 
     this.popup = document.createElement('div');
     this.popup.id = POPUP_ID;
-    this.popup.classList.add('bz-panel-frame');
+    this.popup.classList.add('bzrv-panel-frame');
     // ≤768px 满宽真全屏（顶距避让移动端头，components.css 统一档）
-    this.popup.classList.add('bz-panel-mtop');
+    this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = 'none';
     this.content = document.createElement('div');
-    this.content.className = 'bz-quiz-practice-container';
+    this.content.className = 'bzrv-quiz-practice-container';
     this.popup.appendChild(this.content);
 
     document.body.appendChild(this.mask);

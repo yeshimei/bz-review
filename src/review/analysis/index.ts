@@ -55,7 +55,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
     || typeof HTMLElement === 'undefined'
     || typeof HTMLElement.prototype.animate !== 'function';
   if (raOvl?.isConnected) {
-    const box = raOvl.querySelector<HTMLElement>('.bz-ra-box');
+    const box = raOvl.querySelector<HTMLElement>('.bzrv-ra-box');
     if (box) { box.classList.remove('is-nudge'); void box.offsetWidth; box.classList.add('is-nudge'); }
     return;
   }
@@ -76,30 +76,30 @@ export async function openReviewAnalysis(app: App): Promise<void> {
     return;
   }
 
-  const panel = document.querySelector<HTMLElement>('#review-popup');
+  const panel = document.querySelector<HTMLElement>('#bzrv-popup');
   const ovl = document.createElement('div');
-  ovl.className = 'bz-ra';
+  ovl.className = 'bzrv-ra';
   ovl.innerHTML = `
-    <div class="bz-ra-box">
+    <div class="bzrv-ra-box">
       ${analysisFixedHtml()}
-      <div class="bz-ra-scroll">${analysisHtml(data)}</div>
+      <div class="bzrv-ra-scroll">${analysisHtml(data)}</div>
     </div>`;
   // 移动端面板满屏没有遮罩可点，关闭钮即出口（桌面点框外/ESC）。
   // 钮放**层框内**：跟着软横屏一起转——内容横过来看时它才落在手持视角的右上角（影院同款）
   if (isNarrow()) {
     const close = document.createElement('button');
     close.type = 'button';
-    close.className = 'bz-ra-close';
+    close.className = 'bzrv-ra-close';
     close.setAttribute('data-ra-close', '');
     close.title = '关闭';
     close.setAttribute('aria-label', '关闭');
     close.textContent = '✕';
-    ovl.querySelector<HTMLElement>('.bz-ra-box')?.appendChild(close);
+    ovl.querySelector<HTMLElement>('.bzrv-ra-box')?.appendChild(close);
   }
   document.body.appendChild(ovl);
   topifyZ(ovl); // 显示即发号（ADR-0067）：叠在复习面板之上，关掉即销号
   raOvl = ovl;
-  const box = ovl.querySelector<HTMLElement>('.bz-ra-box');
+  const box = ovl.querySelector<HTMLElement>('.bzrv-ra-box');
   if (box) {
     fitRaBox(box, panel);
     raSync = () => fitRaBox(box, panel);
@@ -112,7 +112,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
   ovl.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     if (t.closest('[data-ra-close]')) { closeReviewAnalysis(); return; }
-    if (!t.closest('.bz-ra-box')) closeReviewAnalysis(); // 点框外 = 遮罩
+    if (!t.closest('.bzrv-ra-box')) closeReviewAnalysis(); // 点框外 = 遮罩
   });
   raEsc = escManager.register('bz-review-analysis', {
     isVisible: () => !!raOvl?.isConnected,

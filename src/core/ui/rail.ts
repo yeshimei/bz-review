@@ -13,73 +13,73 @@ import { uiIcon } from './icon';
 function buildRow(item: BzRailItem): HTMLButtonElement {
   const b = document.createElement('button');
   b.type = 'button';
-  b.className = 'bz-rail-item';
+  b.className = 'bzrv-rail-item';
   b.dataset.id = item.id;
 
   // 前缀槽五选一：图标底座 > 图标 > emoji > 字母徽标 > 状态色点
   if (item.boxedIcon) {
     const box = document.createElement('span');
-    box.className = 'bz-rail-ic';
+    box.className = 'bzrv-rail-ic';
     box.appendChild(uiIcon(item.boxedIcon));
     b.appendChild(box);
   } else if (item.icon) {
     b.appendChild(uiIcon(item.icon));
   } else if (item.emoji) {
     const emo = document.createElement('span');
-    emo.className = 'bz-rail-emoji';
+    emo.className = 'bzrv-rail-emoji';
     emo.textContent = item.emoji;
     b.appendChild(emo);
   } else if (item.badge) {
     const badge = document.createElement('span');
-    badge.className = 'bz-rail-badge';
+    badge.className = 'bzrv-rail-badge';
     badge.textContent = item.badge.t;
     badge.setAttribute('aria-label', item.badge.label);
-    if (item.badge.tint) badge.style.setProperty('--bz-rail-tint', item.badge.tint);
+    if (item.badge.tint) badge.style.setProperty('--bzrv-rail-tint', item.badge.tint);
     b.appendChild(badge);
   } else if (item.dot) {
     const dot = document.createElement('span');
-    dot.className = 'bz-rail-dot';
-    dot.style.setProperty('--bz-rail-tint', item.dot);
+    dot.className = 'bzrv-rail-dot';
+    dot.style.setProperty('--bzrv-rail-tint', item.dot);
     b.appendChild(dot);
   }
 
   const name = document.createElement('span');
-  name.className = 'bz-rail-name';
+  name.className = 'bzrv-rail-name';
   name.textContent = item.name;
   b.appendChild(name);
 
   if (item.count !== undefined && item.count !== null && item.count !== '') {
     const cnt = document.createElement('span');
-    cnt.className = 'bz-rail-count' + (item.pill ? ' bz-rail-count--pill' : '');
+    cnt.className = 'bzrv-rail-count' + (item.pill ? ' bzrv-rail-count--pill' : '');
     cnt.textContent = String(item.count);
     b.appendChild(cnt);
   }
   if (item.unread) {
     const u = document.createElement('span');
-    u.className = 'bz-rail-unread';
+    u.className = 'bzrv-rail-unread';
     u.textContent = String(item.unread);
     b.appendChild(u);
   }
   if (item.children && item.children.length) {
     b.classList.add('has-sub');
-    // caret 独立类（不吃 .bz-rail-item .bz-ic 的 14px 档，走 12px 旋转档）
+    // caret 独立类（不吃 .bzrv-rail-item .bzrv-ic 的 14px 档，走 12px 旋转档）
     const caret = document.createElement('span');
-    caret.className = 'bz-rail-caret';
+    caret.className = 'bzrv-rail-caret';
     setIcon(caret, 'chevron-right');
     b.appendChild(caret);
   }
   return b;
 }
 
-/** 状态侧栏（.bz-rail），返回 el + setActive（组内单选；程序化不触发 onSelect） */
+/** 状态侧栏（.bzrv-rail），返回 el + setActive（组内单选；程序化不触发 onSelect） */
 export function uiRail(opts: BzRailOpts): {
   el: HTMLDivElement;
   setActive: (id: string) => void;
 } {
   const el = document.createElement('div');
-  el.className = 'bz-rail';
+  el.className = 'bzrv-rail';
   const scroll = document.createElement('div');
-  scroll.className = 'bz-rail-scroll';
+  scroll.className = 'bzrv-rail-scroll';
   el.appendChild(scroll);
 
   // 行注册表（含子项）：id → 行，供 setActive 单选
@@ -92,7 +92,7 @@ export function uiRail(opts: BzRailOpts): {
   opts.groups.forEach((g) => {
     if (g.label) {
       const lb = document.createElement('div');
-      lb.className = 'bz-rail-label';
+      lb.className = 'bzrv-rail-label';
       lb.textContent = g.label;
       scroll.appendChild(lb);
     }
@@ -102,7 +102,7 @@ export function uiRail(opts: BzRailOpts): {
       scroll.appendChild(row);
       if (item.children && item.children.length) {
         const sub = document.createElement('div');
-        sub.className = 'bz-rail-sub';
+        sub.className = 'bzrv-rail-sub';
         item.children.forEach((child) => {
           const cr = buildRow(child);
           rows.set(child.id, cr);
@@ -130,7 +130,7 @@ export function uiRail(opts: BzRailOpts): {
 
   if (opts.foot) {
     const foot = document.createElement('div');
-    foot.className = 'bz-rail-foot';
+    foot.className = 'bzrv-rail-foot';
     foot.appendChild(opts.foot);
     el.appendChild(foot);
   }

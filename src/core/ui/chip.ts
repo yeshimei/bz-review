@@ -9,7 +9,7 @@ import { uiIcon } from './icon';
 export function uiChip(opts: BzChipOpts): HTMLButtonElement {
   const c = document.createElement('button');
   c.type = 'button';
-  const cls = ['bz-chip'];
+  const cls = ['bzrv-chip'];
   // 选中态必须显式声明（selected=实底 / selectedSoft=软底）；removable 不再自动暗示选中（L3）
   // 显式声明选中态即「可按压切换」chip → 缺省挂 aria-pressed（深审残款：读屏器首屏即拿到按压态，
   // 消费方重渲重建新实例时属性随态更新）；未声明 = 纯静态标签/动作/锁定 chip，不强加（动作钮
@@ -18,9 +18,9 @@ export function uiChip(opts: BzChipOpts): HTMLButtonElement {
     opts.selected !== undefined ? !!opts.selected :
     opts.selectedSoft !== undefined ? !!opts.selectedSoft :
     null;
-  if (opts.selected) cls.push('bz-chip--on');
-  else if (opts.selectedSoft) cls.push('bz-chip--sel');
-  if (opts.locked) cls.push('bz-chip--locked');
+  if (opts.selected) cls.push('bzrv-chip--on');
+  else if (opts.selectedSoft) cls.push('bzrv-chip--sel');
+  if (opts.locked) cls.push('bzrv-chip--locked');
   c.className = cls.join(' ');
   if (pressed !== null) c.setAttribute('aria-pressed', String(pressed));
   if (opts.title) c.title = opts.title;
@@ -31,14 +31,14 @@ export function uiChip(opts: BzChipOpts): HTMLButtonElement {
   c.appendChild(label);
   if (typeof opts.count === 'number') {
     const cnt = document.createElement('span');
-    cnt.className = 'bz-chip-cnt';
+    cnt.className = 'bzrv-chip-cnt';
     cnt.textContent = String(opts.count);
     c.appendChild(cnt);
   }
   if (opts.removable && !opts.locked) {
     // ✕ 用 span[role=button]（HTML 不允许 button 嵌套 button——L11）
     const x = document.createElement('span');
-    x.className = 'bz-chip-x';
+    x.className = 'bzrv-chip-x';
     x.setAttribute('role', 'button');
     x.setAttribute('aria-label', `移除 ${opts.label}`);
     x.tabIndex = 0;

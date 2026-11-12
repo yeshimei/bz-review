@@ -10,7 +10,7 @@
  * - text/textarea/number 行沿用原 main.ts textSetting 语义（f1）：800ms 防抖 + 失焦/回车立即
  *   落盘 + onCommit 一次性提示（值相对初始值有变更才提示、同一次编辑会话至多一次、
  *   改回原值后复位可再次提示——warnedInitial 细节逐字保留）。
- * - visibleWhen 声明式联动：任意行变更后统一重求值全部条件，显隐挂 .bz-setting-hidden，
+ * - visibleWhen 声明式联动：任意行变更后统一重求值全部条件，显隐挂 .bzrv-setting-hidden，
  *   随后 refreshSettingsGroupCounts 徽标刷新一并收口。
  * - 与 settings-modal 为函数级引用环（两模块仅在函数体内互访，无模块顶层互访——AGENTS 依赖铁律）。
  */
@@ -219,7 +219,7 @@ export interface SelectOption {
 }
 
 // ---- select 决策三件套（issue 412）：两套渲染器（本文件 addDropdown 路径 / settings-panel
-// ---- 自绘 .bz-select 路径）共用——DOM 形态各自实现，选项求值/换表判定/显示值回落只有一份 ----
+// ---- 自绘 .bzrv-select 路径）共用——DOM 形态各自实现，选项求值/换表判定/显示值回落只有一份 ----
 
 /** 选项求值：静态数组原样返回，函数形式随快照重取（服务商切换后换表） */
 export function selectOptionsOf(
@@ -318,7 +318,7 @@ interface ListRow extends RowBase {
   emptyText?: string;
   /** 移除按钮文案（默认「移除」） */
   removeLabel?: string;
-  /** 布局变体（通用组件 .bz-setlist 修饰类，两渲染器同口径；缺省 = chips 流式胶囊，2026-09-12 拍板）：
+  /** 布局变体（通用组件 .bzrv-setlist 修饰类，两渲染器同口径；缺省 = chips 流式胶囊，2026-09-12 拍板）：
    *  rows = 全宽行列表 / grid = 卡片网格 / dense = 紧密分隔行 */
   variant?: 'rows' | 'grid' | 'chips' | 'dense';
   onChange?: (keys: string[], ctx: SettingsRowContext) => void;
@@ -364,14 +364,14 @@ export type SettingsRow =
   | ListRow;
 
 /** 分组声明：有 icon = 分组卡片（createSettingsGroup）；无 icon = 区块标题 + 平铺行
- *  （主设置页 ADR-0009 单页形态，DOM 契约 .bz-setting-section-title 不破）。 */
+ *  （主设置页 ADR-0009 单页形态，DOM 契约 .bzrv-setting-section-title 不破）。 */
 export interface GroupDecl {
   /** 卡片组名 / 区块标题文案 */
   name: string;
   /** lucide 图标名（缺省 = 区块标题平铺形态） */
   icon?: string;
   rows: SettingsRow[];
-  /** 组级显隐条件（false 时整组挂 .bz-setting-hidden） */
+  /** 组级显隐条件（false 时整组挂 .bzrv-setting-hidden） */
   visibleWhen?: (snapshot: SettingsSnapshot) => boolean;
 }
 
@@ -544,7 +544,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
   const reevaluate = (): void => {
     const snap = currentSnapshot();
     for (const e of entries) {
-      e.el.classList.toggle('bz-setting-hidden', e.visibleWhen ? !e.visibleWhen(snap) : false);
+      e.el.classList.toggle('bzrv-setting-hidden', e.visibleWhen ? !e.visibleWhen(snap) : false);
     }
     for (const fn of customRefreshes) {
       try { fn(); } catch { /* 单行刷新失败不影响其余 */ }
@@ -614,14 +614,14 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
     const markNumberError = (): void => {
       if (numError) return;
       numError = true;
-      currentText?.inputEl?.classList.add('bz-input--error');
+      currentText?.inputEl?.classList.add('bzrv-input--error');
       const base = row.desc ? `${row.desc}；` : '';
       setting.setDesc(`${base}需为数字，已保留原值 ${String(acc.read() ?? '')}`);
     };
     const clearNumberError = (): void => {
       if (!numError) return;
       numError = false;
-      currentText?.inputEl?.classList.remove('bz-input--error');
+      currentText?.inputEl?.classList.remove('bzrv-input--error');
       setting.setDesc(row.desc ?? '');
     };
     /** 有意的落盘点：防抖到期 / 失焦 / 回车（textarea 无回车提交）——统一落盘 */
@@ -1067,7 +1067,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
         if (row.visibleWhen) entries.push({ el: wrap, visibleWhen: row.visibleWhen });
         const readItems = () => (typeof row.items === 'function' ? row.items() : row.items);
         const renderItems = (): void => {
-          wrap.querySelector('.bz-setlist')?.remove();
+          wrap.querySelector('.bzrv-setlist')?.remove();
           wrap.appendChild(uiSetlist({
             items: readItems(),
             variant: row.variant,
@@ -1120,9 +1120,9 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
       if (group.visibleWhen) entries.push({ el: groupEl, visibleWhen: group.visibleWhen });
       renderGroupRows(body, group.rows);
     } else {
-      // 区块标题平铺形态（主设置页）：.bz-setting-section-title 契约保持
+      // 区块标题平铺形态（主设置页）：.bzrv-setting-section-title 契约保持
       const title = document.createElement('div');
-      title.className = 'bz-setting-section-title';
+      title.className = 'bzrv-setting-section-title';
       title.textContent = group.name;
       container.appendChild(title);
       if (group.visibleWhen) entries.push({ el: title, visibleWhen: group.visibleWhen });

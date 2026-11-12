@@ -7,10 +7,10 @@
  * ============================================================ */
 import { setIcon } from 'obsidian';
 
-/** 图标 span（span.bz-ic + setIcon 渲染 lucide；额外类做尺寸/语义色修饰） */
+/** 图标 span（span.bzrv-ic + setIcon 渲染 lucide；额外类做尺寸/语义色修饰） */
 export function uiIconSpan(name: string, extraClass = ''): HTMLSpanElement {
   const i = document.createElement('span');
-  i.className = 'bz-ic' + (extraClass ? ' ' + extraClass : '');
+  i.className = 'bzrv-ic' + (extraClass ? ' ' + extraClass : '');
   setIcon(i, name);
   return i;
 }
@@ -23,7 +23,7 @@ export function mountIcons(root: HTMLElement): void {
     try {
       const fresh = uiIconSpan(name);
       const cls = el.className;
-      if (cls && cls !== 'bz-ic') fresh.className = cls;
+      if (cls && cls !== 'bzrv-ic') fresh.className = cls;
       el.replaceWith(fresh);
     } catch {
       /* 未知图标忽略 */

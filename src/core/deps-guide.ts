@@ -16,7 +16,7 @@
  *
  * 形制（2026-11-01 用户拍板「1:1 复刻原型」）：照 .scratch/deps-guide-proto 定稿稿，
  * 逐段——头行 / 正文（分组卡：普通项走行，模型项走表）/ 提示词 / 底栏。
- * 为什么这里不套引导页那套 .bz-setup-* 皮：这一屏是**挑东西**，嵌入模型要横着比
+ * 为什么这里不套引导页那套 .bzrv-setup-* 皮：这一屏是**挑东西**，嵌入模型要横着比
  * 分数、体积、显存，逐行清单比不出来。两套皮各有各的读法，别互相迁就。
  *
  * 数据与提示词在 deps-plan.ts（纯函数，能单测）；这里只管画和点。
@@ -81,14 +81,14 @@ export async function probeOllamaService(timeoutMs = 3000): Promise<{ up: boolea
  * `change` 也不触发，所以它不会参与 picked 的增删（picked 里那几项由 defaultPicked()
  * 一次性放进去，之后没人动它们）。
  *
- * 外观全部自绘（.bz-deps-ck，`:checked` 用伪元素画勾）：原生 checkbox 在 Obsidian 里
+ * 外观全部自绘（.bzrv-deps-ck，`:checked` 用伪元素画勾）：原生 checkbox 在 Obsidian 里
  * 会被主题重写成不同的填充与勾形，同一个弹窗在别人的主题下就变样了。
  */
 function checkboxOf(item: PlanItem): HTMLInputElement {
   const input = document.createElement('input');
   input.type = item.radio ? 'radio' : 'checkbox';
-  if (item.radio) input.name = `bz-deps-${item.radio}`;
-  input.className = item.radio ? 'bz-deps-ck bz-deps-ck--r' : 'bz-deps-ck';
+  if (item.radio) input.name = `bzrv-deps-${item.radio}`;
+  input.className = item.radio ? 'bzrv-deps-ck bzrv-deps-ck--r' : 'bzrv-deps-ck';
   input.value = item.id;
   input.checked = !!(item.required || item.pickedByDefault);
   if (item.required) input.disabled = true;
@@ -104,14 +104,14 @@ function nameNode(item: PlanItem): DocumentFragment {
     a.href = item.url;
     a.target = '_blank';
     a.rel = 'noreferrer';
-    a.className = 'bz-deps-a';
+    a.className = 'bzrv-deps-a';
     a.textContent = item.name;
     frag.appendChild(a);
   } else {
     frag.appendChild(document.createTextNode(item.name));
   }
   if (item.pill) {
-    frag.appendChild(el('i', `bz-deps-pill${item.pillDim ? ' bz-deps-pill--dim' : ''}`, item.pill));
+    frag.appendChild(el('i', `bzrv-deps-pill${item.pillDim ? ' bzrv-deps-pill--dim' : ''}`, item.pill));
   }
   return frag;
 }
@@ -149,7 +149,7 @@ function tableOf(
   sink: Array<{ item: PlanItem; input: HTMLInputElement }>,
 ): HTMLElement {
   const spec = RADIO_TABLES[kind];
-  const table = el('table', 'bz-deps-tb');
+  const table = el('table', 'bzrv-deps-tb');
 
   const thead = document.createElement('thead');
   const htr = document.createElement('tr');
@@ -162,7 +162,7 @@ function tableOf(
     const tr = document.createElement('tr');
     if (item.pill && !item.pillDim) tr.className = 'is-hl';
 
-    const nameTd = el('td', 'bz-deps-name');
+    const nameTd = el('td', 'bzrv-deps-name');
     const input = checkboxOf(item);
     nameTd.appendChild(input);
     nameTd.appendChild(nameNode(item));
@@ -170,7 +170,7 @@ function tableOf(
     sink.push({ item, input });
 
     for (const c of spec.cells(item)) {
-      tr.appendChild(el('td', `bz-deps-num${c.wrap ? ' bz-deps-num--wrap' : ''}`, c.text));
+      tr.appendChild(el('td', `bzrv-deps-num${c.wrap ? ' bzrv-deps-num--wrap' : ''}`, c.text));
     }
     tbody.appendChild(tr);
   }
@@ -198,18 +198,18 @@ export function openDepsGuide(app: unknown = getApp()): void {
   }
   let picked = defaultPicked();
 
-  const root = el('div', 'bz-deps');
+  const root = el('div', 'bzrv-deps');
 
   /* 头行：标题 + 关闭（uiModal 的头行只有标题，这里要原型那颗 ✕） */
-  const head = el('div', 'bz-deps-h');
+  const head = el('div', 'bzrv-deps-h');
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
-  closeBtn.className = 'bz-deps-x';
+  closeBtn.className = 'bzrv-deps-x';
   closeBtn.textContent = '✕';
   closeBtn.setAttribute('aria-label', '关闭');
-  head.append(el('span', 'bz-deps-t', 'bz 依赖什么'), closeBtn);
+  head.append(el('span', 'bzrv-deps-t', 'bz 依赖什么'), closeBtn);
 
-  const body = el('div', 'bz-deps-b');
+  const body = el('div', 'bzrv-deps-b');
   root.append(head, body);
 
   const handles: Array<{ item: PlanItem; input: HTMLInputElement }> = [];
@@ -222,18 +222,18 @@ export function openDepsGuide(app: unknown = getApp()): void {
     const items = PLAN_ITEMS.filter((i) => i.group === groupName);
     if (!items.length) continue;
 
-    const group = el('div', 'bz-deps-grp');
-    group.appendChild(el('div', 'bz-deps-grp-h', groupName));
-    const card = el('div', 'bz-deps-card');
+    const group = el('div', 'bzrv-deps-grp');
+    group.appendChild(el('div', 'bzrv-deps-grp-h', groupName));
+    const card = el('div', 'bzrv-deps-card');
 
     // 先普通项（Ollama / ffmpeg / pycryptodome 这些），再模型表——原型的顺序就是这么排的
     for (const item of items.filter((i) => !i.radio)) {
-      const row = el('div', 'bz-deps-row');
+      const row = el('div', 'bzrv-deps-row');
       const input = checkboxOf(item);
-      const key = el('span', 'bz-deps-key');
+      const key = el('span', 'bzrv-deps-key');
       key.appendChild(nameNode(item));
-      if (item.required) key.appendChild(el('i', 'bz-deps-req', '必装'));
-      const val = el('span', 'bz-deps-val', item.size);
+      if (item.required) key.appendChild(el('i', 'bzrv-deps-req', '必装'));
+      const val = el('span', 'bzrv-deps-val', item.size);
       row.append(input, key, val);
       card.appendChild(row);
       handles.push({ item, input });
@@ -243,13 +243,13 @@ export function openDepsGuide(app: unknown = getApp()): void {
     // 模型项按单选组分表（嵌入 / 重排叠在同一张卡里，第二种起加一条分隔线）
     const kinds = [...new Set(items.filter((i) => i.radio).map((i) => i.radio!))];
     if (kinds.length) {
-      const wrap = el('div', 'bz-deps-tw');
+      const wrap = el('div', 'bzrv-deps-tw');
       kinds.forEach((kind, idx) => {
         const table = tableOf(kind, items.filter((i) => i.radio === kind), handles);
         if (idx === 0) {
           wrap.appendChild(table);
         } else {
-          const sub = el('div', 'bz-deps-sub');
+          const sub = el('div', 'bzrv-deps-sub');
           sub.appendChild(table);
           wrap.appendChild(sub);
         }
@@ -261,7 +261,7 @@ export function openDepsGuide(app: unknown = getApp()): void {
     // 重排的门槛就地摆在表格下面：勾了重排却不是 8B 嵌入时，这 2.5 GB 装了不跑，
     // 用户没有别的机会知道（设置页那行在同样条件下是隐藏的，等于什么都不说）。
     if (items.some((i) => i.radio === 'rerank')) {
-      rerankWarn = el('div', 'bz-deps-warn');
+      rerankWarn = el('div', 'bzrv-deps-warn');
       rerankWarn.hidden = true;
       group.appendChild(rerankWarn);
     }
@@ -272,30 +272,30 @@ export function openDepsGuide(app: unknown = getApp()): void {
   // 提示词框上面不再挂「改动写进哪个文件 / 要改哪几个键」的说明（2026-11-01 用户拍板：
   // 那两行是给实现看的，不是给用户看的）——数据文件路径与键名都在提示词正文里，
   // 复制出去 AI 拿得到就够了。
-  const pbox = el('div', 'bz-deps-pbox');
-  const phead = el('div', 'bz-deps-pbox-h');
+  const pbox = el('div', 'bzrv-deps-pbox');
+  const phead = el('div', 'bzrv-deps-pbox-h');
   phead.append(el('span', '', '复制给 AI 的提示词'), el('span', '', '路径按你本机自动填好'));
   const pre = document.createElement('pre');
   pbox.append(phead, pre);
   body.appendChild(pbox);
 
   /* 底栏：汇总 + 两个动作 */
-  const bar = el('div', 'bz-deps-bar');
-  const sum = el('span', 'bz-deps-sum');
+  const bar = el('div', 'bzrv-deps-bar');
+  const sum = el('span', 'bzrv-deps-sum');
   const cntNode = el('b', '', '0');
   const sizeNode = el('b', '', '0');
   sum.append(document.createTextNode('已选 '), cntNode, document.createTextNode(' 项 · 约 '), sizeNode);
 
-  const acts = el('div', 'bz-deps-acts');
+  const acts = el('div', 'bzrv-deps-acts');
   const videoBtn = document.createElement('button');
   videoBtn.type = 'button';
-  videoBtn.className = 'bz-btn';
+  videoBtn.className = 'bzrv-btn';
   videoBtn.textContent = '看视频教程';
   // 界面上不堆分P（2026-11-01 用户口径：按钮、行名一律「视频教程」，不写「共几集」）
   videoBtn.title = '在浏览器里打开（B 站）';
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
-  copyBtn.className = 'bz-btn bz-btn--primary';
+  copyBtn.className = 'bzrv-btn bzrv-btn--primary';
   copyBtn.textContent = '复制提示词';
   acts.append(videoBtn, copyBtn);
   bar.append(sum, acts);
@@ -350,7 +350,7 @@ export function openDepsGuide(app: unknown = getApp()): void {
     title: 'bz 依赖什么',
     content: root,
     maxWidth: 760,
-    className: 'bz-deps-modal',
+    className: 'bzrv-deps-modal',
     autofocus: false,
   });
   closeBtn.addEventListener('click', () => modal.close());
@@ -361,8 +361,8 @@ export function openDepsGuide(app: unknown = getApp()): void {
   if (ollamaVal) {
     void probeOllamaService().then((r) => {
       ollamaVal.textContent = r.up ? '运行中' : '没检测到';
-      ollamaVal.classList.toggle('bz-deps-val--ok', r.up);
-      ollamaVal.classList.toggle('bz-deps-val--bad', !r.up);
+      ollamaVal.classList.toggle('bzrv-deps-val--ok', r.up);
+      ollamaVal.classList.toggle('bzrv-deps-val--bad', !r.up);
     });
   }
 }

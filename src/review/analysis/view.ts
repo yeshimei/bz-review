@@ -46,7 +46,7 @@ const sText = (s: number): string => (s >= 365 ? `${(s / 365).toFixed(1)} 年` :
 /** 幕骨架：只有主构图；幕名/口径走 data-*（底栏与排查用） */
 function frame(no: number, main: string): string {
   const def = RA_SCENES[no - 1];
-  return `<section class="bz-ra-scn" data-s="${pad2(no)}" data-id="${def.id}" data-name="${esc(def.name)}">
+  return `<section class="bzrv-ra-scn" data-s="${pad2(no)}" data-id="${def.id}" data-name="${esc(def.name)}">
   <div class="ra-sc"><div class="ra-main">${main}</div></div>
 </section>`;
 }
@@ -314,7 +314,7 @@ export function analysisHtml(data: RaData): string {
 /** 固定层（与幕表分离导出，2026-09-23 修复）：必须挂在**滚动容器之外**的盒子层——
     原先塞在 .ra-film 里，absolute inset:0 锚的是第一屏而不是视口：滚到第 2 幕时隔扇
     下半片（打开态停在膜下 101%）正好探进视口把上半屏盖成纸色（用户报「第二页被截断」
-    的真因），灯谱也只在第 1 幕可见。现由 index.ts 挂到 .bz-ra-box（滚动口的父级）下。 */
+    的真因），灯谱也只在第 1 幕可见。现由 index.ts 挂到 .bzrv-ra-box（滚动口的父级）下。 */
 export function analysisFixedHtml(): string {
   return `<div class="ra-fixed">
     <div class="ra-shutter" data-r="shutter" aria-hidden="true"><i class="t"></i><i class="b"></i></div>

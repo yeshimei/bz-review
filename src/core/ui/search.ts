@@ -1,6 +1,6 @@
 /* ============================================================
  * bz 组件库 · 搜索框（src/core/ui/search.ts）
- * uiSearch：前缀搜索图标 + .bz-input（.bz-search 壳，图标绝对定位
+ * uiSearch：前缀搜索图标 + .bzrv-input（.bzrv-search 壳，图标绝对定位
  * 左留 30px）+ 尾部清除钮（有词才现；clipbook 效率#12 全域拍板：
  * 输入文字后右侧才出现清除图标，清空即隐）。收编 6 域各自的
  * .bz-*-search 逐字重复。
@@ -9,7 +9,7 @@ import type { BzSearchOpts } from './types';
 import { uiIcon } from './icon';
 import { uiInput } from './field';
 
-/** 搜索框（.bz-search），返回 el + input + setValue（程序化置值，不触发 onInput）
+/** 搜索框（.bzrv-search），返回 el + input + setValue（程序化置值，不触发 onInput）
  *  + syncClear（程序化置值后手动同步清除钮显隐；input 事件路径组件自管） */
 export function uiSearch(opts: BzSearchOpts): {
   el: HTMLDivElement;
@@ -18,7 +18,7 @@ export function uiSearch(opts: BzSearchOpts): {
   syncClear: () => void;
 } {
   const el = document.createElement('div');
-  el.className = 'bz-search';
+  el.className = 'bzrv-search';
   el.appendChild(uiIcon('search'));
   const input = uiInput({
     placeholder: opts.placeholder,
@@ -32,7 +32,7 @@ export function uiSearch(opts: BzSearchOpts): {
   if (opts.clearable !== false) {
     clearBtn = document.createElement('button');
     clearBtn.type = 'button';
-    clearBtn.className = 'bz-search-clear';
+    clearBtn.className = 'bzrv-search-clear';
     clearBtn.title = '清除搜索';
     clearBtn.setAttribute('aria-label', '清除搜索');
     clearBtn.hidden = !input.value.trim();

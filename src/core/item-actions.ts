@@ -3,9 +3,9 @@
  *
  * 交互约定（桌面 / 移动分离）：
  * - 列表卡片**不注入任何常驻或 hover 图标排**（用户拍板：列表保持干净）。
- * - 桌面端：**右键**出跟手菜单（.bz-item-menu，锚定光标、防溢出；preventDefault 拦原生右键菜单；
+ * - 桌面端：**右键**出跟手菜单（.bzrv-item-menu，锚定光标、防溢出；preventDefault 拦原生右键菜单；
  *   用户拍板：桌面用鼠标右键打开，不再用鼠标长按）。
- * - 移动/触屏端：长按卡片弹「底部抽屉」（.bz-item-sheet，参照 B 站/网易云）——
+ * - 移动/触屏端：长按卡片弹「底部抽屉」（.bzrv-item-sheet，参照 B 站/网易云）——
  *   半透明遮罩 + 底部滑入面板，功能一行行列出，顶部显示该条目标题（网易云式：展示选中列表信息）。
  * - 动作项布局：桌面右键菜单只保留 图标 + 文案（图标与文字左对齐，无小字、无边框，样式层承载）；
  *   移动端抽屉为 图标左对齐 + 文案随后 + 小字右对齐（margin-left auto，样式层承载）。
@@ -308,17 +308,17 @@ export function openItemMenu(
 ): void {
   closeItemMenu();
   const m = document.createElement('div');
-  m.className = 'bz-item-menu' + (menuClass ? ' ' + menuClass : '');
+  m.className = 'bzrv-item-menu' + (menuClass ? ' ' + menuClass : '');
   m.style.visibility = 'hidden';
   // 盒头 + 分隔线（B 方案，2026-09-11）：只有传了 markup 的域才渲染。
   // 单行窄条，所以这里不做 mountIcons（内容里不放 data-lucide 占位，域色点走内联 style）。
   if (menuHeadHtml) {
     const head = document.createElement('div');
-    head.className = 'bz-item-menu-head';
+    head.className = 'bzrv-item-menu-head';
     head.innerHTML = menuHeadHtml;
     m.appendChild(head);
     const sep = document.createElement('div');
-    sep.className = 'bz-item-menu-sep';
+    sep.className = 'bzrv-item-menu-sep';
     m.appendChild(sep);
   }
   for (const a of actions) {
@@ -326,11 +326,11 @@ export function openItemMenu(
     item.type = 'button';
     if (a.title) item.title = a.title;
     item.className =
-      'bz-item-menu-item' +
-      (a.kind === 'danger' ? ' bz-item-menu-item--danger' : '') +
-      (a.tone === 'accent' ? ' bz-item-menu-item--accent' : '');
+      'bzrv-item-menu-item' +
+      (a.kind === 'danger' ? ' bzrv-item-menu-item--danger' : '') +
+      (a.tone === 'accent' ? ' bzrv-item-menu-item--accent' : '');
     const itemIcon = document.createElement('span');
-    itemIcon.className = 'bz-item-menu-icon';
+    itemIcon.className = 'bzrv-item-menu-icon';
     renderIcon(itemIcon, a.icon);
     const itemLabel = document.createElement('span');
     itemLabel.className = 'bz-item-menu-label';
@@ -354,7 +354,7 @@ export function openItemMenu(
   suppressNextClick = suppressResidualClick;
   residualClickArmed = false;
   if (!suppressResidualClick) armTouchSettle();
-  attachPopupListeners('bz-item-menu');
+  attachPopupListeners('bzrv-item-menu');
   focusMenuFirst(m, m);
 }
 
@@ -364,11 +364,11 @@ function buildSheetItem(a: ItemAction): HTMLElement {
   item.type = 'button';
   if (a.title) item.title = a.title;
   item.className =
-    'bz-item-sheet-item' +
-    (a.kind === 'danger' ? ' bz-item-sheet-item--danger' : '') +
-    (a.tone === 'accent' ? ' bz-item-sheet-item--accent' : '');
+    'bzrv-item-sheet-item' +
+    (a.kind === 'danger' ? ' bzrv-item-sheet-item--danger' : '') +
+    (a.tone === 'accent' ? ' bzrv-item-sheet-item--accent' : '');
   const itemIcon = document.createElement('span');
-  itemIcon.className = 'bz-item-sheet-icon';
+  itemIcon.className = 'bzrv-item-sheet-icon';
   renderIcon(itemIcon, a.icon);
   const itemLabel = document.createElement('span');
   itemLabel.className = 'bz-item-sheet-label';
@@ -377,7 +377,7 @@ function buildSheetItem(a: ItemAction): HTMLElement {
   item.appendChild(itemLabel);
   if (a.sub) {
     const itemSub = document.createElement('span');
-    itemSub.className = 'bz-item-sheet-item-sub';
+    itemSub.className = 'bzrv-item-sheet-item-sub';
     itemSub.textContent = a.sub;
     item.appendChild(itemSub);
   }
@@ -401,7 +401,7 @@ function buildSheetItem(a: ItemAction): HTMLElement {
  * @param head 新头部内容（未传则头部保持不变）
  */
 export function refreshItemSheet(actions: ItemAction[], head?: HTMLElement): void {
-  if (!popupEl || popupEl.classList.contains('bz-item-sheet') === false || !sheetBodyEl) return;
+  if (!popupEl || popupEl.classList.contains('bzrv-item-sheet') === false || !sheetBodyEl) return;
   sheetBodyEl.innerHTML = '';
   for (const a of actions) {
     sheetBodyEl.appendChild(buildSheetItem(a));
@@ -416,25 +416,25 @@ export function refreshItemSheet(actions: ItemAction[], head?: HTMLElement): voi
 export function openItemSheet(actions: ItemAction[], opts?: ItemActionsOptions, suppressResidualClick = false): void {
   closeItemMenu();
   const mask = document.createElement('div');
-  mask.className = 'bz-item-sheet-mask';
+  mask.className = 'bzrv-item-sheet-mask';
   const sheet = document.createElement('div');
-  sheet.className = 'bz-item-sheet' + (opts?.sheetClass ? ' ' + opts.sheetClass : '');
+  sheet.className = 'bzrv-item-sheet' + (opts?.sheetClass ? ' ' + opts.sheetClass : '');
   if (opts?.sheetHead) {
     const head = document.createElement('div');
-    head.className = 'bz-item-sheet-head';
+    head.className = 'bzrv-item-sheet-head';
     head.appendChild(opts.sheetHead);
     sheet.appendChild(head);
     sheetHeadEl = head;
   } else if (opts?.sheetTitle) {
     const head = document.createElement('div');
-    head.className = 'bz-item-sheet-head';
+    head.className = 'bzrv-item-sheet-head';
     const titleEl = document.createElement('div');
-    titleEl.className = 'bz-item-sheet-title';
+    titleEl.className = 'bzrv-item-sheet-title';
     titleEl.textContent = opts.sheetTitle;
     head.appendChild(titleEl);
     if (opts.sheetSub) {
       const subEl = document.createElement('div');
-      subEl.className = 'bz-item-sheet-sub';
+      subEl.className = 'bzrv-item-sheet-sub';
       subEl.textContent = opts.sheetSub;
       head.appendChild(subEl);
     }
@@ -443,7 +443,7 @@ export function openItemSheet(actions: ItemAction[], opts?: ItemActionsOptions, 
   }
   // 功能项区：项多时内部滚动（最大 70vh，隐藏滚动条，styles.css）
   const body = document.createElement('div');
-  body.className = 'bz-item-sheet-body';
+  body.className = 'bzrv-item-sheet-body';
   for (const a of actions) {
     body.appendChild(buildSheetItem(a));
   }
@@ -459,7 +459,7 @@ export function openItemSheet(actions: ItemAction[], opts?: ItemActionsOptions, 
   suppressNextClick = suppressResidualClick; // 鼠标路径：残余 click 由 mouseup 标记吞；触屏路径：走合成 click 静置窗口
   residualClickArmed = false;
   if (!suppressResidualClick) armTouchSettle();
-  attachPopupListeners('bz-item-sheet');
+  attachPopupListeners('bzrv-item-sheet');
   attachSheetDismiss(sheet, body);
   focusMenuFirst(sheet, body);
 }
@@ -475,7 +475,7 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
     dragging = false;
     dy = 0;
     sheet.style.transform = '';
-    sheet.classList.remove('bz-item-sheet--dragging');
+    sheet.classList.remove('bzrv-item-sheet--dragging');
   };
 
   sheet.addEventListener(
@@ -509,7 +509,7 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
       }
       dy = cur;
       e.preventDefault(); // 接管：禁止滚动，纯下拉
-      sheet.classList.add('bz-item-sheet--dragging');
+      sheet.classList.add('bzrv-item-sheet--dragging');
       sheet.style.transform = `translateY(${dy}px)`;
       if (sheetMask) sheetMask.style.opacity = String(Math.max(0, 1 - dy / 400));
     },
@@ -522,7 +522,7 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
     dragging = false;
     if (over) {
       // 滑出动画后移除（遮罩同步淡出）
-      sheet.classList.remove('bz-item-sheet--dragging');
+      sheet.classList.remove('bzrv-item-sheet--dragging');
       const s = sheet;
       s.style.transform = 'translateY(100%)';
       if (sheetMask) sheetMask.style.opacity = '0';
@@ -545,13 +545,13 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
 /**
  * 给列表卡片挂统一操作：桌面右键跟手菜单 / 移动端长按底部抽屉。
  * 列表不注入任何常驻或 hover 图标排（用户拍板：列表保持干净，入口只有浮层）。
- * @param card 卡片元素（须为相对定位容器，见 styles.css .bz-item-card）
+ * @param card 卡片元素（须为相对定位容器，见 styles.css .bzrv-item-card）
  * @param actions 操作项（顺序即显示顺序；删除类传 kind: 'danger' 并自行接 confirm）
  * @param opts 抽屉顶部信息（移动端显示选中条目信息，参照网易云）与长按排除区
  */
 export function attachItemActions(card: HTMLElement, actions: ItemAction[], opts?: ItemActionsOptions): void {
   if (!card || actions.length === 0) return;
-  card.classList.add('bz-item-card');
+  card.classList.add('bzrv-item-card');
 
   // 桌面端：右键 → 跟手菜单（preventDefault 拦原生右键菜单；让位区放行原生菜单）
   card.addEventListener('contextmenu', (e) => {

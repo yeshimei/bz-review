@@ -48,16 +48,16 @@ export function setRowBtnState(
   okText?: string
 ): void {
   if (!el) return;
-  el.classList.remove('bz-rowbtn--busy', 'bz-rowbtn--ok', 'bz-rowbtn--fail');
+  el.classList.remove('bzrv-rowbtn--busy', 'bzrv-rowbtn--ok', 'bzrv-rowbtn--fail');
   (el as HTMLButtonElement).disabled = state === 'busy';
   if (state === 'busy') {
-    el.classList.add('bz-rowbtn--busy');
+    el.classList.add('bzrv-rowbtn--busy');
     clearResetTimer(el);
   } else if (state === 'ok') {
-    el.classList.add('bz-rowbtn--ok');
+    el.classList.add('bzrv-rowbtn--ok');
     el.textContent = okText || ROW_BTN_OK_TEXT;
   } else if (state === 'fail') {
-    el.classList.add('bz-rowbtn--fail');
+    el.classList.add('bzrv-rowbtn--fail');
     el.textContent = (failText || '失败').slice(0, 6);
   } else {
     el.textContent = label;

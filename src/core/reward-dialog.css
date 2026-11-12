@@ -2,14 +2,14 @@
  * bz · 赞赏弹窗样式（core/reward-dialog.css）
  *
  * 一比一来自 `.scratch/reward/empty.html` 定稿：米白纸、金色、衬线题赠、
- * 信笺横线空态、底部金弧落款。**这里刻意不消费 --bz-* 设计 token**——
+ * 信笺横线空态、底部金弧落款。**这里刻意不消费 --bzrv-* 设计 token**——
  * 它不是通用组件，是一张「纸」，明暗主题下都保持纸的样子；
  * 唯一的例外是弹窗壳的外形（圆角/投影）与 Obsidian 遮罩的层叠关系。
  *
- * 变量全部挂在 .bz-overlay-popup.bz-rw-modal 作用域内（--rw-*），不外泄。
+ * 变量全部挂在 .bzrv-overlay-popup.bzrv-rw-modal 作用域内（--rw-*），不外泄。
  * ============================================================ */
 
-.bz-overlay-popup.bz-rw-modal {
+.bzrv-overlay-popup.bzrv-rw-modal {
   --rw-paper: #fcf9f3;
   --rw-ink: #26221d;
   --rw-ink-soft: #453f36;
@@ -22,7 +22,7 @@
   width: 520px;
   height: min(720px, calc(100vh - 48px));
   max-height: calc(100vh - 48px);
-  /* 自己钉住居中：core/styles.css 与 ui/components.css 各有一版 .bz-overlay-popup
+  /* 自己钉住居中：core/styles.css 与 ui/components.css 各有一版 .bzrv-overlay-popup
    * （一版 fixed+translate、一版 flex item 无 position），谁后置生效随聚合顺序变。
    * 这里用最高特异性写死，弹窗位置不跟着别人的顺序漂（2026-10-30 实测偏到右下）。 */
   position: fixed;
@@ -43,7 +43,7 @@
     0 0 0 1px rgba(0, 0, 0, .35);
 }
 
-.bz-overlay-popup.bz-rw-modal::before {
+.bzrv-overlay-popup.bzrv-rw-modal::before {
   content: "";
   position: absolute;
   top: 0;
@@ -54,15 +54,15 @@
   z-index: 3;
 }
 
-/* 弹窗正文容器（uiModal 的 .bz-dialog-body 在壳内，撑满剩余高度） */
-.bz-rw-modal .bz-dialog-body {
+/* 弹窗正文容器（uiModal 的 .bzrv-dialog-body 在壳内，撑满剩余高度） */
+.bzrv-rw-modal .bzrv-dialog-body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.bz-rw {
+.bzrv-rw {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -70,13 +70,13 @@
 }
 
 /* ---------- 抬头 ---------- */
-.bz-rw-head {
+.bzrv-rw-head {
   flex: none;
   padding: 30px 30px 0;
   text-align: center;
 }
 
-.bz-rw-kicker {
+.bzrv-rw-kicker {
   font-size: 10px;
   letter-spacing: .44em;
   text-indent: .44em;
@@ -88,15 +88,15 @@
   margin-bottom: 19px;
 }
 
-.bz-rw-kicker::before,
-.bz-rw-kicker::after {
+.bzrv-rw-kicker::before,
+.bzrv-rw-kicker::after {
   content: "";
   width: 20px;
   height: 1px;
   background: rgba(189, 148, 64, .38);
 }
 
-.bz-rw-lead {
+.bzrv-rw-lead {
   margin: 0 auto;
   max-width: 352px;
   font-family: var(--rw-serif);
@@ -107,7 +107,7 @@
 }
 
 /* ---------- 码 ---------- */
-.bz-rw-code {
+.bzrv-rw-code {
   flex: none;
   display: flex;
   flex-direction: column;
@@ -115,7 +115,7 @@
   padding: 24px 30px 22px;
 }
 
-.bz-rw-code-box {
+.bzrv-rw-code-box {
   width: 154px;
   height: 154px;
   background: #fff;
@@ -128,7 +128,7 @@
   position: relative;
 }
 
-.bz-rw-code-box::after {
+.bzrv-rw-code-box::after {
   content: "";
   position: absolute;
   inset: -9px;
@@ -137,7 +137,7 @@
   pointer-events: none;
 }
 
-.bz-rw-code-box img {
+.bzrv-rw-code-box img {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -145,7 +145,7 @@
   border-radius: 9px;
 }
 
-.bz-rw-ways {
+.bzrv-rw-ways {
   margin-top: 20px;
   display: flex;
   align-items: center;
@@ -157,8 +157,8 @@
   color: #b9ae98;
 }
 
-.bz-rw-ways::before,
-.bz-rw-ways::after {
+.bzrv-rw-ways::before,
+.bzrv-rw-ways::after {
   content: "";
   width: 16px;
   height: 1px;
@@ -168,7 +168,7 @@
 /* 出口（2026-11-11 用户拍板）：码下面一行——「成为赞助人 · 给个 Star」，
    两条并列的支持路径，各点各的：赞助商店 / GitHub 仓库。
    字比「微信扫码」大一号、颜色站到金色一侧：它们是能点的去处，不是标注。 */
-.bz-rw-exits {
+.bzrv-rw-exits {
   margin: 13px 0 0;
   display: flex;
   align-items: center;
@@ -177,13 +177,13 @@
 }
 
 /* 分隔点：不可点，只把两条路隔开；比链接淡一档 */
-.bz-rw-exit-sep {
+.bzrv-rw-exit-sep {
   font-size: 11.5px;
   line-height: 1;
   color: rgba(189, 148, 64, .55);
 }
 
-.bz-rw-sponsor-link {
+.bzrv-rw-sponsor-link {
   font-family: var(--rw-serif);
   font-size: 11.5px;
   letter-spacing: .1em;
@@ -198,14 +198,14 @@
 
 /* 触屏无 hover，悬停反馈只给鼠标（bd-paradigm-hover-isolation 守卫要求） */
 @media (hover: hover) {
-  .bz-rw-sponsor-link:hover {
+  .bzrv-rw-sponsor-link:hover {
     color: var(--rw-ink);
     border-bottom-color: rgba(38, 34, 29, .45);
   }
 }
 
 /* ---------- 名单 ---------- */
-.bz-rw-list {
+.bzrv-rw-list {
   flex: 1;
   min-height: 0;
   position: relative;
@@ -213,8 +213,8 @@
   border-top: 1px solid var(--rw-line);
 }
 
-.bz-rw-list::before,
-.bz-rw-list::after {
+.bzrv-rw-list::before,
+.bzrv-rw-list::after {
   content: "";
   position: absolute;
   left: 0;
@@ -224,17 +224,17 @@
   z-index: 2;
 }
 
-.bz-rw-list::before {
+.bzrv-rw-list::before {
   top: 0;
   background: linear-gradient(var(--rw-paper), rgba(252, 249, 243, 0));
 }
 
-.bz-rw-list::after {
+.bzrv-rw-list::after {
   bottom: 0;
   background: linear-gradient(rgba(252, 249, 243, 0), var(--rw-paper));
 }
 
-.bz-rw-names {
+.bzrv-rw-names {
   list-style: none;
   margin: 0;
   height: 100%;
@@ -244,7 +244,7 @@
      此前留了 thin + 5px 自绘拇指，因为滚动条守卫只扫 styles.css，这个文件一直没被扫到。 */
 }
 
-.bz-rw-names li {
+.bzrv-rw-names li {
   display: grid;
   grid-template-columns: 26px 1fr;
   gap: 14px;
@@ -252,9 +252,9 @@
   border-bottom: 1px solid rgba(235, 226, 207, .85);
 }
 
-.bz-rw-names li:last-child { border-bottom: 0; }
+.bzrv-rw-names li:last-child { border-bottom: 0; }
 
-.bz-rw-no {
+.bzrv-rw-no {
   font-family: var(--rw-serif);
   font-size: 10.5px;
   color: #cabfa6;
@@ -262,34 +262,34 @@
   padding-top: 2px;
 }
 
-.bz-rw-who-row {
+.bzrv-rw-who-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 14px;
 }
 
-.bz-rw-who {
+.bzrv-rw-who {
   font-size: 12.5px;
   font-weight: 500;
   letter-spacing: .08em;
   color: var(--rw-ink);
 }
 
-.bz-rw-meta {
+.bzrv-rw-meta {
   flex: none;
   display: flex;
   align-items: baseline;
   gap: 10px;
 }
 
-.bz-rw-amt {
+.bzrv-rw-amt {
   font-family: var(--rw-serif);
   font-size: 12px;
   color: var(--rw-gold-deep);
 }
 
-.bz-rw-amt i {
+.bzrv-rw-amt i {
   font-style: normal;
   font-size: 9.5px;
   margin-right: 1px;
@@ -297,18 +297,18 @@
 }
 
 /* 金额位不是数字时（「赞助人」这类）：字小半号、收一点字距，别压过旁边的日期 */
-.bz-rw-amt-text {
+.bzrv-rw-amt-text {
   font-size: 11px;
   letter-spacing: .04em;
 }
 
-.bz-rw-when {
+.bzrv-rw-when {
   font-size: 10px;
   color: #bdb2a0;
   letter-spacing: .04em;
 }
 
-.bz-rw-msg {
+.bzrv-rw-msg {
   margin-top: 6px;
   font-size: 12.5px;
   line-height: 1.9;
@@ -316,7 +316,7 @@
 }
 
 /* ---------- 空态（一张还没写过字的信笺） ---------- */
-.bz-rw-empty {
+.bzrv-rw-empty {
   position: absolute;
   inset: 0;
   display: flex;
@@ -325,7 +325,7 @@
   justify-content: center;
 }
 
-.bz-rw-empty::before {
+.bzrv-rw-empty::before {
   content: "";
   position: absolute;
   inset: 0;
@@ -333,7 +333,7 @@
   pointer-events: none;
 }
 
-.bz-rw-mark {
+.bzrv-rw-mark {
   position: relative;
   width: 5px;
   height: 5px;
@@ -342,7 +342,7 @@
   margin-bottom: 15px;
 }
 
-.bz-rw-empty p {
+.bzrv-rw-empty p {
   position: relative;
   background: var(--rw-paper);
   padding: 0 22px;
@@ -354,7 +354,7 @@
 }
 
 /* ---------- 落款（只剩那道金弧，字已删） ---------- */
-.bz-rw-foot {
+.bzrv-rw-foot {
   flex: none;
   position: relative;
   height: 64px;
@@ -363,7 +363,7 @@
   justify-content: center;
 }
 
-.bz-rw-foot svg {
+.bzrv-rw-foot svg {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -371,7 +371,7 @@
 }
 
 /* ---------- 关闭钮（桌面右上角；移动端见窄屏段，距顶 44px） ---------- */
-.bz-rw-close {
+.bzrv-rw-close {
   position: absolute;
   top: 18px;
   right: 18px;
@@ -392,43 +392,43 @@
 
 /* 触屏无 hover，悬停反馈只给鼠标（bd-paradigm-hover-isolation 守卫要求） */
 @media (hover: hover) {
-  .bz-rw-close:hover {
+  .bzrv-rw-close:hover {
     background: rgba(38, 34, 29, .05);
     color: var(--rw-ink);
   }
 }
 
-/* ---------- 移动端：真全屏（与各域面板同口径：100vw + core 可视视口 --bz-vvh） ----------
+/* ---------- 移动端：真全屏（与各域面板同口径：100vw + core 可视视口 --bzrv-vvh） ----------
    断点跟各域面板一致用 768（原先 560：平板竖屏 / 大屏手机 600~760 落在缝里，
    那时走的是桌面居中卡——面板顶上就空出一条 44px 的缝，用户看到的是「没全屏」）。
    uiModal 会内联 maxWidth=min(520px, 100vw-32px)，不压过它就会右侧缺一条纸。 */
 @media (max-width: 768px) {
-  .bz-overlay-popup.bz-rw-modal {
+  .bzrv-overlay-popup.bzrv-rw-modal {
     position: fixed;
     top: 0;
     left: 0;
     transform: none;
     width: 100vw;
     max-width: 100vw !important;
-    height: var(--bz-vvh, 100vh);
-    max-height: var(--bz-vvh, 100vh);
+    height: var(--bzrv-vvh, 100vh);
+    max-height: var(--bzrv-vvh, 100vh);
     border-radius: 0;
     /* 全屏后纸从 y=0 起，抬头那几行会被状态栏压住。顶部让出安全距——
        移动端 webview 里 env(safe-area-inset-top) 恒为 0，只写 env() 等于没写，
-       必须 max(44px, …) 兜底（与 .bz-panel-mtop、更新日志弹窗同口径）。 */
+       必须 max(44px, …) 兜底（与 .bzrv-panel-mtop、更新日志弹窗同口径）。 */
     box-sizing: border-box;
     padding-top: max(44px, env(safe-area-inset-top, 0px));
   }
 
   /* 关闭钮跟着安全距走；本体 40px，命中区补到 44px（触屏） */
-  .bz-rw-close {
+  .bzrv-rw-close {
     top: max(44px, env(safe-area-inset-top, 0px));
     right: 18px;
     width: 40px;
     height: 40px;
   }
 
-  .bz-rw-close::after {
+  .bzrv-rw-close::after {
     content: "";
     position: absolute;
     inset: -2px;
@@ -439,9 +439,9 @@
 @media (max-width: 560px) {
 
   /* 顶部留白已由壳的 44px 安全距承担，这里不再叠 26px */
-  .bz-rw-head { padding: 12px 24px 0; }
-  .bz-rw-code { padding: 20px 24px 18px; }
-  .bz-rw-code-box { width: 134px; height: 134px; }
-  .bz-rw-list { margin: 0 24px; }
-  .bz-rw-lead { font-size: 13.5px; }
+  .bzrv-rw-head { padding: 12px 24px 0; }
+  .bzrv-rw-code { padding: 20px 24px 18px; }
+  .bzrv-rw-code-box { width: 134px; height: 134px; }
+  .bzrv-rw-list { margin: 0 24px; }
+  .bzrv-rw-lead { font-size: 13.5px; }
 }

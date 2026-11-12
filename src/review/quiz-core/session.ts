@@ -35,7 +35,7 @@ const CORRECT_JUMP_DELAY_MS = 800;
 
 /** 判定动效取题面弹窗（onclick 闭包内无 popup 引用；判定时弹窗必已连入 DOM） */
 function quizPopupEl(): HTMLElement | null {
-  return document.getElementById('quiz-popup');
+  return document.getElementById('bzrv-quiz-popup');
 }
 
 /** 清理选项文本，去除可能的前缀如 "A." "A、" "A)" "(A)" 等（renderModal 拆分） */
@@ -211,20 +211,20 @@ export class QuizMasterUI {
     this._pendingSubmitBtn = null;
 
     const mask = document.createElement('div');
-    mask.id = 'quiz-mask';
+    mask.id = 'bzrv-quiz-mask';
     this.mask = mask;
     mask.style.zIndex = String(allocZ()); // ADR-0067：换题重建 DOM，创建即显示即发号（popup 为 mask 子节点随动）
     const popup = document.createElement('div');
-    popup.id = 'quiz-popup';
+    popup.id = 'bzrv-quiz-popup';
     this.popup = popup;
 
     const header = document.createElement('div');
-    header.className = 'bz-quiz-head';
+    header.className = 'bzrv-quiz-head';
     // 呈报#54（R4）：题头 📝 退役 → lucide file-text（uiIconSpan 经 setIcon 兑现；
     // 全站 emoji 清零收尾）。笔记名与题号文本不变。
-    header.appendChild(uiIconSpan('file-text', 'bz-quiz-note-ic'));
+    header.appendChild(uiIconSpan('file-text', 'bzrv-quiz-note-ic'));
     const title = document.createElement('span');
-    title.className = 'bz-quiz-title';
+    title.className = 'bzrv-quiz-title';
     // 使用固定的总题数 this.totalQuestions；题号 = 已消费题数 + 1：
     // ticket 141：答对/答错均 splice 出当前题（答错仅移出本轮会话，不落盘删除），
     // 已消费数 = totalQuestions - 剩余长度——不依赖 correct/wrong 计数（多选计数为已知缺陷）
@@ -238,13 +238,13 @@ export class QuizMasterUI {
 
     // 题目
     const questionDiv = document.createElement('div');
-    questionDiv.className = 'bz-quiz-question';
+    questionDiv.className = 'bzrv-quiz-question';
     questionDiv.textContent = q.question;
     popup.appendChild(questionDiv);
 
     // 选项容器
     const optionsContainer = document.createElement('div');
-    optionsContainer.className = 'bz-quiz-options';
+    optionsContainer.className = 'bzrv-quiz-options';
     const selectedIndices = new Set<number>();
     const answeredRef = { value: false };
 
@@ -333,7 +333,7 @@ export class QuizMasterUI {
       // 清理选项文本，避免重复前缀
       const cleanText = cleanOptionText(opt);
       // 呈报#54（R4）：✔️ 退役 → lucide check 占位（renderModal 尾部 mountIcons 兑现）
-      btn.innerHTML = `<span>${optionLabels[idx]}.</span><span class="bz-quiz-option-text">${escapeHtml(cleanText)}</span><span class="check-mark">${iconSpan('check')}</span>`;
+      btn.innerHTML = `<span>${optionLabels[idx]}.</span><span class="bzrv-quiz-option-text">${escapeHtml(cleanText)}</span><span class="check-mark">${iconSpan('check')}</span>`;
       btn.dataset.index = String(idx);
 
       btn.onclick = () => {

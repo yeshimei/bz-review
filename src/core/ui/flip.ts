@@ -22,12 +22,12 @@ export function safeAnimate(el: HTMLElement, frames: Keyframe[], opts: KeyframeA
   }
 }
 
-/** FLIP 的补位时长（与 --bz-dur-base 同口径：空间位移档） */
+/** FLIP 的补位时长（与 --bzrv-dur-base 同口径：空间位移档） */
 const FLIP_DUR = 200;
 
-/** ⚠️ WAAPI 的 easing **只认关键字或 cubic-bezier 字面量**，写 `var(--bz-ease-out)` 会抛
+/** ⚠️ WAAPI 的 easing **只认关键字或 cubic-bezier 字面量**，写 `var(--bzrv-ease-out)` 会抛
  *  「not a valid value for easing」并中断整个脚本。样式侧（CSS transition）照旧用 var()，
- *  这里是与 --bz-ease-out（cubic-bezier(0.33,1,0.68,1)）逐字同值的一份字面量。 */
+ *  这里是与 --bzrv-ease-out（cubic-bezier(0.33,1,0.68,1)）逐字同值的一份字面量。 */
 const EASE_OUT = 'cubic-bezier(0.33, 1, 0.68, 1)';
 
 export interface FlipEnterOpts {
@@ -48,7 +48,7 @@ export interface FlipOpts {
   dur?: number;
   /** 消失的件是否留幽灵淡出（缺省 true） */
   ghost?: boolean;
-  /** 幽灵的底色类（缺省走 core 的 .bz-flip-ghost；域内想换色就传自己的类） */
+  /** 幽灵的底色类（缺省走 core 的 .bzrv-flip-ghost；域内想换色就传自己的类） */
   ghostClass?: string;
   /** 新出现的件接力入场；false / 不传 = 不演（原地刷新别整屏闪） */
   enter?: FlipEnterOpts | false;
@@ -93,7 +93,7 @@ export function playFlip(root: HTMLElement, before: Map<string, DOMRect> | null,
     requestAnimationFrame(() => {
       n.style.transition = spin
         ? `transform ${dur + 60}ms cubic-bezier(0.34, 1.3, 0.5, 1)`
-        : `transform ${dur}ms var(--bz-ease-out)`;
+        : `transform ${dur}ms var(--bzrv-ease-out)`;
       n.style.transform = 'rotate(0deg) scale(1)';
       window.setTimeout(() => {
         n.style.transition = '';
@@ -114,7 +114,7 @@ export function playFlip(root: HTMLElement, before: Map<string, DOMRect> | null,
       // 容器带滚动时两者差一个 scrollTop/scrollLeft。不加的话，滚到列表中部再切场景/
       // 敲搜索，残影会整体偏上（偏的距离正好是 scrollTop），列表短、不滚动时看不出来。
       const g = document.createElement('div');
-      g.className = 'bz-flip-ghost' + (opts.ghostClass ? ' ' + opts.ghostClass : '');
+      g.className = 'bzrv-flip-ghost' + (opts.ghostClass ? ' ' + opts.ghostClass : '');
       g.style.cssText = `position:absolute;left:${Math.round(r.left - rr.left + root.scrollLeft)}px;`
         + `top:${Math.round(r.top - rr.top + root.scrollTop)}px;`
         + `width:${Math.round(r.width)}px;height:${Math.round(r.height)}px`;

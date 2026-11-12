@@ -16,7 +16,7 @@ import { uiBtn } from './button';
 import { uiModal } from './modal';
 
 export interface TutorialModalOpts {
-  /** 域皮肤类（在域 styles.css 里定义 `.bz-overlay-popup.<类>` 的材质） */
+  /** 域皮肤类（在域 styles.css 里定义 `.bzrv-overlay-popup.<类>` 的材质） */
   className: string;
   /** 票根上的大标题，如「三分钟看懂知识盒」 */
   title: string;
@@ -41,7 +41,7 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   const url = String(opts.url || '').trim();
 
   const content = document.createElement('div');
-  content.className = 'bz-tut';
+  content.className = 'bzrv-tut';
 
   /** 去 B 站；未发布只提示不关窗——用户还能点「先自己转转」 */
   const watch = (): void => {
@@ -56,40 +56,40 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   // 票根：整张可点（回车默认落在这里），有地址去 B 站、没地址给一句人话
   const cover = document.createElement('button');
   cover.type = 'button';
-  cover.className = 'bz-tut-cover';
+  cover.className = 'bzrv-tut-cover';
   cover.setAttribute('aria-label', url ? `去 B 站看${opts.title}` : '教程视频还没发布');
   cover.addEventListener('click', watch);
 
   const play = document.createElement('span');
-  play.className = 'bz-tut-play';
+  play.className = 'bzrv-tut-play';
   play.setAttribute('aria-hidden', 'true');
 
   const text = document.createElement('span');
-  text.className = 'bz-tut-cover-text';
+  text.className = 'bzrv-tut-cover-text';
   const kicker = document.createElement('span');
-  kicker.className = 'bz-tut-kicker';
+  kicker.className = 'bzrv-tut-kicker';
   kicker.textContent = url ? 'B 站 · 视频教程' : 'B 站 · 即将上线';
   const name = document.createElement('span');
-  name.className = 'bz-tut-name';
+  name.className = 'bzrv-tut-name';
   name.textContent = opts.title;
   text.append(kicker, name);
   cover.append(play, text);
 
   const desc = document.createElement('p');
-  desc.className = 'bz-tut-desc';
+  desc.className = 'bzrv-tut-desc';
   desc.textContent = opts.desc;
 
   const foot = document.createElement('div');
-  foot.className = 'bz-tut-foot';
+  foot.className = 'bzrv-tut-foot';
   const dismiss = uiBtn({
     label: opts.dismiss || '先自己转转',
-    className: 'bz-tut-dismiss',
+    className: 'bzrv-tut-dismiss',
     onClick: () => ui.close(),
   });
   const go = uiBtn({
     label: opts.cta || '看视频教程',
     tone: 'primary',
-    className: 'bz-tut-go',
+    className: 'bzrv-tut-go',
     onClick: watch,
   });
   foot.append(dismiss, go);
