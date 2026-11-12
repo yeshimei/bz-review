@@ -9,11 +9,17 @@
  * 命令与设置页走这里；双语化按模块逐步收口。
  */
 import { moment } from 'obsidian';
+import { tryGetSettings } from './core/settings-provider';
 
 export type Lang = 'zh' | 'en';
 
 export function currentLang(): Lang {
   try {
+    /* 插件设置里的语言优先（auto = 跟随 Obsidian）。
+       原来这里只读 localStorage，设置页那个「语言」下拉改了没有任何效果——
+       是个纯死字段，用户选了 en 界面还是中文。 */
+    const want = String((tryGetSettings() as { language?: string } | null)?.language ?? 'auto').toLowerCase();
+    if (want === 'zh' || want === 'en') return want;
     const stored = window.localStorage.getItem('language');
     if (stored) return String(stored).toLowerCase().startsWith('zh') ? 'zh' : 'en';
     const ml = String((moment as unknown as { locale?: () => string })?.locale?.() || 'zh-cn').toLowerCase();
