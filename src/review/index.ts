@@ -190,6 +190,13 @@ export function ensureReview(app: App): void {
   listen(app.vault as any, 'rename', (file: any, oldPath: string) => {
     reviewWatcher?.onVaultRename(file, oldPath);
   });
+  /* delete 也直接订原生事件。onVaultDelete 里「同步移除复习记录？」的确认弹窗、
+     移除、撤销全都写好了，但同一条总线没初始化，于是删掉计划内的笔记连弹窗都
+     不出现、条目静默变挂起。它自带 300ms 防抖队列，即使总线将来恢复发射也只弹一次。 */
+  listen(app.vault as any, 'delete', (file: any) => {
+    if (file?.extension !== 'md') return;
+    reviewWatcher?.onVaultDelete(file);
+  });
   // ticket 098：监听文件夹自动加入（created）+ 删除/改名/移动确认（deleted/renamed）——
   // 订域事件总线通用兜底通道（obsidian-adapter 恒发、仅 md，载荷见 src/core/obsidian-adapter.ts），
   // 目录过滤逻辑留在 ReviewWatcher 内部
