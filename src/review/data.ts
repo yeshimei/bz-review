@@ -12,6 +12,7 @@ import { enqueueFileTask, jsonFileStore, storageFile } from '../core/storage';
 import { tryGetSettings } from '../core/settings-provider';
 import { FSRS_FIRST_INTERVALS, LADDER_MAX, TOTAL_STAGES } from './fsrs';
 import { clipWToBounds } from './fit';
+import { canAddCard, canAddNote, quotaBlock, type PlanCounts } from '../data/entitlement';
 
 export const REVIEW_FILE_PATH = 'CONFIG/STORAGE/review.json';
 
@@ -97,6 +98,23 @@ export interface ReviewItem {
 /** 这条是不是划线卡（没有文件、内容在条目里） */
 export function isCardItem(item: ReviewItem | null | undefined): boolean {
   return item?.kind === 'card' && !!item.card;
+}
+
+/**
+ * 计划里两类各多少（免费版配额口径：划线卡与笔记**分开计数**）。
+ *
+ * 挂起（文件缺失）和已完成的条目照样占位——数据还在库里，只是现在不复习它。
+ * 迁移进来的老数据可能早就超限，那种情况按「已满」处理：不删用户的东西，
+ * 只是不能再加新的。
+ */
+function planCounts(items: readonly ReviewItem[]): PlanCounts {
+  let notes = 0;
+  let cards = 0;
+  for (const it of items) {
+    if (isCardItem(it)) cards += 1;
+    else notes += 1;
+  }
+  return { notes, cards };
 }
 
 /** 卡片在列表里显示的那行字：书名 · 章节，缺章节就只写书名 */
@@ -250,12 +268,16 @@ export class ReviewDataManager {
    * 与 addItems 同一套口径：单趟 RMW、已存在跳过不抛、返回 { added, skipped }。
    * 钥匙重复就跳过——同一段划线点两次不该排两次。
    */
-  addCards(cards: readonly ReviewCard[]): Promise<{ added: number; skipped: number; keys: string[] }> {
+  addCards(
+    cards: readonly ReviewCard[],
+  ): Promise<{ added: number; skipped: number; rejected: number; keys: string[] }> {
     return this.mutate((items) => {
       const have = new Set(items.map((i) => i.filePath));
+      const counts = planCounts(items);
       const keys: string[] = [];
       let added = 0;
       let skipped = 0;
+      let rejected = 0;
       for (const raw of Array.isArray(cards) ? cards : []) {
         const key = String(raw?.key ?? '').trim();
         const text = String(raw?.text ?? '').trim();
@@ -263,12 +285,19 @@ export class ReviewDataManager {
           skipped++;
           continue;
         }
+        /* 配额到顶：拒这一条，后面的也拒——但**已经进来的不退回**。用户一次加
+           六十张时前五十张该落地，而不是整批失败（免费版只是不能继续加）。 */
+        if (!canAddCard(counts.cards)) {
+          rejected++;
+          continue;
+        }
         have.add(key);
         items.push(this.newCardItem({ ...raw, key, text }));
+        counts.cards += 1;
         keys.push(key);
         added++;
       }
-      return { added, skipped, keys };
+      return { added, skipped, rejected, keys };
     });
   }
 
@@ -287,6 +316,8 @@ export class ReviewDataManager {
   addItem(filePath: string, fileName: string): Promise<ReviewItem> {
     return this.mutate((items) => {
       if (items.some((i) => i.filePath === filePath)) throw new Error('该笔记已在复习计划中');
+      const block = quotaBlock('note', planCounts(items));
+      if (!block.ok) throw new Error(block.message);
       const newItem = this.newReviewItem(filePath, fileName);
       items.push(newItem);
       return newItem;
@@ -294,23 +325,33 @@ export class ReviewDataManager {
   }
 
   /** 批量新增（A13/E4 审查修复：watch 存量收编等 N+1 场景——单趟 RMW，一读一写落盘）。
-   *  已存在/空路径跳过不抛错；返回 { added, skipped } 供调用方通知口径。 */
-  addItems(list: Array<{ filePath: string; fileName?: string }>): Promise<{ added: number; skipped: number }> {
+   *  已存在/空路径跳过不抛错；返回 { added, skipped } 供调用方通知口径。
+   *  超配额的那部分记在 rejected 里：前面的照常落地，不整批失败。 */
+  addItems(
+    list: Array<{ filePath: string; fileName?: string }>,
+  ): Promise<{ added: number; skipped: number; rejected: number }> {
     return this.mutate((items) => {
       const have = new Set(items.map((i) => i.filePath));
+      const counts = planCounts(items);
       let added = 0;
       let skipped = 0;
+      let rejected = 0;
       for (const { filePath, fileName } of list) {
         if (!filePath || have.has(filePath)) {
           skipped++;
           continue;
         }
+        if (!canAddNote(counts.notes)) {
+          rejected++;
+          continue;
+        }
         have.add(filePath);
         const name = fileName || stripMdExt(filePath.split('/').pop() || '') || filePath;
         items.push(this.newReviewItem(filePath, name));
+        counts.notes += 1;
         added++;
       }
-      return { added, skipped };
+      return { added, skipped, rejected };
     });
   }
 

@@ -42,6 +42,22 @@ async function aiReady(): Promise<boolean> {
   }
 }
 
+/**
+ * 没配 AI 时「做题家」降级成普通复习的提示，整场只弹一次。
+ *
+ * 原来每次点「开始本轮」都弹一条警告——全新用户第一眼看到的就是「未初始化」，
+ * 而他其实什么都没做错，插件本来就该在没配模型时安静地走普通复习。
+ */
+let quizAiWarned = false;
+function warnQuizAiOnce(): void {
+  if (quizAiWarned) return;
+  quizAiWarned = true;
+  notify('没配 AI，这次按普通复习走（设置 → 复习计划 → AI 里可配）', {
+    type: 'warning',
+    dedupeKey: 'review-quiz-ai',
+  });
+}
+
 /** F8：队列内时间门禁拒绝的特定错误（updateItem 的 fn 基于磁盘现值判定后抛出）——
  *  外层 catch 转人话 notice，防与真实写盘错误混淆 */
 export class ReviewGateRejected extends Error {
@@ -346,7 +362,7 @@ export const reviewApp = {
     const quiz: any = await this.getQuiz();
     if (!quiz || !quiz.ai || !(await aiReady())) {
       console.warn('做题家未初始化（缺少 AI）');
-      notify('做题家未初始化（缺少 AI），已改用普通复习', { type: 'warning', dedupeKey: 'review-quiz-ai' });
+      warnQuizAiOnce();
       return {};
     }
     const app = getApp();
@@ -405,7 +421,7 @@ export const reviewApp = {
     if (!quiz || !quiz.ai || !(await aiReady())) {
       // A2：做题家不可用（getAIProvider 试准——ensureQuiz 无条件 createAI 不校验配置）：
       // 降级为普通复习（打开笔记等自评），不再进做题链路空转一圈
-      notify('做题家未初始化，改用普通复习', { type: 'warning', dedupeKey: 'review-quiz-ai' });
+      warnQuizAiOnce();
       await this.reviewLoop([item], 0);
       return;
     }
@@ -440,7 +456,7 @@ export const reviewApp = {
         if (passedSet.size) items = fresh.filter((i) => !passedSet.has(i.filePath));
         else items = fresh; // 无通过也刷新（会话内可能写过排期）
       } else {
-        notify('做题家未初始化，跳过待重做队列', { type: 'warning', dedupeKey: 'review-quiz-ai' });
+        warnQuizAiOnce();
       }
     }
 
@@ -455,12 +471,12 @@ export const reviewApp = {
     // item 9：纳入了「今日到期但时刻未到」的篇目 → 明确反馈
     const earlyToday = round.filter((i) => !i.isOverdue && !isEarlyDue(i, rThreshold, this.currentW()));
     if (earlyToday.length) {
-      notice(`今日到期 ${earlyToday.length} 篇已提前纳入本轮`, 'info');
+      notice(`今日到期 ${earlyToday.length} 条已提前纳入本轮`, 'info');
     }
     const dailyLimit = Number((getSettings() as any).reviewDailyLimit) || 0;
     const limited = this.sortOverdue(round, dailyLimit);
     if (limited.length < round.length) {
-      notice(`本轮复习 ${limited.length} 篇，剩余 ${round.length - limited.length} 篇留到下次`, 'info');
+      notice(`本轮复习 ${limited.length} 条，剩余 ${round.length - limited.length} 条留到下次`, 'info');
     }
 
     /* 划线卡和笔记不是一个界面：卡片在自己的会话里复习，笔记要么跳转要么做题。
@@ -495,7 +511,7 @@ export const reviewApp = {
     }
     if (!quiz || !quiz.ai || !(await aiReady())) {
       // A2：AI 未配置（getAIProvider 抛）→ 走设计的普通复习降级，不做题链路空转
-      notify('做题家未初始化，已改用普通复习', { type: 'warning', dedupeKey: 'review-quiz-ai' });
+      warnQuizAiOnce();
       await this.reviewLoop(limited, 0);
       return;
     }
@@ -774,9 +790,23 @@ export const reviewApp = {
   async addCurrentToReview(file: TFile): Promise<void> {
     this.ensure(getApp());
     const dm = this.dataManager!;
-    const items = await dm.loadItems();
-    if (items.some((i) => i.filePath === file.path)) throw new Error('该笔记已在复习计划中');
-    await dm.addItem(file.path, file.basename);
+    try {
+      await dm.addItem(file.path, file.basename);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      /* 「已经在计划里」和「免费版额度到顶」都不是失败，只是这一次不用加。
+         让它们冒充异常会拼出「加入复习计划失败：…，请重试」——而这两种情况
+         重试一百次还是这个结果，用户只会以为坏了。 */
+      if (msg.includes('已在复习计划中')) {
+        notice('这篇已经在复习计划里了', 'info');
+        return;
+      }
+      if (msg.includes('基础版最多')) {
+        notice(msg, 'warning');
+        return;
+      }
+      throw e;
+    }
     notice('已加入复习计划，首次复习：1分钟后', 'success');
     // 行为流（issue 261）：加入复习计划入小橘行为流（review:added）
     emitDomainEvent('review', { kind: 'added', title: file.basename });

@@ -98,6 +98,7 @@ export async function addNotes(dm: ReviewDataManager, app: App, paths: readonly 
     out.added = res.added;
     /* addItems 自己也会跳过已存在的：正常走不到，留着防两条路径口径分叉 */
     out.exists += res.skipped;
+    if (res.rejected) out.rejected = res.rejected;
   }
   return out;
 }
@@ -130,6 +131,7 @@ export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCard
   const res = await dm.addCards(list);
   out.added = res.added;
   out.exists = res.skipped;
+  if (res.rejected) out.rejected = res.rejected;
   if (res.keys.length) out.addedKeys = res.keys;
   return out;
 }

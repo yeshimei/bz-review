@@ -146,7 +146,9 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
     !item.isMissing && isEarlyDue(item, ctx.rThreshold ?? 0.9, w) ? `<span class="bzrv-q-tag is-early">提前</span>` : '',
     // V1 原型拍板（issue 253）：待重做旗标显性化——挂红 tag 提示「这题忘了要重做」
     item.pendingRedo && !item.isCompleted ? `<span class="bzrv-q-tag is-redo">待重做</span>` : '',
-    stageTagHtml(item, w, now),
+    /* 阶梯阶段右上角已经写着「3/10」，这里再挂一条「阶段 3/10」是同一句话说两遍。
+       已完成和 FSRS 不重复（FSRS 右上 Lv.n、这里 R%），照旧保留。 */
+    item.completed || item.phase === 'fsrs' ? stageTagHtml(item, w, now) : '',
   ].join('');
   return `
       <div class="${cls}" data-id="${item.id}" role="button" tabindex="${canPlay ? '0' : '-1'}" aria-disabled="${canPlay ? 'false' : 'true'}">
@@ -210,7 +212,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       ? `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot ok"></span>
         <strong>今日已清空</strong>
-        <span class="bzrv-q-strip-txt">${futureCount ? `未来还有 ${futureCount} 篇待复习` : '没有待复习条目'}</span>
+        <span class="bzrv-q-strip-txt">${futureCount ? `未来还有 ${futureCount} 条待复习` : '没有待复习条目'}</span>
       </div>`
       : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
@@ -232,12 +234,15 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   // item 13：「累计 X 天 · 连续 Y 天」（X=去重同日天数，computeStats.totalReviews）
   // 归档态：左下角变「返回队列」提醒钮（issue 254 迭代拍板），点击即回队列
   const stats = computeStats(items);
+  /* 「已完成」只数真的复习完了的。col.done 里还混着挂起（文件缺失）的条目——
+     直接拿它的长度当完成数，会让「已完成 2 篇」里藏着一条早就丢了文件的记录。 */
+  const doneCount = items.filter((i) => i.completed || i.isCompleted).length;
   const archItem = ctx.showArchived
     ? `<span class="bzrv-q-fitem bzrv-touch-target--lg is-back" data-act="arch" title="点此返回队列">
         ${iconSpan('undo-2', 'bzrv-q-ic')}<span class="lbl">返回队列</span>
       </span>`
     : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="arch" title="查看已完成复习">
-        ${iconSpan('folder', 'bzrv-q-ic')}<span class="lbl">已完成 <b>${col.done.length}</b> 篇</span>
+        ${iconSpan('folder', 'bzrv-q-ic')}<span class="lbl">已完成 <b>${doneCount}</b> 条</span>
       </span>`;
   const footer = `
       <div class="bzrv-q-footer">

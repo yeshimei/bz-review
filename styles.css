@@ -5705,8 +5705,12 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
    cinema 同名裸类规则 scoped 在 .bzrv-cinema--midnight，两侧互不误伤）；cinema 侧零改动，
    不抽公共组件（拍板：先重刷，抽公共件另议）。评级色 RATING_COLORS 为数据驱动动态色，
    保留行内 background/color。cinema 硬编码值按 --bzrv-* 档对档（ink/line/chip/gold →
-   text-*/border/surface-*/warning）。 */
-#bzrv-stats-popup .stat-cards:is([data-bzrv], [data-bzrv] *) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 0; }
+   text- / border / surface / warning）。 */
+/* 上面那行原来把 `text-*` 和 `border` 用斜杠连写，其中的「星号紧跟斜杠」提前
+   闭合了注释，紧跟着的 `.stat-cards { display:grid }` 被当成垃圾 token 整条丢弃
+   ——统计面板的六张卡于是竖排成一列。构建时完全静默，所以给 build-css.mjs 加了
+   孤儿注释符校验（见 scripts/build-css.mjs 的 findStrayCommentClose）。 */
+#bzrv-stats-popup .stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 0; }
 #bzrv-stats-popup .stat-card { background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: 10px; padding: 11px 13px; }
 #bzrv-stats-popup .stat-card .v { font-family: Georgia, serif; font-size: 19px; font-weight: 700; color: var(--bzrv-text-1); }
 #bzrv-stats-popup .stat-card .k { font-size: var(--bzrv-font-caption); letter-spacing: .14em; color: var(--bzrv-text-3); margin-top: 3px; }

@@ -30,12 +30,55 @@ const HEADER = [
   "",
 ].join("\n");
 
+/**
+ * 孤儿 `*\/` 检测。
+ *
+ * 注释正文里写一个 `*\/`（比如「token 档位：ink/line → text-*\/border」）会让注释
+ * 提前闭合，紧跟着的那条规则就变成「注释外面的垃圾文本」，浏览器整条丢弃——而
+ * 构建、tsc、esbuild 全都不会报错。统计面板的 `.stat-cards { display:grid }` 就
+ * 这么消失过一次：六张卡竖排成一列，看着像布局写错了，其实是 CSS 语法被吃掉。
+ *
+ * 判据：扫描时遇到**不在注释内**的 `*\/` 就是这种事故。
+ */
+export function findStrayCommentClose(css) {
+  const hits = [];
+  let inComment = false;
+  let line = 1;
+  for (let i = 0; i < css.length; i += 1) {
+    const c = css[i];
+    const n = css[i + 1];
+    if (c === "\n") line += 1;
+    if (!inComment && c === "/" && n === "*") {
+      inComment = true;
+      i += 1;
+      continue;
+    }
+    if (inComment && c === "*" && n === "/") {
+      inComment = false;
+      i += 1;
+      continue;
+    }
+    if (!inComment && c === "*" && n === "/") {
+      hits.push(line);
+      i += 1;
+    }
+  }
+  return hits;
+}
+
 export function buildStyles() {
   const parts = [HEADER];
   for (const rel of SOURCES) {
     const file = path.join(ROOT, rel);
     if (!fs.existsSync(file)) throw new Error(`样式源缺失：${rel}`);
     let text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+    // 注释里的 `*/` 会把注释提前闭合，紧跟的规则被静默丢弃——构建期直接拦下。
+    const stray = findStrayCommentClose(text);
+    if (stray.length) {
+      throw new Error(
+        `${rel} 第 ${stray.join("、")} 行有孤儿 \`*/\`：注释被提前闭合，后面的规则会被浏览器整条丢弃`
+      );
+    }
     if (!text.endsWith("\n")) text += "\n";
     parts.push(text);
   }
