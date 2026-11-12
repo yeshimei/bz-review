@@ -86,7 +86,8 @@ export async function openReviewAnalysis(app: App): Promise<void> {
       <div class="bzrv-ra-scroll">${analysisHtml(data)}</div>
     </div>`;
   // 移动端面板满屏没有遮罩可点，关闭钮即出口（桌面点框外/ESC）。
-  // 钮放**层框内**：跟着软横屏一起转——内容横过来看时它才落在手持视角的右上角（影院同款）
+  // 挂到层框**外面**：跟着软横屏转 90° 的话会跑到右下角、压进底部手势区
+  //（实测 rect 346,800，底边 834，手势区从 810 起）。
   if (isNarrow()) {
     const close = document.createElement('button');
     close.type = 'button';
@@ -95,7 +96,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
     close.title = '关闭';
     close.setAttribute('aria-label', '关闭');
     close.textContent = '✕';
-    ovl.querySelector<HTMLElement>('.bzrv-ra-box')?.appendChild(close);
+    ovl.appendChild(close);
   }
   markOwned(ovl);
   document.body.appendChild(ovl);
@@ -103,8 +104,29 @@ export async function openReviewAnalysis(app: App): Promise<void> {
   raOvl = ovl;
   const box = ovl.querySelector<HTMLElement>('.bzrv-ra-box');
   if (box) {
+    /* 软横屏（移动竖屏整页转 90°）是刻意的影院式设计，但页面上没有任何说明：
+       用户第一眼看到一屏横躺的点阵图，既不知道为什么，也不知道怎么退。
+       在层框**外面**挂一条提示——放里面会跟着一起转，等于没提示。 */
+    const syncRotHint = (): void => {
+      const rot = box.classList.contains('is-rot90');
+      let hint = ovl.querySelector<HTMLElement>('.bzrv-ra-hint');
+      if (!rot) {
+        hint?.remove();
+        return;
+      }
+      if (!hint) {
+        hint = document.createElement('div');
+        hint.className = 'bzrv-ra-hint';
+        hint.textContent = '记忆分析 · 往下滚看详情（横过来更清楚）';
+        ovl.appendChild(hint);
+      }
+    };
     fitRaBox(box, panel);
-    raSync = () => fitRaBox(box, panel);
+    syncRotHint();
+    raSync = () => {
+      fitRaBox(box, panel);
+      syncRotHint();
+    };
     window.addEventListener('resize', raSync);
     if (typeof ResizeObserver === 'function' && panel) {
       raRo = new ResizeObserver(raSync);
@@ -114,6 +136,8 @@ export async function openReviewAnalysis(app: App): Promise<void> {
   ovl.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     if (t.closest('[data-ra-close]')) { closeReviewAnalysis(); return; }
+    // 提示条在层框外，但点它不该关层（用户只是想看清那句话）
+    if (t.closest('.bzrv-ra-hint')) return;
     if (!t.closest('.bzrv-ra-box')) closeReviewAnalysis(); // 点框外 = 遮罩
   });
   raEsc = escManager.register('bz-review-analysis', {

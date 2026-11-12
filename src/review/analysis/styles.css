@@ -40,7 +40,7 @@
 .bzrv-ra-box.is-rot90 { --rot: 90deg; transform: rotate(var(--rot)); }
 .bzrv-ra-box.is-nudge { animation: bzrvRaNudge .32s ease-out; }
 @keyframes bzrvRaNudge { 0%, 100% { transform: rotate(var(--rot, 0deg)) translateX(0); } 25% { transform: rotate(var(--rot, 0deg)) translateX(-6px); } 75% { transform: rotate(var(--rot, 0deg)) translateX(6px); } }
-.bzrv-ra-close { position: absolute; top: 10px; right: 10px; z-index: 30; width: 34px; height: 34px; border-radius: 50%;
+.bzrv-ra-close { position: absolute; top: calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px))); right: calc(10px + var(--safe-area-inset-right, env(safe-area-inset-right, 0px))); z-index: 30; width: 34px; height: 34px; border-radius: 50%;
   border: 1px solid rgba(var(--ra-ink-rgb), .3); background: color-mix(in srgb, var(--ra-paper) 78%, transparent);
   color: rgb(var(--ra-ink-rgb)); font-size: 15px; cursor: pointer; }
 .bzrv-ra-scroll { position: absolute; inset: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scroll-snap-type: y mandatory; }
@@ -292,3 +292,13 @@ canvas { display: block; }
   border-radius: .3em; border: 1px solid rgba(var(--ra-ink-rgb), .28); background: color-mix(in srgb, var(--ra-paper) 92%, rgb(var(--ra-ink-rgb)));
   color: rgb(var(--ra-ink-rgb)); font-size: .78em; line-height: 1.4; white-space: nowrap; max-width: 24em;
   overflow: hidden; text-overflow: ellipsis; pointer-events: none; opacity: 0; transition: opacity .12s ease; }
+
+/* 软横屏提示条：挂在层框外，不跟着旋转（放里面会一起转 90°，等于没提示） */
+.bzrv-ra-hint {
+  position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 40;
+  padding: 6px 14px; border-radius: 999px; font-size: 12px; letter-spacing: .04em;
+  color: rgb(var(--ra-ink-rgb));
+  background: color-mix(in srgb, var(--ra-paper) 88%, transparent);
+  border: 1px solid rgba(var(--ra-ink-rgb), .2);
+  cursor: default;
+}
