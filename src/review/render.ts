@@ -403,16 +403,21 @@ export function sprintResultHtml(p: {
       </div>`;
 }
 
-/** 结算屏 */
+/** 结算屏。一篇都没做成时别摆三个 0——那看着像「白做了一轮」。 */
 export function sprintSummaryHtml(p: { total: number; passed: number; failed: number; streak: number }): string {
+  const none = p.total === 0;
   return `
       <div class="bzrv-summary">
-        <div class="bzrv-summary-title">本轮复习完成</div>
-        <div class="bzrv-summary-stats">
+        <div class="bzrv-summary-title">${none ? '这一轮没有做成任何一篇' : '本轮复习完成'}</div>
+        ${
+          none
+            ? '<div class="bzrv-summary-stats"><div class="st"><b>0</b><span>篇（都没出成题）</span></div></div>'
+            : `<div class="bzrv-summary-stats">
           <div class="st"><b>${p.total}</b><span>复习篇数</span></div>
           <div class="st"><b>${p.passed}</b><span>通过</span></div>
           <div class="st ${p.failed ? 'warn' : ''}"><b>${p.failed}</b><span>未通过</span></div>
-        </div>
+        </div>`
+        }
         ${p.streak > 0 ? `<div class="bzrv-summary-streak">连续复习 <b>${p.streak}</b> 天</div>` : ''}
         <button class="bzrv-btn bzrv-btn--primary bz-btn--block" data-action="done">完成 · 回到复习计划</button>
       </div>`;

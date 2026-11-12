@@ -414,15 +414,15 @@
     max-height: var(--bzrv-vvh, 100vh);
     border-radius: 0;
     /* 全屏后纸从 y=0 起，抬头那几行会被状态栏压住。顶部让出安全距——
-       移动端 webview 里 env(safe-area-inset-top) 恒为 0，只写 env() 等于没写，
-       必须 max(44px, …) 兜底（与 .bzrv-panel-mtop、更新日志弹窗同口径）。 */
+       移动端 webview 里 env() 实测恒为 0，宿主真正给的是 <body> 上的
+       --safe-area-inset-top；所以变量优先、env 兜底，外面再 max(44px) 保底。 */
     box-sizing: border-box;
-    padding-top: max(44px, env(safe-area-inset-top, 0px));
+    padding-top: max(44px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   }
 
   /* 关闭钮跟着安全距走；本体 40px，命中区补到 44px（触屏） */
   .bzrv-rw-close {
-    top: max(44px, env(safe-area-inset-top, 0px));
+    top: max(44px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
     right: 18px;
     width: 40px;
     height: 40px;

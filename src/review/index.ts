@@ -177,6 +177,19 @@ export function ensureReview(app: App): void {
     // F9：vault modify 高频路径改走单文件刷新（复用 60s 轮询快照/按需单读，不再每次保存任意 md 全量读）
     if (file.extension === 'md') await reviewApp.applyReviewStylesForFile(app, file);
   });
+  /* created / renamed 直接订原生 vault 事件。
+     这两个能力原来是走域事件总线（core/file-sync 发、本域订）的，但拆成独立插件后
+     那条总线在本插件里根本没初始化——于是「新建笔记自动加入」和「重命名跟着改路径」
+     全哑且静默：实测把计划里的一篇笔记改名，条目 filePath 还是旧路径，立刻变挂起、
+     从队列消失、还被算进「已完成」。
+     与下面保留下来的总线订阅并存：两个处理函数都有查重守卫，重复触发是空操作。
+     deleted 仍走总线——它带确认弹窗，双触发会弹两次，不能这么兜。 */
+  listen(app.vault as any, 'create', (file: any) => {
+    void reviewWatcher?.onVaultCreate(file);
+  });
+  listen(app.vault as any, 'rename', (file: any, oldPath: string) => {
+    reviewWatcher?.onVaultRename(file, oldPath);
+  });
   // ticket 098：监听文件夹自动加入（created）+ 删除/改名/移动确认（deleted/renamed）——
   // 订域事件总线通用兜底通道（obsidian-adapter 恒发、仅 md，载荷见 src/core/obsidian-adapter.ts），
   // 目录过滤逻辑留在 ReviewWatcher 内部

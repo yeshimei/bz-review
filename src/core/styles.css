@@ -121,7 +121,7 @@ button.news-close-btn {
 /* 通知 toast（原 core/notice.ts NOTICE_CSS，ADR-0010） */
 #bzrv-notice-container {
   position: fixed;
-  top: calc(56px + env(safe-area-inset-top, 0px));
+  top: calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   right: 16px;
   display: flex;
   flex-direction: column;
@@ -138,7 +138,7 @@ button.news-close-btn {
     right: auto;
     transform: translateX(-50%);
     align-items: center;
-    top: calc(34px + env(safe-area-inset-top, 0px));
+    top: calc(34px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   }
 }
 /* 桌面四角位置（noticePosition 设置，issue 297；缺省 top-right 不挂类）。
@@ -815,7 +815,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
   position: fixed; left: 0; right: 0; bottom: 0;
   background: var(--background-primary);
   border-radius: 14px 14px 0 0;
-  padding: 10px 14px calc(var(--bzrv-space-lg) + env(safe-area-inset-bottom));
+  padding: 10px 14px calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
   animation: bzrv-sheet-in 0.24s cubic-bezier(0.32, 0.72, 0.24, 1);
   transition: transform 0.22s ease; /* 下滑回弹/滑出关闭 */
@@ -1089,7 +1089,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
    宽度统一 min(calc(100vw - 32px), 440px) 由 openPathPicker 内联设定；仅保留底部安全区适配 */
 @media (max-width: 768px) {
   .bzrv-path-picker-foot {
-    padding-bottom: max(var(--bzrv-space-md), env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(var(--bzrv-space-md), var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   }
 }
 

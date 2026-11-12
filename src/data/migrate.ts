@@ -39,7 +39,27 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
     return { ok: false, message: '没找到 bz 的复习数据（CONFIG/STORAGE/review.json），不用导入。' };
   }
   if (await exists(dstPath)) {
-    return { ok: false, message: `本插件已经有复习数据（${dstPath}），不覆盖。` };
+    /* 只看「文件在不在」会误伤：插件启动读一次 review.json 就顺手把它建成了
+       `[]`。而老用户的真实顺序是「装插件 → 设置 → 导入」，此时文件早就在了，
+       于是导入对所有老用户都是死路——还会提示「你已经有复习数据了」，让人以为
+       自己早就导过。所以判的是**有没有条目**，不是有没有文件。 */
+    let existing = '';
+    try {
+      existing = await app.vault.adapter.read(dstPath);
+    } catch {
+      existing = '';
+    }
+    let hasData = false;
+    try {
+      const parsed = JSON.parse(existing);
+      hasData = Array.isArray(parsed) ? parsed.length > 0 : !!parsed;
+    } catch {
+      // 目标文件是坏的：同样不覆盖，但把它当成「有数据」，让用户先自己处理
+      hasData = existing.trim().length > 0;
+    }
+    if (hasData) {
+      return { ok: false, message: `本插件已经有复习数据（${dstPath}），不覆盖。` };
+    }
   }
 
   let raw = '';

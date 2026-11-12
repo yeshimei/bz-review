@@ -156,7 +156,7 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
 /* 通知 toast（原 core/notice.ts NOTICE_CSS，ADR-0010） */
 #bzrv-notice-container {
   position: fixed;
-  top: calc(56px + env(safe-area-inset-top, 0px));
+  top: calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   right: 16px;
   display: flex;
   flex-direction: column;
@@ -173,7 +173,7 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
     right: auto;
     transform: translateX(-50%);
     align-items: center;
-    top: calc(34px + env(safe-area-inset-top, 0px));
+    top: calc(34px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   }
 }
 /* 桌面四角位置（noticePosition 设置，issue 297；缺省 top-right 不挂类）。
@@ -850,7 +850,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
   position: fixed; left: 0; right: 0; bottom: 0;
   background: var(--background-primary);
   border-radius: 14px 14px 0 0;
-  padding: 10px 14px calc(var(--bzrv-space-lg) + env(safe-area-inset-bottom));
+  padding: 10px 14px calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
   animation: bzrv-sheet-in 0.24s cubic-bezier(0.32, 0.72, 0.24, 1);
   transition: transform 0.22s ease; /* 下滑回弹/滑出关闭 */
@@ -1124,7 +1124,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
    宽度统一 min(calc(100vw - 32px), 440px) 由 openPathPicker 内联设定；仅保留底部安全区适配 */
 @media (max-width: 768px) {
   .bzrv-path-picker-foot:is([data-bzrv], [data-bzrv] *) {
-    padding-bottom: max(var(--bzrv-space-md), env(safe-area-inset-bottom, 0px));
+    padding-bottom: max(var(--bzrv-space-md), var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   }
 }
 
@@ -2254,7 +2254,7 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
 .bzrv-lightbox-foot:is([data-bzrv], [data-bzrv] *) {
   position: absolute;
   bottom: 0; left: 0; right: 0;
-  padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px));
+  padding: 14px 24px calc(14px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   color: rgba(255, 255, 255, 0.75);
   font-size: var(--bzrv-font-meta);
   text-align: center;
@@ -2353,7 +2353,7 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
    挂在面板根节点（panel/frame）上，同时归零首子元素顶距——域内头行自带的
    safe-area 垫顶由本类统一接管，接入域不得再在头行重复写避让（防双份顶距）。 */
 @media (max-width: 768px) {
-  .bzrv-panel-mtop:is([data-bzrv], [data-bzrv] *) { padding-top: max(44px, env(safe-area-inset-top, 0px)) !important; }
+  .bzrv-panel-mtop:is([data-bzrv], [data-bzrv] *) { padding-top: max(44px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important; }
   .bzrv-panel-mtop > div:is([data-bzrv], [data-bzrv] *):first-child { padding-top: 0 !important; }
 }
 
@@ -3274,7 +3274,7 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
   border: 1px solid var(--bzrv-border);
   border-radius: var(--bzrv-radius-lg) var(--bzrv-radius-lg) 0 0;
   box-shadow: var(--bzrv-shadow-lg);
-  padding: 0 var(--bzrv-space-lg) calc(var(--bzrv-space-lg) + env(safe-area-inset-bottom, 0px));
+  padding: 0 var(--bzrv-space-lg) calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   transform: translateY(100%);
   transition: transform var(--bzrv-dur-base) var(--bzrv-ease-out);
 }
@@ -5536,7 +5536,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-sq-list .bzrv-empty-title:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); }
 
 /* ==================== 底部信息行（归档/统计的非按钮落位，整行可点无引导小字） ==================== */
-.bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
+.bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px calc(var(--bzrv-space-md) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
 .bzrv-q-fitem:is([data-bzrv], [data-bzrv] *) { display: inline-flex; align-items: center; gap: 5px; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); cursor: pointer; user-select: none; }
 .bzrv-q-fitem .bzrv-q-ic:is([data-bzrv], [data-bzrv] *) { width: 12px; height: 12px; }
 .bzrv-q-fitem .lbl b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-2); font-weight: 600; }@media (hover: hover) {
@@ -5659,7 +5659,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-q-col-head:is([data-bzrv], [data-bzrv] *) { position: sticky; top: 0; z-index: 1; background: var(--bzrv-surface-1); }
   .bzrv-q-strip:is([data-bzrv], [data-bzrv] *) { padding: 6px 14px 10px; }
   .bzrv-q-cols:is([data-bzrv], [data-bzrv] *) { padding: 0 14px var(--bzrv-space-md); }
-  .bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
+  .bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
   .bzrv-sprint-head:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) 14px 6px; }
   .bzrv-sprint-body:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-xs) 14px var(--bzrv-space-md); flex-direction: column; }
   .bzrv-sprint-queue:is([data-bzrv], [data-bzrv] *) { width: auto; max-height: 140px; }
@@ -5667,7 +5667,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 }
 
 /* ==================== 普通复习悬浮迷你评级条（item 4，屏幕底部） ==================== */
-.bzrv-review-bar:is([data-bzrv], [data-bzrv] *) { position: fixed; left: 50%; bottom: max(22px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) var(--bzrv-space-md); background: var(--bzrv-surface-2); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-md); box-shadow: var(--bzrv-shadow-lg); max-width: min(92vw, 560px); }
+.bzrv-review-bar:is([data-bzrv], [data-bzrv] *) { position: fixed; left: 50%; bottom: max(22px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) var(--bzrv-space-md); background: var(--bzrv-surface-2); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-md); box-shadow: var(--bzrv-shadow-lg); max-width: min(92vw, 560px); }
 /* R8 键盘化：容器 tabindex=-1 为程序化 focus 落点，不显示焦点框（按钮各自有 hover/focus 表达） */
 .bzrv-review-bar:is([data-bzrv], [data-bzrv] *):focus { outline: none; }
 .bzrv-review-bar-info:is([data-bzrv], [data-bzrv] *) { font-size: 12.5px; color: var(--bzrv-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
@@ -6029,8 +6029,11 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 /* flex:1 而不是 height:100%：父级 #bzrv-entries 的高度是 flex 拉伸出来的，
    它自己的 height 属性仍是 auto，子元素的百分比高度会解析成 auto——卡片会话
    于是只有内容那么高（实测 136px），面板再高也是下面一大片空白。 */
-.bzrv-cs:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
+.bzrv-cs:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
 .bzrv-cs-head:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+/* 退出钮（触屏唯一出口）：矮一档、靠左，别跟「重新生成」抢注意力 */
+.bzrv-cs-exit:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-src:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzrv-cs-pos:is([data-bzrv], [data-bzrv] *) { font-variant-numeric: tabular-nums; flex: none; }
 .bzrv-cs-src:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzrv-cs-regen:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
@@ -6060,7 +6063,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-quiz-acc:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-emphasis); font-weight: 600; color: var(--bzrv-text-1); }
 .bzrv-cs-quiz-rating:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); }
 @media (max-width: 768px) {
-  .bzrv-cs:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
+  .bzrv-cs:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
   .bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
 }
 

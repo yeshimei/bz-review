@@ -490,8 +490,14 @@ export const reviewApp = {
         noteItems.length
           ? () => {
               void (async () => {
-                if (getSettings().forceQuizForReview) await this.runSprintSession(noteItems, 'round');
-                else await this.reviewLoop(noteItems, 0);
+                /* 没配 AI 就别开冲刺：卷子一道都出不来，每篇都被「没题」跳过，
+                   最后结算屏报「0 复习篇数 / 0 通过 / 0 未通过」——用户刚做完一
+                   整轮卡片，看到 0 会以为白做了。走普通复习，开篇即翻。 */
+                if (getSettings().forceQuizForReview && (await aiReady())) {
+                  await this.runSprintSession(noteItems, 'round');
+                } else {
+                  await this.reviewLoop(noteItems, 0);
+                }
               })();
             }
           : undefined,

@@ -188,7 +188,7 @@
   }
 
   .bzrv-sup {
-    padding: 24px 20px max(18px, env(safe-area-inset-bottom));
+    padding: 24px 20px max(18px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
   }
 
   /* 13px 是量出来的：第二句 24 字 × 13 = 312，卡内可用 326，两行正好收住。

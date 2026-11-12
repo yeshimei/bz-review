@@ -94,7 +94,7 @@
 .bzrv-sq-list .bzrv-empty-title { font-size: var(--bzrv-font-meta); }
 
 /* ==================== 底部信息行（归档/统计的非按钮落位，整行可点无引导小字） ==================== */
-.bzrv-q-footer { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
+.bzrv-q-footer { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px calc(var(--bzrv-space-md) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
 .bzrv-q-fitem { display: inline-flex; align-items: center; gap: 5px; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); cursor: pointer; user-select: none; }
 .bzrv-q-fitem .bzrv-q-ic { width: 12px; height: 12px; }
 .bzrv-q-fitem .lbl b { color: var(--bzrv-text-2); font-weight: 600; }@media (hover: hover) {
@@ -217,7 +217,7 @@
   .bzrv-q-col-head { position: sticky; top: 0; z-index: 1; background: var(--bzrv-surface-1); }
   .bzrv-q-strip { padding: 6px 14px 10px; }
   .bzrv-q-cols { padding: 0 14px var(--bzrv-space-md); }
-  .bzrv-q-footer { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
+  .bzrv-q-footer { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
   .bzrv-sprint-head { padding: var(--bzrv-space-md) 14px 6px; }
   .bzrv-sprint-body { padding: var(--bzrv-space-xs) 14px var(--bzrv-space-md); flex-direction: column; }
   .bzrv-sprint-queue { width: auto; max-height: 140px; }
@@ -225,7 +225,7 @@
 }
 
 /* ==================== 普通复习悬浮迷你评级条（item 4，屏幕底部） ==================== */
-.bzrv-review-bar { position: fixed; left: 50%; bottom: max(22px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) var(--bzrv-space-md); background: var(--bzrv-surface-2); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-md); box-shadow: var(--bzrv-shadow-lg); max-width: min(92vw, 560px); }
+.bzrv-review-bar { position: fixed; left: 50%; bottom: max(22px, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); transform: translateX(-50%); display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) var(--bzrv-space-md); background: var(--bzrv-surface-2); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-md); box-shadow: var(--bzrv-shadow-lg); max-width: min(92vw, 560px); }
 /* R8 键盘化：容器 tabindex=-1 为程序化 focus 落点，不显示焦点框（按钮各自有 hover/focus 表达） */
 .bzrv-review-bar:focus { outline: none; }
 .bzrv-review-bar-info { font-size: 12.5px; color: var(--bzrv-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
@@ -587,8 +587,11 @@
 /* flex:1 而不是 height:100%：父级 #bzrv-entries 的高度是 flex 拉伸出来的，
    它自己的 height 属性仍是 auto，子元素的百分比高度会解析成 auto——卡片会话
    于是只有内容那么高（实测 136px），面板再高也是下面一大片空白。 */
-.bzrv-cs { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
+.bzrv-cs { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
 .bzrv-cs-head { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+/* 退出钮（触屏唯一出口）：矮一档、靠左，别跟「重新生成」抢注意力 */
+.bzrv-cs-exit { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-src { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzrv-cs-pos { font-variant-numeric: tabular-nums; flex: none; }
 .bzrv-cs-src { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzrv-cs-regen { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
@@ -618,7 +621,7 @@
 .bzrv-cs-quiz-acc { margin: 0; font-size: var(--bzrv-font-emphasis); font-weight: 600; color: var(--bzrv-text-1); }
 .bzrv-cs-quiz-rating { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); }
 @media (max-width: 768px) {
-  .bzrv-cs { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
+  .bzrv-cs { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
   .bzrv-cs-rate .bzrv-btn { min-width: 0; }
 }
 

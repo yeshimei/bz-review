@@ -448,6 +448,7 @@ export class CardSession {
     host.innerHTML = `
       <div class="bzrv-cs" role="group" aria-label="划线卡复习">
         <div class="bzrv-cs-head">
+          <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit" title="退出本轮">退出</button>
           <span class="bzrv-cs-pos">${esc(pos)}</span>
           <span class="bzrv-cs-src">${esc(sourceOf(item))}</span>
           ${
@@ -612,28 +613,28 @@ export class CardSession {
       const round = this.quiz;
       if (!round) return '';
       if (round.idx >= round.list.length) {
-        return `<button type="button" class="bzrv-btn pri" data-act="finish">记下这次结果（Enter）</button>`;
+        return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="finish">记下这次结果（Enter）</button>`;
       }
       if (round.picked === null) return `<span class="bzrv-cs-hint">按 1-4 或点选项作答</span>`;
-      return `<button type="button" class="bzrv-btn pri" data-act="next">${
+      return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="next">${
         round.idx + 1 >= round.list.length ? '看结果' : '下一题'
       }（Enter）</button>`;
     }
 
     if (this.isClozeMode()) {
       if (!this.clozeReady(item.card!)) return this.ratingHtml();
-      if (!this.clozeState) return `<button type="button" class="bzrv-btn pri" data-act="check">对答案</button>`;
+      if (!this.clozeState) return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="check">对答案</button>`;
       return this.ratingHtml();
     }
 
     if (this.isContextMode()) {
       return this.revealed
         ? this.ratingHtml()
-        : `<button type="button" class="bzrv-btn pri" data-act="reveal">想起来了，看答案</button>`;
+        : `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">想起来了，看答案</button>`;
     }
 
     if (this.revealed) return this.ratingHtml();
-    return `<button type="button" class="bzrv-btn pri" data-act="reveal">看答案</button>`;
+    return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">看答案</button>`;
   }
 
   private ratingHtml(): string {
@@ -643,6 +644,12 @@ export class CardSession {
   }
 
   private bind(host: HTMLElement): void {
+    /* 退出键：触屏用户进了会话没有物理 Esc，遮罩又被整屏面板盖死——没有这个
+       按钮就只能把整轮做完或者杀 App。与 Esc 同一语义（中途退不接下一批）。 */
+    host.querySelector('[data-act="exit"]')?.addEventListener('click', () => {
+      this.destroy();
+      this.opts.onExit(false);
+    });
     host.querySelector('[data-act="reveal"]')?.addEventListener('click', () => this.reveal());
     host.querySelector('[data-act="check"]')?.addEventListener('click', () => this.submitCloze());
     host.querySelector('[data-act="regen"]')?.addEventListener('click', () => void this.regenerate());
