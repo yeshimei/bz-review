@@ -34,8 +34,8 @@ export default interface BzSettings {
   reviewFitEveryN: number;
   /** 拟合的召回阈值 */
   reviewRThreshold: number;
-  /** 划线卡复习方式：AI 抽认卡 / AI 做题 / 展开全文 */
-  reviewCardMode: 'flashcard' | 'quiz' | 'plain';
+  /** 划线卡复习方式：AI 抽认卡 / AI 填空 / 上下文 / AI 做题 / 展开全文 */
+  reviewCardMode: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
   /** 做题时每轮抽题比例（1/3、1/2…） */
   reviewCardQuizRatio: number;
   /** 被监控并自动加入复习的文件夹 */

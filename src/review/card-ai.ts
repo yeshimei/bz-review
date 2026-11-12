@@ -17,14 +17,22 @@ import type { ReviewCard } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
 import { generateFlashcard } from './flashcard';
 import { generateCardQuiz } from './card-quiz';
+import { generateCloze, ruleCloze } from './cloze';
 
-/** 划线卡的三种复习方式 */
-export type CardMode = 'flashcard' | 'quiz' | 'plain';
+/**
+ * 划线卡的四种复习方式（外加 plain：不生成任何内容，直接展开全文）。
+ *
+ *   flashcard 抽认卡：正面问句，背面原文
+ *   cloze     填空：挖掉一两处，凭上下文补回来
+ *   quiz      做题：AI 出选择题
+ *   context   上下文：给前后文，回忆中间那句（不需要预先生成内容）
+ */
+export type CardMode = 'flashcard' | 'cloze' | 'quiz' | 'context' | 'plain';
 
 /** 当前设置选的是哪种；没设过/脏值一律按抽认卡 */
 export function cardModeOf(settings?: any): CardMode {
   const raw = (settings ?? tryGetSettings())?.reviewCardMode;
-  if (raw === 'quiz' || raw === 'plain') return raw;
+  if (raw === 'quiz' || raw === 'plain' || raw === 'cloze' || raw === 'context') return raw;
   return 'flashcard';
 }
 
@@ -68,12 +76,23 @@ export async function ensureCardContent(
 ): Promise<boolean> {
   if (!card?.key) return false;
   if (ctx.mode === 'plain') return false;
+  // 上下文卡用的是阅读器给的 before/after，没有要生成的东西
+  if (ctx.mode === 'context') return false;
 
   if (ctx.mode === 'flashcard') {
     if (!force && String(card.qa?.q ?? '').trim()) return false;
     const res = await generateFlashcard(card, ctx.makeAI);
     if (!res?.q) return false;
     await ctx.updateCard(card.key, { qa: { q: res.q, a: res.a, at: Date.now() } });
+    return true;
+  }
+
+  if (ctx.mode === 'cloze') {
+    if (!force && card.cloze?.text && card.cloze.blanks?.length) return false;
+    // 先问模型；模型不给、或给得不合格，退回规则挖空——复习不能因为模型卡住
+    const made = (await generateCloze(card, ctx.makeAI)) ?? ruleCloze(String(card.text ?? ''));
+    if (!made.blanks?.length || !made.text.includes('{{1}}')) return false;
+    await ctx.updateCard(card.key, { cloze: made });
     return true;
   }
 

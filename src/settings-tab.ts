@@ -151,14 +151,16 @@ export class ReviewSettingTab extends PluginSettingTab {
       .setName(t('划线卡复习方式', 'Highlight card mode'))
       .setDesc(
         t(
-          'AI 抽认卡 / AI 做题 / 展开全文。只影响划线卡，不影响笔记。',
-          'Flashcard / quiz / plain text. Only affects highlight cards.',
+          '抽认卡 / 填空 / 上下文 / 做题 四种任选，或「展开全文」直接看原文。只影响划线卡，不影响笔记。',
+          'Flashcard / cloze / context / quiz, or plain text. Only affects highlight cards.',
         ),
       )
       .addDropdown((dd) =>
         dd
-          .addOption('flashcard', t('AI 抽认卡', 'AI flashcard'))
-          .addOption('quiz', t('AI 做题', 'AI quiz'))
+          .addOption('flashcard', t('抽认卡', 'Flashcard'))
+          .addOption('cloze', t('填空', 'Cloze'))
+          .addOption('context', t('上下文', 'Context'))
+          .addOption('quiz', t('做题', 'Quiz'))
           .addOption('plain', t('展开全文', 'Plain text'))
           .setValue(s.reviewCardMode)
           .onChange(async (v) => {

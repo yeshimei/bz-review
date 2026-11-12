@@ -72,6 +72,13 @@ export interface ReviewCardInput {
   comment?: string;
   /** 回到原文的链接（obsidian:// 协议串） */
   backlink?: string;
+  /**
+   * 划线前后各一段原文（可选）。
+   *
+   * 给了，复习时才能用「上下文」方式——把划线藏起来，凭前后文回忆。
+   * 不给也能用，只是这个方式退化成「凭出处回忆」。
+   */
+  context?: { before?: string; after?: string };
 }
 
 export interface ReviewPlanApi {

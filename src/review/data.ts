@@ -43,8 +43,16 @@ export interface ReviewCard {
   comment?: string;
   /** 回到原文的链接（obsidian:// 协议串） */
   backlink?: string;
+  /**
+   * 划线前后各一段原文（阅读器推送时带）。
+   * 有它才能走「上下文卡」：把划线藏起来，凭前后文回忆。
+   * 没有时退化成「出处回忆」，不假装是完整功能。
+   */
+  context?: { before?: string; after?: string };
   /** AI 生成的抽认卡问答（可选；没有就用内置的「提示→揭示」） */
   qa?: { q: string; a: string; at: number };
+  /** 填空卡：挖空后的句子 + 各空位答案 */
+  cloze?: { text: string; blanks: string[]; at: number };
 }
 
 export interface ReviewItem {
