@@ -49,6 +49,7 @@ import {
   motionQueueBoot, motionChargeStrip, motionDrawCard, motionTeardown, motionRatingBar,
 } from './motion';
 import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
+import { removeNote as planRemoveNote } from './plan-ops';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
 import { CardSession } from './card-session';
@@ -354,6 +355,38 @@ export class UIManager {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
           activate();
+        }
+      });
+    });
+    /* 挂着的卡（文件缺失）：点下去原来毫无反应，右键菜单里的「打开原文」也用不了，
+       条目就成了一颗看得见摸不着的死钉子。给一个明确出口——问一句要不要移出。 */
+    container.querySelectorAll<HTMLElement>('.bzrv-q-card.missing[data-id]').forEach((card) => {
+      const handle = (): void => {
+        const it = items.find((x) => x.id === card.dataset.id);
+        if (!it) return;
+        void openFlowDialog({
+          title: '这篇笔记不在了',
+          message: `「${it.name}」的文件找不到（可能被删除、改名或移走了）。要把它移出复习计划吗？移出后可以重新加入。`,
+          actions: [
+            { label: '留着', value: 'cancel' },
+            { label: '移出', value: 'ok', cta: true, danger: true },
+          ],
+        }).then(async (v) => {
+          if (v !== 'ok' || !this.dataManager) return;
+          try {
+            await planRemoveNote(this.dataManager, it.filePath);
+            notice('已移出复习计划', 'success');
+          } catch (e) {
+            notifySaveError(e, '移出复习计划');
+          }
+          await this.refreshPanel();
+        });
+      };
+      card.addEventListener('click', handle);
+      card.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handle();
         }
       });
     });

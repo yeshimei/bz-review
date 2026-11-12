@@ -154,7 +154,7 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
     item.completed || item.phase === 'fsrs' ? stageTagHtml(item, w, now) : '',
   ].join('');
   return `
-      <div class="${cls}" data-id="${item.id}" role="button" tabindex="${canPlay ? '0' : '-1'}" aria-disabled="${canPlay ? 'false' : 'true'}">
+      <div class="${cls}" data-id="${item.id}" role="button" tabindex="${canPlay || item.isMissing ? '0' : '-1'}" aria-disabled="${canPlay ? 'false' : 'true'}">
         <div class="bzrv-q-card-top"><span class="bzrv-q-card-title">${title}</span><span class="bzrv-q-card-stage">${item.isMissing ? '挂起' : stageNum(item)}</span></div>
         <div class="bzrv-q-card-meta">${tags}</div>
       </div>`;
@@ -204,6 +204,9 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   // （partitionQueue 的 today 列已含提前卡 → overdue+today 与 roundQueue 同集合，item 6 同口径）
   const clearToday = col.overdue.length + col.today.length === 0;
   const futureCount = col.future.length;
+  /* 文件不在了的条目只躺在归档列表里，待复习这边一条都看不见——用户根本不知道
+     自己有卡挂着。状态条上带一句，至少有个线索可循。 */
+  const missingCount = items.filter((i) => i.isMissing).length;
 
   // V1 原型拍板（issue 253）：归档视图状态条 = 绿点 +「已完成复习」+ 回队列指引（旧态误用红点「开始本轮」）
   const strip = ctx.showArchived
@@ -220,7 +223,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
         <strong>开始本轮</strong>
-        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延</span>
+        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延${missingCount ? ` · ${missingCount} 条文件缺失` : ''}</span>
         <button class="bzrv-btn bzrv-btn--primary" data-act="begin">开始本轮</button>
       </div>`;
 
