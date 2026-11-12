@@ -24,16 +24,12 @@ import { QUIZ_RATIO, pickCardQuestions } from './card-quiz';
 import type { QuizQuestion } from './quiz-core/manager';
 import { checkBlanks, renderClozeHtmlParts } from './cloze';
 import { contextPromptOf } from './context';
+import { promptOf, promptViewFor } from './card-prompt';
 import { accuracyToRating } from './sprint';
 
-/** 提示面：长划线给开头，短划线只给几个字（否则等于把答案念出来） */
-export function promptOf(item: ReviewItem): string {
-  const text = String(item.card?.text ?? '').trim();
-  const chars = Array.from(text);
-  if (!chars.length) return '';
-  if (chars.length > 24) return `${chars.slice(0, 18).join('')}…`;
-  return `${chars.slice(0, 4).join('')}…`;
-}
+/* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
+   能直接断言「问过之后必须有字」。此处转出，保持既有引用面不变。 */
+export { promptOf, promptViewFor } from './card-prompt';
 
 /** 出处那行：书名 · 章节 */
 export function sourceOf(item: ReviewItem): string {
@@ -226,19 +222,28 @@ export class CardSession {
    */
   private promptFor(item: ReviewItem): string {
     const key = item.filePath;
-    const cached = this.qCache.get(key) ?? String(item.card?.qa?.q ?? '').trim();
-    if (cached) return cached;
-    if (!this.opts.ask || this.asked.has(key)) return promptOf(item);
-    this.asked.add(key);
-    void this.opts
-      .ask(item)
-      .then((res) => {
-        if (!res?.q) return;
-        this.qCache.set(key, res.q);
-        if (this.current()?.filePath === key) this.render();
-      })
-      .catch(() => undefined);
-    return '';
+    const view = promptViewFor(item, {
+      asked: this.asked.has(key),
+      canAsk: !!this.opts.ask,
+      cached: this.qCache.get(key) ?? String(item.card?.qa?.q ?? '').trim(),
+    });
+    if (view.ask && this.opts.ask) {
+      this.asked.add(key);
+      void this.opts
+        .ask(item)
+        .then((res) => {
+          if (res?.q) this.qCache.set(key, res.q);
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          /* 拿到没拿到都要重画一次：问过之后 asked 已置位，重画时
+             promptViewFor 会退回内置提示。原来这里是「拿不到就 return」，
+             于是没配模型 / 模型调用失败时界面永远停在「正在生成提示…」，
+             整张卡复习不了，控制台还一句错都不报。 */
+          if (this.current()?.filePath === key) this.render();
+        });
+    }
+    return view.text;
   }
 
   /** 做题：进会话就把题库读出来，抽好这一轮要问的几道 */
