@@ -1394,6 +1394,11 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   --bzrv-space-xl: 24px;
   --bzrv-space-2xl: 32px;
 
+  /* 安全区不在这里定义：Obsidian 把 --safe-area-inset-* 挂在 <body> 上，而 :root
+     定义的变量在 :root 就地求值，取不到 body 的值（会恒等于 0）。所以贴边元素
+     直接写 max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))，
+     在元素自身参与求值，body 继承下来才拿得到。 */
+
   /* 圆角：层级越大越圆 */
   --bzrv-radius-xs: 4px;    /* 图标按钮、小控件 */
   --bzrv-radius-sm: 8px;    /* 按钮、输入框、菜单项 */
@@ -5528,7 +5533,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-sq-list .bzrv-empty-title:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); }
 
 /* ==================== 底部信息行（归档/统计的非按钮落位，整行可点无引导小字） ==================== */
-.bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px var(--bzrv-space-md); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
+.bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
 .bzrv-q-fitem:is([data-bzrv], [data-bzrv] *) { display: inline-flex; align-items: center; gap: 5px; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); cursor: pointer; user-select: none; }
 .bzrv-q-fitem .bzrv-q-ic:is([data-bzrv], [data-bzrv] *) { width: 12px; height: 12px; }
 .bzrv-q-fitem .lbl b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-2); font-weight: 600; }@media (hover: hover) {
@@ -5651,7 +5656,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-q-col-head:is([data-bzrv], [data-bzrv] *) { position: sticky; top: 0; z-index: 1; background: var(--bzrv-surface-1); }
   .bzrv-q-strip:is([data-bzrv], [data-bzrv] *) { padding: 6px 14px 10px; }
   .bzrv-q-cols:is([data-bzrv], [data-bzrv] *) { padding: 0 14px var(--bzrv-space-md); }
-  .bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-sm) 14px var(--bzrv-space-md); }
+  .bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
   .bzrv-sprint-head:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) 14px 6px; }
   .bzrv-sprint-body:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-xs) 14px var(--bzrv-space-md); flex-direction: column; }
   .bzrv-sprint-queue:is([data-bzrv], [data-bzrv] *) { width: auto; max-height: 140px; }
@@ -6014,7 +6019,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
    卡片内容全在排期表里，复习时不打开任何文件。三种方式（抽认卡 / 做题 / 展开全文）
    共用这层壳；选项按钮直接复用做题家的 .quiz-option-btn（含 correct/wrong 配色），
    所以此处只补布局与「问句 / 原文」的排版。 */
-.bzrv-cs:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px var(--bzrv-space-lg); box-sizing: border-box; }
+.bzrv-cs:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
 .bzrv-cs-head:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-pos:is([data-bzrv], [data-bzrv] *) { font-variant-numeric: tabular-nums; flex: none; }
 .bzrv-cs-src:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -6045,7 +6050,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-quiz-acc:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-emphasis); font-weight: 600; color: var(--bzrv-text-1); }
 .bzrv-cs-quiz-rating:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); }
 @media (max-width: 768px) {
-  .bzrv-cs:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) var(--bzrv-space-md) var(--bzrv-space-lg); }
+  .bzrv-cs:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
   .bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
 }
 

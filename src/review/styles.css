@@ -91,7 +91,7 @@
 .bzrv-sq-list .bzrv-empty-title { font-size: var(--bzrv-font-meta); }
 
 /* ==================== 底部信息行（归档/统计的非按钮落位，整行可点无引导小字） ==================== */
-.bzrv-q-footer { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px var(--bzrv-space-md); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
+.bzrv-q-footer { display: flex; align-items: center; gap: 10px; padding: var(--bzrv-space-sm) 20px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); border-top: 1px solid var(--bzrv-border); flex-shrink: 0; }
 .bzrv-q-fitem { display: inline-flex; align-items: center; gap: 5px; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); cursor: pointer; user-select: none; }
 .bzrv-q-fitem .bzrv-q-ic { width: 12px; height: 12px; }
 .bzrv-q-fitem .lbl b { color: var(--bzrv-text-2); font-weight: 600; }@media (hover: hover) {
@@ -214,7 +214,7 @@
   .bzrv-q-col-head { position: sticky; top: 0; z-index: 1; background: var(--bzrv-surface-1); }
   .bzrv-q-strip { padding: 6px 14px 10px; }
   .bzrv-q-cols { padding: 0 14px var(--bzrv-space-md); }
-  .bzrv-q-footer { padding: var(--bzrv-space-sm) 14px var(--bzrv-space-md); }
+  .bzrv-q-footer { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
   .bzrv-sprint-head { padding: var(--bzrv-space-md) 14px 6px; }
   .bzrv-sprint-body { padding: var(--bzrv-space-xs) 14px var(--bzrv-space-md); flex-direction: column; }
   .bzrv-sprint-queue { width: auto; max-height: 140px; }
@@ -577,7 +577,7 @@
    卡片内容全在排期表里，复习时不打开任何文件。三种方式（抽认卡 / 做题 / 展开全文）
    共用这层壳；选项按钮直接复用做题家的 .quiz-option-btn（含 correct/wrong 配色），
    所以此处只补布局与「问句 / 原文」的排版。 */
-.bzrv-cs { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px var(--bzrv-space-lg); box-sizing: border-box; }
+.bzrv-cs { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
 .bzrv-cs-head { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-pos { font-variant-numeric: tabular-nums; flex: none; }
 .bzrv-cs-src { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -608,7 +608,7 @@
 .bzrv-cs-quiz-acc { margin: 0; font-size: var(--bzrv-font-emphasis); font-weight: 600; color: var(--bzrv-text-1); }
 .bzrv-cs-quiz-rating { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); }
 @media (max-width: 768px) {
-  .bzrv-cs { padding: var(--bzrv-space-md) var(--bzrv-space-md) var(--bzrv-space-lg); }
+  .bzrv-cs { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); }
   .bzrv-cs-rate .bzrv-btn { min-width: 0; }
 }
 

@@ -17,6 +17,11 @@
   --bzrv-space-xl: 24px;
   --bzrv-space-2xl: 32px;
 
+  /* 安全区不在这里定义：Obsidian 把 --safe-area-inset-* 挂在 <body> 上，而 :root
+     定义的变量在 :root 就地求值，取不到 body 的值（会恒等于 0）。所以贴边元素
+     直接写 max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))，
+     在元素自身参与求值，body 继承下来才拿得到。 */
+
   /* 圆角：层级越大越圆 */
   --bzrv-radius-xs: 4px;    /* 图标按钮、小控件 */
   --bzrv-radius-sm: 8px;    /* 按钮、输入框、菜单项 */
