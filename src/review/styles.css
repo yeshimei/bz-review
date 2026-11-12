@@ -591,9 +591,10 @@
 .bzrv-cs-head { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 /* 退出钮（触屏唯一出口）：矮一档、靠左，别跟「重新生成」抢注意力 */
 .bzrv-cs-exit { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
-.bzrv-cs-src { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzrv-cs-pos { font-variant-numeric: tabular-nums; flex: none; }
 .bzrv-cs-src { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 阶段号：队列卡片有，会话里原来没有——复习到一半不知道这张在第几级 */
+.bzrv-cs-stage { flex: none; font-variant-numeric: tabular-nums; }
 .bzrv-cs-regen { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
 .bzrv-cs-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--bzrv-space-md); }
 /* 内容少时垂直居中，别把一整屏空白留在中间（移动端尤其明显）。

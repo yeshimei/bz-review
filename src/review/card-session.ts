@@ -25,6 +25,7 @@ import type { QuizQuestion } from './quiz-core/manager';
 import { checkBlanks, renderClozeHtmlParts } from './cloze';
 import { contextPromptOf } from './context';
 import { promptOf, promptViewFor } from './card-prompt';
+import { stageNum } from './render';
 import { accuracyToRating } from './sprint';
 
 /* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
@@ -451,6 +452,7 @@ export class CardSession {
           <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit" title="退出本轮">退出</button>
           <span class="bzrv-cs-pos">${esc(pos)}</span>
           <span class="bzrv-cs-src">${esc(sourceOf(item))}</span>
+          <span class="bzrv-cs-stage">${esc(stageNum(item))}</span>
           ${
             canRegen
               ? `<button type="button" class="bzrv-btn bzrv-cs-regen" data-act="regen"${
