@@ -315,6 +315,15 @@ export const reviewApp = {
     void this.maybeRunFit(getApp());
     // 行为流（issue 261）：评分入小橘行为流（review:rated，域事件总线；未装小橘时订阅端静默）
     emitDomainEvent('review', { kind: 'rated', title: item.name || filePath, rating });
+    /* 评级后顺手刷新面板：不然队列还停在评级前的样子——toast 说「30 分钟后」，
+       卡片却仍挂在「已逾期」栏里，用户只能关掉面板重开才看得到变化。
+       面板没开、或卡片会话正占着内容区时 refreshPanel 自己会提前返回。 */
+    try {
+      const { uiManager } = await import('./index');
+      if (uiManager) void uiManager.refreshPanel().catch(() => undefined);
+    } catch {
+      /* 面板不在不影响写入 */
+    }
   },
 
   /** 跳转逾期（bz-review-start/overdue 命令入口）：完整复习流程 = startRoundSprint */

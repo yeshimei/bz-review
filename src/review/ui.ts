@@ -224,6 +224,12 @@ export class UIManager {
   /** 读盘并渲染三区队列（外部刷新入口） */
   async refreshPanel(): Promise<void> {
     if (this.sprint) return;
+    /* 卡片会话正接管内容区：这时候重画队列会把它冲掉（评级会顺手调本方法，
+       等于每评一张就把会话打回队列）。会话结束时 onExit 自己会重画。 */
+    if (this.cardSession) return;
+    /* 面板没开着就别读盘渲染。评级、移出、导入这些动作会顺手调这里刷新，
+       关着的时候白读一次盘、白渲染一遍，还要还原滚位和焦点。 */
+    if (this.mask?.style.display !== 'block') return;
     const items = await this.dataManager.loadItems();
     this.renderEntries(items);
   }
