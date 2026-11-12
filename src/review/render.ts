@@ -11,7 +11,7 @@
 import { emptyHtmlStr, esc, iconSpan, stripTitleMarks } from '../core/ui/str';
 import type { ReviewItem } from './data';
 import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
-import { partitionQueue, isEarlyDue } from './queue';
+import { partitionQueue, isEarlyDue, isDueToday } from './queue';
 import { computeStats, RATING_NAMES } from './stats';
 
 /** 题面结构面（对齐 quiz-core/manager 的 QuizQuestion；此处只读 markup 所需字段） */
@@ -66,7 +66,10 @@ export function dueLabelOf(item: ReviewItem, now: number = Date.now()): { label:
 export function isPlayable(item: ReviewItem, now: number = Date.now()): boolean {
   if (item.isMissing || item.isCompleted || item.completed) return false;
   if (!item.nextReviewDate) return false;
-  return new Date(item.nextReviewDate).getTime() <= now;
+  /* 「今天到期但时刻还没到」也算可点：三区列把它放在「今天到期」栏，
+     「开始本轮」也明确会提前纳入它（还会弹一条「已提前纳入本轮」）。
+     两处口径必须一致——否则列表上那张卡点是没反应的，用户只会以为坏了。 */
+  return new Date(item.nextReviewDate).getTime() <= now || isDueToday(item);
 }
 
 /** FSRS 相位当前保留率 %（与调度排期同权重源；阶梯/无 lastReviewed → null）。A7：公式单源 fsrs.currentR */
