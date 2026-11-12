@@ -505,6 +505,14 @@ export const reviewApp = {
       return;
     }
 
+    /* 只剩笔记：先把面板收起来，再去打开第一篇。
+       不收的话笔记确实被打开了，但整个编辑器糊在遮罩后面——用户点「开始本轮」
+       看到的还是队列，以为没反应，得自己猜到「点遮罩空白处」才看得到内容。 */
+    {
+      const { uiManager } = await import('./index');
+      uiManager?.hideMain();
+    }
+
     if (!getSettings().forceQuizForReview) {
       await this.reviewLoop(limited, 0);
       return;
