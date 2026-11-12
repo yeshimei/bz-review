@@ -9,7 +9,10 @@
    壳骨架接组件库（ADR-0094）：遮罩挂 .bzrv-panel-overlay（fixed 铺满+遮罩色），
    面板挂 .bzrv-panel-frame（底色/圆角/描边/阴影/纵向 flex）；域内只留 id 几何
    （居中定位/宽高/动画）。配色走 --bzrv-* token。 */
-#bzrv-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 94%; /* max 上限只保视口安全（ADR-0084：拖拽上限走 uiResizable 逐帧钳制，CSS 固定 900px 会压住拖大意图；92vh 对齐其视口 92% cap 口径），width:94% 保留作默认态 */ max-width: calc(100vw - 32px); max-height: 92vh; animation: bzrvSlideUp var(--bzrv-dur-slow) ease-out; }
+#bzrv-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 94%; /* max 上限只保视口安全（ADR-0084：拖拽上限走 uiResizable 逐帧钳制，CSS 固定 900px 会压住拖大意图；92vh 对齐其视口 92% cap 口径），width:94% 保留作默认态 */ max-width: calc(100vw - 32px); max-height: 92vh; /* 内容撑不满时别缩：卡片会话内容少（一张短划线 + 一个按钮）会塌成屏幕中间
+     一条 138px 的横带，看着不像在复习。min-height 只兜底不锁死，内容多时仍按
+     max-height 走；拖拽缩放写内联 height，会盖过这里的值。移动端下面 height:100%
+     一并覆盖。 */ min-height: min(72vh, 640px); animation: bzrvSlideUp var(--bzrv-dur-slow) ease-out; }
 @media (max-width: 768px) {
   /* 移动端全屏（issue 254 迭代）：钉满视口，不受内容高度收缩（原 max-height:100% 短内容时缩成悬浮卡） */
   #bzrv-popup { animation: none !important; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
@@ -577,7 +580,10 @@
    卡片内容全在排期表里，复习时不打开任何文件。三种方式（抽认卡 / 做题 / 展开全文）
    共用这层壳；选项按钮直接复用做题家的 .quiz-option-btn（含 correct/wrong 配色），
    所以此处只补布局与「问句 / 原文」的排版。 */
-.bzrv-cs { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
+/* flex:1 而不是 height:100%：父级 #bzrv-entries 的高度是 flex 拉伸出来的，
+   它自己的 height 属性仍是 auto，子元素的百分比高度会解析成 auto——卡片会话
+   于是只有内容那么高（实测 136px），面板再高也是下面一大片空白。 */
+.bzrv-cs { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + max(var(--safe-area-inset-bottom, 0px), env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
 .bzrv-cs-head { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-pos { font-variant-numeric: tabular-nums; flex: none; }
 .bzrv-cs-src { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
