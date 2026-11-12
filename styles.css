@@ -1619,8 +1619,10 @@ body.theme-light [data-bzrv] {
 /* ═══════════ 按钮 .bzrv-btn ═══════════ */
 .bzrv-btn:is([data-bzrv], [data-bzrv] *) {
   appearance: none;
-  border: 1px solid transparent;
-  background: var(--bzrv-surface-2) !important;
+  /* 边框用 --bzrv-border 而不是 transparent：亮色主题下 surface-2 和面板底色同为
+     白色，按钮会整块融进背景、只剩文字浮着（真机 2026-11-13 抓到）。 */
+  border: 1px solid var(--bzrv-border);
+  background: var(--bzrv-surface-1) !important;
   color: var(--bzrv-text-1) !important;
   height: var(--bzrv-control-h);
   padding: 0 16px;
@@ -6018,6 +6020,10 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-src:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bzrv-cs-regen:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
 .bzrv-cs-body:is([data-bzrv], [data-bzrv] *) { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--bzrv-space-md); }
+/* 内容少时垂直居中，别把一整屏空白留在中间（移动端尤其明显）。
+   用 auto 外边距而不是 justify-content: center——后者在内容溢出时会把顶部裁掉。 */
+.bzrv-cs-body > :is([data-bzrv], [data-bzrv] *):first-child { margin-top: auto; }
+.bzrv-cs-body > :is([data-bzrv], [data-bzrv] *):last-child { margin-bottom: auto; }
 .bzrv-cs-prompt:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-emphasis); line-height: 1.75; color: var(--bzrv-text-1); }
 .bzrv-cs-prompt.is-loading:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
 .bzrv-cs-text:is([data-bzrv], [data-bzrv] *) { margin: 0; padding: 10px 14px; border-left: 3px solid var(--bzrv-brand); background: var(--bzrv-surface-2); border-radius: 0 var(--bzrv-radius-sm) var(--bzrv-radius-sm) 0; font-size: var(--bzrv-font-label); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--bzrv-text-1); }

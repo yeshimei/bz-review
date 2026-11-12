@@ -37,8 +37,10 @@
 /* ═══════════ 按钮 .bzrv-btn ═══════════ */
 .bzrv-btn {
   appearance: none;
-  border: 1px solid transparent;
-  background: var(--bzrv-surface-2) !important;
+  /* 边框用 --bzrv-border 而不是 transparent：亮色主题下 surface-2 和面板底色同为
+     白色，按钮会整块融进背景、只剩文字浮着（真机 2026-11-13 抓到）。 */
+  border: 1px solid var(--bzrv-border);
+  background: var(--bzrv-surface-1) !important;
   color: var(--bzrv-text-1) !important;
   height: var(--bzrv-control-h);
   padding: 0 16px;

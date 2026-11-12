@@ -954,7 +954,7 @@ export const reviewApp = {
         // ticket 153：「去复习」不再只打开单篇（旧 ticket 58/修 #1 语义），
         // 而是走 autoJumpOverdue 完整复习流程（按 forceQuizForReview 分流做题/普通复习），
         // 通知名单仍只报 newly（diff 记忆语义保留，见上方过滤）。
-        const handle = notify(`有 ${overdueMap.size} 篇笔记逾期`, {
+        const handle = notify(`有 ${overdueMap.size} 条待复习逾期`, {
           type: 'info',
           duration: 0, // 常驻不自动消失，靠点击「去复习」/本体收起
           dedupeKey: 'review-overdue-notice',

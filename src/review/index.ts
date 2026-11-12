@@ -364,6 +364,10 @@ export function unloadReview(): void {
   reviewApp.revertReviewStyles();
   if (reviewApp._reviewNotice?.el?.isConnected) reviewApp._reviewNotice.hide();
   reviewApp._reviewNotice = null;
+  /* 逾期常驻通知也要收：它是 duration:0 的常驻提示，句柄不自清理时，禁用再启用会
+     在屏幕上叠出第二条一模一样的「有 N 条待复习逾期」。 */
+  if (reviewApp._overdueNotice?.el?.isConnected) reviewApp._overdueNotice.hide();
+  reviewApp._overdueNotice = null;
   reviewApp._notifiedOverdue.clear();
   // 做题练习独立面板（issue 362）：会话在途契约强制收口 + 面板 DOM/ESC 层摘除
   unloadQuizPanel();

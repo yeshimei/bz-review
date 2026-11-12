@@ -215,7 +215,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
         <strong>开始本轮</strong>
-        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 篇到期 · 逾期 ${col.overdue.length} 篇顺延</span>
+        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延</span>
         <button class="bzrv-btn bzrv-btn--primary" data-act="begin">开始本轮</button>
       </div>`;
 
