@@ -1650,6 +1650,9 @@ body.theme-light [data-bzrv] {
 .bzrv-btn:is([data-bzrv], [data-bzrv] *):active { background: var(--bzrv-surface-active) !important; }
 .bzrv-btn:is([data-bzrv], [data-bzrv] *):disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 .bzrv-btn:is([data-bzrv], [data-bzrv] *):focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 2px; }
+/* 通栏按钮：结算屏那种「竖排一列、每颗同宽」的位置用。原来挂的是 bz 的 .bz-btn--block，
+   本插件没有那条规则，按钮就还是内容宽（真机 2026-11-13 抓到，两颗按钮宽窄不一）。 */
+.bzrv-btn--block:is([data-bzrv], [data-bzrv] *) { display: flex; width: 100%; }
 .bzrv-btn .bzrv-ic:is([data-bzrv], [data-bzrv] *) { width: 14px; height: 14px; }
 
 .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-brand) !important; color: var(--bzrv-on-brand) !important; border-color: transparent; }@media (hover: hover) {
@@ -5641,7 +5644,10 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-result-rating.fail:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-danger); background: color-mix(in srgb, var(--bzrv-danger) 14%, transparent); }
 
 /* 结算 */
-.bzrv-summary:is([data-bzrv], [data-bzrv] *) { max-width: 420px; margin: 0 auto; text-align: center; padding: 26px 10px; display: flex; flex-direction: column; gap: var(--bzrv-space-sm); }
+/* width: 100% 不能省：结算屏的父级是 align-items:center 的 flex 列，只给 max-width 时
+   这个块会收缩到内容宽（真机实测 174px），于是朱批大章 right:4px 直接从标题上压过去，
+   三个统计块也挤成一小坨。撑满后 max-width 才有意义。 */
+.bzrv-summary:is([data-bzrv], [data-bzrv] *) { width: 100%; max-width: 420px; margin: 0 auto; text-align: center; padding: 26px 10px; display: flex; flex-direction: column; gap: var(--bzrv-space-sm); }
 .bzrv-summary-title:is([data-bzrv], [data-bzrv] *) { font-size: 19px; font-weight: 800; color: var(--bzrv-text-1); }
 .bzrv-summary-stats:is([data-bzrv], [data-bzrv] *) { display: flex; gap: var(--bzrv-space-sm); justify-content: center; margin-top: 10px; }
 .bzrv-summary-stats .st:is([data-bzrv], [data-bzrv] *) { flex: 1; max-width: 110px; background: var(--bzrv-surface-1); border-radius: 10px; padding: 10px var(--bzrv-space-xs); }
@@ -5796,6 +5802,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-quiz-note-ic svg:is([data-bzrv], [data-bzrv] *) { width: 100%; height: 100%; }
 .bzrv-quiz-question:is([data-bzrv], [data-bzrv] *) { font-size: 17px; font-weight: 500; margin-bottom: 20px; color: var(--bzrv-text-1); }
 .bzrv-quiz-options:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 6px; }
+/* 答案解析：答完才亮（未作答时元素带 hidden）。配色与划线卡那边的解析一致，
+   同一份 explain 在两个入口长得一样，用户不用重新认。 */
+.bzrv-quiz-explain:is([data-bzrv], [data-bzrv] *) { margin-top: 14px; padding: 9px 11px; border-radius: var(--bzrv-radius-sm); background: var(--bzrv-surface-2); font-size: var(--bzrv-font-caption); line-height: 1.65; color: var(--bzrv-text-2); }
 .bzrv-quiz-option-text:is([data-bzrv], [data-bzrv] *) { flex: 1; }
 .quiz-option-btn:is([data-bzrv], [data-bzrv] *) {
   padding:10px 14px;

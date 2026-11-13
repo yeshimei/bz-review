@@ -409,8 +409,8 @@ export function sprintResultHtml(p: {
         <div class="bzrv-result-name">${esc(p.name)}</div>
         <div class="bzrv-result-score">${p.acc}<span class="sl">/${total}</span></div>
         <span class="bzrv-result-rating pass">${p.ratingLine}</span>
-        <button class="bzrv-btn bzrv-btn--primary bz-btn--block" data-action="next">${p.nextLabel}</button>
-        ${p.showEnd ? `<button class="bzrv-btn bzrv-btn--ghost bz-btn--block" data-action="end">结束这次复习</button>` : ''}
+        <button class="bzrv-btn bzrv-btn--primary bzrv-btn--block" data-action="next">${p.nextLabel}</button>
+        ${p.showEnd ? `<button class="bzrv-btn bzrv-btn--ghost bzrv-btn--block" data-action="end">结束这次复习</button>` : ''}
       </div>`;
 }
 
@@ -430,7 +430,7 @@ export function sprintSummaryHtml(p: { total: number; passed: number; failed: nu
         </div>`
         }
         ${p.streak > 0 ? `<div class="bzrv-summary-streak">连续复习 <b>${p.streak}</b> 天</div>` : ''}
-        <button class="bzrv-btn bzrv-btn--primary bz-btn--block" data-action="done">完成 · 回到复习计划</button>
+        <button class="bzrv-btn bzrv-btn--primary bzrv-btn--block" data-action="done">完成 · 回到复习计划</button>
       </div>`;
 }
 
@@ -545,8 +545,8 @@ export function quizPracticeSummaryHtml(r: { correct: number; wrong: number; ski
         <div class="st"><b>${r.skipped}</b><span>跳过</span></div>
       </div>
       ${answered > 0 ? `<div class="bzrv-qp-acc">正确率 <b>${r.accuracy}%</b></div>` : `<div class="bzrv-qp-acc">本轮未答题已保留</div>`}
-      <button class="bzrv-btn bzrv-btn--primary bz-btn--block" data-act="again">再来一轮</button>
-      <button class="bzrv-btn bzrv-btn--ghost bz-btn--block" data-act="finish">收工</button>
+      <button class="bzrv-btn bzrv-btn--primary bzrv-btn--block" data-act="again">再来一轮</button>
+      <button class="bzrv-btn bzrv-btn--ghost bzrv-btn--block" data-act="finish">收工</button>
       <div class="bzrv-qp-foot">答错的题留在题库，下轮再见。</div>
     </div>`;
 }

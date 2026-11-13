@@ -472,6 +472,12 @@ export class UIManager {
     this.cardSession?.destroy();
     const { reviewApp } = await import('./app');
     const mode = cardModeOf();
+    /* 生成完把卡的最新内容换进队列——否则界面还拿着进会话时的旧卡（问答/挖空/题库都是空的） */
+    const refreshCard = async (item: ReviewItem): Promise<void> => {
+      const fresh = await this.dataManager?.loadItems();
+      const latest = fresh?.find((i) => i.filePath === item.filePath);
+      if (latest?.card) item.card = latest.card;
+    };
     const session = new CardSession({
       app: this.app,
       host: container,
@@ -504,15 +510,21 @@ export class UIManager {
           return null;
         }
       },
+      /* 缺内容时现场补一次（改复习方式后的存量卡全靠这条）：
+         内容原本只在「加入那一刻」生成，用户之后从抽认卡改成填空 / 做题，
+         存量卡一张都不会补，整轮复习全是「先看原文」。生成后把最新内容换进队列，
+         否则界面还显示旧的。 */
+      ensureContent: async (item) => {
+        const { regenerateCardContent } = await import('./index');
+        const ok = await regenerateCardContent(item.filePath);
+        if (ok) await refreshCard(item);
+        return ok;
+      },
       /* 重新生成：两个 AI 方式都能点，生成完把卡的最新内容换进队列（否则界面还显示旧的） */
       regenerate: async (item) => {
         const { regenerateCardContent } = await import('./index');
         const ok = await regenerateCardContent(item.filePath);
-        if (ok) {
-          const fresh = await this.dataManager?.loadItems();
-          const latest = fresh?.find((i) => i.filePath === item.filePath);
-          if (latest?.card) item.card = latest.card;
-        }
+        if (ok) await refreshCard(item);
         return ok;
       },
       onExit: (completed) => {

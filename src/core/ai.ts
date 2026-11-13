@@ -25,6 +25,9 @@ import { requestUrl } from 'obsidian';
 import { getApp } from './app';
 import { resolveModelLimits } from './model-limits';
 import { toBase64 } from './crypto';
+import { DEFAULT_AI_PROVIDER, resolveProviderId } from './ai-provider-id';
+
+export { DEFAULT_AI_PROVIDER };
 
 export interface AISettingsLike {
   aiProvider?: string;
@@ -128,8 +131,8 @@ export interface AIProviderDescriptor {
   thinking?: AIThinkingSpec;
 }
 
-/** 缺省服务商（注册表首位；设置未显式时用它，全仓不再散写字面量） */
-export const DEFAULT_AI_PROVIDER = 'deepseek';
+/** 缺省服务商（注册表首位；设置未显式时用它，全仓不再散写字面量）。
+ *  定义已迁 core/ai-provider-id.ts（纯模块，可单测「不启用」语义），此处转出保持旧引用可用。 */
 
 /**
  * 在册提供商（issue 411/ADR-0179 的三条真用通道 + 2026-11-11 加回的 custom）：
@@ -331,7 +334,13 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
       defaultMaxTokens: override.defaultMaxTokens,
     };
   }
-  const name = (typeof override === 'string' && override) || s.aiProvider || DEFAULT_AI_PROVIDER;
+  const name = (typeof override === 'string' && override.trim()) || resolveProviderId(s.aiProvider);
+  /* 「不启用」是空串，**不能**被兜底成缺省服务商。
+     真机事故：设置页写「不启用」，复习时模型照样被调用——界面说关了，实际每张卡都在烧钱。
+     只有字段真的缺失（undefined / null，例如旧数据里没这一项）才回落到缺省服务商。 */
+  if (!name) {
+    throw new Error('未启用 AI：请在插件设置 → AI 里选一个服务商并填密钥');
+  }
   const desc = getProviderDescriptor(name);
   /* 自定义（OpenAI 兼容）：端点/密钥/模型全来自设置，注册表描述只给密钥键与兜底档。
      缺一样就拦——空端点拼出来是相对路径，fetch 直接抛 TypeError，报错文案帮不上用户。 */
@@ -812,7 +821,7 @@ const AI_TEST_PROMPT = '这是一次连通性测试。请只回复两个字母�
 export async function testAIConnectivity(providerId?: string): Promise<AITestResult> {
   const id = String(providerId || '').trim();
   const s = getQ3Settings();
-  const effective = id || String(s.aiProvider || '') || DEFAULT_AI_PROVIDER;
+  const effective = id || resolveProviderId(s.aiProvider);
   const desc = getProviderDescriptor(effective);
   const provider = await getAIProvider(effective);
   const model = provider.model || desc.model || undefined; // getAIProvider 已含 desc.model 兜底（review nit 4）

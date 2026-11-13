@@ -24,7 +24,7 @@ import { QUIZ_RATIO, pickCardQuestions } from './card-quiz';
 import type { QuizQuestion } from './quiz-core/manager';
 import { checkBlanks, renderClozeHtmlParts } from './cloze';
 import { contextPromptOf } from './context';
-import { promptOf, promptViewFor } from './card-prompt';
+import { clozeSlotWidth, clozeViewOf, promptOf, promptViewFor, quizViewOf } from './card-prompt';
 import { stageNum } from './render';
 import { accuracyToRating } from './sprint';
 
@@ -70,6 +70,14 @@ export interface CardSessionOpts {
   ask?: (item: ReviewItem) => Promise<{ q: string; a: string } | null>;
   /** 取这张卡的题库（做题方式用；没有就降级展开全文） */
   loadQuiz?: (item: ReviewItem) => Promise<QuizQuestion[] | null>;
+  /**
+   * 补齐当前复习方式需要的内容（可选）。
+   *
+   * 内容只在「加入计划那一刻」生成过一次，用户之后改了复习方式，存量卡一张都不会补。
+   * 没有这条回调时，缺内容直接降级成看原文——**不能**停在「正在准备…」，那等于把
+   * 整张卡锁死（抽认卡的提示面踩过同一个坑）。
+   */
+  ensureContent?: (item: ReviewItem) => Promise<boolean>;
   /** 「重新生成」：重新问一次模型并覆盖卡上的内容；返回是否真的换了 */
   regenerate?: (item: ReviewItem) => Promise<boolean>;
 }
@@ -112,6 +120,10 @@ export class CardSession {
   private regenBusy = false;
   /** 填空作答态；null = 还没交卷 */
   private clozeState: { answers: string[]; results: boolean[] } | null = null;
+  /** 这一轮已经为它补过内容的卡（补不到就降级，不再反复打模型） */
+  private ensured = new Set<string>();
+  /** 正在补内容的卡（渲染会被反复调用，在途期间不能重复发请求） */
+  private ensuring = new Set<string>();
 
   constructor(opts: CardSessionOpts) {
     this.opts = opts;
@@ -247,7 +259,23 @@ export class CardSession {
     return view.text;
   }
 
-  /** 做题：进会话就把题库读出来，抽好这一轮要问的几道 */
+  /** 从卡上读题库（读失败按「没有」处理，交给上层降级） */
+  private async readQuiz(item: ReviewItem): Promise<QuizQuestion[] | null> {
+    if (!this.opts.loadQuiz) return null;
+    try {
+      return await this.opts.loadQuiz(item);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * 做题：进会话就把题库读出来，抽好这一轮要问的几道。
+   *
+   * 题库为空时**先补一次**：内容只在加入计划那一刻生成过，用户之后把复习方式改成
+   * 「做题」，存量卡全都没有题库——原来这里直接降级成看原文，等于选了做题也没题做。
+   * 补过还没有才降级（`quizViewOf` 的 pending/fallback 口径）。
+   */
   private ensureQuiz(item: ReviewItem): void {
     if (!this.isQuizMode() || this.quiz || this.quizLoading || this.quizFallback) return;
     if (!this.opts.loadQuiz) {
@@ -257,11 +285,13 @@ export class CardSession {
     }
     this.quizLoading = true;
     void (async () => {
-      let list: QuizQuestion[] | null = null;
-      try {
-        list = await this.opts.loadQuiz!(item);
-      } catch {
-        list = null;
+      let list = await this.readQuiz(item);
+      const key = item.filePath;
+      // 没题 + 能补 + 这一轮还没试过 → pending（显示「正在准备题目…」并发一次请求）
+      if (quizViewOf(list?.length ?? 0, !this.canEnsure(key)) === 'pending') {
+        await this.ensureContentOnce(item);
+        if (this.current()?.filePath !== key) return;
+        list = await this.readQuiz(item);
       }
       if (this.current()?.filePath !== item.filePath) return;
       this.quizLoading = false;
@@ -280,6 +310,42 @@ export class CardSession {
       this.render();
     })();
   }
+
+  /** 这张卡这一轮还能不能补内容（没回调 / 已在途 / 已补过 → 不能） */
+  private canEnsure(key: string): boolean {
+    return !!this.opts.ensureContent && !this.ensured.has(key) && !this.ensuring.has(key);
+  }
+
+  /** 补一次内容并记账；补不到（抛错 / 返回 false）也算「试过了」，不再重试 */
+  private async ensureContentOnce(item: ReviewItem): Promise<void> {
+    const key = item.filePath;
+    if (!this.canEnsure(key) || !this.opts.ensureContent) return;
+    this.ensuring.add(key);
+    try {
+      await this.opts.ensureContent(item);
+    } catch {
+      /* 补不到就降级：卡片本身还在，照常能复习 */
+    } finally {
+      this.ensuring.delete(key);
+      this.ensured.add(key);
+    }
+  }
+
+  /**
+   * 填空：卡上没有挖空内容时现场补一次（改复习方式的存量卡全靠这条），
+   * 补不到才降级看原文。在途期间显示「正在准备填空…」，不能停在空白上。
+   */
+  private ensureClozeContent(item: ReviewItem): void {
+    if (!this.isClozeMode()) return;
+    const card = item.card;
+    if (!card || this.clozeReady(card)) return;
+    const key = item.filePath;
+    if (!this.canEnsure(key)) return;
+    void this.ensureContentOnce(item).finally(() => {
+      if (this.current()?.filePath === key) this.render();
+    });
+  }
+
 
   private handleQuizKey(e: KeyboardEvent): void {
     const round = this.quiz;
@@ -398,15 +464,6 @@ export class CardSession {
     return renderClozeHtmlParts(text).some((p) => p.kind === 'slot');
   }
 
-  /** 空位宽度：按答案的视觉宽度估（汉字约两格），夹在 4–20ch 之间 */
-  private slotWidth(answer: string): number {
-    let width = 0;
-    for (const ch of Array.from(String(answer ?? ''))) {
-      width += /[\u3000-\u9fff\uff01-\uff60]/.test(ch) ? 2 : 1;
-    }
-    return Math.min(20, Math.max(4, width + 1));
-  }
-
   private async regenerate(): Promise<void> {
     if (!this.opts.regenerate || this.regenBusy) return;
     const item = this.current();
@@ -467,6 +524,7 @@ export class CardSession {
 
     this.bind(host);
     this.ensureQuiz(item);
+    this.ensureClozeContent(item);
   }
 
   /** 正文：看答案那一段（全文 + 想法 + 回原文），三种方式共用 */
@@ -519,7 +577,7 @@ export class CardSession {
         ${explain}`;
     }
 
-    if (this.isClozeMode()) return this.clozeBodyHtml(card);
+    if (this.isClozeMode()) return this.clozeBodyHtml(item);
     if (this.isContextMode()) return this.contextBodyHtml(card);
 
     const prompt = this.promptFor(item);
@@ -530,10 +588,17 @@ export class CardSession {
 
   /**
    * 填空：提示面只给挖空后的句子；交卷后逐空标对错、补上正确答案，再揭示原文。
-   * 没有挖空内容时直接摊开原文——复习不能停在一张空白卡片上。
+   * 没有挖空内容时先显示「正在准备填空…」（同时后台补一次），补不到才摊开原文——
+   * 复习不能停在一张空白卡片上。
    */
-  private clozeBodyHtml(card: ReviewCard): string {
-    if (!this.clozeReady(card)) {
+  private clozeBodyHtml(item: ReviewItem): string {
+    const card = item.card!;
+    const attempted = this.ensured.has(item.filePath) || !this.opts.ensureContent;
+    const view = clozeViewOf(this.clozeReady(card), attempted);
+    if (view === 'pending') {
+      return '<p class="bzrv-cs-prompt is-loading">正在准备填空…</p>';
+    }
+    if (view === 'fallback') {
       return `<p class="bzrv-cs-prompt">这张卡还没准备好填空，先看原文</p>${this.answerHtml(card)}`;
     }
     const text = String(card.cloze!.text);
@@ -541,6 +606,9 @@ export class CardSession {
     const state = this.clozeState;
     const answers = state?.answers ?? [];
     const results = state?.results ?? [];
+    /* 整张卡统一宽度，不按每个空自己的答案长度给——那等于把「这个空几个字」
+       印在题面上（真机实测：11ch 与 15ch 两个框，正好对应两个答案的汉字数）。 */
+    const width = clozeSlotWidth(blanks);
     const pieces = renderClozeHtmlParts(text)
       .map((part) => {
         if (part.kind === 'text') return esc(part.value);
@@ -548,7 +616,6 @@ export class CardSession {
         const cls = state ? (results[i] ? ' is-ok' : ' is-bad') : '';
         const value = state ? esc(answers[i] ?? '') : '';
         const locked = state ? ' readonly' : '';
-        const width = this.slotWidth(blanks[i] ?? '');
         return `<span class="bzrv-cs-slot-n">${part.index}</span><input type="text" class="bzrv-cs-slot${cls}" data-slot="${part.index}" inputmode="text" autocomplete="off" style="width: ${width}ch" value="${value}"${locked}>`;
       })
       .join('');

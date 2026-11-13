@@ -81,6 +81,10 @@ export class QuizMasterUI {
   generator = new QuestionGenerator();
   /** ticket 098:多选提交按钮暂存（renderModal 选项后补挂，保证位于选项下方） */
   _pendingSubmitBtn: HTMLElement | null = null;
+  /** 解析块（每题一个）：答完就把模型给的 explain 摊出来。
+   *  真机 2026-11-13 抓到：题目生成时明明要求了 explain，这里却从不渲染，
+   *  答对自动跳走、答错也只亮正确项——用户永远看不到「为什么」。 */
+  private _explainEl: HTMLElement | null = null;
   /** ticket 141：做题键盘快捷键句柄（1-4/A-D 选择、Enter 提交/下一题；ESC 走 escManager） */
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   /** ticket 156：答对自动跳题延时句柄（亮绿 0.8s 再进下一题） */
@@ -258,6 +262,15 @@ export class QuizMasterUI {
     }
     popup.appendChild(optionsContainer);
 
+    /* 解析块：先建好挂着，答完再填内容并亮出来（answers 前不能泄题）。
+       挂在选项容器里（选项之后、末尾），这样答错时补挂的「下一题」按钮排在它下面，
+       阅读顺序是「选项 → 为什么 → 继续」。 */
+    const explainEl = document.createElement('div');
+    explainEl.className = 'bzrv-quiz-explain';
+    explainEl.hidden = true;
+    optionsContainer.appendChild(explainEl);
+    this._explainEl = explainEl;
+
     mask.appendChild(popup);
     markOwned(mask);
     document.body.appendChild(mask);
@@ -345,6 +358,7 @@ export class QuizMasterUI {
           answeredRef.value = true;
           optionElements.forEach((b) => b.classList.add('disabled'));
           const isCorrect = idx === q.correctIndices[0];
+          this._showExplain(q);
 
           if (isCorrect) {
             // 答对（ticket 153）：亮出正确选项，持久化成功后自动进入下一题（不再挂「下一题」按钮）
@@ -357,7 +371,7 @@ export class QuizMasterUI {
               answeredRef.value = false;
               // U建5：恢复作答态须同时熄掉正确项高亮——不亮答案，可无痕重答
               optionElements.forEach((b) => b.classList.remove('disabled', 'correct'));
-            });
+            }, optionsContainer);
           } else {
             // 答错：显示正确答案，仅移出本轮会话（不落盘删除，留给重做队列），「下一题」按钮继续
             this.wrongCount++;
@@ -396,6 +410,7 @@ export class QuizMasterUI {
         }
         answeredRef.value = true;
         submitBtn.disabled = true;
+        this._showExplain(q);
         const selected = Array.from(selectedIndices).sort();
         const correct = q.correctIndices.slice().sort();
         const isCorrect = selected.length === correct.length && selected.every((v, i) => v === correct[i]);
@@ -417,7 +432,7 @@ export class QuizMasterUI {
             submitBtn.disabled = false;
             // U建5：同单选——恢复作答态清正确项高亮（多选同病灶，一并收口）
             optionElements.forEach((b) => b.classList.remove('disabled', 'correct'));
-          });
+          }, optionsContainer);
         } else {
           // 答错：同单选——仅移出本轮会话（不落盘删除），「下一题」按钮继续
           this.wrongCount++;
@@ -438,13 +453,20 @@ export class QuizMasterUI {
    *  持久化成功后才计数并跳题（P2：失败恢复作答态时不重复计数），失败通知并恢复作答状态；
    *  ticket 153：答对自动跳下一题（答对不出现「下一题」按钮，答错才由用户点按）；
    *  ticket 156：跳题延后 0.8s——亮绿正确选项让用户看到反馈再进入下一题；
+   *  **有解析时不自动跳**（2026-11-13 真机）：0.8 秒读不完一段解析，答对的题反而
+   *  永远看不到「为什么对」——那正是解析存在的意义。改挂「下一题」，节奏交给用户。
    *  延时期间放弃做题/强制关闭 → 清除延时（回调内再校验会话态，防迟到渲染僵尸弹窗）。 */
-  private _answerCorrect(q: QuizQuestion, app: App, onFailRestore: () => void): void {
+  private _answerCorrect(q: QuizQuestion, app: App, onFailRestore: () => void, optionsContainer: HTMLElement): void {
+    const hasExplain = String(q.explain ?? '').trim().length > 0;
     this.manager
       .removeQuestion(app, q.notePath!, { question: q.question, options: q.options, correctIndices: q.correctIndices })
       .then(() => {
         this.correctCount++;
         this.currentQuestions.splice(this.currentIndex, 1);
+        if (hasExplain) {
+          this.addNextButton(optionsContainer);
+          return;
+        }
         this._clearJumpTimer();
         this._jumpTimer = setTimeout(() => {
           this._jumpTimer = null;
@@ -506,9 +528,20 @@ export class QuizMasterUI {
     // U5/C7：显式注销 ESC 层——换题每题注册一次，不注销则层随题数在栈中累积
     this._escHandle?.unregister();
     this._escHandle = null;
+    this._explainEl = null;
     if (this.mask && this.mask.parentNode) this.mask.remove();
     this.mask = null;
     this.popup = null;
+  }
+
+  /** 答完亮出解析（模型没给就不占位，不显示空行） */
+  private _showExplain(q: QuizQuestion): void {
+    const el = this._explainEl;
+    if (!el) return;
+    const text = String(q.explain ?? '').trim();
+    if (!text) return;
+    el.textContent = text;
+    el.hidden = false;
   }
 
   /**
@@ -523,7 +556,7 @@ export class QuizMasterUI {
     this.confirming = true;
     void openFlowDialog({
       title: '放弃本次做题？',
-      message: '未完成的题目将丢弃，本次复习将按已答题目结算评级',
+      message: '未完成的题目将丢弃，已答的题目照常记入结果',
       actions: [
         { label: '继续做题', value: 'cancel' },
         // 刻意不标 danger（issue 291 评审）：同 sprint.requestQuit —— 丢弃的是本轮未答的临时状态，

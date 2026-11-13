@@ -63,6 +63,9 @@
 .bzrv-btn:active { background: var(--bzrv-surface-active) !important; }
 .bzrv-btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 .bzrv-btn:focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 2px; }
+/* 通栏按钮：结算屏那种「竖排一列、每颗同宽」的位置用。原来挂的是 bz 的 .bz-btn--block，
+   本插件没有那条规则，按钮就还是内容宽（真机 2026-11-13 抓到，两颗按钮宽窄不一）。 */
+.bzrv-btn--block { display: flex; width: 100%; }
 .bzrv-btn .bzrv-ic { width: 14px; height: 14px; }
 
 .bzrv-btn--primary { background: var(--bzrv-brand) !important; color: var(--bzrv-on-brand) !important; border-color: transparent; }@media (hover: hover) {

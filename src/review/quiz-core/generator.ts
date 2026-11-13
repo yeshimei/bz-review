@@ -40,6 +40,8 @@ export class QuestionGenerator {
 注意：题目类型为 ${typeHint}，${countHint}
 ${difficultyHint}
 每题必须带 explain 字段：用一句话解析正确答案，并附原文依据（简短引用或出处）。
+出题要求：只考笔记的内容与观点，不要问标题、文件名、作者、标签、日期这类元信息，
+也不要把「这段话出自哪篇笔记」当成考点——那种题不做也能答对，等于白占一道。
 笔记内容：
 ${truncated}`;
   }
@@ -121,6 +123,7 @@ ${truncated}`;
 - 类型：${typeHint}，${countHint}
 - ${difficultyHint}
 - 每题必须带 explain 字段：一句话解析正确答案并附原文依据
+- 只考笔记的内容与观点；不要问标题、文件名、作者、标签、日期这类元信息（不做也能答对，白占一道）
 - JSON 的键必须是下方「===== 笔记ID:xxx =====」中的 xxx 本身（完整笔记路径，逐字复制，不要自造编号如 noteId1），每篇笔记一个键，值为该笔记的题目数组
 - 每题4个选项，correctIndices 为正确选项索引数组
 笔记内容：${notesBlock}`;

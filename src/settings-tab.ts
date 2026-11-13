@@ -200,6 +200,10 @@ export class ReviewSettingTab extends PluginSettingTab {
     el.createEl('h3', { text: t('AI', 'AI') });
     const s = this.review.settings;
 
+    /* 密钥行要在服务商切换时换值：每个服务商的密钥分开存，切完之后输入框还挂着
+       上一家的 key，用户会以为「这家的密钥已经填好了」。 */
+    let keyBox: { setValue: (v: string) => void } | null = null;
+
     new Setting(el)
       .setName(t('服务商', 'Provider'))
       .setDesc(t('抽认卡与做题要用。没有也能复习，只是不会有 AI 内容。', 'Used by flashcards and quizzes. Optional.'))
@@ -214,21 +218,45 @@ export class ReviewSettingTab extends PluginSettingTab {
           .onChange(async (v) => {
             s.aiProvider = v;
             await this.review.saveSettings();
+            keyBox?.setValue(apiKeyOf(s));
           }),
       );
 
     new Setting(el)
       .setName(t('API Key', 'API key'))
       .setDesc(t('按所选服务商填；Ollama 本地服务通常不用填。', 'Depends on the provider; Ollama usually needs none.'))
-      .addText((txt) =>
+      .addText((txt) => {
+        keyBox = txt;
         txt
           .setPlaceholder('sk-…')
           .setValue(apiKeyOf(s))
           .onChange(async (v) => {
             setApiKeyOf(s, v.trim());
             await this.review.saveSettings();
-          }),
-      );
+          });
+      });
+
+    /* 「测试」按钮：填完密钥至少能当场知道通不通。没它的话，配错的密钥要到
+       第一次复习时才炸，而那时的报错文案是模型接口给的英文。 */
+    new Setting(el)
+      .setName(t('测试连接', 'Test connection'))
+      .setDesc(t('发一次最小的真实请求，确认密钥和服务商可用。', 'Sends one tiny real request to verify.'))
+      .addButton((btn) => {
+        btn.setButtonText(t('测试', 'Test')).onClick(async () => {
+          btn.setDisabled(true);
+          btn.setButtonText(t('测试中…', 'Testing…'));
+          try {
+            const { testAIConnectivity } = await import('./core/ai');
+            const res = await testAIConnectivity();
+            notice(`连接正常：${res.label} · ${res.model}（${res.ms}ms）`, 'success');
+          } catch (e: any) {
+            notice(`连接失败：${e?.message ?? e}`, 'error');
+          } finally {
+            btn.setDisabled(false);
+            btn.setButtonText(t('测试', 'Test'));
+          }
+        });
+      });
   }
 }
 
