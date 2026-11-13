@@ -166,14 +166,18 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
   width: max-content;
   max-width: calc(100vw - 24px);
 }
-/* 移动端：顶部居中 + Obsidian 顶部栏更高，通知下移（项目断点惯例 max-width: 768px） */
+/* 移动端：底部居中 + 让开底部按钮条。
+   原来是顶部居中，实测正压在复习会话的标题行上（「1/2 书名 … 3/10」被通知整条盖住），
+   而那行是用户判断「还有几条、这张在第几级」的唯一依据。底部同样会飘过内容，
+   但至少让开拇指区和底部的评级/看答案按钮，读正文时不挡。 */
 @media (max-width: 768px) {
   #bzrv-notice-container {
+    top: auto;
+    bottom: calc(88px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
     left: 50%;
     right: auto;
     transform: translateX(-50%);
     align-items: center;
-    top: calc(34px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)));
   }
 }
 /* 桌面四角位置（noticePosition 设置，issue 297；缺省 top-right 不挂类）。
