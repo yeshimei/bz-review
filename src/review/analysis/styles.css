@@ -72,6 +72,30 @@ canvas { display: block; }
 /* ── 01 点炉 ── */
 .ra-open { position: absolute; inset: 0; }
 .ra-open canvas { width: 100%; height: 100%; }
+/* 首幕底部文案：第一幕原来只有画布，第一次打开的人看到一片点阵会以为坏了。
+   放底部偏下，避开画布中心聚合出来的「忆」字。 */
+.ra-open-copy {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12%;
+  text-align: center;
+  pointer-events: none;
+}
+.ra-open-lead {
+  margin: 0 0 0.5em;
+  font-size: 1.15em;
+  letter-spacing: 0.12em;
+  color: rgb(var(--ra-ink-rgb));
+  opacity: 0.85;
+}
+.ra-open-sub {
+  margin: 0;
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  color: rgb(var(--ra-ink-rgb));
+  opacity: 0.5;
+}
 
 /* ── 02 忆炉全景 ── */
 .ra-field { display: flex; height: 100%; }

@@ -188,6 +188,8 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
     const k = e.key;
     if (k === 'ArrowDown' || k === 'PageDown') { e.preventDefault(); setAuto(false); goRel(1); }
     else if (k === 'ArrowUp' || k === 'PageUp') { e.preventDefault(); setAuto(false); goRel(-1); }
+    // 空格 = 下一页（Shift+空格 = 上一页）：首屏写着「按空格键翻幕」，得真的能翻
+    else if (k === ' ' || k === 'Spacebar') { e.preventDefault(); setAuto(false); goRel(e.shiftKey ? -1 : 1); }
     else if (k === 'Home') { e.preventDefault(); goTo(0, { cut: true }); }
     else if (k === 'End') { e.preventDefault(); goTo(scenes.length - 1, { cut: true }); }
   }

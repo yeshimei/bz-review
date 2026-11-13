@@ -27,9 +27,11 @@ import {
   reviewStart,
   reviewMarkDialog,
   reviewMarkRating,
+  uiManager,
 } from './review';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
-import { ReviewSettingTab } from './settings-tab';
+import { ReviewPanelView } from './review/panel-view';
+import { REVIEW_VIEW_TYPE } from './review/panel-mode';
 import { migrateFromBz } from './data/migrate';
 import { t } from './i18n';
 import { installScopeGuard } from './core/scope';
@@ -48,10 +50,12 @@ export default class ReviewPlugin extends Plugin {
     setSettingsProvider(() => this.settings);
     setSettingsSaver(() => this.saveSettings());
     setAISettingsProvider(() => this.settings);
-    /* 域代码里「去设置」的出口（核心只认「有人能开面板」，开哪页由这里定） */
+    /* 域代码里「去设置」的出口（核心只认「有人能开面板」，开哪页由这里定）。
+       设置不再注册成原生设置页，而是主面板里的设置弹层——与 bz Reader 同形制：
+       用户在哪儿用这个插件，就在哪儿改它的设置。 */
     setSettingsPanelOpener(() => {
-      const setting = (this.app as unknown as { setting?: { openTabById?: (id: string) => void } }).setting;
-      setting?.openTabById?.(this.manifest.id);
+      ensureReview(this.app);
+      void uiManager?.openSettings();
     });
 
     // 启动时静默验一次码（离线，不发网络请求）
@@ -61,6 +65,9 @@ export default class ReviewPlugin extends Plugin {
       ensureReview(this.app);
       openReviewPanel(this.app);
     });
+
+    // 原生页形态（reviewPanelMode = native，默认）：面板住在一个普通标签页里
+    this.registerView(REVIEW_VIEW_TYPE, (leaf) => new ReviewPanelView(leaf));
 
     const withReview =
       (fn: (app: typeof this.app) => void | Promise<void>) =>
@@ -138,7 +145,8 @@ export default class ReviewPlugin extends Plugin {
       },
     });
 
-    this.addSettingTab(new ReviewSettingTab(this.app, this));
+    /* 设置不再走 addSettingTab：插件设置页从「选项 → 第三方插件 → 齿轮」里消失，
+       改到主面板右上角的 ⚙️（openSettingsModal），与 bz Reader 一致。 */
 
     this.app.workspace.onLayoutReady(() => {
       if (this.settings.enableAutoNotify !== false) ensureReview(this.app);
@@ -147,6 +155,8 @@ export default class ReviewPlugin extends Plugin {
 
   onunload(): void {
     unloadReview();
+    // 原生页：插件卸了，挂在工作区里的标签页也要一起摘（否则留下一个空白 tab）
+    this.app.workspace.detachLeavesOfType(REVIEW_VIEW_TYPE);
   }
 
   async loadSettings(): Promise<void> {

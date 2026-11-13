@@ -16,19 +16,141 @@ import type { SettingsSchema } from '../core/settings-schema';
 import type { ReviewItem } from './data';
 import type { ReviewDataManager } from './data';
 import { cardModeOf } from './card-ai';
+import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
+import { copyReviewData, migrateFromBz } from '../data/migrate';
+import { panelModeOf } from './panel-mode';
 
 export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataManager }): SettingsSchema {
   // enableAutoNotify 常驻轮询在 main.ts onload 注册、运行时按设置实时读值（app.ts checkOverdueAndNotify
   // 门控），设置弹窗 toggle 只需落盘，渲染器键直绑自动完成，无需额外副作用回调。
+  /** 数据目录迁移：上一次已生效的目录（防抖窗口里连续输入只搬一次） */
+  let dirTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastDir = String((getSettings() as any).storagePath || 'CONFIG/REVIEW');
   return {
     groups: [
+      /* 授权 / 数据 / AI 三组原先只在原生设置页（settings-tab.ts）里。2026-11-13 用户拍板：
+         设置不写在原生设置页，全部搬进主界面的 ⚙️ ——与 bz Reader 同形制，一个插件只有
+         一处设置。原生设置页据此下线，这里必须把它那三组补齐，否则等于删了功能。 */
       {
-        // 外观组（issue 246 占位单卡）：布局/主题各一档，域 UI 零消费——desc 披露「预留，暂未生效」（深审新-14③），待皮肤设计时接入
-        icon: 'palette',
-        name: '外观',
+        icon: 'key-round',
+        name: '授权',
         rows: [
-          { type: 'choiceCards', name: '面板布局', desc: '预留功能，暂未生效', binding: { key: 'reviewSkin' }, options: [{ value: 'default', label: '三区队列', prevClass: 'bz-sp-prev-panel' }] },
-          { type: 'choiceCards', name: '面板主题', desc: '预留功能，暂未生效', binding: { key: 'reviewSkinTheme' }, layoutKey: 'reviewSkin', options: [{ value: 'sage', label: '苔绿', layout: 'default', prevClass: 'bz-sp-prev-sage' }] },
+          {
+            type: 'info',
+            name: '当前状态',
+            desc: licenseSummary(),
+            actions: [
+              { text: '打开店铺', onClick: () => { window.open(PURCHASE_URL, '_blank'); } },
+              { text: '交流群', onClick: () => { window.open(`https://qm.qq.com/q/${GROUP_ID}`, '_blank'); } },
+            ],
+          },
+          {
+            type: 'text',
+            name: '激活码',
+            desc: '填高级版激活码，解锁不限数量。离线验签，不联网。',
+            placeholder: 'BZP2.…',
+            binding: { key: 'licenseKey' },
+            actions: [
+              {
+                text: '激活',
+                cta: true,
+                onClick: async () => {
+                  // 文本行的输入先写内存再防抖落盘，这里读内存值即可
+                  const code = String((getSettings() as any).licenseKey || '').trim();
+                  const state = await refreshLicense(code);
+                  await saveSettings();
+                  notice(
+                    state.paid
+                      ? `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`
+                      : '激活码无效或已过期。',
+                    state.paid ? 'success' : 'warning'
+                  );
+                },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        icon: 'database',
+        name: '数据',
+        rows: [
+          {
+            type: 'text',
+            name: '数据目录',
+            desc: '复习数据存在这个目录下的 review.json。默认 CONFIG/REVIEW，与 bz 的 CONFIG/STORAGE 分开。',
+            placeholder: 'CONFIG/REVIEW',
+            binding: { key: 'storagePath' },
+            /* 换目录必须把已有数据带过去。原来只改字段、什么也不搬——面板下一秒变成
+               「今日已清空」，18 条全不见，零提示，用户只会以为数据丢了。
+               落盘有 800ms 防抖，这里等 900ms 再看最终值，避免逐字符搬目录。
+               复制而不是移动：旧目录原样留着，搬错了改回去就自愈。 */
+            onChange: () => {
+              if (dirTimer) clearTimeout(dirTimer);
+              dirTimer = setTimeout(() => {
+                dirTimer = null;
+                const prev = lastDir;
+                const next = String((getSettings() as any).storagePath || 'CONFIG/REVIEW').trim() || 'CONFIG/REVIEW';
+                if (next === prev) return;
+                lastDir = next;
+                void (async () => {
+                  try {
+                    const { copied, kept } = await copyReviewData(deps.app, prev, next);
+                    if (copied.length) {
+                      notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
+                    } else if (kept.length) {
+                      notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
+                    }
+                  } catch {
+                    notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
+                  }
+                })();
+              }, 900);
+            },
+          },
+          {
+            type: 'button',
+            name: '从 bz 导入',
+            desc: '把 bz 里已有的复习计划搬过来。只导一次，目标已有数据就不覆盖，bz 那边不动。',
+            buttonText: '导入',
+            onClick: async () => {
+              const res = await migrateFromBz(deps.app, getSettings());
+              notice(res.message, res.ok ? 'success' : 'warning');
+            },
+          },
+        ],
+      },
+      {
+        icon: 'layout-panel-left',
+        name: '界面',
+        rows: [
+          {
+            type: 'select',
+            name: '打开方式',
+            desc: '复习面板开成标签页，还是屏幕中央的浮层',
+            help:
+              '「Obsidian 标签页」跟工作区一起保存和恢复，能分屏，也不挡正在看的笔记；' +
+              '「独立弹窗」压在所有东西上面，适合小屏临时看一眼。' +
+              '改完从下一次打开生效，已经开着的那个不会自己变形。',
+            binding: {
+              get: () => panelModeOf(getSettings()),
+              set: (v: string) => {
+                (getSettings() as any).reviewPanelMode = v === 'popup' ? 'popup' : 'native';
+              },
+              save: () => saveSettings(),
+            },
+            options: [
+              { value: 'native', label: 'Obsidian 标签页（默认）' },
+              { value: 'popup', label: '独立弹窗' },
+            ],
+          },
+          {
+            type: 'toggle', name: '文件树标记', desc: '文件树中标记复习笔记',
+            help:
+              '在 Obsidian 文件树里给复习中的笔记染色并挂阶段徽标，不开复习面板也能看出哪些到期、处在哪个阶段。' +
+              '关掉只是不画这些视觉标记，排期计算与到期提醒都不受影响，文件树恢复宿主原样。',
+            binding: { key: 'reviewTreeBadge' },
+          },
         ],
       },
       {
@@ -51,21 +173,27 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             name: '复习方式',
             desc: '划线卡按哪种方式复习',
             help:
-              '三种都只复习这张卡自己的内容，不打开任何笔记。' +
+              '五种都只复习这张卡自己的内容，不打开任何笔记。' +
               '「AI 抽认卡」先给一句不能照抄原文的问句，想不起来再看原文；' +
+              '「AI 填空」把关键短语挖掉，自己填；' +
+              '「上下文」只给前后几句，猜中间被藏起来的那段；' +
               '「AI 做题」按划线长短生成 3~15 道四选一，每轮只抽其中一部分；' +
               '「展开全文」不调用 AI，直接把整段话摆出来，你自己评难度。' +
-              'AI 内容在加入复习计划时生成一次，之后固定在卡上；想换的话，在复习面板里右键那张卡点「重新生成」。',
+              'AI 内容在加入复习计划时生成一次；老卡第一次用到时会现生成。想换的话，' +
+              '在复习面板里右键那张卡点「重新生成」。',
             binding: {
-              // 设置里存的是三个字面量之一，schema 的 key 只接 string 型键，所以自管读写
+              // 设置里存的是五个字面量之一，schema 的 key 只接 string 型键，所以自管读写
               get: () => cardModeOf(),
               set: (v: string) => {
-                (getSettings() as any).reviewCardMode = v === 'quiz' || v === 'plain' ? v : 'flashcard';
+                (getSettings() as any).reviewCardMode =
+                  v === 'quiz' || v === 'plain' || v === 'cloze' || v === 'context' ? v : 'flashcard';
               },
               save: () => saveSettings(),
             },
             options: [
               { value: 'flashcard', label: 'AI 抽认卡' },
+              { value: 'cloze', label: 'AI 填空' },
+              { value: 'context', label: '上下文' },
               { value: 'quiz', label: 'AI 做题' },
               { value: 'plain', label: '展开全文（不用 AI）' },
             ],
@@ -269,15 +397,65 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         ],
       },
       {
-        icon: 'eye',
-        name: '界面',
+        icon: 'sparkles',
+        name: 'AI',
         rows: [
           {
-            type: 'toggle', name: '文件树标记', desc: '文件树中标记复习笔记',
-            help:
-              '在 Obsidian 文件树里给复习中的笔记染色并挂阶段徽标，不开复习面板也能看出哪些到期、处在哪个阶段。' +
-              '关掉只是不画这些视觉标记，排期计算与到期提醒都不受影响，文件树恢复宿主原样。',
-            binding: { key: 'reviewTreeBadge' },
+            type: 'select',
+            name: '服务商',
+            desc: '抽认卡与做题要用。没有也能复习，只是不会有 AI 内容。',
+            binding: { key: 'aiProvider' },
+            options: [
+              { value: '', label: '不启用' },
+              { value: 'deepseek', label: 'DeepSeek' },
+              { value: 'zhipu-plan', label: '智谱 Plan' },
+              { value: 'ollama', label: 'Ollama' },
+              { value: 'custom', label: '自定义' },
+            ],
+          },
+          /* 密钥按服务商分开存（切服务商不会把上一家的 key 带过去），所以这里按当前
+             服务商只露一行——比「一个框跟着下拉换值」少一类「这家的 key 到底填没填」的
+             错位状态。密钥一律走 secret 行：密码框 + 眼睛切明文，截图/投屏不泄。 */
+          {
+            type: 'secret', name: 'DeepSeek API Key', desc: 'sk- 开头，在 DeepSeek 开放平台创建。',
+            placeholder: 'sk-…', binding: { key: 'deepseekApiKey' },
+            visibleWhen: (s) => s.aiProvider === 'deepseek',
+          },
+          {
+            type: 'secret', name: '智谱 API Key', desc: '填智谱开放平台的 Key。',
+            placeholder: '…', binding: { key: 'zhipuPlanApiKey' },
+            visibleWhen: (s) => s.aiProvider === 'zhipu-plan',
+          },
+          {
+            type: 'secret', name: 'Ollama API Key', desc: '本地 Ollama 通常不用填；远程实例才需要。',
+            placeholder: '可留空', binding: { key: 'ollamaApiKey' },
+            visibleWhen: (s) => s.aiProvider === 'ollama',
+          },
+          {
+            type: 'text', name: '自定义服务商地址', desc: '兼容 OpenAI 格式的接口地址，含 /v1。',
+            placeholder: 'https://example.com/v1', binding: { key: 'aiCustomEndpoint' },
+            visibleWhen: (s) => s.aiProvider === 'custom',
+          },
+          {
+            type: 'secret', name: '自定义 API Key', desc: '上面那家服务商的密钥。',
+            placeholder: 'sk-…', binding: { key: 'aiCustomApiKey' },
+            visibleWhen: (s) => s.aiProvider === 'custom',
+          },
+          {
+            type: 'button',
+            name: '测试连接',
+            desc: '发一次最小的真实请求，确认密钥和服务商可用。',
+            buttonText: '测试',
+            visibleWhen: (s) => !!s.aiProvider,
+            onClick: async () => {
+              try {
+                const { testAIConnectivity } = await import('../core/ai');
+                const res = await testAIConnectivity();
+                notice(`连接正常：${res.label} · ${res.model}（${res.ms}ms）`, 'success');
+              } catch (e: any) {
+                notice(`连接失败：${e?.message ?? e}`, 'error');
+              }
+            },
           },
         ],
       },

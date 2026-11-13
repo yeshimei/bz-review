@@ -318,7 +318,10 @@ class QuizPracticePanel {
       try {
         for (let i = 0; i < paths.length; i += ENSURE_BATCH) {
           if (this.cancelled) return;
-          await quizUI.ensureQuestions(paths.slice(i, i + ENSURE_BATCH));
+          // 进度消息回流到外层这一条框，别让内层再弹第二条（同一件事说两遍）
+          await quizUI.ensureQuestions(paths.slice(i, i + ENSURE_BATCH), {
+            onProgress: (m) => progress.setMessage(m),
+          });
           progress.setMessage(`正在备题（${Math.min(i + ENSURE_BATCH, paths.length)}/${paths.length} 篇）…`);
         }
       } finally {

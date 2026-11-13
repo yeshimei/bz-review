@@ -176,15 +176,18 @@ export class SprintSession {
     void openFlowDialog({
       title: '放弃本次做题？',
       message: '未完成的题目将丢弃，本轮复习按已完成篇目结算',
+      /* 标准双动作的右侧恒是主按钮（#bzrv-confirm-ok 吃品牌色）。原来「放弃」在右、
+         顶着橙色高亮，最该点的「继续做题」反而是一枚灰字——主次整个反过来。
+         这里把语义页对调：左「放弃」次要，右「继续做题」主按钮并默认聚焦。
+         刻意不标 danger（issue 291 评审）：丢弃的是**本轮会话里未答的临时状态**（已答篇目
+         照常结算、题库与复习数据不删），与 core confirmDiscard「放弃未保存草稿」同口径。 */
       actions: [
+        { label: '放弃', value: 'quit' },
         { label: '继续做题', value: 'cancel' },
-        // 刻意不标 danger（issue 291 评审）：丢弃的是**本轮会话里未答的临时状态**（已答篇目照常结算、
-        // 题库与复习数据不删）——与 core confirmDiscard「放弃未保存草稿」同口径，不属破坏性动作。
-        { label: '放弃', value: 'ok', cta: true },
       ],
     }).then((v) => {
       this.confirming = false; // settle 复位：取消/确认/ESC 关闭都恢复键盘
-      if (v !== 'ok' || this.finished) return;
+      if (v !== 'quit' || this.finished) return;
       this.finish('quit');
     });
   }
@@ -265,7 +268,10 @@ export class SprintSession {
         if (question && question.correctIndices.length > 1) this.submitMulti(); // 多选：Enter=提交
         return; // 单选未选：Enter 无操作（先选项）
       }
-      if (q.lastCorrect) return; // 答对自动跳在途，不抢跑
+      /* 答对且题面有解析时不再自动跳（consume 已停住），Enter 走「下一题」；
+         没有解析才维持「自动跳在途，不抢跑」。 */
+      const heldByExplain = !!(String(this.currentQuestion()?.explain ?? '').trim());
+      if (q.lastCorrect && !heldByExplain) return; // 答对自动跳在途，不抢跑
       if (q.list.length) this.nextQuestion();
       else void this.finishNote(); // 本篇答完 → 结束并结算
       return;
@@ -448,10 +454,15 @@ export class SprintSession {
     q.doneCount++;
 
     if (correct) {
-      // 答对：亮绿 → 0.8s 后自动下一题（先持久化删题，失败不阻断）
+      /* 答对：先持久化删题（失败不阻断），然后——
+         题面没解析：亮绿 0.8s 后自动下一题（原来的节奏，别让没解析的题也要多点一次）；
+         题面有解析：停住，把解析亮出来等人读完，翻页由「下一题 / 结束并结算」驱动。
+         与做题练习（quiz-core/session）同一口径：有解释就别抢跑。 */
+      const hasExplain = !!String(question.explain ?? '').trim();
       void this.removeQuestionPersist(question).then(() => {
         if (this.finished) return;
         this.clearJump();
+        if (hasExplain) return;
         this.jumpTimer = setTimeout(() => {
           this.jumpTimer = null;
           if (this.finished) return;

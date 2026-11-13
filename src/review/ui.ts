@@ -61,6 +61,7 @@ import type { QuizQuestion } from './quiz-core/manager';
 import type { QuizMasterUI } from './quiz-core/session';
 
 import { markOwned } from '../core/scope';
+import { t } from '../i18n';
 export { reviewSettingsSchema } from './settings-schema';
 // item 6：isDueToday 下沉 queue.ts 纯函数（ui 保留 re-export 签名兼容）
 export { isDueToday };
@@ -114,6 +115,12 @@ export class UIManager {
   private motionBootPending = false;
   /** 桌面拖拽缩放句柄（ADR-0084/ADR-0094）：壳常驻 DOM，showMain 幂等挂 / hideMain 摘；null = 未挂 */
   private panelResizeDetach: { flush: () => void; detach: () => void } | null = null;
+  /** 面板宿主：null = 浮层挂在 body；Obsidian 视图的 contentEl = 原生页（reviewPanelMode） */
+  private hostEl: HTMLElement | null = null;
+  /** 原生页模式下「关闭」的出口（关掉所在标签页）；浮层模式为 null */
+  onRequestClose: (() => void) | null = null;
+  /** 关标签页途中：挡 hideMain → detach → onClose → hideMain 的递归 */
+  private closingView = false;
 
   constructor(app: App, dataManager: ReviewDataManager) {
     this.app = app;
@@ -124,6 +131,72 @@ export class UIManager {
 
   get inSprint(): boolean {
     return !!this.sprint;
+  }
+
+  /** 当前是否挂在 Obsidian 视图里（原生页模式）：决定遮罩、拖拽缩放、焦点圈闭是否参与 */
+  get hostedInView(): boolean {
+    return !!this.hostEl && this.hostEl !== document.body;
+  }
+
+  /** 面板此刻是否可见。原生页模式下遮罩是 none，不能拿 mask 的 display 当判据 */
+  get isShown(): boolean {
+    if (!this.popup) return false;
+    return this.hostedInView
+      ? this.popup.style.display !== 'none'
+      : this.mask?.style.display === 'block';
+  }
+
+  /**
+   * 把面板壳挪进 Obsidian 视图（原生页模式）。幂等：重复调用只补类名。
+   * 壳是同一对节点，挪动不重建——队列滚位、会话状态、事件监听全部保留。
+   */
+  mountInto(host: HTMLElement): void {
+    this.createMainUI();
+    if (!this.mask || !this.popup) return;
+    this.closingView = false;
+    this.hostEl = host;
+    // 挪动不重建，锚点本就在；再挂一次是防「节点被第三方重建后丢了作用域」
+    markOwned(this.mask);
+    markOwned(this.popup);
+    host.appendChild(this.mask);
+    host.appendChild(this.popup);
+    this.mask.classList.add('bzrv-panel-in-view');
+    this.popup.classList.add('bzrv-panel-in-view');
+    // 撑满标签页时没有可拖的边：摘掉浮层用的缩放句柄（尺寸记忆留给浮层）
+    this.panelResizeDetach?.detach();
+    this.panelResizeDetach = null;
+  }
+
+  /** 把面板壳迁回 body（浮层模式 / 视图关闭）。之后 hostedInView 为 false */
+  detachToBody(): void {
+    if (!this.mask || !this.popup) return;
+    markOwned(this.mask);
+    if (this.mask.parentElement !== document.body) document.body.appendChild(this.mask);
+    markOwned(this.popup);
+    if (this.popup.parentElement !== document.body) document.body.appendChild(this.popup);
+    this.mask.classList.remove('bzrv-panel-in-view');
+    this.popup.classList.remove('bzrv-panel-in-view');
+    this.hostEl = null;
+    this.onRequestClose = null;
+    this.panelResizeDetach?.detach();
+    this.panelResizeDetach = null;
+  }
+
+  /**
+   * 所在视图关闭时调用：只收场，不再回头去关标签页。
+   * 若面板已经被 detachToBody 迁走（切模式），这里什么都不做——此时显示状态
+   * 由紧随其后的 showMain 决定，提前 hide 会把刚打开的面板藏起来。
+   */
+  releaseView(): void {
+    this.closingView = false;
+    this.onRequestClose = null;
+    if (!this.hostedInView) return;
+    motionTeardown();
+    this.panelResizeDetach?.detach();
+    this.panelResizeDetach = null;
+    if (this.popup) this.popup.style.display = 'none';
+    if (this.mask) this.mask.style.display = 'none';
+    this.detachToBody();
   }
 
   // ================= 面板构建 =================
@@ -165,7 +238,7 @@ export class UIManager {
     if (this.escHandle) return;
     // U5/C7：层 id 统一 `bz-<域>` 约定（原 'review-main' 无前缀）
     this.escHandle = escManager.register('bzrv-review-main', {
-      isVisible: () => !!this.mask && this.mask.style.display === 'block',
+      isVisible: () => this.isShown,
       close: () => this.hideMain(),
     });
   }
@@ -175,20 +248,28 @@ export class UIManager {
   async showMain(): Promise<void> {
     this.createMainUI();
     if (!this.mask || !this.popup) return;
-    topifyZ(this.mask, this.popup);
-    this.mask.style.display = 'block';
-    this.popup.style.display = 'flex';
-    // 桌面拖动缩放（ADR-0084）+ 尺寸记忆（ADR-0094）：壳常驻 DOM，showMain 幂等挂 / hideMain 摘
-    if (!isMobileEnv() && !this.panelResizeDetach) {
-      this.panelResizeDetach = uiResizable(this.popup, {
-        minW: PANEL.MIN_W, minH: PANEL.MIN_H,
-        maxW: PANEL.MAX_W, maxH: PANEL.MAX_H,
-        persist: panelSizePersist('reviewPanelWidth', 'reviewPanelHeight', PANEL.MIN_W, PANEL.MIN_H),
-      });
+    this.closingView = false;
+    if (this.hostedInView) {
+      /* 原生页：遮罩不参与（标签页里没有「点外面关掉」这回事），面板直接占满内容区。
+         拖拽缩放与焦点圈闭也一并跳过——那是浮层才需要的两件事。 */
+      this.mask.style.display = 'none';
+      this.popup.style.display = 'flex';
+    } else {
+      topifyZ(this.mask, this.popup);
+      this.mask.style.display = 'block';
+      this.popup.style.display = 'flex';
+      // 桌面拖动缩放（ADR-0084）+ 尺寸记忆（ADR-0094）：壳常驻 DOM，showMain 幂等挂 / hideMain 摘
+      if (!isMobileEnv() && !this.panelResizeDetach) {
+        this.panelResizeDetach = uiResizable(this.popup, {
+          minW: PANEL.MIN_W, minH: PANEL.MIN_H,
+          maxW: PANEL.MAX_W, maxH: PANEL.MAX_H,
+          persist: panelSizePersist('reviewPanelWidth', 'reviewPanelHeight', PANEL.MIN_W, PANEL.MIN_H),
+        });
+      }
+      // 打开即入焦 + Tab 圈闭（呈报#13 F3+H3 全域范式，core trapPanelFocus 单源）
+      trapPanelFocus(this.popup);
     }
     this.motionBootPending = true; // 动效首屏编排由紧随的 renderEntries 消费
-    // 打开即入焦 + Tab 圈闭（呈报#13 F3+H3 全域范式，core trapPanelFocus 单源）
-    trapPanelFocus(this.popup);
     await this.showQueue();
   }
 
@@ -198,6 +279,19 @@ export class UIManager {
     // 拖拽缩放随面板隐藏摘除（防抖尾值 detach 内自动 flush，尺寸不丢）
     this.panelResizeDetach?.detach();
     this.panelResizeDetach = null;
+    if (this.hostedInView) {
+      /* 原生页：关面板 = 关掉所在标签页。closingView 挡住「onClose 又回来调 hideMain」；
+         没有出口（视图已被外部关掉）时退化成只隐藏，不能卡死成关不掉的面板。 */
+      if (this.closingView) return;
+      const close = this.onRequestClose;
+      if (!close) {
+        if (this.popup) this.popup.style.display = 'none';
+        return;
+      }
+      this.closingView = true;
+      close();
+      return;
+    }
     if (this.mask) this.mask.style.display = 'none';
     if (this.popup) this.popup.style.display = 'none';
   }
@@ -208,6 +302,8 @@ export class UIManager {
     this.sprint = null;
     sprint?.destroy();
     motionTeardown();
+    // 卸载时不再回头去关标签页（视图由 main.onunload 统一 detach），直接走隐藏分支
+    this.onRequestClose = null;
     this.hideMain();
     if (this.escHandle) {
       this.escHandle.unregister();
@@ -218,6 +314,7 @@ export class UIManager {
     this.mask = null;
     this.popup = null;
     this.entriesContainer = null;
+    this.hostEl = null;
   }
 
   // ================= 队列渲染（三区） =================
@@ -229,8 +326,9 @@ export class UIManager {
        等于每评一张就把会话打回队列）。会话结束时 onExit 自己会重画。 */
     if (this.cardSession) return;
     /* 面板没开着就别读盘渲染。评级、移出、导入这些动作会顺手调这里刷新，
-       关着的时候白读一次盘、白渲染一遍，还要还原滚位和焦点。 */
-    if (this.mask?.style.display !== 'block') return;
+       关着的时候白读一次盘、白渲染一遍，还要还原滚位和焦点。
+       判据走 isShown：原生页模式遮罩是 none，拿 mask 的 display 会让队列永不刷新。 */
+    if (!this.isShown) return;
     const items = await this.dataManager.loadItems();
     this.renderEntries(items);
   }
@@ -247,7 +345,14 @@ export class UIManager {
     container.querySelectorAll<HTMLElement>('.bzrv-q-col').forEach((col) => {
       scrollTops.set(col.className, col.scrollTop);
     });
+    const prevBegin = container.querySelector<HTMLElement>('[data-act="begin"]');
     container.innerHTML = this.queueViewHtml(items);
+    /* 「开始本轮」节点复用：面板刚打开那一两秒里队列常被再刷一次（样式落盘 / 逾期检查 /
+       外层动作回调）。如果这次重绘正好落在按下与松开之间，旧按钮已经被换成新节点，
+       click 事件（要求 down/up 落在同一元素）就整个丢掉——用户看到的是一次点了没反应。
+       把旧节点塞回原位，监听器和按压态都还在，这一下点得住。 */
+    const nextBegin = container.querySelector<HTMLElement>('[data-act="begin"]');
+    if (prevBegin && nextBegin) nextBegin.replaceWith(prevBegin);
     if (!items.length) {
       // item 10：空库两条路引导（组件库 uiEmpty 工厂）
       const host = container.querySelector('[data-empty-host]');
@@ -315,16 +420,48 @@ export class UIManager {
     });
   }
 
+  // ================= 设置层（不再注册原生设置页） =================
+
+  /**
+   * 主面板里的设置弹层（openSettingsModal + 声明式 schema）。
+   *
+   * 与 bz Reader 同一形态：用户在哪用这个插件，就在哪改它的设置。原生设置页
+   * 那套 PluginSettingTab 已删——两处设置最容易长出「同一个开关两个名字」。
+   */
+  async openSettings(): Promise<void> {
+    const [{ openSettingsModal }, { reviewSettingsSchema }] = await Promise.all([
+      import('../core/settings-modal'),
+      import('./settings-schema'),
+    ]);
+    openSettingsModal({
+      title: t('复习设置', 'Review settings'),
+      schema: reviewSettingsSchema({ app: this.app, dataManager: this.dataManager }),
+      // 620：这一版把授权/数据/AI 都并进来了，560 会让描述和控件抢地方
+      maxWidth: 620,
+    });
+  }
+
   // ================= 队列事件 =================
 
   private bindQueueEvents(container: HTMLElement, items: ReviewItem[]): void {
     container.querySelector('[data-act="close"]')?.addEventListener('click', () => this.hideMain());
-    // ⚙设置直达钮已退役（issue 254 迭代拍板）：设置走插件设置页，头行不再深链 settings-panel
-    container.querySelector('[data-act="begin"]')?.addEventListener('click', () => {
-      const strip = container.querySelector<HTMLElement>('.bzrv-q-strip');
-      if (strip) motionChargeStrip(strip); // 蓄力涟漪：出发的召唤感
-      void this.beginRound();
+    /* ⚙️ 设置：issue 254 曾把这里退役、改指原生设置页；2026-11-13 用户拍板回到
+       主界面（与 bz Reader 同形制），原生设置页随之下线。 */
+    container.querySelector('[data-act="settings"]')?.addEventListener('click', () => {
+      void this.openSettings();
     });
+    /* 「开始本轮」用 data-bound 防重绑：这个按钮在重绘时会被上一轮的节点顶回来
+       （见 renderEntries 里的节点复用），若每次渲染都 addEventListener，同一个节点上
+       会叠出两三份监听，一次点击跑两遍 beginRound。 */
+    const beginBtn = container.querySelector<HTMLElement>('[data-act="begin"]');
+    if (beginBtn && beginBtn.dataset.bound !== '1') {
+      beginBtn.dataset.bound = '1';
+      beginBtn.addEventListener('click', () => {
+        const strip = container.querySelector<HTMLElement>('.bzrv-q-strip');
+        if (strip) motionChargeStrip(strip); // 蓄力涟漪：出发的召唤感
+        void this.beginRound();
+      });
+    }
     container.querySelector('[data-act="arch"]')?.addEventListener('click', () => {
       this.showArchived = !this.showArchived;
       void this.refreshPanel();

@@ -608,6 +608,11 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
   max-height: 65vh;
   overflow-y: auto;
 }
+/* 控件区不参与收缩，按钮不竖排：描述写长一点（数据目录/激活码这类三四行说明）时，
+   原生 .setting-item 先把右侧控件压窄——「激活」「导入」会被挤成竖排两个字。 */
+.bzrv-settings-content .setting-item-control { flex-shrink: 0; gap: var(--bzrv-space-sm); }
+.bzrv-settings-content .setting-item-control button { white-space: nowrap; }
+.bzrv-settings-content .setting-item-info { min-width: 0; }
 .bzrv-settings-empty {
   padding: 28px var(--bzrv-space-md);
   text-align: center;

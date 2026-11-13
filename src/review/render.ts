@@ -188,19 +188,22 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         <div class="bzrv-panel-head-sub">${todayLabel(new Date(now))}</div>
         <span class="bzrv-panel-head-sp"></span>
         <div class="bzrv-panel-head-btns">
-          <!-- ⚙设置直达钮两端退役（issue 254 迭代拍板，设置走插件设置页）；✕ 桌面隐藏
-              （styles.css ≥769px 规则，点遮罩/ESC 关），仅移动端全屏保留 -->
+          <!-- ⚙️ 设置：2026-11-13 用户拍板回到主界面（与 bz Reader 同形制），原生设置页已下线。
+               ✕ 桌面端隐藏（styles.css ≥769px 规则，浮层点遮罩/ESC 关），移动端保留。 -->
+          <button class="bzrv-icon-btn" data-act="settings" title="设置">${iconSpan('settings', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
       </div>
       </div>`;
 
-  // 空库 → 头行 + 清空条 + 空态宿主（uiEmpty 由 ui.ts 挂载并绑两条路动作）
+  // 空库 → 头行 + 引导条 + 空态宿主（uiEmpty 由 ui.ts 挂载并绑两条路动作）
   if (!items.length) {
+    /* 一条都没有的时候说「今日已清空」是骗人的——第一次装、刚清空计划都落在这里，
+       用户会以为自己今天已经复习完了。这里只说事实 + 下一步能做什么。 */
     const strip = `
       <div class="bzrv-q-strip">
-        <span class="bzrv-q-strip-dot ok"></span>
-        <strong>今日已清空</strong>
-        <span class="bzrv-q-strip-txt">还没有任何复习条目</span>
+        <span class="bzrv-q-strip-dot muted"></span>
+        <strong>还没有复习条目</strong>
+        <span class="bzrv-q-strip-txt">加一篇笔记或一条划线，这里就有东西了</span>
       </div>`;
     return `<div class="bzrv-q-view">${head}${strip}<div class="bzrv-q-cols bzrv-q-empty-wrap"><div data-empty-host></div></div></div>`;
   }
@@ -338,20 +341,21 @@ export function sprintQuestionHtml(
   const optsHtml = sprintOptsHtml(question, st.answered, st.sel, st.lastCorrect);
 
   const needSubmit = !single && !st.answered;
-  // 答错后：还有题 → 「下一题」；本篇最后一题也答错 → 「结束并结算」（finishNote 按本篇 acc 评级）
-  const lastWrong = st.answered && !st.lastCorrect && !st.remaining;
+  /* 解析：答对答错都显示（与做题练习同一口径——答对也该知道自己为什么对）。
+     存量题没有 explain 字段时静默不显示，零迁移。 */
+  const hasExplain = !!(question.explain && String(question.explain).trim());
+  // 答完这一题要不要停住等人读：答错要停（看解析），答对但有解析也要停
+  const hold = st.answered && (!st.lastCorrect || hasExplain);
   const nextBtn =
-    st.answered && !st.lastCorrect && st.remaining
+    hold && st.remaining
       ? `<button class="bzrv-btn bzrv-btn--primary" data-action="next">下一题 →</button>`
-      : lastWrong
+      : hold && !st.remaining
         ? `<button class="bzrv-btn bzrv-btn--primary" data-action="note">${iconSpan('flag', 'bzrv-sprint-ic')} 结束并结算</button>`
         : '';
   const submit = needSubmit ? `<button class="bzrv-btn bzrv-btn--primary bzrv-sprint-submit" data-action="submit">提交答案</button>` : '';
-  // item 3：答错一行解析（随题存取的 explain；存量题无此字段静默不显示，零迁移）
-  const explain =
-    st.answered && !st.lastCorrect && question.explain
-      ? `<div class="bzrv-sprint-explain">${esc(question.explain)}</div>`
-      : '';
+  const explain = st.answered && hasExplain
+    ? `<div class="bzrv-sprint-explain">${esc(question.explain ?? '')}</div>`
+    : '';
 
   return `
       <div class="bzrv-sprint-qtop">

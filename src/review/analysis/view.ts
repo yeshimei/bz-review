@@ -58,9 +58,17 @@ export const emberTone = (r: number | null): 'hi' | 'mid' | 'low' | 'off' =>
 export function analysisHtml(data: RaData): string {
   const S: string[] = [];
 
-  /* 01 点炉 —— 萤群聚字（画布独占，不上 DOM 文字） */
+  /* 01 点炉 —— 萤群聚字（主构图仍是画布）；另叠一行 DOM 文案。
+     第一幕原本一个字都没有，第一次打开的人只看见一片点阵，会以为没加载出来。
+     文案放底部，不压画布中心的「忆」字。 */
   S.push(frame(1, `
-    <div class="ra-open"><canvas data-cv="open" aria-hidden="true"></canvas></div>`));
+    <div class="ra-open">
+      <canvas data-cv="open" aria-hidden="true"></canvas>
+      <div class="ra-open-copy">
+        <p class="ra-open-lead">这一册记的是你脑子里的火</p>
+        <p class="ra-open-sub">共 ${RA_SCENES.length} 幕 · 往下滚，或按空格键翻幕</p>
+      </div>
+    </div>`));
 
   /* 02 忆炉全景 —— 每条在册笔记一粒忆炭，画布力场悬浮 */
   S.push(frame(2, `

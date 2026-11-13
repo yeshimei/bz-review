@@ -17,6 +17,8 @@ import { unloadReviewAnalysis } from './analysis/index';
 import { cancelActiveFlowDialog } from '../core/flow-dialog';
 import type { Rating } from './fsrs';
 import { setReviewPlanApi } from './reader-api';
+import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
+import { tryGetSettings } from '../core/settings-provider';
 import { cardModeOf, ensureCardContent, queueCardPreparation, safeMakeAI, type CardMode, type CardPrepareContext } from './card-ai';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import {
@@ -219,10 +221,44 @@ export function ensureReview(app: App): void {
   });
 }
 
-/** 打开复习面板（review-open-panel） */
+/**
+ * 打开复习面板（review-open-panel）
+ *
+ * 两种形态（reviewPanelMode，默认 native）：
+ *  - native：开一个 Obsidian 标签页，面板撑满内容区（panel-view.ts）；
+ *  - popup：原来那层挂在 body 上的浮层。
+ * 切换模式后再打开时，另一个形态的壳会被收掉，不会出现「标签页空着 + 浮层盖着」两套。
+ */
 export function openReviewPanel(app: App): void {
   ensureReview(app);
-  uiManager?.showMain();
+  if (panelModeOf(tryGetSettings()) === 'popup') {
+    const leaves = app.workspace.getLeavesOfType(REVIEW_VIEW_TYPE);
+    if (leaves.length) {
+      // 先把节点迁回 body，再关空壳标签页：反序会让 onClose 把刚要显示的面板藏起来
+      uiManager?.detachToBody();
+      for (const leaf of leaves) void leaf.detach();
+    }
+    void uiManager?.showMain();
+    return;
+  }
+  void openPanelView(app);
+}
+
+/** 原生页模式：已有标签页就亮出来，没有就新开一个（工作区恢复时 onOpen 会自己接管） */
+async function openPanelView(app: App): Promise<void> {
+  const found = app.workspace.getLeavesOfType(REVIEW_VIEW_TYPE);
+  if (found.length) {
+    await app.workspace.revealLeaf(found[0]);
+    return;
+  }
+  const leaf = app.workspace.getLeaf('tab');
+  if (!leaf) {
+    // 拿不到叶子（极端情况）也不能什么都不发生——退回浮层，至少能用
+    uiManager?.detachToBody();
+    void uiManager?.showMain();
+    return;
+  }
+  await leaf.setViewState({ type: REVIEW_VIEW_TYPE, active: true });
 }
 
 /** 复习计划分析报告（review-report）：独立命令，直接打开统计弹窗（ticket 174） */

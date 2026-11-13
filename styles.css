@@ -643,6 +643,11 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
   max-height: 65vh;
   overflow-y: auto;
 }
+/* 控件区不参与收缩，按钮不竖排：描述写长一点（数据目录/激活码这类三四行说明）时，
+   原生 .setting-item 先把右侧控件压窄——「激活」「导入」会被挤成竖排两个字。 */
+.bzrv-settings-content .setting-item-control:is([data-bzrv], [data-bzrv] *) { flex-shrink: 0; gap: var(--bzrv-space-sm); }
+.bzrv-settings-content .setting-item-control button:is([data-bzrv], [data-bzrv] *) { white-space: nowrap; }
+.bzrv-settings-content .setting-item-info:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
 .bzrv-settings-empty:is([data-bzrv], [data-bzrv] *) {
   padding: 28px var(--bzrv-space-md);
   text-align: center;
@@ -5469,6 +5474,27 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 /* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动） */
 #bzrv-entries { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 
+/* ==================== 原生页宿主（reviewPanelMode: native） ====================
+   面板住进一个普通 Obsidian 标签页（panel-view.ts）：没有可点的遮罩背景，也不该
+   在标签页里再画一块悬浮圆角卡——直接撑满 view 内容区，像 Obsidian 自己的面板。
+   .bzrv-panel-in-view 由 UIManager.mountInto 在壳节点上挂/摘。 */
+.bzrv-panel-host:is([data-bzrv], [data-bzrv] *) { position: relative; height: 100%; overflow: hidden; }
+#bzrv-mask.bzrv-panel-in-view { display: none !important; }
+#bzrv-popup.bzrv-panel-in-view {
+  position: absolute;
+  inset: 0;
+  transform: none;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  animation: none;
+}
+
 /* 队列/冲刺滚动条隐藏由 core 界面级单源规则接管（ADR-0122 / issue 277，
    #bzrv-entries 在册），域内不再重复定义 */
 
@@ -5484,6 +5510,8 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-q-strip:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); padding: 6px 20px 10px; flex-shrink: 0; }
 .bzrv-q-strip-dot:is([data-bzrv], [data-bzrv] *) { width: 8px; height: 8px; border-radius: 50%; background: var(--bzrv-danger); flex-shrink: 0; }
 .bzrv-q-strip-dot.ok:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-success); }
+/* 空库：既没到期也不是「今天做完了」，红点会喊「有事要做」、绿点会报「做完了」——用中性灰 */
+.bzrv-q-strip-dot.muted:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-text-3); }
 .bzrv-q-strip strong:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); }
 .bzrv-q-strip-txt:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); flex: 1; min-width: 0; }
 .bzrv-q-strip .bzrv-btn:is([data-bzrv], [data-bzrv] *) { height: 28px; padding: 0 14px; font-size: var(--bzrv-font-label); }
@@ -5672,7 +5700,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-q-col-head:is([data-bzrv], [data-bzrv] *) { position: sticky; top: 0; z-index: 1; background: var(--bzrv-surface-1); }
   .bzrv-q-strip:is([data-bzrv], [data-bzrv] *) { padding: 6px 14px 10px; }
   .bzrv-q-cols:is([data-bzrv], [data-bzrv] *) { padding: 0 14px var(--bzrv-space-md); }
-  .bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
+  /* 底栏让位给 Obsidian 移动端那条浮在内容上的导航栏（约 56px，且不计入 safe-area）。
+     不留这段，底栏就整条压在导航底下——「已完成 / 累计天数」两个入口点不到。 */
+  .bzrv-q-footer:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-sm) 14px calc(var(--bzrv-space-md) + 56px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
   .bzrv-sprint-head:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) 14px 6px; }
   .bzrv-sprint-body:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-xs) 14px var(--bzrv-space-md); flex-direction: column; }
   .bzrv-sprint-queue:is([data-bzrv], [data-bzrv] *) { width: auto; max-height: 140px; }
@@ -5724,6 +5754,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
    ——统计面板的六张卡于是竖排成一列。构建时完全静默，所以给 build-css.mjs 加了
    孤儿注释符校验（见 scripts/build-css.mjs 的 findStrayCommentClose）。 */
 #bzrv-stats-popup .stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 0; }
+/* 拟合档位说明紧跟在统计卡后面，直接挂在 body 上（没包 .sec）——不给左右内边距，
+   它就从弹窗边缘起排，比上面卡片的边界还往外凸 16px，看着像串行。 */
+#bzrv-stats-popup .stat-cards + .kv-inline { padding: 0 16px; margin-top: 10px; }
 #bzrv-stats-popup .stat-card { background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: 10px; padding: 11px 13px; }
 #bzrv-stats-popup .stat-card .v { font-family: Georgia, serif; font-size: 19px; font-weight: 700; color: var(--bzrv-text-1); }
 #bzrv-stats-popup .stat-card .k { font-size: var(--bzrv-font-caption); letter-spacing: .14em; color: var(--bzrv-text-3); margin-top: 3px; }
@@ -6178,6 +6211,30 @@ canvas:is([data-bzrv], [data-bzrv] *) { display: block; }
 /* ── 01 点炉 ── */
 .ra-open:is([data-bzrv], [data-bzrv] *) { position: absolute; inset: 0; }
 .ra-open canvas:is([data-bzrv], [data-bzrv] *) { width: 100%; height: 100%; }
+/* 首幕底部文案：第一幕原来只有画布，第一次打开的人看到一片点阵会以为坏了。
+   放底部偏下，避开画布中心聚合出来的「忆」字。 */
+.ra-open-copy:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12%;
+  text-align: center;
+  pointer-events: none;
+}
+.ra-open-lead:is([data-bzrv], [data-bzrv] *) {
+  margin: 0 0 0.5em;
+  font-size: 1.15em;
+  letter-spacing: 0.12em;
+  color: rgb(var(--ra-ink-rgb));
+  opacity: 0.85;
+}
+.ra-open-sub:is([data-bzrv], [data-bzrv] *) {
+  margin: 0;
+  font-size: 0.82em;
+  letter-spacing: 0.08em;
+  color: rgb(var(--ra-ink-rgb));
+  opacity: 0.5;
+}
 
 /* ── 02 忆炉全景 ── */
 .ra-field:is([data-bzrv], [data-bzrv] *) { display: flex; height: 100%; }

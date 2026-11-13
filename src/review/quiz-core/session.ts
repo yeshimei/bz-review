@@ -106,8 +106,14 @@ export class QuizMasterUI {
   /** A5（深审批 C）：updateQuiz 删除——「更新题库」入口已随 ADR-0045 退役，
    *  quiz-core/index.quizUpdate → 本方法 → manager.loadActiveItems 整链生产死（仅测试直达）。 */
 
-  /** 确保指定笔记都有题目（源码 L346-398 逐字） */
-  async ensureQuestions(notePaths: string[]): Promise<void> {
+  /**
+   * 确保指定笔记都有题目（源码 L346-398 逐字）
+   *
+   * `opts.onProgress` 给了就**不再自建进度框**：调用方（做题练习面板）外层已经有一条
+   * 「正在备题（i/N 篇）」，这里再弹一条「正在为 N 篇笔记批量生成题目」等于同一件事
+   * 说两遍，两条 toast 还会叠在屏幕上互相盖。消息统一回流给外层那条框。
+   */
+  async ensureQuestions(notePaths: string[], opts?: { onProgress?: (msg: string) => void }): Promise<void> {
     const app = getApp();
     const quiz = await this.manager.loadQuiz(app);
     const settings = QuizMasterUI.settings || {};
@@ -132,7 +138,10 @@ export class QuizMasterUI {
     // 批量生成（一次 AI 调用）：常驻单框动态更新
     if (QuizMasterUI.ai) {
       try {
-        const h = notify(`正在为 ${missing.length} 篇笔记批量生成题目…`, { type: 'progress', dedupeKey: 'quiz-generate' });
+        // 外层接管进度时不另起一条（见方法头注释）
+        const h = opts?.onProgress
+          ? null
+          : notify(`正在为 ${missing.length} 篇笔记批量生成题目…`, { type: 'progress', dedupeKey: 'quiz-generate' });
         const batchResult = await this.generator.generateBatch(missing, QuizMasterUI.ai, enableMultipleChoice, questionsPerNote, difficulty);
         let batchOk = 0;
         // G3：AI 返回后 RMW 入队基于磁盘现值合并——批量出题的长耗时窗口内并发删题
@@ -145,12 +154,17 @@ export class QuizMasterUI {
             }
           }
         });
-        h.setType('success');
-        h.setMessage(`已为 ${batchOk} 篇笔记生成题目`);
+        if (h) {
+          h.setType('success');
+          h.setMessage(`已为 ${batchOk} 篇笔记生成题目`);
+        } else {
+          opts?.onProgress?.(`已为 ${batchOk} 篇笔记生成题目`);
+        }
         return;
       } catch (e: any) {
         console.warn('批量出题失败，降级为逐篇:', e.message);
-        notify('批量出题失败，已改为逐篇生成', { type: 'warning', dedupeKey: 'quiz-generate' });
+        if (opts?.onProgress) opts.onProgress('批量出题失败，改为逐篇生成');
+        else notify('批量出题失败，已改为逐篇生成', { type: 'warning', dedupeKey: 'quiz-generate' });
       }
     }
 
@@ -557,15 +571,17 @@ export class QuizMasterUI {
     void openFlowDialog({
       title: '放弃本次做题？',
       message: '未完成的题目将丢弃，已答的题目照常记入结果',
+      /* 标准双动作右侧恒为主按钮：原来「放弃」顶着品牌色高亮、最该点的「继续做题」是灰字
+         （主次颠倒）。对调语义页——左「放弃」次要，右「继续做题」主按钮并默认聚焦。
+         刻意不标 danger（issue 291 评审）：同 sprint.requestQuit —— 丢弃的是本轮未答的
+         临时状态，已答题目照常结算评级，不删任何持久化数据。 */
       actions: [
+        { label: '放弃', value: 'quit' },
         { label: '继续做题', value: 'cancel' },
-        // 刻意不标 danger（issue 291 评审）：同 sprint.requestQuit —— 丢弃的是本轮未答的临时状态，
-        // 已答题目照常结算评级，不删任何持久化数据。
-        { label: '放弃', value: 'ok', cta: true },
       ],
     }).then((v) => {
       this.confirming = false; // U1：settle 复位（取消/确认都走这里）
-      if (v !== 'ok') return;
+      if (v !== 'quit') return;
       this._clearJumpTimer();
       const cb = this.onComplete;
       this.onComplete = null;

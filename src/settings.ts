@@ -46,6 +46,8 @@ export default interface BzSettings {
   reviewSkin: string;
   /** 面板主题（预留） */
   reviewSkinTheme: string;
+  /** 主界面打开方式：native = Obsidian 标签页（默认），popup = 插件自绘浮层 */
+  reviewPanelMode: 'native' | 'popup';
   /** 主面板宽高记忆，0 = 未拖过 */
   reviewPanelWidth: number;
   reviewPanelHeight: number;
@@ -92,6 +94,8 @@ export const DEFAULT_SETTINGS: BzSettings = {
   reviewExcludedNotes: [],
   reviewSkin: 'default',
   reviewSkinTheme: 'sage',
+  /* 默认原生页：Obsidian 用户对标签页的心智比浮层稳，也不挡正在看的笔记 */
+  reviewPanelMode: 'native',
   reviewPanelWidth: 0,
   reviewPanelHeight: 0,
   questionsPerNote: '0',
