@@ -645,8 +645,11 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
 }
 /* 控件区不参与收缩，按钮不竖排：描述写长一点（数据目录/激活码这类三四行说明）时，
    原生 .setting-item 先把右侧控件压窄——「激活」「导入」会被挤成竖排两个字。 */
-.bzrv-settings-content .setting-item-control:is([data-bzrv], [data-bzrv] *) { flex-shrink: 0; gap: var(--bzrv-space-sm); }
+.bzrv-settings-content .setting-item-control:is([data-bzrv], [data-bzrv] *) { flex-shrink: 0; gap: 8px; }
 .bzrv-settings-content .setting-item-control button:is([data-bzrv], [data-bzrv] *) { white-space: nowrap; }
+/* 两个并排的 action 钮（打开店铺 / 交流群）在原生 control 里会贴到一起：gap 在某些
+   宿主版本上被按钮自身的 margin 规则吃掉，用相邻兄弟补一道。 */
+.bzrv-settings-content .setting-item-control button + button:is([data-bzrv], [data-bzrv] *) { margin-left: 8px; }
 .bzrv-settings-content .setting-item-info:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
 .bzrv-settings-empty:is([data-bzrv], [data-bzrv] *) {
   padding: 28px var(--bzrv-space-md);
