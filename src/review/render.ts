@@ -13,7 +13,7 @@ import type { ReviewItem } from './data';
 import type { ItemFilter } from './deck';
 import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
 import { partitionQueue, dueLaterTodayCount, etaTextOf, isEarlyDue, isDueToday } from './queue';
-import { computeStats, RATING_NAMES } from './stats';
+import { compareReviewLoad, computeStats, RATING_NAMES } from './stats';
 import { ratingKeys } from './keys';
 
 /** 题面结构面（对齐 quiz-core/manager 的 QuizQuestion；此处只读 markup 所需字段） */
@@ -323,6 +323,18 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   // item 13：「累计 X 天 · 连续 Y 天」（X=去重同日天数，computeStats.totalReviews）
   // 归档态：左下角变「返回队列」提醒钮（issue 254 迭代拍板），点击即回队列
   const stats = computeStats(items);
+  /* 「比固定间隔少 N 次」（2026-11-16）：动态抗遗忘到底省了多少，一直是句形容词。
+     现在把它算成一个数摆在主界面上——用户不用点进统计弹窗才看得到。
+     只在「有足够样本 + 确实更省」时出现：省 0 次或反而更多时不写，免得变成
+     一句自嘲。 */
+  const loadCmp = compareReviewLoad(items);
+  const savedItem =
+    loadCmp && loadCmp.notes >= 3 && loadCmp.saved > 0
+      ? `<i class="sep"></i>
+        <span class="bzrv-q-fitem" title="按 1/2/4/7/15/30/60/120 天的老办法，同样这些笔记、同样这些天，要复习 ${loadCmp.fixed} 次">
+          ${iconSpan('trending-down', 'bzrv-q-ic')}<span class="lbl">比固定间隔少 <b>${loadCmp.saved}</b> 次</span>
+        </span>`
+      : '';
   /* 「已完成」只数真的复习完了的。col.done 里还混着挂起（文件缺失）的条目——
      直接拿它的长度当完成数，会让「已完成 2 篇」里藏着一条早就丢了文件的记录。 */
   const doneCount = items.filter((i) => i.completed || i.isCompleted).length;
@@ -349,6 +361,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="stats" title="逐幕回放全馆记忆">
           ${iconSpan('flame', 'bzrv-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
         </span>
+        ${savedItem}
       </div>`;
 
   /* 筛选条：说清楚「列表被筛过、开始本轮不受影响」——不说的话，用户会以为

@@ -16,7 +16,8 @@
  */
 import type { App } from 'obsidian';
 import type { ReviewCard, ReviewDataManager, ReviewItem } from './data';
-import type { ReviewAddOutcome, ReviewAddSummary, ReviewNoteStatus } from './reader-api';
+import type { ReviewAddOutcome, ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './reader-api';
+import { normalizeCardInput, keysWithQa } from './card-input';
 import { stripMdExt } from '../core/utils';
 import { removeCardQuiz } from './card-quiz-store';
 import { stampCardModes } from './card-mode';
@@ -123,19 +124,29 @@ export async function removeNote(dm: ReviewDataManager, path: string): Promise<b
  *
  * 返回里带 `addedKeys`：调用方据此只给**这次新进来的**卡生成 AI 内容，
  * 已经在计划里的卡不动（用户手点的「重新生成」才覆盖）。
+ *
+ * `qa` 归一（2026-11-16）：外部（阅读器）可以把已经出好的问句一起交过来，
+ * 这里补上时间戳存进卡里。有 qa 的卡不再进 AI 补内容队列——否则会把阅读器
+ * 出好的题再换一个说法重出一次。
  */
-export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCard[]): Promise<ReviewAddSummary> {
+export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCardInput[]): Promise<ReviewAddSummary> {
   const all = Array.isArray(cards) ? cards : [];
-  /* 方式跟着卡走（2026-11-15）：阅读器批量加划线时不可能逐张弹选择框，所以这里
-     统一盖一次章（口径见 card-mode.ts 的 stampCardModes）。 */
-  const list = stampCardModes(all.filter((c) => !!cleanPath(c?.key) && !!String(c?.text ?? '').trim()));
+  /* 两条口径都要留下：先把阅读器交来的输入归一（含现成 qa），再给没带方式的卡
+     盖一个默认方式的章。顺序不能反——盖章要落在正式的 ReviewCard 上。 */
+  const list = stampCardModes(
+    all.map((c) => normalizeCardInput(c)).filter((c): c is ReviewCard => c !== null),
+  );
   const out: ReviewAddSummary = { added: 0, exists: 0, notFound: all.length - list.length };
   if (!list.length) return out;
   const res = await dm.addCards(list);
   out.added = res.added;
   out.exists = res.skipped;
   if (res.rejected) out.rejected = res.rejected;
-  if (res.keys.length) out.addedKeys = res.keys;
+  /* 只有「这次新进来、而且没带现成题面」的卡才需要排队补内容。
+     阅读器已经出好题的（qa 有值）直接跳过，免得把题换个说法重出一次。 */
+  const hasQa = keysWithQa(list);
+  const need = res.keys.filter((k) => !hasQa.has(k));
+  if (need.length) out.addedKeys = need;
   return out;
 }
 

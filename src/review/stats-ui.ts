@@ -22,7 +22,7 @@ import { escManager } from '../core/esc-manager';
 import { escapeHtml, formatRelativeTime, stripTitleMarks } from '../core/utils';
 import { mountIcons } from '../core/ui';
 import type { ReviewDataManager, ReviewItem, FittedParams } from './data';
-import { computeStats, loadDistribution, historyOf, dateKey, RATING_NAMES, RATING_COLORS } from './stats';
+import { computeStats, compareReviewLoad, loadDistribution, historyOf, dateKey, RATING_NAMES, RATING_COLORS } from './stats';
 import { DEFAULT_W, currentR as fsrsCurrentR } from './fsrs';
 import { motionStats, motionHistory } from './motion';
 
@@ -184,6 +184,27 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
       ])
     : statInlineHTML([{ text: '记忆曲线：默认参数，复习积累后自动拟合', title: '复习记录攒够（约 100 条评级）后会自动拟合你的记忆曲线' }]);
 
+  // 复习量对比（2026-11-16）：「动态抗遗忘省了多少」从形容词变成两个并排的数。
+  // 只摆算术，不承诺效果——固定间隔不一定达到同样的记忆强度，所以文案只说次数。
+  const cmp = compareReviewLoad(items);
+  let compareHTML = '';
+  if (cmp && cmp.notes >= 3) {
+    const savedTxt = cmp.saved >= 0 ? `少 ${cmp.saved} 次（${Math.round(cmp.percent * 100)}%）` : `多 ${-cmp.saved} 次`;
+    const hint =
+      cmp.saved >= 0
+        ? `按 1/2/4/7/15/30/60/120 天的老办法，同样这些笔记、同样这些天，要复习 ${cmp.fixed} 次。参与对比 ${cmp.notes} 条，跨度最长的一条已经撑了 ${cmp.spanDays} 天。`
+        : `比老办法多出来的部分，通常是提前复习或答错重来——这些都会让下一次间隔更准。参与对比 ${cmp.notes} 条。`;
+    compareHTML = sectionHTML(
+      '复习量对比',
+      'trending-down',
+      statInlineHTML([
+        { text: `实际 ${cmp.actual} 次`, title: '这套排期实际让你复习的条次（同一天复习多次算一次）' },
+        { text: `固定间隔 ${cmp.fixed} 次`, title: '同样的笔记、同样的时间跨度，按固定间隔复习法要复习的条次' },
+        { text: savedTxt },
+      ]) + `<div class="bzrv-stats-hint">${esc(hint)}</div>`,
+    );
+  }
+
   // 评级分布（soft-row 软条 + 评级色数据驱动）
   const total = Object.values(stats.ratingDist).reduce((a, b) => a + b, 0) || 1;
   const ratingBars = (['again', 'hard', 'good', 'easy'] as const).map((r) => ({
@@ -237,7 +258,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   const daily7 = stats.daily7.map((d) => ({ label: d.date.slice(5).replace('-', '/'), value: d.count }));
   const weekHTML = sectionHTML('最近 7 天复习量', 'bar-chart-3', barRowHTML(daily7, '#E6DFF5'));
 
-  return cards + fitChips + ratingHTML + loadHTML + timelineHTML + weekHTML;
+  return cards + fitChips + compareHTML + ratingHTML + loadHTML + timelineHTML + weekHTML;
 }
 
 // ======================= 复习历史独立弹窗 =======================

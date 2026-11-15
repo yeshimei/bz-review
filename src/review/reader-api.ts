@@ -86,6 +86,17 @@ export interface ReviewCardInput {
    * 不给也能用，只是这个方式退化成「凭出处回忆」。
    */
   context?: { before?: string; after?: string };
+  /**
+   * 已经出好的问答对（可选，2026-11-16）。
+   *
+   * 阅读器那边如果已经让模型把题出好了（比如「从章节正文挑重点」那条路，
+   * 模型一次调用既挑句子又出问题），就把 q 和 a 一起交过来，这里直接存下，
+   * 不再按当前复习方式重新生成一遍——既省一次调用，也不会因为二次生成
+   * 把题面换个说法。
+   *
+   * 没给就还是老路子：加入之后按 `reviewCardMode` 在后台补内容。
+   */
+  qa?: { q: string; a: string };
 }
 
 export interface ReviewPlanApi {
