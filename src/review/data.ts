@@ -490,6 +490,21 @@ export class ReviewDataManager {
   }
 
   /**
+   * 整份写回（批 4 恢复备份用）：先留快照，再直接覆盖，不走合并。
+   * 恢复是用户明确要回到某一份，用 newer-wins 合并就恢复不回去了。
+   */
+  async replaceAll(items: readonly ReviewItem[]): Promise<void> {
+    const now = new Date();
+    const raw = await diskReadText(this.app, getReviewFilePath());
+    if (raw) {
+      const { writeSnapshotNow } = await import('./snapshot-store');
+      await writeSnapshotNow(this.app, raw, now);
+    }
+    await jsonFileStore<any>(getReviewFilePath()).write(serializeReviewItems(items));
+    await jsonFileStore<any>(getReviewMetaPath()).write(reviewMeta(now));
+  }
+
+  /**
    * 休假顺延（批 3）：把所有条目的下次复习日期整体后移。
    * 只动日期，不动阶段与记忆参数——休假不该改变「你记住了多少」。
    */

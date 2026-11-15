@@ -131,6 +131,60 @@ export default class ReviewPlugin extends Plugin {
       }),
     });
     this.addCommand({
+      id: 'review-import-md',
+      name: t('从当前笔记导入卡片', 'Import cards from current note'),
+      callback: withReview(async (app) => {
+        const file = app.workspace.getActiveFile();
+        if (!file) {
+          return;
+        }
+        const { parseMarkdownCards } = await import('./review/md-cards');
+        const { importCardsFromMarkdown } = await import('./review/backup-io');
+        const { reviewApp } = await import('./review/app');
+        const { notice } = await import('./core/notice');
+        reviewApp.ensure(app);
+        const cards = parseMarkdownCards(await app.vault.cachedRead(file), file.path, file.basename);
+        if (!cards.length) {
+          notice('这篇里没有认出卡片（写法：`问题 :: 答案` 或 `{{挖空}}`）', 'warning');
+          return;
+        }
+        const res = await importCardsFromMarkdown(reviewApp.dataManager!, cards);
+        notice(
+          `导入 ${res.added} 张${res.skipped ? `，跳过 ${res.skipped} 张（已存在）` : ''}${
+            res.rejected ? `，${res.rejected} 张超出基础版上限` : ''
+          }`,
+          res.added ? 'success' : 'warning'
+        );
+        void reviewApp.refreshPanel();
+      }),
+    });
+    for (const [id, label, kind] of [
+      ['review-export', t('导出备份（JSON）', 'Export backup (JSON)'), 'json'],
+      ['review-export-csv', t('导出表格（CSV）', 'Export spreadsheet (CSV)'), 'csv'],
+    ] as const) {
+      this.addCommand({
+        id,
+        name: label,
+        callback: withReview(async (app) => {
+          const { exportBackupFile } = await import('./review/backup-io');
+          const { reviewApp } = await import('./review/app');
+          const { notice } = await import('./core/notice');
+          reviewApp.ensure(app);
+          const items = await reviewApp.dataManager!.loadItems();
+          const path = await exportBackupFile(app, items, kind);
+          notice(`已导出 ${items.length} 条：${path}`, 'success');
+        }),
+      });
+    }
+    this.addCommand({
+      id: 'review-restore',
+      name: t('从备份恢复', 'Restore from backup'),
+      callback: withReview(async (app) => {
+        const { openRestoreDialog } = await import('./review/backup-dialog');
+        await openRestoreDialog(app);
+      }),
+    });
+    this.addCommand({
       id: 'review-report',
       name: t('复习分析报告', 'Review report'),
       callback: withReview((app) => openReviewReport(app)),
