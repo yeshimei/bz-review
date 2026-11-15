@@ -155,6 +155,91 @@ export function computeStats(items: ReviewItem[], opts?: { w?: number[] }): Revi
   };
 }
 
+/* ─────────── 复习量对比（2026-11-16） ───────────
+ *
+ * 「动态抗遗忘到底省了多少」一直是句形容词。这里把它算成两个可以摆在一起的数：
+ *
+ *   actual = 这套排期实际让你复习了多少条次（同日去重，跟总复习天数同口径）
+ *   fixed  = 同样的笔记、同样的时间跨度，按传统固定间隔要复习多少条次
+ *
+ * 只做算术，不承诺效果：固定间隔不一定达到同样的记忆强度，所以文案只说
+ * 「同样这些笔记、同样这些天，老办法要复习 N 次」，不说「你的记忆提升了 X%」。
+ *
+ * 参与对比的门槛：一条至少复习过两个不同的日子，且跨度 ≥ 1 天。只复习过
+ * 一次、或者一天之内连点两下的，算进去只会让比例失真。
+ */
+
+/** 传统固定间隔复习法（艾宾浩斯系）：1/2/4/7/15/30/60/120 天 */
+export const FIXED_INTERVALS = [1, 2, 4, 7, 15, 30, 60, 120];
+
+/**
+ * 按固定间隔表覆盖 spanDays 天需要复习几次。
+ *
+ * 累计到 ≥ span 就停：跨度 1 天 → 1 次，3 天 → 2 次，7 天 → 3 次，14 天 → 4 次。
+ * 表用完之后（239 天以上）按 180 天一次往上加，不封顶。
+ */
+export function fixedCountFor(spanDays: number): number {
+  const span = Math.max(0, Math.round(Number(spanDays) || 0));
+  if (span <= 0) return 1;
+  let acc = 0;
+  let n = 0;
+  while (acc < span && n < FIXED_INTERVALS.length) {
+    acc += FIXED_INTERVALS[n];
+    n += 1;
+  }
+  if (acc >= span) return Math.max(1, n);
+  return FIXED_INTERVALS.length + Math.ceil((span - acc) / 180);
+}
+
+/** 复习量对比结果 */
+export interface LoadCompare {
+  /** 参与对比的条目数（复习过 ≥2 个不同日子） */
+  notes: number;
+  /** 实际复习条次（同日去重） */
+  actual: number;
+  /** 固定间隔推算的条次 */
+  fixed: number;
+  /** fixed − actual（可能为负：复习得比老办法还勤） */
+  saved: number;
+  /** saved / fixed（0~1；fixed 为 0 时为 0） */
+  percent: number;
+  /** 跨度最长的那一条撑了多少天 */
+  spanDays: number;
+}
+
+/** 汇总全部条目的「实际 vs 固定间隔」；没有可比条目返回 null */
+export function compareReviewLoad(items: ReviewItem[]): LoadCompare | null {
+  let notes = 0;
+  let actual = 0;
+  let fixed = 0;
+  let maxSpan = 0;
+  for (const item of items) {
+    const hist = item.reviewHistory || [];
+    if (hist.length < 2) continue;
+    const days = new Set<string>();
+    let first = Infinity;
+    let last = -Infinity;
+    for (const h of hist) {
+      const t = new Date(h?.timestamp).getTime();
+      if (!Number.isFinite(t)) continue;
+      days.add(dateKey(new Date(t)));
+      if (t < first) first = t;
+      if (t > last) last = t;
+    }
+    /* 只复习过一次、或者全在同一天点完的，没有「跨度」可比 */
+    if (days.size < 2 || !Number.isFinite(first) || !Number.isFinite(last)) continue;
+    const span = Math.round((last - first) / 86_400_000);
+    if (span < 1) continue;
+    notes += 1;
+    actual += days.size;
+    fixed += fixedCountFor(span);
+    if (span > maxSpan) maxSpan = span;
+  }
+  if (!notes) return null;
+  const saved = fixed - actual;
+  return { notes, actual, fixed, saved, percent: fixed > 0 ? saved / fixed : 0, spanDays: maxSpan };
+}
+
 /** 负载分布：返回 { date: YYYY-MM-DD, count } 数组（N 天内，含今天） */
 export function loadDistribution(items: ReviewItem[], nDays: number): Array<{ date: string; count: number }> {
   const out: Array<{ date: string; count: number }> = [];

@@ -30,6 +30,8 @@ import {
   uiManager,
 } from './review';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
+import { getReviewPlanApi } from './review/reader-api';
+import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
 import { ReviewPanelView } from './review/panel-view';
 import { REVIEW_VIEW_TYPE } from './review/panel-mode';
 import { migrateFromBz } from './data/migrate';
@@ -38,6 +40,38 @@ import { installScopeGuard } from './core/scope';
 
 export default class ReviewPlugin extends Plugin {
   settings: BzSettings;
+
+  /**
+   * 给 bz Reader 用的门面（2026-11-16）。
+   *
+   * 分工是「Reader 决定哪些内容值得复习，Review 只负责复习」，所以 Reader 那边
+   * 挑完章节、出完题，只需要往这里交卡片。放在插件实例上而不是全局变量：
+   * Reader 用 `app.plugins.plugins['bz-review'].reviewApi` 探测，拿不到就按
+   * 「这台库没装 Review」降级，不会抛错。
+   *
+   * 每个方法进来先 `ensureReview`：Reader 可能在用户从没打开过复习面板之前
+   * 就点了「加入复习」，那时域还没初始化、门面是空的。
+   */
+  readonly reviewApi = {
+    /** 契约版本：Reader 侧按它判断「这个版本的 Review 认不认识新字段」 */
+    version: 1,
+    addCards: async (cards: ReviewCardInput[]): Promise<ReviewAddSummary> => {
+      ensureReview(this.app);
+      const api = getReviewPlanApi();
+      if (!api) return { added: 0, exists: 0, notFound: Array.isArray(cards) ? cards.length : 0 };
+      return api.addCards(cards);
+    },
+    hasNote: async (path: string): Promise<boolean> => {
+      ensureReview(this.app);
+      const api = getReviewPlanApi();
+      return api ? api.hasNote(path) : false;
+    },
+    statusOf: async (paths: string[]): Promise<ReviewNoteStatus[]> => {
+      ensureReview(this.app);
+      const api = getReviewPlanApi();
+      return api ? api.statusOf(paths) : [];
+    },
+  };
 
   async onload(): Promise<void> {
     await this.loadSettings();
