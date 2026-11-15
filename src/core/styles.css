@@ -144,6 +144,11 @@ button.news-close-btn {
     transform: translateX(-50%);
     align-items: center;
   }
+  /* 评级条在场时整体再让一条（条子约 140px 高、离底 56px）：不让的话通知正压在
+     「暂停」上，点下去落到通知而不是按钮（真机实测）。 */
+  body.bzrv-bar-on #bzrv-notice-container {
+    bottom: calc(228px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)));
+  }
 }
 /* 桌面四角位置（noticePosition 设置，issue 297；缺省 top-right 不挂类）。
  * 只在 769px+ 生效：id+类特异性高于移动端媒体查询的纯 id 选择器，不限定会被角类覆盖顶部居中 */
@@ -465,9 +470,14 @@ button.news-close-btn {
 }
 #bzrv-confirm-popup .confirm-actions {
   display: flex;
+  /* 五个动作（评级四档 + 取消）在 400 宽的窄卡里一行放不下：不换行时整排按钮
+     被居中挤出容器，最左边那颗「忘了」直接跑到框外看不见（真机实测）。 */
+  flex-wrap: wrap;
   gap: var(--bzrv-space-md);
   justify-content: center;
   width: 100%;
+  /* 换行后每行要自己成行（不然被上面的 align-items:center 拉成一条） */
+  align-content: center;
 }
 /* 按钮几何与组件库 .bzrv-btn 同源（同高/同圆角/同字号），保证确认框与表单弹窗同一套按钮语言 */
 #bzrv-confirm-cancel,
@@ -485,7 +495,10 @@ button.bzrv-flow-dialog-action {
   line-height: var(--bzrv-leading-tight);
   cursor: pointer;
   box-shadow: none;
-  flex: 1;
+  /* 基准按文字宽（不是 0）：flex-basis:0 时五个按钮「理论上一行放得下」，
+     换行根本不会触发，照样溢出 */
+  flex: 1 1 auto;
+  min-width: 0;
   white-space: nowrap;
   transition: background-color var(--bzrv-dur-fast) ease, color var(--bzrv-dur-fast) ease;
 }@media (hover: hover) {

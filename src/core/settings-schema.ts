@@ -801,7 +801,16 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
       }
     }
     if (row.type === 'text') setting.addText(addInto);
-    else if (row.type === 'textarea') setting.addTextArea(addInto);
+    else if (row.type === 'textarea')
+      setting.addTextArea((el) => {
+        addInto(el);
+        /* 原生 textarea 默认 3 行（实测 63px），手填调度权重那 19 个数字被拦腰切在
+           第三行上；统一给 6 行，仍可拖拽放大。 */
+        if (el.inputEl) {
+          el.inputEl.rows = 6;
+          el.inputEl.style.minHeight = '132px';
+        }
+      });
     else setting.addText(addInto);
   };
 
