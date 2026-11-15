@@ -115,6 +115,22 @@ export default class ReviewPlugin extends Plugin {
       }),
     });
     this.addCommand({
+      id: 'review-force',
+      name: t('不限到期，全部过一遍', 'Review everything now'),
+      callback: withReview(async () => {
+        const { reviewApp } = await import('./review/app');
+        await reviewApp.startRoundSprint({ force: true });
+      }),
+    });
+    this.addCommand({
+      id: 'review-set-date',
+      name: t('设置当前笔记的下次复习日期', 'Set next review date'),
+      callback: withReview(async (app) => {
+        const { openNextDateDialog } = await import('./review/next-date');
+        await openNextDateDialog(app, app.workspace.getActiveFile());
+      }),
+    });
+    this.addCommand({
       id: 'review-report',
       name: t('复习分析报告', 'Review report'),
       callback: withReview((app) => openReviewReport(app)),

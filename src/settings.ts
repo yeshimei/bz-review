@@ -38,6 +38,20 @@ export default interface BzSettings {
   reviewCardMode: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
   /** 评级键位（四个字符，顺序＝忘了/困难/一般/简单；默认 1234） */
   reviewRatingKeys: string;
+  /** 休假到哪天（ISO；空 = 不休假）。到期那天把整份计划顺延，回来不雪崩 */
+  reviewVacationUntil: string;
+  /** 休假开始时间（ISO；用于算顺延多长，用户看不到） */
+  reviewVacationFrom: string;
+  /** 最长复习间隔（天；0 = 不限） */
+  reviewMaxIntervalDays: number;
+  /** 手填 FSRS 权重（19 个数，逗号分隔；空 = 用拟合值） */
+  reviewFsrsWeights: string;
+  /** 每轮新条目上限（0 = 不限） */
+  reviewNewLimit: number;
+  /** 每轮到期条目上限（0 = 不限） */
+  reviewReviewLimit: number;
+  /** 本轮顺序：先清到期（due-first）/ 先上新卡（new-first）；用字符串是为了走通用文本绑定 */
+  reviewOrder: string;
   /** 做题时每轮抽题比例（1/3、1/2…） */
   reviewCardQuizRatio: number;
   /** 被监控并自动加入复习的文件夹 */
@@ -92,6 +106,13 @@ export const DEFAULT_SETTINGS: BzSettings = {
   reviewRThreshold: 0.9,
   reviewCardMode: 'flashcard',
   reviewRatingKeys: '1234',
+  reviewVacationUntil: '',
+  reviewVacationFrom: '',
+  reviewMaxIntervalDays: 0,
+  reviewFsrsWeights: '',
+  reviewNewLimit: 0,
+  reviewReviewLimit: 0,
+  reviewOrder: 'due-first',
   reviewCardQuizRatio: 3,
   reviewWatchedFolders: [],
   reviewExcludedNotes: [],

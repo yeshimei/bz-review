@@ -22,6 +22,7 @@ import { cardModeOf } from './card-ai';
 import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
 import { copyReviewData, migrateFromBz } from '../data/migrate';
 import { panelModeOf } from './panel-mode';
+import { DEFAULT_W } from './fsrs';
 import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
 import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
 
@@ -370,6 +371,76 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             min: 0.5,
             max: 0.99,
           },
+          /* 批 3：新卡与到期分两个额度，各自截断。合成一个上限时，新卡多的一天
+             会被新卡吃光，剩下的时间全在啃新的，复习效率反而更低。 */
+          {
+            type: 'number',
+            name: '每轮新条上限',
+            desc: '本轮最多上几条从没复习过的；0 = 不限',
+            binding: { key: 'reviewNewLimit' },
+            min: 0,
+            max: 500,
+          },
+          {
+            type: 'number',
+            name: '每轮到期上限',
+            desc: '本轮最多清几条已经复习过的；0 = 不限',
+            binding: { key: 'reviewReviewLimit' },
+            min: 0,
+            max: 500,
+          },
+          {
+            type: 'select',
+            name: '本轮顺序',
+            desc: '先清到期，还是趁精神好先上新卡',
+            binding: { key: 'reviewOrder' },
+            options: [
+              { value: 'due-first', label: '先清到期' },
+              { value: 'new-first', label: '先上新卡' },
+            ],
+          },
+          {
+            type: 'number',
+            name: '最长复习间隔（天）',
+            desc: '超过这个天数的间隔会被截断；0 = 不限',
+            help:
+              'FSRS 在稳定度很高时会算出几千天的间隔，实质等于「这条以后不再出现」。' +
+              '填 365 表示任何一条一年内至少会再见一次；填 0 表示不限制。',
+            binding: { key: 'reviewMaxIntervalDays' },
+            min: 0,
+            max: 3650,
+          },
+          {
+            /* 只认一个结束日期：那天之前不提醒、不进本轮、逾期也不累计；
+               结束那天把整份计划的日期整体顺延，回来不会一屏逾期。 */
+            type: 'text',
+            name: '休假到',
+            desc: '填 2026-12-01 这样的日期；这天之前不提醒、不算逾期，结束时计划整体顺延',
+            binding: { key: 'reviewVacationUntil' },
+            placeholder: '例如 2026-12-01',
+            /* 记下开始时间：结束那天要靠它算出该顺延多久。
+               只记第一次，之后改结束日不会把开始时间往后挪。 */
+            onChange: (v) => {
+              const cut = String(v || '').trim();
+              const live = getSettings() as any;
+              if (cut && !live.reviewVacationFrom) {
+                live.reviewVacationFrom = new Date().toISOString();
+                void saveSettings();
+              }
+            },
+            actions: [
+              {
+                text: '取消休假',
+                onClick: () => {
+                  const live = getSettings() as any;
+                  live.reviewVacationUntil = '';
+                  live.reviewVacationFrom = '';
+                  void saveSettings();
+                  notice('已取消休假');
+                },
+              },
+            ],
+          },
         ],
       },
       {
@@ -390,6 +461,15 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             min: 1,
             visibleWhen: (s) => (s as any).reviewEnableFit === true,
             isChild: true,
+          },
+          {
+            /* 手填优先于拟合：用户明确写下的意图不能被后台悄悄盖掉。
+               留空即恢复「全自动」，想退回默认把内容清干净就行。 */
+            type: 'textarea',
+            name: '手填调度权重',
+            desc: '19 个数字，逗号分隔；填了就用它，留空 = 用自动拟合的结果',
+            placeholder: DEFAULT_W.join(', '),
+            binding: { key: 'reviewFsrsWeights' },
           },
         ],
       },

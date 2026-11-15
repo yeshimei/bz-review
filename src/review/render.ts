@@ -11,7 +11,7 @@
 import { emptyHtmlStr, esc, iconSpan, stripTitleMarks } from '../core/ui/str';
 import type { ReviewItem } from './data';
 import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
-import { partitionQueue, etaTextOf, isEarlyDue, isDueToday } from './queue';
+import { partitionQueue, dueLaterTodayCount, etaTextOf, isEarlyDue, isDueToday } from './queue';
 import { computeStats, RATING_NAMES } from './stats';
 import { ratingKeys } from './keys';
 
@@ -244,7 +244,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
         <strong>开始本轮</strong>
-        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延${missingCount ? ` · ${missingCount} 条文件缺失` : ''}</span>
+        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延${dueLaterTodayCount(items, new Date(now)) ? ` · 今天稍后还有 ${dueLaterTodayCount(items, new Date(now))} 条` : ''}${missingCount ? ` · ${missingCount} 条文件缺失` : ''}</span>
         <button class="bzrv-btn bzrv-btn--primary" data-act="begin">开始本轮</button>
       </div>`;
 

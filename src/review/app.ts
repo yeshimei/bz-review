@@ -5,7 +5,7 @@ import type { App, TFile } from 'obsidian';
 import { notice, notify, notifyUndo } from '../core/notice';
 import type { NoticeHandle } from '../core/notice';
 import { getApp } from '../core/app';
-import { getSettings } from '../core/settings-provider';
+import { getSettings, saveSettings } from '../core/settings-provider';
 import { FSRS, FSRS_FIRST_TEXTS, scheduleNext, currentR as fsrsCurrentR } from './fsrs';
 import type { Rating } from './fsrs';
 import type { ReviewItem } from './data';
@@ -13,7 +13,8 @@ import { ReviewDataManager, isCardItem } from './data';
 import { loadFittedParams, saveFittedParams, FIT_PARAMS_VERSION, getReviewFilePath, type FittedParams } from './data';
 import { fitFromItems, mergeFittedW } from './fit';
 import { DEFAULT_W } from './fsrs';
-import { DEFAULT_R_THRESHOLD, isDueToday, isEarlyDue, roundQueue } from './queue';
+import { DEFAULT_R_THRESHOLD, applyRoundLimits, isDueToday, isEarlyDue, isOnVacation, roundQueue } from './queue';
+import { resolveWeights } from './weights';
 import { computeStats } from './stats';
 import { emitDomainEvent } from '../core/domain-bus';
 import { markOwned } from '../core/scope';
@@ -202,8 +203,14 @@ export const reviewApp = {
   },
 
   /** ADR-0077：获取当前生效权重（拟合参数优先，回退默认） */
+  /**
+   * 当前调度权重：手填 > 拟合 > 默认（批 3）。
+   *
+   * 手填放最前是因为那是用户明确写下的意图；拟合是后台根据历史算的，
+   * 让它盖掉手填，用户会认为设置没生效。
+   */
   currentW(): number[] {
-    return this._fittedW || DEFAULT_W;
+    return resolveWeights((getSettings() as any).reviewFsrsWeights, this._fittedW);
   },
 
   /** ADR-0077：某条目当前记忆保留度 R（FSRS 相位且已复习过才可算；否则 null）——A7 单源 fsrs.currentR */
@@ -260,7 +267,10 @@ export const reviewApp = {
     // ticket 100：复习间隔缩放（ADR-0046）——仅 FSRS 动态间隔乘系数；阶梯固定表（含进入点 120d）不受影响
     const scaleRaw = Number((getSettings() as any).reviewIntervalScale);
     const scale = decision.phase === 'fsrs' && !decision.enteringFsrs && scaleRaw > 0 ? scaleRaw : 1;
-    const scaledDays = Math.max(0.01, decision.intervalDays * scale);
+    /* 最长间隔上限（批 3）：FSRS 动态间隔在稳定度很高时会算出几千天，
+       实际等于「这条以后再也不会出现」。0 = 不限，其余按天截断。 */
+    const capDays = Number((getSettings() as any).reviewMaxIntervalDays) || 0;
+    const scaledDays = Math.max(0.01, Math.min(decision.intervalDays * scale, capDays > 0 ? capDays : Infinity));
     const nextDate = new Date(now.getTime() + scaledDays * 86400000);
 
     /* 撤销快照在写盘之前取：评级是就地改对象，写完之后拿不到「改之前」。
@@ -456,7 +466,14 @@ export const reviewApp = {
   /** 开始本轮（队列视图「开始本轮」）：待重做优先 → 逾期队列 → 做题/普通分流。
    *  呈报#4（R2）对称面：做题会话进行中 → 拦截并提示（否则 reviewLoop 与冲刺静默并行，
    *  悬浮评级条与题面同屏互扰）；单条做题防抖（sprintStarting in-flight）不受影响。 */
-  async startRoundSprint(): Promise<void> {
+  /**
+   * 开始本轮。
+   *
+   * `force` = 不限到期日，把在计划里的条目全部过一遍（批 3）。考试前一晚
+   * 「明天就考了，别管什么间隔」是真需求，而按 R / 到期日筛出来的队列
+   * 永远只给一部分，用户只能一条条手动点开。
+   */
+  async startRoundSprint(opts: { force?: boolean } = {}): Promise<void> {
     const { uiManager } = await import('./index');
     if (uiManager?.inSprint) {
       notice('做题冲刺进行中，先结束当前会话再开始本轮');
@@ -464,6 +481,11 @@ export const reviewApp = {
     }
     const app = getApp();
     this.ensure(app);
+    await this.syncVacation();
+    if (isOnVacation((getSettings() as any).reviewVacationUntil)) {
+      notice('休假中，先取消休假或等到期再复习');
+      return;
+    }
     // 行为流（issue 261）：开始本轮复习入小橘行为流（review:started）
     emitDomainEvent('review', { kind: 'started' });
     let items = await this.dataManager!.loadItems();
@@ -487,18 +509,32 @@ export const reviewApp = {
     // item 6/9：开始本轮与三区列同口径（roundQueue 纯函数）——
     // 逾期 ∪ R 阈值提前 ∪ 今日到期（今日到期时刻未到 = 允许提前开始今天全部）
     const rThreshold = Number((getSettings() as any).reviewRThreshold) || DEFAULT_R_THRESHOLD;
-    const round = roundQueue(items, rThreshold, this.currentW());
+    const round = opts.force
+      ? items.filter((i) => !i.isCompleted && !i.completed && !i.isMissing)
+      : roundQueue(items, rThreshold, this.currentW());
     if (!round.length) {
-      notice('没有逾期笔记', 'success');
+      notice(opts.force ? '计划里还没有可复习的条目' : '没有逾期笔记', 'success');
       return;
+    }
+    if (opts.force) {
+      notice(`不限到期，本轮把 ${round.length} 条全部过一遍`, 'info');
     }
     // item 9：纳入了「今日到期但时刻未到」的篇目 → 明确反馈
     const earlyToday = round.filter((i) => !i.isOverdue && !isEarlyDue(i, rThreshold, this.currentW()));
     if (earlyToday.length) {
       notice(`今日到期 ${earlyToday.length} 条已提前纳入本轮`, 'info');
     }
-    const dailyLimit = Number((getSettings() as any).reviewDailyLimit) || 0;
-    const limited = this.sortOverdue(round, dailyLimit);
+    const s = getSettings() as any;
+    const dailyLimit = Number(s.reviewDailyLimit) || 0;
+    /* 先按 R 排序，再按「新卡 / 到期」两个额度分别截断（批 3）——
+       合成一个上限时，新卡多的一天会被新卡吃光，复习效率反而低。 */
+    let limited = this.sortOverdue(round, 0);
+    limited = applyRoundLimits(limited, {
+      newLimit: Number(s.reviewNewLimit) || 0,
+      reviewLimit: Number(s.reviewReviewLimit) || 0,
+      order: s.reviewOrder === 'new-first' ? 'new-first' : 'due-first',
+    });
+    if (dailyLimit > 0) limited = limited.slice(0, dailyLimit);
     if (limited.length < round.length) {
       notice(`本轮复习 ${limited.length} 条，剩余 ${round.length - limited.length} 条留到下次`, 'info');
     }
@@ -866,6 +902,35 @@ export const reviewApp = {
     });
   },
 
+  /**
+   * 休假收尾（批 3）：结束那天把整份计划的「下次复习日期」整体顺延。
+   *
+   * 为什么要顺延：不休假期间条目照样走到期，回来就是一屏逾期几百条，很多人
+   * 因此直接放弃这个插件。顺延等于「这段时间不算数」，回来节奏还是走之前的样子。
+   */
+  async syncVacation(): Promise<void> {
+    const s = getSettings() as any;
+    const until = s.reviewVacationUntil ? new Date(s.reviewVacationUntil).getTime() : NaN;
+    if (!Number.isFinite(until) || Date.now() < until) return;
+    this.ensure(getApp());
+    const from = s.reviewVacationFrom ? new Date(s.reviewVacationFrom).getTime() : NaN;
+    const shift = Number.isFinite(from) ? Math.max(0, until - from) : 0;
+    if (shift > 0) await this.dataManager!.shiftAllNextReview(shift);
+    const live = getSettings() as any;
+    live.reviewVacationUntil = '';
+    live.reviewVacationFrom = '';
+    void saveSettings();
+    notice(`休假结束，复习计划整体顺延 ${Math.round(shift / 86400000)} 天`, 'success');
+    if (shift > 0) {
+      try {
+        const { uiManager } = await import('./index');
+        if (uiManager) void uiManager.refreshPanel().catch(() => undefined);
+      } catch {
+        /* 面板没开不影响 */
+      }
+    }
+  },
+
   /** 撤销上一次评级：把整条排期恢复到评级前那一刻（含 S/D、历史、下次日期） */
   async undoLastRating(): Promise<boolean> {
     const last = this._undoStack.pop();
@@ -1067,6 +1132,9 @@ export const reviewApp = {
   async checkOverdueAndNotify(): Promise<void> {
     try {
       this.ensure(getApp());
+      /* 休假中不提醒（批 3）：连染色与逾期通知一起停，否则「休假」只是不看而已，
+         通知照样天天弹，用户会以为没设置成功。 */
+      if (isOnVacation((getSettings() as any).reviewVacationUntil)) return;
       const dm = this.dataManager!;
       const items = await dm.loadItems();
       this._lastItems = items; // F9：轮询结果入快照（染色关闭时 applyReviewStyles 不读盘，快照在此保活）

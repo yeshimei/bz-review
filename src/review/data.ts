@@ -490,6 +490,36 @@ export class ReviewDataManager {
   }
 
   /**
+   * 休假顺延（批 3）：把所有条目的下次复习日期整体后移。
+   * 只动日期，不动阶段与记忆参数——休假不该改变「你记住了多少」。
+   */
+  shiftAllNextReview(ms: number): Promise<number> {
+    if (!Number.isFinite(ms) || ms <= 0) return Promise.resolve(0);
+    return this.mutate((items) => {
+      let n = 0;
+      for (const it of items) {
+        const t = it.nextReviewDate ? new Date(it.nextReviewDate).getTime() : NaN;
+        if (!Number.isFinite(t)) continue;
+        it.nextReviewDate = new Date(t + ms).toISOString();
+        n++;
+      }
+      return n;
+    });
+  }
+
+  /** 手动指定下次复习日期（批 3）：考试、出差、借书到期都靠它 */
+  setNextReview(filePath: string, iso: string): Promise<boolean> {
+    const t = new Date(iso).getTime();
+    if (!Number.isFinite(t)) return Promise.resolve(false);
+    return this.mutate((items) => {
+      const it = items.find((i) => i.filePath === filePath);
+      if (!it) return false;
+      it.nextReviewDate = new Date(t).toISOString();
+      return true;
+    });
+  }
+
+  /**
    * 撤销评级：把条目整体还原为评级前的快照（批 2）。
    * 只覆盖快照里有的字段，不动运行时派生态；条目已被删就返回 false。
    */
