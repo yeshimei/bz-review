@@ -42,9 +42,11 @@ import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
 import {
   queueViewHtml, sprintHeadHtml, sprintLoadingHtml, sprintQuestionHtml, sprintBodyHtml,
-  sprintResultHtml, sprintSummaryHtml, reviewBarHtml,
+  sprintResultHtml, sprintSummaryHtml, reviewBarHtml, trashViewHtml,
   isPlayable as isPlayableRender,
 } from './render';
+import { loadTrash } from './trash-store';
+import type { TrashEntry } from './trash';
 import {
   motionQueueBoot, motionChargeStrip, motionDrawCard, motionTeardown, motionRatingBar,
 } from './motion';
@@ -110,6 +112,12 @@ export class UIManager {
   /** 冲刺入口 in-flight 防抖（双击/并发触发只放行一次，防双开会话双倍 AI 调用） */
   private sprintStarting = false;
   showArchived = false;
+  /** 回收站视图开关（与归档互斥：两个都是「另一种列表」，同时开没有意义） */
+  showTrash = false;
+  /** 回收站条目缓存（进入视图前由 refreshPanel 刷新） */
+  private trashEntries: TrashEntry[] = [];
+  /** 回收站条数（底部入口按它决定显不显示） */
+  private trashCount = 0;
   private escHandle: { unregister: () => void } | null = null;
   /** 动效 boot 消费标志：showMain 置位，首个 renderEntries 消费（后台刷新静默不重播） */
   private motionBootPending = false;
@@ -249,6 +257,8 @@ export class UIManager {
     this.createMainUI();
     if (!this.mask || !this.popup) return;
     this.closingView = false;
+    /* 关面板时停在回收站，下次打开还停在回收站会很奇怪——每次打开都从队列开始。 */
+    this.showTrash = false;
     if (this.hostedInView) {
       /* 原生页：遮罩不参与（标签页里没有「点外面关掉」这回事），面板直接占满内容区。
          拖拽缩放与焦点圈闭也一并跳过——那是浮层才需要的两件事。 */
@@ -330,6 +340,10 @@ export class UIManager {
        判据走 isShown：原生页模式遮罩是 none，拿 mask 的 display 会让队列永不刷新。 */
     if (!this.isShown) return;
     const items = await this.dataManager.loadItems();
+    /* 回收站条数一起读：底部入口要靠它决定显不显示，回收站视图也直接用这份。
+       一个几百字节的小文件，比「进回收站再读一次、回来再读一次」省一次闪烁。 */
+    this.trashEntries = await loadTrash(this.app);
+    this.trashCount = this.trashEntries.length;
     this.renderEntries(items);
   }
 
@@ -340,6 +354,10 @@ export class UIManager {
     if (this.sprint) return;
     const container = this.entriesContainer;
     if (!container) return;
+    if (this.showTrash) {
+      this.renderTrash(container);
+      return;
+    }
     const focusKey = captureFocusKey(container);
     const scrollTops = new Map<string, number>();
     container.querySelectorAll<HTMLElement>('.bzrv-q-col').forEach((col) => {
@@ -393,6 +411,97 @@ export class UIManager {
       motionQueueBoot(container);
     }
   }
+  /** 回收站视图（与队列共用内容区；条目来自 refreshPanel 刷新的缓存） */
+  private renderTrash(container: HTMLElement): void {
+    container.innerHTML = trashViewHtml(this.trashEntries);
+    if (!this.trashEntries.length) {
+      const host = container.querySelector('[data-empty-host]');
+      if (host) {
+        host.appendChild(
+          uiEmpty({
+            icon: 'trash-2',
+            title: '回收站是空的',
+            desc: '移出复习计划的条目会先来这里，30 天内都能恢复',
+          })
+        );
+      }
+    }
+    mountIcons(container);
+    container.querySelector('[data-act="close"]')?.addEventListener('click', () => this.hideMain());
+    const back = (): void => {
+      this.showTrash = false;
+      void this.refreshPanel();
+    };
+    container.querySelectorAll('[data-act="trash-back"]').forEach((el) => el.addEventListener('click', back));
+    container.querySelector('[data-act="trash-clear"]')?.addEventListener('click', () => void this.clearTrashFlow());
+    container.querySelectorAll<HTMLElement>('[data-restore]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        /* 卡片本身没绑点击（回收站里点一下不该发生任何事），这里 stopPropagation
+           只是防以后给行加动作时误触 */
+        e.stopPropagation();
+        void this.restoreTrashKey(btn.dataset.restore || '');
+      });
+    });
+    container.querySelector('[data-act="trash-restore-all"]')?.addEventListener('click', () => void this.restoreAllTrash());
+  }
+
+  /** 全部恢复（清空回收站之前的那条退路） */
+  private async restoreAllTrash(): Promise<void> {
+    const keys = this.trashEntries.map((e) => e.key);
+    if (!keys.length) return;
+    try {
+      const n = await this.dataManager.restoreFromTrash(keys);
+      notice(n ? `已恢复 ${n} 条` : '没有可恢复的条目', n ? 'success' : 'warning');
+      if (n) {
+        const { reviewApp } = await import('./app');
+        await reviewApp.applyReviewStyles(this.app);
+      }
+    } catch (e) {
+      notifySaveError(e, '恢复复习条目');
+    }
+    await this.refreshPanel();
+  }
+
+  /** 恢复一条（逐条恢复：来这里的用户通常只想捞回刚误删的那一条） */
+  private async restoreTrashKey(key: string): Promise<void> {
+    if (!key) return;
+    try {
+      const n = await this.dataManager.restoreFromTrash([key]);
+      if (!n) {
+        notice('这条已经不在回收站了', 'warning');
+      } else {
+        notice('已恢复，排期和复习历史都回来了', 'success');
+        const { reviewApp } = await import('./app');
+        await reviewApp.applyReviewStyles(this.app);
+      }
+    } catch (e) {
+      notifySaveError(e, '恢复复习条目');
+    }
+    await this.refreshPanel();
+  }
+
+  /** 清空回收站（不可恢复，先问一句） */
+  private async clearTrashFlow(): Promise<void> {
+    const count = this.trashEntries.length;
+    if (!count) return;
+    const v = await openFlowDialog({
+      title: '清空回收站？',
+      message: `这 ${count} 条会被彻底删掉，排期与复习历史一起消失。`,
+      actions: [
+        { label: '取消', value: 'cancel' },
+        { label: '清空', value: 'ok', cta: true, danger: true },
+      ],
+    });
+    if (v !== 'ok') return;
+    try {
+      await this.dataManager.clearTrash();
+      notice('回收站已清空', 'success');
+    } catch (e) {
+      notifySaveError(e, '清空回收站');
+    }
+    await this.refreshPanel();
+  }
+
   /** 切回队列视图（冲刺结束回调）；遇仍活动的会话先销毁再置空（防孤儿 ESC 层） */
   async showQueue(): Promise<void> {
     if (!this.entriesContainer) return;
@@ -417,6 +526,7 @@ export class UIManager {
       showArchived: this.showArchived,
       rThreshold: this.rThreshold(),
       w: this.wSource(),
+      trashCount: this.trashCount,
     });
   }
 
@@ -464,6 +574,12 @@ export class UIManager {
     }
     container.querySelector('[data-act="arch"]')?.addEventListener('click', () => {
       this.showArchived = !this.showArchived;
+      void this.refreshPanel();
+    });
+    // 回收站入口（只在有内容时渲染）：与归档互斥，进回收站先把归档关掉
+    container.querySelector('[data-act="trash"]')?.addEventListener('click', () => {
+      this.showTrash = true;
+      this.showArchived = false;
       void this.refreshPanel();
     });
     // 累计/连续 chip = 直开记忆分析特刊（2026-09-23 拍板：去掉中间统计弹窗与「记忆分析」

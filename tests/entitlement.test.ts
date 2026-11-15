@@ -6,6 +6,7 @@ import {
   canAddNote,
   licenseSummary,
   quotaBlock,
+  quotaInfo,
   refreshLicense,
   remainingCards,
   remainingNotes,
@@ -50,6 +51,30 @@ describe('基础版上限', () => {
     expect(remainingNotes(0)).toBe(20);
     expect(remainingNotes(25)).toBe(0);
     expect(remainingCards(50)).toBe(0);
+  });
+
+  it('用量一眼看清：已用几条、上限几条、还剩几条', () => {
+    expect(quotaInfo('note', { notes: 5, cards: 0 })).toEqual({ used: 5, limit: 20, remaining: 15, full: false });
+    expect(quotaInfo('card', { notes: 0, cards: 50 })).toEqual({ used: 50, limit: 50, remaining: 0, full: true });
+  });
+
+  it('老数据超过上限时用量照实报，不会把已用的数字藏起来', () => {
+    const info = quotaInfo('note', { notes: 26, cards: 0 });
+    expect(info.used).toBe(26);
+    expect(info.full).toBe(true);
+    expect(info.remaining).toBe(0);
+  });
+
+  it('拦下时说明「已用 20/20」，并且明说已有数据不会被删', () => {
+    const block = quotaBlock('note', { notes: 20, cards: 0 });
+    expect(block.message).toContain('已用 20/20');
+    expect(block.message).toContain('不会被删');
+    expect(block.message).toContain('激活高级版');
+  });
+
+  it('划线卡用自己那一套数字，不借用笔记的 20', () => {
+    const block = quotaBlock('card', { notes: 0, cards: 50 });
+    expect(block.message).toContain('50/50');
   });
 });
 

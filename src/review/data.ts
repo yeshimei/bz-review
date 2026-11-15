@@ -8,11 +8,22 @@
  */
 import { stripMdExt } from '../core/utils';
 import type { App, TFile } from 'obsidian';
-import { enqueueFileTask, jsonFileStore, storageFile } from '../core/storage';
+import { backupOriginal, diskReadText, enqueueFileTask, jsonFileStore, storageFile } from '../core/storage';
 import { tryGetSettings } from '../core/settings-provider';
 import { FSRS_FIRST_INTERVALS, LADDER_MAX, TOTAL_STAGES } from './fsrs';
 import { clipWToBounds } from './fit';
 import { canAddCard, canAddNote, quotaBlock, type PlanCounts } from '../data/entitlement';
+import {
+  mergeReviewItems,
+  parseReviewFile,
+  stampChangedItems,
+  stripRuntime,
+  wrapReviewFile,
+} from './store-format';
+import { tombstonesOf } from './trash';
+import { clearTrash as clearTrashStore, loadTrash, pushTrash, removeTrashKeys } from './trash-store';
+import { writeDailySnapshot } from './snapshot-store';
+import { notice } from '../core/notice';
 
 export const REVIEW_FILE_PATH = 'CONFIG/STORAGE/review.json';
 
@@ -138,8 +149,10 @@ export class ReviewDataManager {
    *  双 dm 实例并存期（index.ensureReview 建例 / reviewApp.ensure 自持例）由各构造方保证 app 新鲜，
    *  勿在实例方法内改走模块级 getApp（会与「实例绑定自己的 vault」语义纠缠）。 */
   async loadItems(): Promise<ReviewItem[]> {
-    const data = (await jsonFileStore<any[]>(getReviewFilePath()).read()) as any;
-    const items = Array.isArray(data) ? data : [];
+    /* 形态解析收在 store-format：旧版裸数组照常读（下次落盘自动升级），
+       带 version/items 的新文件也读得动，两种形态不用在这里各写一遍。 */
+    const data = await jsonFileStore<any>(getReviewFilePath()).read();
+    const items = parseReviewFile(data).items;
     const valid: ReviewItem[] = [];
 
     for (const item of items) {
@@ -201,19 +214,50 @@ export class ReviewDataManager {
     item.totalStages = TOTAL_STAGES;
   }
 
-  /** 保存（白名单剥离运行时字段：file/isCompleted/isOverdue/isMissing/currentStage/totalStages
-   *  均为 loadItems 派生或运行时态，不落盘（数据卫生）；写盘走 jsonFileStore，读侧走构造注入
-   *  this.app——见 loadItems 注释） */
+  /**
+   * 保存（写前：快照 → 与磁盘现值合并 → 冲突留档 → 落盘）。
+   *
+   * 为什么要先读一遍盘：这份文件可能刚被另一台设备改过（Obsidian Sync / Syncthing）。
+   * 直接盖上去就是「后写者通吃」，对方那几条复习记录当场消失，而且没有任何提示。
+   * 现在的顺序是：
+   *   1. 读磁盘现值，只给**内容真变了**的条目盖 updatedAt；
+   *   2. 按 updatedAt + 回收站墓碑合并（删掉的不会被另一端的旧副本复活）；
+   *   3. 有冲突就先把原文留档再弹一句人话；
+   *   4. 写之前留当天第一份快照（回滚点）。
+   * 运行时字段（file/isCompleted/…）由 stripRuntime 统一剥掉，不落盘。
+   */
   async saveItems(items: ReviewItem[]): Promise<void> {
-    const data = items.map((i) => {
-      const {
-        file: _file, isCompleted: _isCompleted, isOverdue: _isOverdue, isMissing: _isMissing,
-        currentStage: _currentStage, totalStages: _totalStages,
-        ...rest
-      } = i;
-      return rest;
-    });
-    await jsonFileStore<any[]>(getReviewFilePath()).write(data);
+    const now = new Date();
+    const path = getReviewFilePath();
+    const raw = await diskReadText(this.app, path);
+    let disk: any[] = [];
+    let diskBroken = false;
+    if (raw) {
+      try {
+        const parsed = parseReviewFile(JSON.parse(raw));
+        disk = parsed.items;
+        diskBroken = parsed.broken;
+      } catch {
+        diskBroken = true;
+      }
+    }
+    if (diskBroken) await backupOriginal(this.app, path, raw ?? undefined);
+
+    const next = stampChangedItems(items.map((i) => stripRuntime(i as any)), disk, now);
+    const tombstones = tombstonesOf(await loadTrash(this.app));
+    const merged = mergeReviewItems(next, disk, { now, tombstones });
+
+    if (merged.conflicts.length || merged.revived.length) {
+      const saved = await backupOriginal(this.app, path, raw ?? undefined);
+      notice(
+        `这份复习数据在别的设备上也被改过（${merged.conflicts.length + merged.revived.length} 条）。` +
+          `已按更新时间合并，改动前的内容留在 ${saved || 'CONFIG/.CORRUPT'}。`,
+        'warning'
+      );
+    }
+
+    if (raw) await writeDailySnapshot(this.app, raw, now);
+    await jsonFileStore<any>(path).write(wrapReviewFile(merged.items, now));
   }
 
   /** 读改写事务：fn 基于磁盘现值改动，整体入 per-path 串行队列（D3 原语 1） */
@@ -364,12 +408,14 @@ export class ReviewDataManager {
     }).then(() => undefined);
   }
 
-  /** 移除条目（同路径重复条目全数移除，与旧 filter 语义一致） */
+  /** 移除条目：原条目先进回收站（可整条恢复），再落盘 */
   removeItem(filePath: string): Promise<void> {
-    return this.mutate((items) => {
+    return this.mutate(async (items) => {
+      const removed: ReviewItem[] = [];
       for (let i = items.length - 1; i >= 0; i--) {
-        if (items[i].filePath === filePath) items.splice(i, 1);
+        if (items[i].filePath === filePath) removed.push(items.splice(i, 1)[0]);
       }
+      if (removed.length) await pushTrash(this.app, removed);
     }).then(() => undefined);
   }
 
@@ -377,30 +423,52 @@ export class ReviewDataManager {
    *  同路径重复条目全数移除（与 removeItem 同语义）；未命中路径静默跳过；返回移除条数。 */
   removeItems(paths: string[]): Promise<number> {
     const set = new Set(paths);
-    return this.mutate((items) => {
-      let removed = 0;
+    return this.mutate(async (items) => {
+      const removed: ReviewItem[] = [];
       for (let i = items.length - 1; i >= 0; i--) {
-        if (set.has(items[i].filePath)) {
-          items.splice(i, 1);
-          removed++;
-        }
+        if (set.has(items[i].filePath)) removed.push(items.splice(i, 1)[0]);
       }
-      return removed;
+      if (removed.length) await pushTrash(this.app, removed);
+      return removed.length;
     });
   }
 
   /** 撤销移出（ticket 141 通病 1）：原条目（含阶段/排期/历史）原样插回，不走 addItem 重置进度。
-   *  运行时字段与 saveItems 同口径剥离（file/isCompleted/isOverdue/isMissing/currentStage/totalStages 不落盘） */
+   *  同时摘掉回收站里的墓碑——否则下次与另一台设备合并时，它会按「已删除」被再删一次。 */
   restoreItem(item: ReviewItem): Promise<void> {
     return this.mutate((items) => {
       if (items.some((i) => i.filePath === item.filePath)) return;
-      const {
-        file: _file, isCompleted: _isCompleted, isOverdue: _isOverdue, isMissing: _isMissing,
-        currentStage: _currentStage, totalStages: _totalStages,
-        ...rest
-      } = item;
-      items.push(rest as ReviewItem);
-    }).then(() => undefined);
+      items.push(stripRuntime(item as any) as ReviewItem);
+    })
+      .then(() => removeTrashKeys(this.app, [item.filePath]))
+      .then(() => undefined);
+  }
+
+  /**
+   * 从回收站恢复（按钥匙批量）。
+   *
+   * 顺序刻意是「先写回条目、再摘墓碑」：反过来的话，写回失败就等于条目从回收站
+   * 消失了却哪儿都没有——宁可暂时留着墓碑，也不能让用户白点一次。
+   */
+  async restoreFromTrash(keys: readonly string[]): Promise<number> {
+    const want = new Set(keys);
+    const entries = (await loadTrash(this.app)).filter((e) => want.has(e.key));
+    if (!entries.length) return 0;
+    await this.mutate((items) => {
+      const have = new Set(items.map((i) => i.filePath));
+      for (const e of entries) {
+        if (have.has(e.key)) continue;
+        items.push({ ...(e.item as ReviewItem) });
+        have.add(e.key);
+      }
+    });
+    await removeTrashKeys(this.app, entries.map((e) => e.key));
+    return entries.length;
+  }
+
+  /** 清空回收站（清完就等于放弃这些条目的墓碑，另一台设备的旧副本可能被合并回来） */
+  async clearTrash(): Promise<void> {
+    await clearTrashStore(this.app);
   }
 
   getOverdueCount(items: ReviewItem[]): number {

@@ -76,28 +76,50 @@ export function remainingCards(cards: number): number {
   return isPaid() ? Infinity : Math.max(0, FREE_CARD_LIMIT - cards);
 }
 
+/** 用量面板要的三个数：已用、上限、还剩（解锁后上限是 Infinity，界面按「不限」显示） */
+export interface QuotaInfo {
+  used: number;
+  limit: number;
+  remaining: number;
+  full: boolean;
+}
+
+/**
+ * 某一类当前用量。`used` 照实报——迁移进来的老数据可能早就超过上限，
+ * 这里不把它按上限截断，否则用户看到「20/20」却明明有 26 条，只会觉得插件在骗人。
+ */
+export function quotaInfo(kind: 'note' | 'card', counts: PlanCounts): QuotaInfo {
+  const used = kind === 'note' ? counts.notes : counts.cards;
+  const limit = isPaid() ? Infinity : kind === 'note' ? FREE_NOTE_LIMIT : FREE_CARD_LIMIT;
+  return {
+    used,
+    limit,
+    remaining: limit === Infinity ? Infinity : Math.max(0, limit - used),
+    full: used >= limit,
+  };
+}
+
 /**
  * 某一类还有没有余量；到顶时给一句能直接弹给人的话。
  *
  * `counts` 是**当前已存在**的条数：迁移进来的老数据可能早就超过上限，
  * 那种情况一律按「已满」处理——不删用户的东西，只是不能再加新的。
+ *
+ * 文案刻意写成「已用 20/20」而不是「最多 20 篇」：用户要的是自己现在处在
+ * 哪一格，不是再读一遍规则；后面那句「已有数据不会被删」是防恐慌的，
+ * 上限提示最容易被误解成「要删我的东西」。
  */
 export function quotaBlock(
   kind: 'note' | 'card',
   counts: PlanCounts,
 ): { ok: boolean; message: string } {
   if (isPaid()) return { ok: true, message: '' };
-  if (kind === 'note') {
-    if (counts.notes < FREE_NOTE_LIMIT) return { ok: true, message: '' };
-    return {
-      ok: false,
-      message: `基础版最多 ${FREE_NOTE_LIMIT} 篇复习笔记（现有 ${counts.notes} 篇）。激活高级版后可无限添加。`,
-    };
-  }
-  if (counts.cards < FREE_CARD_LIMIT) return { ok: true, message: '' };
+  const info = quotaInfo(kind, counts);
+  if (!info.full) return { ok: true, message: '' };
+  const unit = kind === 'note' ? '篇复习笔记' : '条划线卡';
   return {
     ok: false,
-    message: `基础版最多 ${FREE_CARD_LIMIT} 条划线卡（现有 ${counts.cards} 条）。激活高级版后可无限添加。`,
+    message: `已用 ${info.used}/${info.limit} ${unit}（基础版上限）。激活高级版解锁不限数量，已有数据不会被删。`,
   };
 }
 

@@ -11,14 +11,19 @@
  */
 import type { App } from 'obsidian';
 import { notice } from '../core/notice';
+import { diskReadText, jsonFileStore } from '../core/storage';
+import { openFlowDialog } from '../core/flow-dialog';
 import { getSettings, saveSettings } from '../core/settings-provider';
 import type { SettingsSchema } from '../core/settings-schema';
 import type { ReviewItem } from './data';
 import type { ReviewDataManager } from './data';
+import { getReviewFilePath } from './data';
 import { cardModeOf } from './card-ai';
 import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
 import { copyReviewData, migrateFromBz } from '../data/migrate';
 import { panelModeOf } from './panel-mode';
+import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
+import { parseReviewFile, wrapReviewFile } from './store-format';
 
 export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataManager }): SettingsSchema {
   // enableAutoNotify 常驻轮询在 main.ts onload 注册、运行时按设置实时读值（app.ts checkOverdueAndNotify
@@ -117,6 +122,62 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               const res = await migrateFromBz(deps.app, getSettings());
               notice(res.message, res.ok ? 'success' : 'warning');
             },
+          },
+          {
+            /* 快照是最后一道保险：合并写错、同步出事、手滑清空，都能从这里退回去。
+               回滚前先给当前数据留一份，所以「回滚」本身也能反悔。 */
+            type: 'info',
+            name: '自动快照',
+            desc: '每次写数据前留一份当天的快照，保留 7 天。回滚前会再给当前数据备份一次，反悔还能拿回来。',
+            actions: [
+              {
+                text: '立即备份',
+                onClick: async () => {
+                  const raw = await diskReadText(deps.app, getReviewFilePath());
+                  if (!raw) {
+                    notice('还没有复习数据，先加一条再备份', 'warning');
+                    return;
+                  }
+                  const name = await writeSnapshotNow(deps.app, raw, new Date());
+                  notice(name ? `已备份：${name}` : '备份失败，去控制台看原因', name ? 'success' : 'warning');
+                },
+              },
+              {
+                text: '回滚到最近快照',
+                onClick: async () => {
+                  const name = await latestSnapshotName(deps.app);
+                  if (!name) {
+                    notice('还没有任何快照', 'warning');
+                    return;
+                  }
+                  const v = await openFlowDialog({
+                    title: '回滚到最近快照？',
+                    message: `会用 ${name} 覆盖当前复习数据。回滚前会再给当前数据留一份，反悔还能拿回来。`,
+                    actions: [
+                      { label: '取消', value: 'cancel' },
+                      { label: '回滚', value: 'ok', cta: true, danger: true },
+                    ],
+                  });
+                  if (v !== 'ok') return;
+                  try {
+                    const raw = await diskReadText(deps.app, getReviewFilePath());
+                    if (raw) await writeSnapshotNow(deps.app, raw, new Date());
+                    const snap = await readSnapshot(deps.app, name);
+                    if (!snap) {
+                      notice('这份快照读不出来，换一份试试', 'warning');
+                      return;
+                    }
+                    const parsed = parseReviewFile(JSON.parse(snap));
+                    await jsonFileStore<any>(getReviewFilePath(), { app: deps.app }).write(
+                      wrapReviewFile(parsed.items, new Date())
+                    );
+                    notice('已回滚，重新打开面板就能看到', 'success');
+                  } catch (e) {
+                    notice('回滚失败：' + (e instanceof Error ? e.message : String(e)), 'warning');
+                  }
+                },
+              },
+            ],
           },
         ],
       },
