@@ -17,13 +17,13 @@ import { getSettings, saveSettings } from '../core/settings-provider';
 import type { SettingsSchema } from '../core/settings-schema';
 import type { ReviewItem } from './data';
 import type { ReviewDataManager } from './data';
-import { getReviewFilePath } from './data';
+import { getReviewFilePath, getReviewMetaPath } from './data';
 import { cardModeOf } from './card-ai';
 import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
 import { copyReviewData, migrateFromBz } from '../data/migrate';
 import { panelModeOf } from './panel-mode';
 import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
-import { parseReviewFile, wrapReviewFile } from './store-format';
+import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
 
 export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataManager }): SettingsSchema {
   // enableAutoNotify 常驻轮询在 main.ts onload 注册、运行时按设置实时读值（app.ts checkOverdueAndNotify
@@ -169,8 +169,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                     }
                     const parsed = parseReviewFile(JSON.parse(snap));
                     await jsonFileStore<any>(getReviewFilePath(), { app: deps.app }).write(
-                      wrapReviewFile(parsed.items, new Date())
+                      serializeReviewItems(parsed.items)
                     );
+                    await jsonFileStore<any>(getReviewMetaPath(), { app: deps.app }).write(reviewMeta(new Date()));
                     notice('已回滚，重新打开面板就能看到', 'success');
                   } catch (e) {
                     notice('回滚失败：' + (e instanceof Error ? e.message : String(e)), 'warning');

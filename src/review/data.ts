@@ -16,9 +16,10 @@ import { canAddCard, canAddNote, quotaBlock, type PlanCounts } from '../data/ent
 import {
   mergeReviewItems,
   parseReviewFile,
+  reviewMeta,
+  serializeReviewItems,
   stampChangedItems,
   stripRuntime,
-  wrapReviewFile,
 } from './store-format';
 import { tombstonesOf } from './trash';
 import { clearTrash as clearTrashStore, loadTrash, pushTrash, removeTrashKeys } from './trash-store';
@@ -31,6 +32,12 @@ export const REVIEW_FILE_PATH = 'CONFIG/STORAGE/review.json';
 export function getReviewFilePath(): string {
   const s = tryGetSettings() as any;
   return storageFile('review.json', (s && s.storagePath) || 'CONFIG/STORAGE');
+}
+
+/** 旁挂元数据路径（版本号 + 最后写入时间；review.json 保持数组形态，旧版插件照读） */
+export function getReviewMetaPath(): string {
+  const s = tryGetSettings() as any;
+  return storageFile('review-meta.json', (s && s.storagePath) || 'CONFIG/STORAGE');
 }
 
 /**
@@ -257,7 +264,13 @@ export class ReviewDataManager {
     }
 
     if (raw) await writeDailySnapshot(this.app, raw, now);
-    await jsonFileStore<any>(path).write(wrapReviewFile(merged.items, now));
+    /* 主体保持数组（旧版插件读到不会当成空计划），版本号进旁挂文件。 */
+    await jsonFileStore<any>(path).write(serializeReviewItems(merged.items));
+    try {
+      await jsonFileStore<any>(getReviewMetaPath()).write(reviewMeta(now));
+    } catch (e) {
+      console.warn('[review] 元数据写入失败（不影响主体数据）', e);
+    }
   }
 
   /** 读改写事务：fn 基于磁盘现值改动，整体入 per-path 串行队列（D3 原语 1） */

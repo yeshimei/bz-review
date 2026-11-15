@@ -1,25 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import {
-  REVIEW_FILE_VERSION,
+  REVIEW_SCHEMA_VERSION,
   mergeReviewItems,
   parseReviewFile,
+  reviewMeta,
+  serializeReviewItems,
   stampChangedItems,
-  wrapReviewFile,
 } from '../src/review/store-format';
 
 const A = { id: 'a', filePath: '笔记/a.md', name: 'a', updatedAt: '2026-11-10T00:00:00.000Z', stage: 1 };
 const B = { id: 'b', filePath: '笔记/b.md', name: 'b', updatedAt: '2026-11-10T00:00:00.000Z', stage: 2 };
 
 describe('review.json 形态', () => {
-  it('旧版纯数组能读出来，并标记为需要升级', () => {
+  it('主体永远是数组：旧版插件读到也不会当成空计划', () => {
     const p = parseReviewFile([A, B]);
     expect(p.items).toHaveLength(2);
     expect(p.legacyArray).toBe(true);
     expect(p.broken).toBe(false);
   });
 
-  it('新形态带版本号与写入时间', () => {
-    const p = parseReviewFile({ version: REVIEW_FILE_VERSION, updatedAt: '2026-11-15T00:00:00.000Z', items: [A] });
+  it('万一读到带 items 的对象（别人写过的新形态）也读得动，不丢数据', () => {
+    const p = parseReviewFile({ version: REVIEW_SCHEMA_VERSION, updatedAt: '2026-11-15T00:00:00.000Z', items: [A] });
     expect(p.items).toHaveLength(1);
     expect(p.legacyArray).toBe(false);
     expect(p.broken).toBe(false);
@@ -33,11 +34,16 @@ describe('review.json 形态', () => {
     }
   });
 
-  it('写出去的形态带版本号与写入时间，条目原样保留', () => {
-    const file = wrapReviewFile([A], new Date('2026-11-15T08:00:00.000Z'));
-    expect(file.version).toBe(REVIEW_FILE_VERSION);
-    expect(file.updatedAt).toBe('2026-11-15T08:00:00.000Z');
-    expect(file.items).toEqual([A]);
+  it('写盘用数组：条目原样保留，运行时字段剥掉', () => {
+    const out = serializeReviewItems([{ ...A, file: {}, isOverdue: true }]);
+    expect(Array.isArray(out)).toBe(true);
+    expect(out[0]).toEqual(A);
+  });
+
+  it('版本号与写入时间进旁挂元数据，不塞进 review.json', () => {
+    const meta = reviewMeta(new Date('2026-11-15T08:00:00.000Z'));
+    expect(meta.schema).toBe(REVIEW_SCHEMA_VERSION);
+    expect(meta.updatedAt).toBe('2026-11-15T08:00:00.000Z');
   });
 });
 

@@ -1,9 +1,10 @@
 /**
  * review.json 的形态与跨端合并（批 1 地基，纯函数）。
  *
- * 为什么改形态：文件以前是一个裸数组，没有任何版本号与写入时间。两台设备同时改，
- * 后写者整份覆盖前者；改成 `{version, updatedAt, items}` 后至少能回答
- * 「这份是哪个版本、什么时候写的」，读侧也兼容老数组（老用户不用手动迁移）。
+ * 形态刻意**保持不变**（还是纯数组），只在条目上加 `updatedAt`，版本号与
+ * 写入时间放到旁挂的 review-meta.json。理由：旧版插件读到 `{items:[…]}` 会
+ * 当成空数组，接着任何一次落盘就把整个计划清空——两台设备版本不一致时这条
+ * 路非常真实。宁可少一点形式上的整齐，也不能让「回退一个版本」变成数据事故。
  *
  * 为什么合并要这么保守：宁可多留一份 `.CONFLICT` 副本、多弹一句提示，也不能
  * 静默把另一台设备刚复习完的记录抹掉——社区里「卡片凭空消失」是最劝退的一类事故。
@@ -12,17 +13,21 @@
  * 本机的旧副本就会永远显得比另一台新，改动方向被彻底掩盖。
  */
 
-/** 当前数据文件版本；读到裸数组视同旧版，下次落盘自动升级 */
-export const REVIEW_FILE_VERSION = 2;
+/** 数据结构版本（写在 review-meta.json；review.json 本身仍是数组，旧版插件照读） */
+export const REVIEW_SCHEMA_VERSION = 2;
+
+/** 旁挂元数据：版本号 + 最后一次写入时间 */
+export interface ReviewMeta {
+  schema: number;
+  updatedAt: string;
+}
+
+export function reviewMeta(now: Date): ReviewMeta {
+  return { schema: REVIEW_SCHEMA_VERSION, updatedAt: now.toISOString() };
+}
 
 /** loadItems 派生、不落盘的运行时字段（比对内容时必须剔除，否则一次列表刷新就算全员改动） */
 const RUNTIME_FIELDS = ['file', 'isCompleted', 'isOverdue', 'isMissing', 'currentStage', 'totalStages'] as const;
-
-export interface ReviewFileV2 {
-  version: number;
-  updatedAt: string;
-  items: unknown[];
-}
 
 export interface ParsedReviewFile {
   items: any[];
@@ -86,8 +91,9 @@ export function parseReviewFile(raw: unknown): ParsedReviewFile {
   return { items: [], legacyArray: false, broken: true };
 }
 
-export function wrapReviewFile(items: readonly any[], now: Date): ReviewFileV2 {
-  return { version: REVIEW_FILE_VERSION, updatedAt: now.toISOString(), items: items.map((i) => stripRuntime(i)) };
+/** 写盘用的数组形态：剥运行时字段，别的原样（含逐条 updatedAt） */
+export function serializeReviewItems(items: readonly any[]): any[] {
+  return items.map((i) => stripRuntime(i));
 }
 
 /**
