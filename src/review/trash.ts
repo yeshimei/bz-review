@@ -54,13 +54,20 @@ export function pruneTrash(list: readonly TrashEntry[], now: Date, days: number 
   return list.filter((e) => Number(e.at) > cutoff);
 }
 
-/** 墓碑表：key → 删除时间。合并时用来挡「删了又回来」 */
+/**
+ * 墓碑表：key 与 id 各记一份。
+ *
+ * 合并时条目按 id 对齐，而回收站记的是 filePath —— 只记一边的话，
+ * 「删掉的条目」和「另一台设备的副本」永远碰不上面，删了又自己回来。
+ */
 export function tombstonesOf(list: readonly TrashEntry[]): Map<string, number> {
   const m = new Map<string, number>();
   for (const e of list) {
-    if (!e?.key) continue;
-    const prev = m.get(e.key) ?? 0;
-    if (Number(e.at) > prev) m.set(e.key, Number(e.at));
+    for (const k of [e?.key, e?.id]) {
+      if (!k) continue;
+      const prev = m.get(k) ?? 0;
+      if (Number(e.at) > prev) m.set(k, Number(e.at));
+    }
   }
   return m;
 }

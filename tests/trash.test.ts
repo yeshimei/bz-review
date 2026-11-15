@@ -64,6 +64,11 @@ describe('回收站', () => {
     expect(tombs.get('笔记/a.md')).toBe(at('2026-11-15T10:00:00.000Z').getTime());
   });
 
+  it('墓碑同时按 id 记一份：合并按 id 对齐，只记路径就对不上', () => {
+    const list = addToTrash([], [item('a')], at('2026-11-15T10:00:00.000Z'));
+    expect(tombstonesOf(list).get('a')).toBe(at('2026-11-15T10:00:00.000Z').getTime());
+  });
+
   it('恢复时把条目从回收站拿走，返回原样的排期', () => {
     const list = addToTrash([], [item('a', { stage: 6, totalReviews: 9 })], at('2026-11-15T10:00:00.000Z'));
     const r = takeFromTrash(list, ['笔记/a.md']);

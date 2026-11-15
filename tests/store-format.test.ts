@@ -106,6 +106,14 @@ describe('两台设备合并', () => {
     expect(r.revived).toEqual(['a']);
   });
 
+  it('墓碑只记了文件路径、远端条目用的是 id，也照样挡得住（删了不该自己回来）', () => {
+    const tombstones = new Map([['笔记/a.md', new Date('2026-11-14T00:00:00.000Z').getTime()]]);
+    const remote = [{ ...A, updatedAt: '2026-11-10T00:00:00.000Z' }];
+    const r = mergeReviewItems([], remote, opts(tombstones));
+    expect(r.items).toEqual([]);
+    expect(r.revived).toEqual(['a']);
+  });
+
   it('条目在删除之后又被复习过，说明是新的学习记录，必须留下', () => {
     const tombstones = new Map([['a', new Date('2026-11-10T00:00:00.000Z').getTime()]]);
     const remote = [{ ...A, updatedAt: '2026-11-12T00:00:00.000Z' }];

@@ -158,9 +158,19 @@ export function mergeReviewItems(
   const localMap = index(local);
   const remoteMap = index(remote);
 
-  const deletedAt = (key: string): number | undefined => tombstones.get(key);
+  /* 墓碑既可能按 id 记，也可能按 filePath 记（回收站存的是路径）——
+     两边都要查，否则「删掉的条目」与「另一台设备的副本」永远碰不上面。 */
+  const deletedAt = (key: string, item: any): number | undefined => {
+    let best: number | undefined;
+    for (const k of [key, String(item?.filePath ?? ''), String(item?.id ?? '')]) {
+      if (!k) continue;
+      const t = tombstones.get(k);
+      if (t !== undefined && (best === undefined || t > best)) best = t;
+    }
+    return best;
+  };
   const isBuried = (key: string, item: any): boolean => {
-    const t = deletedAt(key);
+    const t = deletedAt(key, item);
     return t !== undefined && updatedMs(item) <= t;
   };
 
