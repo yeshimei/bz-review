@@ -27,6 +27,9 @@ import { contextPromptOf } from './context';
 import { clozeSlotWidth, clozeViewOf, promptOf, promptViewFor, quizViewOf } from './card-prompt';
 import { stageNum } from './render';
 import { accuracyToRating } from './sprint';
+import { ratingForKey, ratingKeys } from './keys';
+import { openCardEditor } from './card-edit';
+import { getSettings } from '../core/settings-provider';
 
 /* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
    能直接断言「问过之后必须有字」。此处转出，保持既有引用面不变。 */
@@ -40,12 +43,18 @@ export function sourceOf(item: ReviewItem): string {
   return book || chapter || item.name || '';
 }
 
-const RATINGS: Array<{ value: Rating; label: string; key: string }> = [
-  { value: 'again', label: '忘了', key: '1' },
-  { value: 'hard', label: '困难', key: '2' },
-  { value: 'good', label: '一般', key: '3' },
-  { value: 'easy', label: '容易', key: '4' },
+/* 标签固定、键位来自设置（批 2）：以前 1-4 写死三处，换键位只改得动一处就等于没改。 */
+const RATING_LABELS: Array<{ value: Rating; label: string }> = [
+  { value: 'again', label: '忘了' },
+  { value: 'hard', label: '困难' },
+  { value: 'good', label: '一般' },
+  { value: 'easy', label: '容易' },
 ];
+
+function ratingsWith(rawKeys: unknown): Array<{ value: Rating; label: string; key: string }> {
+  const keys = ratingKeys(rawKeys);
+  return RATING_LABELS.map((r) => ({ ...r, key: keys[r.value] }));
+}
 
 const RATING_NAMES: Record<string, string> = { again: '忘了', hard: '困难', good: '一般', easy: '容易' };
 
@@ -80,6 +89,11 @@ export interface CardSessionOpts {
   ensureContent?: (item: ReviewItem) => Promise<boolean>;
   /** 「重新生成」：重新问一次模型并覆盖卡上的内容；返回是否真的换了 */
   regenerate?: (item: ReviewItem) => Promise<boolean>;
+  /**
+   * 手改卡片（批 2）：保存后由调用方落盘并打 manual 标记。
+   * 没有这条回调时编辑入口不显示——宁可不给，也不给一个存不进去的按钮。
+   */
+  onEdit?: (item: ReviewItem, values: { text: string; comment: string }) => Promise<void>;
 }
 
 /** 做题这一条的会话态 */
@@ -158,10 +172,10 @@ export class CardSession {
         }
         return;
       }
-      const hit = RATINGS.find((r) => r.key === e.key);
+      const hit = ratingForKey(e.key, (getSettings() as any).reviewRatingKeys);
       if (hit) {
         e.preventDefault();
-        void this.rate(hit.value);
+        void this.rate(hit);
       }
     };
     document.addEventListener('keydown', this.keyHandler);
@@ -407,10 +421,10 @@ export class CardSession {
   }
 
   private rateByKey(e: KeyboardEvent): void {
-    const hit = RATINGS.find((r) => r.key === e.key);
+    const hit = ratingForKey(e.key, (getSettings() as any).reviewRatingKeys);
     if (!hit) return;
     e.preventDefault();
-    void this.rate(hit.value);
+    void this.rate(hit);
   }
 
   private pickOption(i: number): void {
@@ -464,6 +478,34 @@ export class CardSession {
     return renderClozeHtmlParts(text).some((p) => p.kind === 'slot');
   }
 
+  /**
+   * 手改这张卡（批 2）。
+   *
+   * 保存后把本地缓存全部作废：提示面、题库、挖空都按旧文本生成，改了原文还留着
+   * 旧的等于让人背一段自己没写过的字。
+   */
+  private editCard(): void {
+    const item = this.current();
+    if (!item || !this.opts.onEdit) return;
+    openCardEditor(this.opts.app, item, async (v) => {
+      await this.opts.onEdit!(item, v);
+      const card = item.card;
+      if (card) {
+        card.text = v.text;
+        card.comment = v.comment;
+        card.manual = true;
+        this.qCache.delete(card.key);
+        this.asked.delete(card.key);
+      }
+      this.quiz = null;
+      this.quizFallback = false;
+      this.clozeState = null;
+      this.revealed = false;
+      this.ensured.delete(item.filePath);
+      this.render();
+    });
+  }
+
   private async regenerate(): Promise<void> {
     if (!this.opts.regenerate || this.regenBusy) return;
     const item = this.current();
@@ -510,6 +552,11 @@ export class CardSession {
           <span class="bzrv-cs-pos">${esc(pos)}</span>
           <span class="bzrv-cs-src">${esc(sourceOf(item))}</span>
           <span class="bzrv-cs-stage">${esc(stageNum(item))}</span>
+          ${
+            this.opts.onEdit
+              ? `<button type="button" class="bzrv-btn bzrv-cs-edit" data-act="edit" title="改原文或想法（改过之后不再自动生成）">编辑</button>`
+              : ''
+          }
           ${
             canRegen
               ? `<button type="button" class="bzrv-btn bzrv-cs-regen" data-act="regen"${
@@ -707,7 +754,7 @@ export class CardSession {
   }
 
   private ratingHtml(): string {
-    return `<div class="bzrv-cs-rate">${RATINGS.map(
+    return `<div class="bzrv-cs-rate">${ratingsWith((getSettings() as any).reviewRatingKeys).map(
       (r) => `<button type="button" class="bzrv-btn" data-r="${r.value}">${r.label}（${r.key}）</button>`,
     ).join('')}</div>`;
   }
@@ -722,6 +769,7 @@ export class CardSession {
     host.querySelector('[data-act="reveal"]')?.addEventListener('click', () => this.reveal());
     host.querySelector('[data-act="check"]')?.addEventListener('click', () => this.submitCloze());
     host.querySelector('[data-act="regen"]')?.addEventListener('click', () => void this.regenerate());
+    host.querySelector('[data-act="edit"]')?.addEventListener('click', () => this.editCard());
     host.querySelector('[data-act="next"]')?.addEventListener('click', () => this.nextQuestion());
     host.querySelector('[data-act="finish"]')?.addEventListener('click', () => void this.finishQuiz());
     host.querySelectorAll<HTMLElement>('[data-r]').forEach((btn) => {

@@ -36,6 +36,8 @@ export default interface BzSettings {
   reviewRThreshold: number;
   /** 划线卡复习方式：AI 抽认卡 / AI 填空 / 上下文 / AI 做题 / 展开全文 */
   reviewCardMode: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
+  /** 评级键位（四个字符，顺序＝忘了/困难/一般/简单；默认 1234） */
+  reviewRatingKeys: string;
   /** 做题时每轮抽题比例（1/3、1/2…） */
   reviewCardQuizRatio: number;
   /** 被监控并自动加入复习的文件夹 */
@@ -89,6 +91,7 @@ export const DEFAULT_SETTINGS: BzSettings = {
   reviewFitEveryN: 10,
   reviewRThreshold: 0.9,
   reviewCardMode: 'flashcard',
+  reviewRatingKeys: '1234',
   reviewCardQuizRatio: 3,
   reviewWatchedFolders: [],
   reviewExcludedNotes: [],

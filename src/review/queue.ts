@@ -19,6 +19,18 @@ import { dateKey } from './stats';
 /** R 阈值缺省值（设置 reviewRThreshold 未配置/非法时的回退；markReview 放行、开始本轮、三区列共用） */
 export const DEFAULT_R_THRESHOLD = 0.9;
 
+/**
+ * 粗估剩余耗时（批 2）：一条按 1 分钟算。
+ *
+ * 为什么只给量级：复习一条笔记的实际耗时从 20 秒到 5 分钟都有，精确预估是假的；
+ * 用户要的是「还要不要坐半小时」，1 分钟/条已经够回答这个问题。
+ */
+export function etaTextOf(count: number): string {
+  const n = Math.max(0, Math.round(Number(count) || 0));
+  if (n <= 0) return '';
+  return `约 ${n} 分钟`;
+}
+
 /** 是否今日到期（nextReviewDate 落在今日本地日内；与 isOverdue 正交的日历口径）。
  *  自 ui.ts 迁入（item 6 口径统一）：纯函数下沉 queue.ts，ui.ts re-export 保持签名。 */
 export function isDueToday(item: ReviewItem): boolean {

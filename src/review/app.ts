@@ -2,7 +2,7 @@
  * 复习计划核心应用（ticket 16 修正版：对齐源码 App，含 quizReviewLoop/reviewLoop）
  */
 import type { App, TFile } from 'obsidian';
-import { notice, notify } from '../core/notice';
+import { notice, notify, notifyUndo } from '../core/notice';
 import type { NoticeHandle } from '../core/notice';
 import { getApp } from '../core/app';
 import { getSettings } from '../core/settings-provider';
@@ -18,6 +18,7 @@ import { computeStats } from './stats';
 import { emitDomainEvent } from '../core/domain-bus';
 import { markOwned } from '../core/scope';
 import { diskPathStat } from '../core/storage';
+import { stripRuntime } from './store-format';
 
 /** item 5：普通复习离篇宽限期（ms）——持续离篇超过此时长才算中断；测试可注入 */
 export let REVIEW_AWAY_GRACE_MS = 120000;
@@ -94,6 +95,10 @@ export const reviewApp = {
   _reviewBar: null as { close: () => void } | null,
   /** item 5：本轮队列断点（中断/超时可恢复继续） */
   _pendingRound: null as { items: ReviewItem[]; index: number } | null,
+  /** 用户主动暂停本轮（与「中断」区分：这是自己按的，不该弹警告） */
+  _roundPaused: false,
+  /** 评级撤销栈（最近 20 次；批 2）——每条记下评级前那一条的完整状态 */
+  _undoStack: [] as Array<{ filePath: string; at: number; item: Record<string, any> }>,
   /** F9：最近一次全量读盘的条目快照（60s 轮询/染色全量刷时更新）——vault modify 高频路径复用，
    *  不再每次保存任意 md 都全量读 review.json */
   _lastItems: null as ReviewItem[] | null,
@@ -258,6 +263,10 @@ export const reviewApp = {
     const scaledDays = Math.max(0.01, decision.intervalDays * scale);
     const nextDate = new Date(now.getTime() + scaledDays * 86400000);
 
+    /* 撤销快照在写盘之前取：评级是就地改对象，写完之后拿不到「改之前」。
+       只留持久字段（stripRuntime 剥掉 file/isCompleted 等派生态）。 */
+    const before = JSON.parse(JSON.stringify(stripRuntime(item as any))) as Record<string, any>;
+
     // F8：时间门禁移入 RMW 队列内基于磁盘现值复判——并发双评级时后写者在队内读到已刷新的
     // 排期即拒（抛 ReviewGateRejected 由外层转人话 notice），不再双写历史。
     // G1 放行口径不变：R 阈值提前（isEarlyDue）/ 今日到期（isDueToday）均放行，仅未来日历日才拒。
@@ -301,14 +310,20 @@ export const reviewApp = {
       throw e;
     }
 
+    /* 按错的档位是复习里最常犯的错（手快按成「简单」，间隔直接翻几倍）。
+       撤销入口就放在评级成功的那条 toast 上——看到间隔不对，当场能退。 */
+    this._undoStack.push({ filePath, at: Date.now(), item: before });
+    if (this._undoStack.length > 20) this._undoStack.shift();
+    const undo = (): void => void this.undoLastRating();
+
     if (decision.enteringFsrs) {
-      notice(`进入深度复习，${FSRS_FIRST_TEXTS[decision.stage]}后复习`, 'success');
+      notifyUndo(`进入深度复习，${FSRS_FIRST_TEXTS[decision.stage]}后复习`, undo, { type: 'success' });
     } else if (decision.phase === 'ladder') {
-      notice(`${FSRS_FIRST_TEXTS[decision.stage]}后复习`, 'success');
+      notifyUndo(`${FSRS_FIRST_TEXTS[decision.stage]}后复习`, undo, { type: 'success' });
     } else {
       const days = Math.round(scaledDays);
       const rPct = Math.round((decision.R || 0) * 100);
-      notice(`R=${rPct}%，下次复习：${days > 0 ? days + '天' : '1天'}后`, 'success');
+      notifyUndo(`R=${rPct}%，下次复习：${days > 0 ? days + '天' : '1天'}后`, undo, { type: 'success' });
     }
     // ADR-0077：评级也累计拟合计数（含阶梯阶段；样本过滤在 fit.ts 内做）。
     // fire-and-forget：计数在入口同步累加，拟合自防重入；不 await 避免大历史时卡评级路径
@@ -692,6 +707,7 @@ export const reviewApp = {
           name: item.name,
           index: index + 1,
           total: overdueNotes.length,
+          remaining: Math.max(0, overdueNotes.length - index - 1),
           onRate: (rating) => {
             // 评级写盘 → 下方轮询检测 lastReviewed 更新自动翻篇（本条收起由按钮点击即收）
             void this.markReview(item.filePath, rating);
@@ -700,6 +716,7 @@ export const reviewApp = {
             // 跳过：不评级不写盘，直接进下一篇
             void advance();
           },
+          onPause: () => this.pauseRound(),
         });
       } catch {
         /* ignore */
@@ -732,6 +749,22 @@ export const reviewApp = {
       advanced = true;
       this.hideReviewBar();
       clearLoop();
+      /* 暂停：不往下翻，但把断点留在「下一篇」上——继续时正好接着走，
+         不会把刚评完的这篇再复习一遍。 */
+      if (this._roundPaused) {
+        this._pendingRound = { items: overdueNotes, index: index + 1 };
+        const left = Math.max(0, overdueNotes.length - index - 1);
+        if (this._reviewNotice) {
+          this._reviewNotice.setMessage(`已暂停，还剩 ${left} 条`);
+          this._reviewNotice.setType('info');
+          this._reviewNotice = null;
+        }
+        notify(`已暂停本轮，还剩 ${left} 条`, {
+          type: 'info',
+          action: { label: '继续', onClick: () => void reviewApp.resumeRound() },
+        });
+        return;
+      }
       await this.reviewLoop(overdueNotes, index + 1);
     };
     const interval = setInterval(async () => {
@@ -806,7 +839,54 @@ export const reviewApp = {
       notice('没有进行中的本轮复习');
       return;
     }
+    this._roundPaused = false;
     void this.reviewLoop(r.items, r.index);
+  },
+
+  /**
+   * 暂停本轮（批 2）。
+   *
+   * 与「离开笔记被判中断」区分：这是用户自己按的，不给警告、不丢断点，
+   * 评完手上这条就停在原地，回来点「继续」接着走。
+   */
+  pauseRound(): void {
+    this._roundPaused = true;
+    this.hideReviewBar();
+    /* 断点本来就指着「当前这条」（reviewLoop 每次打开前写一次）。
+       暂停意味着这条评完就停，所以断点往后挪一格；已经暂停过就别重复挪。 */
+    const cur = this._pendingRound;
+    if (cur && cur.index < cur.items.length) {
+      this._pendingRound = { items: cur.items, index: Math.min(cur.items.length, cur.index + 1) };
+    }
+    const r = this._pendingRound;
+    const left = r ? Math.max(0, r.items.length - r.index) : 0;
+    notify(`已暂停，还剩 ${left} 条`, {
+      type: 'info',
+      action: { label: '继续', onClick: () => void this.resumeRound() },
+    });
+  },
+
+  /** 撤销上一次评级：把整条排期恢复到评级前那一刻（含 S/D、历史、下次日期） */
+  async undoLastRating(): Promise<boolean> {
+    const last = this._undoStack.pop();
+    if (!last) {
+      notice('没有可撤销的评级');
+      return false;
+    }
+    this.ensure(getApp());
+    const ok = await this.dataManager!.restoreSnapshot(last.filePath, last.item);
+    if (!ok) {
+      notice('这一条已经不在了，撤销不了', 'warning');
+      return false;
+    }
+    notice('已撤销上一次评级', 'success');
+    try {
+      const { uiManager } = await import('./index');
+      if (uiManager) void uiManager.refreshPanel().catch(() => undefined);
+    } catch {
+      /* 面板没开不影响撤销本身 */
+    }
+    return true;
   },
 
   /** 加入当前笔记到复习计划 */

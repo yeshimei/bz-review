@@ -107,6 +107,14 @@ export default class ReviewPlugin extends Plugin {
       callback: withReview((app) => reviewMarkDialog(app)),
     });
     this.addCommand({
+      id: 'review-undo',
+      name: t('撤销上一次评级', 'Undo last rating'),
+      callback: withReview(async () => {
+        const { reviewApp } = await import('./review/app');
+        await reviewApp.undoLastRating();
+      }),
+    });
+    this.addCommand({
       id: 'review-report',
       name: t('复习分析报告', 'Review report'),
       callback: withReview((app) => openReviewReport(app)),

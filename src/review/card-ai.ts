@@ -78,6 +78,9 @@ export async function ensureCardContent(
   if (ctx.mode === 'plain') return false;
   // 上下文卡用的是阅读器给的 before/after，没有要生成的东西
   if (ctx.mode === 'context') return false;
+  /* 手改过的卡不再自动补：后台预生成会把手写的问答/挖空顶掉，
+     而这正是用户刚动手改过的东西。显式「重新生成」走 force，照旧可以覆盖。 */
+  if (!force && card.manual) return false;
 
   if (ctx.mode === 'flashcard') {
     if (!force && String(card.qa?.q ?? '').trim()) return false;

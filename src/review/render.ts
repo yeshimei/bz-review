@@ -11,8 +11,9 @@
 import { emptyHtmlStr, esc, iconSpan, stripTitleMarks } from '../core/ui/str';
 import type { ReviewItem } from './data';
 import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
-import { partitionQueue, isEarlyDue, isDueToday } from './queue';
+import { partitionQueue, etaTextOf, isEarlyDue, isDueToday } from './queue';
 import { computeStats, RATING_NAMES } from './stats';
+import { ratingKeys } from './keys';
 
 /** 题面结构面（对齐 quiz-core/manager 的 QuizQuestion；此处只读 markup 所需字段） */
 interface QuestionLike {
@@ -649,13 +650,22 @@ export function quizPracticeSummaryHtml(r: { correct: number; wrong: number; ski
 
 /** 悬浮迷你评级条（item 4，普通复习路径）。A6：评级中文名单源 stats.RATING_NAMES
  *  （原内联映射与 sprint 结果卡两名漂移——「简单」vs「轻松」，统一为「简单」） */
-export function reviewBarHtml(p: { name: string; index: number; total: number }): string {
+export function reviewBarHtml(p: { name: string; index: number; total: number; remaining?: number; keys?: string }): string {
+  const keys = ratingKeys(p.keys);
   const btns = ['again', 'hard', 'good', 'easy']
-    .map((r) => `<button class="bzrv-review-bar-btn bzrv-touch-target--sm is-${r}" data-rating="${r}">${RATING_NAMES[r]}</button>`)
+    .map(
+      (r) =>
+        `<button class="bzrv-review-bar-btn bzrv-touch-target--sm is-${r}" data-rating="${r}" title="快捷键 ${esc(keys[r as 'again'])}">${RATING_NAMES[r]}</button>`
+    )
     .join('');
+  /* 剩余条数与粗估耗时：连着复习时用户最想知道「还要坐多久」，
+     给个量级就够，不承诺精确到秒。 */
+  const left = p.remaining ?? 0;
+  const extra = left > 0 ? `<i> · 剩 ${left} 条 ${etaTextOf(left)}</i>` : '';
   return `
-    <span class="bzrv-review-bar-info">${esc(stripTitleMarks(p.name))}<i>(${p.index}/${p.total})</i></span>
+    <span class="bzrv-review-bar-info">${esc(stripTitleMarks(p.name))}<i>(${p.index}/${p.total})</i>${extra}</span>
     <span class="bzrv-review-bar-act">${btns}
-      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-skip" data-rating="skip">${'跳过'}</button>
+      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-skip" data-rating="skip" title="不评级，直接下一篇">${'跳过'}</button>
+      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-pause" data-rating="pause" title="评完这条停下，断点保留">${'暂停'}</button>
     </span>`;
 }

@@ -33,7 +33,7 @@ import { trapPanelFocus } from '../core/ui/focus-trap';
 import { notice, notifyUndo, notifySaveError, notifyActionError } from '../core/notice';
 import { openFlowDialog } from '../core/flow-dialog';
 import { escManager } from '../core/esc-manager';
-import { tryGetSettings, panelSizePersist } from '../core/settings-provider';
+import { getSettings, tryGetSettings, panelSizePersist } from '../core/settings-provider';
 import { createAI } from '../core/ai';
 import { isMobileEnv } from '../core/mobile';
 import { uiEmpty, mountIcons, uiResizable } from '../core/ui';
@@ -51,6 +51,8 @@ import {
   motionQueueBoot, motionChargeStrip, motionDrawCard, motionTeardown, motionRatingBar,
 } from './motion';
 import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
+import { ratingForKey } from './keys';
+import { openCardEditor } from './card-edit';
 import { removeNote as planRemoveNote } from './plan-ops';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
@@ -768,6 +770,9 @@ export class UIManager {
          存量卡一张都不会补，整轮复习全是「先看原文」。生成后把最新内容换进队列，
          否则界面还显示旧的。 */
       ensureContent: async (item) => {
+        /* 手改过的卡不自动补：用户刚写的内容不该被后台生成顶掉（批 2）。
+           内容是齐的，直接说「有了」，会话照常往下走。 */
+        if (item.card?.manual) return true;
         const { regenerateCardContent } = await import('./index');
         const ok = await regenerateCardContent(item.filePath);
         if (ok) await refreshCard(item);
@@ -779,6 +784,13 @@ export class UIManager {
         const ok = await regenerateCardContent(item.filePath);
         if (ok) await refreshCard(item);
         return ok;
+      },
+      /* 手改卡片：落盘时打 manual 标记，之后后台预生成不再碰它（点「重新生成」仍可覆盖） */
+      onEdit: async (item, values) => {
+        const key = item.card?.key;
+        if (!key) return;
+        await this.dataManager?.updateCard(key, { text: values.text, comment: values.comment, manual: true });
+        await refreshCard(item);
       },
       onExit: (completed) => {
         this.cardSession = null;
@@ -1003,13 +1015,18 @@ export function mountFloatingRatingBar(opts: {
   name: string;
   index: number;
   total: number;
+  /** 还剩下几条（不含当前这条）：进度后面显示「剩 n 条 · 约 m 分钟」 */
+  remaining?: number;
   onRate: (rating: 'again' | 'hard' | 'good' | 'easy') => void;
   onSkip: () => void;
+  /** 暂停本轮（评完当前这条停下，断点保留） */
+  onPause?: () => void;
 }): { close: () => void } {
   const el = document.createElement('div');
   el.className = 'bzrv-review-bar';
   el.style.zIndex = String(allocZ());
-  el.innerHTML = reviewBarHtml(opts);
+  const keys = (getSettings() as any).reviewRatingKeys;
+  el.innerHTML = reviewBarHtml({ ...opts, keys });
   el.tabIndex = -1; // 程序化 focus 落点（容器不进 Tab 序，键盘 Tab 仍直达各评级按钮）
   let closed = false;
   const close = (): void => {
@@ -1022,18 +1039,20 @@ export function mountFloatingRatingBar(opts: {
     btn.addEventListener('click', () => {
       const r = btn.dataset.rating;
       if (r === 'skip') opts.onSkip();
+      else if (r === 'pause') opts.onPause?.();
       else if (r === 'again' || r === 'hard' || r === 'good' || r === 'easy') opts.onRate(r);
       close(); // 点评级/跳过即收起（评级路径由轮询翻篇重建下一条的评级条）
     });
   });
-  // 数字键 1-4 评级（document 级，先例 showDifficultyDialog 同形制）：输入态放行不劫持打字
+  /* 评级键改走设置里的键位（批 2）：原来写死 1-4，换键位后按钮提示与键盘要同源，
+     否则界面写 1 实际得按 a。输入态一律放行，不劫持打字。 */
   const onDigitKey = (e: KeyboardEvent): void => {
     if (closed) return;
     const t = e.target as HTMLElement | null;
     if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    const i = ['1', '2', '3', '4'].indexOf(e.key);
-    if (i < 0) return;
-    const btn = el.querySelectorAll<HTMLButtonElement>('.bzrv-review-bar-btn')[i];
+    const r = ratingForKey(e.key, keys);
+    if (!r) return;
+    const btn = el.querySelector<HTMLButtonElement>(`.bzrv-review-bar-btn[data-rating="${r}"]`);
     if (btn) {
       e.preventDefault();
       btn.click();

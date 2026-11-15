@@ -72,6 +72,11 @@ export interface ReviewCard {
   qa?: { q: string; a: string; at: number };
   /** 填空卡：挖空后的句子 + 各空位答案 */
   cloze?: { text: string; blanks: string[]; at: number };
+  /**
+   * 用户手改过（批 2）：后台自动补内容一律跳过，别把刚写的话顶掉。
+   * 点「重新生成」仍可覆盖（那条路走 force）。
+   */
+  manual?: boolean;
 }
 
 export interface ReviewItem {
@@ -482,6 +487,19 @@ export class ReviewDataManager {
   /** 清空回收站（清完就等于放弃这些条目的墓碑，另一台设备的旧副本可能被合并回来） */
   async clearTrash(): Promise<void> {
     await clearTrashStore(this.app);
+  }
+
+  /**
+   * 撤销评级：把条目整体还原为评级前的快照（批 2）。
+   * 只覆盖快照里有的字段，不动运行时派生态；条目已被删就返回 false。
+   */
+  restoreSnapshot(filePath: string, snapshot: Record<string, any>): Promise<boolean> {
+    return this.mutate((items) => {
+      const it = items.find((i) => i.filePath === filePath);
+      if (!it) return false;
+      Object.assign(it, snapshot);
+      return true;
+    });
   }
 
   getOverdueCount(items: ReviewItem[]): number {
