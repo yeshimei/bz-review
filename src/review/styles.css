@@ -47,6 +47,23 @@
 /* 队列视图整体（滚动区 = 三区列；头/工具/底部行固定） */
 .bzrv-q-view { display: flex; flex-direction: column; height: 100%; min-height: 0; }
 
+/* 内置页（批 8：数据 / 设置）：内容区自己滚，头行只留「返回 + 标题」 */
+.bzrv-page-body { flex: 1; min-height: 0; overflow-y: auto; }
+.bzrv-page-body > .bzrv-stats-body { padding-bottom: var(--bzrv-space-sm); }
+/* 设置页复用设置内容样式，但不再需要弹窗里那段 65vh 限高（外层已经在滚） */
+.bzrv-page-body > .bzrv-settings-content { max-height: none; overflow: visible; }
+.bzrv-page-forecast { padding: var(--bzrv-space-md) var(--bzrv-space-lg) 0; }
+.bzrv-page-forecast pre {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: var(--font-monospace);
+  line-height: 1.6;
+  font-size: 12.5px;
+  color: var(--bzrv-text-2);
+}
+.bzrv-page-forecast p { margin: 8px 0 0; font-size: 12.5px; color: var(--bzrv-text-3); }
+.bzrv-page .bzrv-btn-row { padding: var(--bzrv-space-md) var(--bzrv-space-lg); }
+
 /* ==================== 三区队列 · 头行 ====================
    头行接组件库 .bzrv-panel-head 族（issue 198 批 D）：.bzrv-panel-title + 日期副题
    （.bzrv-panel-head-sub）/ .bzrv-panel-head-sp / .bzrv-panel-head-btns（见 review/ui.ts）。
@@ -286,17 +303,15 @@
 
 /* 深审 U7：排除名单 chip 族死规则已删（名单已迁 settings 通用 list 行，无 DOM 产出） */
 
-/* 统计弹窗 / 复习历史弹窗（既有实现，容器保留）；遮罩三件套已收编 .bzrv-overlay-mask 单源（issue 365） */
-#bzrv-stats-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--bzrv-surface-2); border-radius: var(--bzrv-radius-md); box-shadow: var(--bzrv-shadow-lg); width: 92%; max-width: 600px; max-height: 88vh; flex-direction: column; animation: bzrvSlideUp var(--bzrv-dur-slow) ease-out; }
-#bzrv-stats-body { flex: 1; overflow-y: auto; }
-.bzrv-review-stats-head { padding: var(--bzrv-space-sm) 18px 6px !important; }
-.bzrv-review-stats-head .bzrv-review-title { font-size: .92rem !important; font-weight: 600 !important; margin: 0 !important; }
+/* 复习历史弹窗（统计已改内置页，2026-11-15 起不再有统计弹窗壳）；
+   遮罩三件套统一走 .bzrv-overlay-mask 单源（issue 365） */
 #bzrv-history-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: var(--bzrv-surface-2); border-radius: var(--bzrv-radius-md); box-shadow: var(--bzrv-shadow-lg); width: 92%; max-width: 480px; max-height: 80vh; flex-direction: column; overflow: hidden; animation: bzrvSlideUp var(--bzrv-dur-slow) ease-out; }
 #bzrv-history-body { flex: 1; overflow-y: auto; position: relative; }
 
 /* ==================== 统计弹窗内容件（呈报#55/R11 重刷：影院现行统计形制） ====================
    markup 对齐 cinema/analysis.ts（stat-cards/sec/sec-title+板块 lucide/bar-row/soft-row/
-   kv-inline/top-row），静态样式 scoped 在 #bzrv-stats-popup（构建后全局聚合，
+   kv-inline/top-row），静态样式挂在 .bzrv-stats-body（2026-11-15 起统计是面板内置页，
+   弹窗壳退役；构建后再由 css-scope 统一收进 [data-bzrv] 子树，
    cinema 同名裸类规则 scoped 在 .bzrv-cinema--midnight，两侧互不误伤）；cinema 侧零改动，
    不抽公共组件（拍板：先重刷，抽公共件另议）。评级色 RATING_COLORS 为数据驱动动态色，
    保留行内 background/color。cinema 硬编码值按 --bzrv-* 档对档（ink/line/chip/gold →
@@ -305,40 +320,40 @@
    闭合了注释，紧跟着的 `.stat-cards { display:grid }` 被当成垃圾 token 整条丢弃
    ——统计面板的六张卡于是竖排成一列。构建时完全静默，所以给 build-css.mjs 加了
    孤儿注释符校验（见 scripts/build-css.mjs 的 findStrayCommentClose）。 */
-#bzrv-stats-popup .stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 0; }
+.bzrv-stats-body .stat-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 12px 16px 0; }
 /* 拟合档位说明紧跟在统计卡后面，直接挂在 body 上（没包 .sec）——不给左右内边距，
    它就从弹窗边缘起排，比上面卡片的边界还往外凸 16px，看着像串行。 */
-#bzrv-stats-popup .stat-cards + .kv-inline { padding: 0 16px; margin-top: 10px; }
-#bzrv-stats-popup .stat-card { background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: 10px; padding: 11px 13px; }
-#bzrv-stats-popup .stat-card .v { font-family: Georgia, serif; font-size: 19px; font-weight: 700; color: var(--bzrv-text-1); }
-#bzrv-stats-popup .stat-card .k { font-size: var(--bzrv-font-caption); letter-spacing: .14em; color: var(--bzrv-text-3); margin-top: 3px; }
-#bzrv-stats-popup .sec { background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: 11px; padding: 13px 15px; margin: 12px 16px; }
-#bzrv-stats-popup .sec-title { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-label); font-weight: 700; color: var(--bzrv-text-1); margin-bottom: 11px; }
-#bzrv-stats-popup .sec-title .bzrv-ic { display: inline-flex; width: 13px; height: 13px; color: var(--bzrv-warning); }
-#bzrv-stats-popup .sec-title .bzrv-ic svg { width: 100%; height: 100%; }
-#bzrv-stats-popup .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--bzrv-border); }
-#bzrv-stats-popup .bar-row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
-#bzrv-stats-popup .bar-label { width: 76px; flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
-#bzrv-stats-popup .bar-track { flex: 1; height: 12px; background: var(--bzrv-surface-3, var(--bzrv-border)); border-radius: var(--bzrv-radius-xs); overflow: hidden; }
-#bzrv-stats-popup .bar-fill { display: block; height: 100%; border-radius: var(--bzrv-radius-xs); }
-#bzrv-stats-popup .bar-num { width: 30px; flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; text-align: right; }
-#bzrv-stats-popup .soft-row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
-#bzrv-stats-popup .soft-track { flex: 1; height: 9px; background: var(--bzrv-surface-3, var(--bzrv-border)); border-radius: 99px; overflow: hidden; }
-#bzrv-stats-popup .soft-fill { display: block; height: 100%; border-radius: 99px; }
-#bzrv-stats-popup .kv-inline { display: flex; flex-wrap: wrap; gap: 6px var(--bzrv-space-lg); font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); margin-bottom: 9px; }
-#bzrv-stats-popup .kv-inline b { color: var(--bzrv-text-1); font-weight: 700; }
+.bzrv-stats-body .stat-cards + .kv-inline { padding: 0 16px; margin-top: 10px; }
+.bzrv-stats-body .stat-card { background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: 10px; padding: 11px 13px; }
+.bzrv-stats-body .stat-card .v { font-family: Georgia, serif; font-size: 19px; font-weight: 700; color: var(--bzrv-text-1); }
+.bzrv-stats-body .stat-card .k { font-size: var(--bzrv-font-caption); letter-spacing: .14em; color: var(--bzrv-text-3); margin-top: 3px; }
+.bzrv-stats-body .sec { background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: 11px; padding: 13px 15px; margin: 12px 16px; }
+.bzrv-stats-body .sec-title { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-label); font-weight: 700; color: var(--bzrv-text-1); margin-bottom: 11px; }
+.bzrv-stats-body .sec-title .bzrv-ic { display: inline-flex; width: 13px; height: 13px; color: var(--bzrv-warning); }
+.bzrv-stats-body .sec-title .bzrv-ic svg { width: 100%; height: 100%; }
+.bzrv-stats-body .sec-title::after { content: ""; flex: 1; height: 1px; background: var(--bzrv-border); }
+.bzrv-stats-body .bar-row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.bzrv-stats-body .bar-label { width: 76px; flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.bzrv-stats-body .bar-track { flex: 1; height: 12px; background: var(--bzrv-surface-3, var(--bzrv-border)); border-radius: var(--bzrv-radius-xs); overflow: hidden; }
+.bzrv-stats-body .bar-fill { display: block; height: 100%; border-radius: var(--bzrv-radius-xs); }
+.bzrv-stats-body .bar-num { width: 30px; flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; text-align: right; }
+.bzrv-stats-body .soft-row { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.bzrv-stats-body .soft-track { flex: 1; height: 9px; background: var(--bzrv-surface-3, var(--bzrv-border)); border-radius: 99px; overflow: hidden; }
+.bzrv-stats-body .soft-fill { display: block; height: 100%; border-radius: 99px; }
+.bzrv-stats-body .kv-inline { display: flex; flex-wrap: wrap; gap: 6px var(--bzrv-space-lg); font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); margin-bottom: 9px; }
+.bzrv-stats-body .kv-inline b { color: var(--bzrv-text-1); font-weight: 700; }
 /* 排名行（cinema top-row 形制；R7：role=button 键盘可达） */
-#bzrv-stats-popup .top-row { display: flex; align-items: center; gap: 9px; padding: 6px 4px; border-bottom: 1px dashed var(--bzrv-border); font-size: var(--bzrv-font-meta); color: var(--bzrv-text-1); cursor: pointer; border-radius: var(--bzrv-radius-sm); }
-#bzrv-stats-popup .top-row:last-of-type { border-bottom: 0; }@media (hover: hover) {
+.bzrv-stats-body .top-row { display: flex; align-items: center; gap: 9px; padding: 6px 4px; border-bottom: 1px dashed var(--bzrv-border); font-size: var(--bzrv-font-meta); color: var(--bzrv-text-1); cursor: pointer; border-radius: var(--bzrv-radius-sm); }
+.bzrv-stats-body .top-row:last-of-type { border-bottom: 0; }@media (hover: hover) {
 
-#bzrv-stats-popup .top-row:hover { background: var(--bzrv-surface-hover); }
+.bzrv-stats-body .top-row:hover { background: var(--bzrv-surface-hover); }
 }
-#bzrv-stats-popup .top-row:focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 1px; }
-#bzrv-stats-popup .top-no { width: 20px; flex: none; text-align: center; font-family: Georgia, serif; font-style: italic; color: var(--bzrv-text-3); }
-#bzrv-stats-popup .top-row.is-top .top-no { color: var(--bzrv-warning); font-weight: 700; }
-#bzrv-stats-popup .top-name { flex: 1; min-width: 0; color: var(--bzrv-text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#bzrv-stats-popup .top-sub { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
-#bzrv-stats-popup .top-val { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; }
+.bzrv-stats-body .top-row:focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 1px; }
+.bzrv-stats-body .top-no { width: 20px; flex: none; text-align: center; font-family: Georgia, serif; font-style: italic; color: var(--bzrv-text-3); }
+.bzrv-stats-body .top-row.is-top .top-no { color: var(--bzrv-warning); font-weight: 700; }
+.bzrv-stats-body .top-name { flex: 1; min-width: 0; color: var(--bzrv-text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bzrv-stats-body .top-sub { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
+.bzrv-stats-body .top-val { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; }
 /* 空态（形制对齐 cinema cn-empty：居中小字 + 字距） */
 .bzrv-stats-empty { padding: 18px 0; text-align: center; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); letter-spacing: .1em; }
 .bzrv-stats-hint { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); text-align: center; padding-top: 8px; }
@@ -564,22 +579,21 @@
   .bzrv-review-bar-act { flex: 1 1 100%; justify-content: center; gap: 8px; flex-wrap: wrap; }
   .bzrv-review-bar-btn { font-size: 14.5px; padding: 10px 12px; min-height: 44px; }
 
-  /* ---- 统计弹窗 / 复习历史弹窗（底行两条入口的落点，rem 小字同档抬升） ---- */
-  #bzrv-stats-popup .bzrv-review-stats-head .bzrv-review-title { font-size: 1.05rem !important; }
-  #bzrv-stats-popup .stat-cards { grid-template-columns: repeat(2, 1fr); }
-  #bzrv-stats-popup .stat-card .v { font-size: 22px; }
-  #bzrv-stats-popup .stat-card .k { font-size: .8rem; }
-  #bzrv-stats-popup .sec-title { font-size: 1.05rem; }
-  #bzrv-stats-popup .bzrv-stats-empty { font-size: .9rem; }
-  #bzrv-stats-popup .bar-label { width: 64px; font-size: .85rem; }
-  #bzrv-stats-popup .bar-track { height: 12px; }
-  #bzrv-stats-popup .bar-num { width: 34px; font-size: .85rem; }
-  #bzrv-stats-popup .kv-inline { font-size: .85rem; }
-  #bzrv-stats-popup .top-row { font-size: 15px; }
-  #bzrv-stats-popup .top-name { font-size: .95rem; }
-  #bzrv-stats-popup .top-sub,
-  #bzrv-stats-popup .top-val { font-size: .8rem; }
-  #bzrv-stats-popup .bzrv-stats-hint { font-size: .78rem; }
+  /* ---- 数据内置页 / 复习历史弹窗（底行两条入口的落点，rem 小字同档抬升） ---- */
+  .bzrv-stats-body .stat-cards { grid-template-columns: repeat(2, 1fr); }
+  .bzrv-stats-body .stat-card .v { font-size: 22px; }
+  .bzrv-stats-body .stat-card .k { font-size: .8rem; }
+  .bzrv-stats-body .sec-title { font-size: 1.05rem; }
+  .bzrv-stats-body .bzrv-stats-empty { font-size: .9rem; }
+  .bzrv-stats-body .bar-label { width: 64px; font-size: .85rem; }
+  .bzrv-stats-body .bar-track { height: 12px; }
+  .bzrv-stats-body .bar-num { width: 34px; font-size: .85rem; }
+  .bzrv-stats-body .kv-inline { font-size: .85rem; }
+  .bzrv-stats-body .top-row { font-size: 15px; }
+  .bzrv-stats-body .top-name { font-size: .95rem; }
+  .bzrv-stats-body .top-sub,
+  .bzrv-stats-body .top-val { font-size: .8rem; }
+  .bzrv-stats-body .bzrv-stats-hint { font-size: .78rem; }
   #bzrv-history-popup .bzrv-review-history-name { font-size: 18px; }
   #bzrv-history-popup .bzrv-review-history-sub { font-size: 13.5px; }
   #bzrv-history-popup .bzrv-review-history-empty { font-size: 14.5px; }
@@ -730,6 +744,41 @@
   gap: 6px;
 }
 
+/* 筛选区（批 8，就地展开在头行下面）：一行关键字 + 一行三个下拉两颗按钮。
+   以前是 Obsidian 原生弹窗，改一次筛选要「点开-填-应用-关掉」四步。 */
+.bzrv-q-filter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bzrv-space-sm);
+  padding: var(--bzrv-space-md) var(--bzrv-space-lg);
+  border-bottom: 1px solid var(--bzrv-border);
+  background: var(--bzrv-surface-2);
+}
+.bzrv-q-filter-q {
+  width: 100%;
+  box-sizing: border-box;
+}
+.bzrv-q-filter-row {
+  display: flex;
+  align-items: center;
+  gap: var(--bzrv-space-sm);
+  flex-wrap: wrap;
+}
+.bzrv-q-filter-row select.bzrv-input {
+  width: auto;
+  min-width: 108px;
+  max-width: 190px;
+  height: var(--bzrv-control-h);
+  padding: 0 8px;
+}
+.bzrv-q-filter-row .bzrv-btn {
+  height: var(--bzrv-control-h);
+  margin-left: auto;
+}
+.bzrv-q-filter-row .bzrv-btn + .bzrv-btn {
+  margin-left: 0;
+}
+
 /* ===== 批 5：手机端与减动效 ===== */
 @media (max-width: 640px) {
   /* 手机上一列到底：三列并排在 375px 宽里每列只剩一百来像素，标题全被截断 */
@@ -767,3 +816,77 @@
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ==================== 制卡方式选择 / 开卡前确认（2026-11-15） ====================
+   两个框都复用 core 的流程框壳（.bzrv-overlay-popup.bzrv-flow-dialog），这里只补
+   正文区的排版：五个选项一行一条、题库列表可滚、删掉的题用 chip 排一行。
+
+   正文替代的是流程框里那个 `<p>`，所以**必须自己限高**——题库一多，按钮会被顶到
+   屏幕外面，用户找不到「开始复习」。 */
+.bzrv-card-method,
+.bzrv-card-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bzrv-space-sm);
+  max-height: min(52vh, 420px);
+  overflow-y: auto;
+  margin: 0 0 var(--bzrv-space-md);
+}
+.bzrv-card-method-list { display: flex; flex-direction: column; gap: 6px; }
+.bzrv-card-method-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border-radius: var(--bzrv-radius-xs);
+  background: var(--bzrv-surface-1);
+  border: 1px solid var(--bzrv-border);
+}
+.bzrv-card-method-row b { font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); }
+.bzrv-card-method-row span { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); line-height: 1.5; }
+.bzrv-card-method-remember {
+  display: flex;
+  align-items: center;
+  gap: var(--bzrv-space-sm);
+  font-size: var(--bzrv-font-meta);
+  color: var(--bzrv-text-2);
+  cursor: pointer;
+}
+.bzrv-card-confirm-field { display: flex; flex-direction: column; gap: 4px; }
+.bzrv-card-confirm-field > span { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-card-confirm-tip { margin: 0; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); line-height: 1.6; }
+.bzrv-card-confirm-list { display: flex; flex-direction: column; gap: 4px; }
+.bzrv-card-confirm-row {
+  display: flex;
+  align-items: center;
+  gap: var(--bzrv-space-sm);
+  padding: 6px 8px;
+  border-radius: var(--bzrv-radius-xs);
+  background: var(--bzrv-surface-1);
+  border: 1px solid var(--bzrv-border);
+}
+.bzrv-card-confirm-i { flex: none; width: 18px; text-align: right; color: var(--bzrv-text-3); font-size: var(--bzrv-font-caption); }
+.bzrv-card-confirm-q { flex: 1; min-width: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-1); line-height: 1.55; }
+.bzrv-card-confirm-removed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--bzrv-font-caption);
+  color: var(--bzrv-text-3);
+}
+.bzrv-card-confirm-chip { height: 24px; padding: 0 8px; font-size: var(--bzrv-font-caption); }
+
+/* 已完成内置页（2026-11-15）：一条一行，名字占满、动作贴右 */
+.bzrv-arch-list { display: flex; flex-direction: column; gap: 6px; padding: var(--bzrv-space-md) var(--bzrv-space-lg); }
+.bzrv-arch-row {
+  display: flex;
+  align-items: center;
+  gap: var(--bzrv-space-sm);
+  padding: 8px 10px;
+  border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-1);
+  border: 1px solid var(--bzrv-border);
+}
+.bzrv-arch-name { flex: 1; min-width: 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-arch-tag { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }

@@ -187,7 +187,18 @@ export class CardSession {
     this.opts.host.innerHTML = '';
   }
 
+  /**
+   * 当前这张卡该用哪种方式。
+   *
+   * 2026-11-15 起方式跟着卡走：卡上写了 `mode` 就用它，没有（老卡片）才回落到
+   * 会话级的 `opts.mode`。同一轮里抽认卡和填空题可以并存——这正是用户要的
+   * 「复习方式和制卡时选的一致」。
+   */
   private mode(): CardMode {
+    const own = this.opts.queue[this.index]?.card?.mode;
+    if (own === 'quiz' || own === 'plain' || own === 'cloze' || own === 'context' || own === 'flashcard') {
+      return own;
+    }
     return this.opts.mode ?? 'flashcard';
   }
 

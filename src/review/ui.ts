@@ -54,15 +54,16 @@ import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
 import { ratingForKey } from './keys';
 import { openCardEditor } from './card-edit';
 import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
-import { openFilterDialog } from './filter-dialog';
 import { removeNote as planRemoveNote } from './plan-ops';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
 import { CardSession } from './card-session';
 import { generateFlashcard } from './flashcard';
-import { cardModeOf, cardQuizRatioOf } from './card-ai';
-import { getCardQuiz } from './card-quiz-store';
+import { cardModeOf, cardQuizRatioOf, modeOfCard } from './card-ai';
+import { confirmBeforeRound } from './card-flow';
+import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { isCardItem } from './data';
+import type { ReviewCard } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { QuizMasterUI } from './quiz-core/session';
 
@@ -124,6 +125,16 @@ export class UIManager {
   private trashCount = 0;
   /** 当前筛选（批 4b）；面板关掉再开仍然保留——用户刚筛完不想又重设一遍 */
   private filter: ItemFilter = {};
+  /** 筛选区就地展开（批 8：不再弹原生弹窗，省一次「点开-填-应用-关掉」的来回） */
+  private filterOpen = false;
+  /** 打字时重绘要把光标放回关键字框（否则每敲一个字就掉焦点） */
+  private keepFilterFocus = false;
+  /** 关键字输入的防抖句柄 */
+  private filterTimer: ReturnType<typeof setTimeout> | null = null;
+  /** 面板内置页（批 8）：数据 / 设置；null = 队列主列表 */
+  /* 内置页（批 8 起）：数据 / 设置 / 已完成。三页共用同一个内容区与「返回」头行，
+     不再各开一套弹窗（用户 2026-11-15 口径：全部内置到面板，入口在右上角）。 */
+  private page: 'stats' | 'settings' | 'arch' | null = null;
   /** 批量选择模式 */
   private selectMode = false;
   /** 已选条目（filePath） */
@@ -367,6 +378,11 @@ export class UIManager {
     if (this.sprint) return;
     const container = this.entriesContainer;
     if (!container) return;
+    /* 内置页（数据 / 设置）先占位：它们不是列表，也不该被三区列的刷新冲掉 */
+    if (this.page) {
+      this.renderPage(container, items);
+      return;
+    }
     if (this.showTrash) {
       this.renderTrash(container);
       return;
@@ -381,7 +397,8 @@ export class UIManager {
        「开始本轮」仍按到期走——筛选是查看工具，不该悄悄改变复习范围。 */
     const visible = applyFilter(items, this.filter);
     const filtering = !isEmptyFilter(this.filter);
-    container.innerHTML = this.queueViewHtml(visible);
+    // 牌组下拉取全量（不是筛过的结果），否则选完一个牌组，别的牌组就从下拉里消失了
+    container.innerHTML = this.queueViewHtml(visible, collectFacets(items).decks);
     /* 「开始本轮」节点复用：面板刚打开那一两秒里队列常被再刷一次（样式落盘 / 逾期检查 /
        外层动作回调）。如果这次重绘正好落在按下与松开之间，旧按钮已经被换成新节点，
        click 事件（要求 down/up 落在同一元素）就整个丢掉——用户看到的是一次点了没反应。
@@ -427,6 +444,15 @@ export class UIManager {
       }
     }
     mountIcons(container);
+    /* 关键字是边打边筛的，重绘会把输入框换成新节点：把光标放回去，否则敲一个字掉一次焦点 */
+    if (this.keepFilterFocus) {
+      const q = container.querySelector<HTMLInputElement>('[data-fld="q"]');
+      if (q) {
+        q.focus();
+        q.setSelectionRange(q.value.length, q.value.length);
+      }
+      this.keepFilterFocus = false;
+    }
     // E6 还原：先滚位（focus 用 preventScroll 不扰动），后焦点
     container.querySelectorAll<HTMLElement>('.bzrv-q-col').forEach((col) => {
       const top = scrollTops.get(col.className);
@@ -440,6 +466,156 @@ export class UIManager {
       motionQueueBoot(container);
     }
   }
+  /** 内置页（批 8）：数据 / 设置 / 已完成——同一个内容区，头行换成「返回 + 标题」 */
+  private renderPage(container: HTMLElement, items: ReviewItem[]): void {
+    const title = this.page === 'stats' ? '数据' : this.page === 'arch' ? '已完成' : '设置';
+    container.innerHTML = `<div class="bzrv-q-view bzrv-page">
+      <div class="bzrv-panel-head">
+        <button class="bzrv-icon-btn" data-act="page-back" title="返回复习计划">←</button>
+        <div class="bzrv-panel-title">${title}</div>
+        <span class="bzrv-panel-head-sp"></span>
+      </div>
+      <div class="bzrv-page-body" data-page-body></div>
+    </div>`;
+    container.querySelector('[data-act="page-back"]')?.addEventListener('click', () => {
+      this.page = null;
+      void this.refreshPanel();
+    });
+    const body = container.querySelector<HTMLElement>('[data-page-body]');
+    if (!body) return;
+    void this.fillPage(body, items);
+  }
+
+  /** 填内置页内容（动态 import：统计/设置都不在主包里） */
+  private async fillPage(body: HTMLElement, items: ReviewItem[]): Promise<void> {
+    if (this.page === 'arch') {
+      this.fillArchPage(body, items);
+      return;
+    }
+    if (this.page === 'settings') {
+      const [{ reviewSettingsSchema }, { renderSettingsInto }] = await Promise.all([
+        import('./settings-schema'),
+        import('../core/settings-schema'),
+      ]);
+      if (this.page !== 'settings' || !body.isConnected) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'bzrv-settings-content';
+      renderSettingsInto(wrap, reviewSettingsSchema({ app: this.app, dataManager: this.dataManager }));
+      body.appendChild(wrap);
+      return;
+    }
+    const [{ paintStatsInto }, { forecastLoad }, { forecastToText }] = await Promise.all([
+      import('./stats-ui'),
+      import('./queue'),
+      import('./report'),
+    ]);
+    if (this.page !== 'stats' || !body.isConnected) return;
+    const holder = document.createElement('div');
+    holder.className = 'bzrv-stats-body';
+    body.appendChild(holder);
+    let w: number[] | undefined;
+    let fit: Parameters<typeof paintStatsInto>[5] = null;
+    try {
+      const appMod = await import('./app');
+      w = appMod.reviewApp.currentW();
+      fit = typeof appMod.reviewApp.fitMeta === 'function' ? appMod.reviewApp.fitMeta() : null;
+    } catch {
+      w = undefined;
+    }
+    paintStatsInto(holder, this.app, this.dataManager, items, w, fit);
+    /* 未来负荷：以前是命令面板里的一个 Modal，这里直接排进数据页 */
+    const fc = document.createElement('div');
+    fc.className = 'bzrv-page-forecast';
+    const pre = document.createElement('pre');
+    pre.textContent = forecastToText(forecastLoad(items, 30), 21);
+    fc.appendChild(pre);
+    const tip = document.createElement('p');
+    tip.textContent = '峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。';
+    fc.appendChild(tip);
+    holder.appendChild(fc);
+    const row = document.createElement('div');
+    row.className = 'bzrv-btn-row';
+    const btn = document.createElement('button');
+    btn.className = 'bzrv-btn';
+    btn.textContent = '看记忆分析';
+    btn.addEventListener('click', () => {
+      void (async () => {
+        const { openReviewAnalysis } = await import('./analysis/index');
+        await openReviewAnalysis(this.app);
+      })();
+    });
+    row.appendChild(btn);
+    holder.appendChild(row);
+  }
+
+  /**
+   * 「已完成」内置页（2026-11-15）：右上角那颗文件夹+勾不再是「把队列切成单列」的
+   * 开关，而是一页真正列完所有复习过的条目，并且每条都能一键移回计划继续排。
+   *
+   * 以前它只是队列的一个视图切换：看着像归档，其实和列表共用同一批到期数据，
+   * 用户根本分不清「已完成」是筛选还是归档。现在它有自己的页、自己的动作。
+   */
+  private fillArchPage(body: HTMLElement, items: ReviewItem[]): void {
+    const done = items.filter((i) => i.completed || i.isCompleted);
+    const wrap = document.createElement('div');
+    wrap.className = 'bzrv-arch-list';
+
+    if (!done.length) {
+      wrap.appendChild(
+        uiEmpty({
+          icon: 'folder-check',
+          title: '还没有复习完的条目',
+          desc: '走到最后阶段的条目会收在这里，随时能移回计划',
+        })
+      );
+      body.appendChild(wrap);
+      mountIcons(wrap);
+      return;
+    }
+
+    for (const it of done) {
+      const row = document.createElement('div');
+      row.className = 'bzrv-arch-row';
+
+      const name = document.createElement('span');
+      name.className = 'bzrv-arch-name';
+      name.textContent = it.name || it.filePath;
+      row.appendChild(name);
+
+      if (it.card) {
+        const tag = document.createElement('span');
+        tag.className = 'bzrv-arch-tag';
+        tag.textContent = '划线卡';
+        row.appendChild(tag);
+      }
+
+      const btn = document.createElement('button');
+      btn.className = 'bzrv-btn bzrv-btn--ghost';
+      btn.textContent = '移回计划';
+      btn.addEventListener('click', () => {
+        void (async () => {
+          try {
+            await this.dataManager?.updateItem(it.filePath, (entry) => {
+              entry.completed = false;
+              entry.stage = 0;
+              entry.phase = 'ladder';
+              entry.pendingRedo = false;
+              entry.nextReviewDate = new Date().toISOString();
+            });
+            notice(`「${it.name || it.filePath}」已移回复习计划`);
+            await this.refreshPanel();
+          } catch (e) {
+            notifySaveError(e, '移回复习计划');
+          }
+        })();
+      });
+      row.appendChild(btn);
+      wrap.appendChild(row);
+    }
+
+    body.appendChild(wrap);
+  }
+
   /** 回收站视图（与队列共用内容区；条目来自 refreshPanel 刷新的缓存） */
   private renderTrash(container: HTMLElement): void {
     container.innerHTML = trashViewHtml(this.trashEntries);
@@ -595,7 +771,7 @@ export class UIManager {
     return Number(s?.reviewRThreshold) || DEFAULT_R_THRESHOLD;
   }
 
-  private queueViewHtml(items: ReviewItem[]): string {
+  private queueViewHtml(items: ReviewItem[], decks: string[] = []): string {
     return queueViewHtml(items, {
       showArchived: this.showArchived,
       rThreshold: this.rThreshold(),
@@ -604,28 +780,38 @@ export class UIManager {
       filterText: describeFilter(this.filter),
       selectMode: this.selectMode,
       selected: this.selected,
+      filterOpen: this.filterOpen && !this.showArchived,
+      filter: this.filter,
+      decks,
     });
   }
 
   // ================= 设置层（不再注册原生设置页） =================
 
   /**
-   * 主面板里的设置弹层（openSettingsModal + 声明式 schema）。
+   * 打开设置（批 8：改成面板内置页，不再是浮层弹窗）。
    *
    * 与 bz Reader 同一形态：用户在哪用这个插件，就在哪改它的设置。原生设置页
    * 那套 PluginSettingTab 已删——两处设置最容易长出「同一个开关两个名字」。
    */
   async openSettings(): Promise<void> {
-    const [{ openSettingsModal }, { reviewSettingsSchema }] = await Promise.all([
-      import('../core/settings-modal'),
-      import('./settings-schema'),
-    ]);
-    openSettingsModal({
-      title: t('复习设置', 'Review settings'),
-      schema: reviewSettingsSchema({ app: this.app, dataManager: this.dataManager }),
-      // 620：这一版把授权/数据/AI 都并进来了，560 会让描述和控件抢地方
-      maxWidth: 620,
-    });
+    this.page = 'settings';
+    this.showMain();
+    await this.refreshPanel();
+  }
+
+  /** 打开「数据」内置页（命令与右上角那颗图钉共用一条路，不再有第二套弹窗） */
+  async openData(): Promise<void> {
+    this.page = 'stats';
+    this.showMain();
+    await this.refreshPanel();
+  }
+
+  /** 打开「已完成」内置页 */
+  async openArchive(): Promise<void> {
+    this.page = 'arch';
+    this.showMain();
+    await this.refreshPanel();
   }
 
   // ================= 队列事件 =================
@@ -635,7 +821,13 @@ export class UIManager {
     /* ⚙️ 设置：issue 254 曾把这里退役、改指原生设置页；2026-11-13 用户拍板回到
        主界面（与 bz Reader 同形制），原生设置页随之下线。 */
     container.querySelector('[data-act="settings"]')?.addEventListener('click', () => {
-      void this.openSettings();
+      this.page = 'settings';
+      void this.refreshPanel();
+    });
+    /* 数据页（批 8）：统计 + 未来负荷都收进来，不再各开一个浮层 */
+    container.querySelector('[data-act="data"]')?.addEventListener('click', () => {
+      this.page = 'stats';
+      void this.refreshPanel();
     });
     /* 「开始本轮」用 data-bound 防重绑：这个按钮在重绘时会被上一轮的节点顶回来
        （见 renderEntries 里的节点复用），若每次渲染都 addEventListener，同一个节点上
@@ -649,8 +841,10 @@ export class UIManager {
         void this.beginRound();
       });
     }
+    /* 「已完成」（2026-11-15）：进内置页，不再把队列切成单列——那两种东西在用户
+       眼里是同一个词，行为却完全不同，是最容易被当成 bug 的一处。 */
     container.querySelector('[data-act="arch"]')?.addEventListener('click', () => {
-      this.showArchived = !this.showArchived;
+      this.page = 'arch';
       void this.refreshPanel();
     });
     // 回收站入口（只在有内容时渲染）：与归档互斥，进回收站先把归档关掉
@@ -670,22 +864,51 @@ export class UIManager {
     // item 10：空态两条路（把当前笔记加入复习 / 监听文件夹配置说明）
     container.querySelector('[data-act="add-current"]')?.addEventListener('click', () => void this.addCurrentNote());
     container.querySelector('[data-act="watch-help"]')?.addEventListener('click', () => void this.showWatchHelp());
-    // 筛选 / 批量选择（批 4b）
+    // 筛选（批 8：就地展开，不再弹原生弹窗）/ 批量选择（批 4b）
     container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
-      void (async () => {
-        const items = await this.dataManager.loadItems();
-        openFilterDialog(this.app, collectFacets(items), this.filter, (f) => {
-          this.filter = f;
+      this.filterOpen = !this.filterOpen;
+      this.keepFilterFocus = this.filterOpen;
+      void this.refreshPanel();
+    });
+    // 筛选区控件：关键字防抖 220ms，三个下拉即时生效（没有「应用」这一步）
+    container.querySelectorAll<HTMLElement>('[data-fld]').forEach((el) => {
+      const fld = el.dataset.fld || '';
+      if (el instanceof HTMLInputElement) {
+        el.addEventListener('input', () => {
+          this.filter.query = el.value;
+          this.keepFilterFocus = true;
+          if (this.filterTimer) clearTimeout(this.filterTimer);
+          this.filterTimer = setTimeout(() => void this.refreshPanel(), 220);
+        });
+      } else if (el instanceof HTMLSelectElement) {
+        el.addEventListener('change', () => {
+          if (fld === 'kind') this.filter.kind = el.value as ItemFilter['kind'];
+          else if (fld === 'deck') this.filter.deck = el.value;
+          else if (fld === 'status') this.filter.status = el.value as ItemFilter['status'];
           this.selected.clear();
           void this.refreshPanel();
         });
-      })();
+      }
     });
-    container.querySelector('[data-act="filter-clear"]')?.addEventListener('click', () => {
-      this.filter = {};
+    // 「清除」在筛选区和筛选中条上各有一颗，两颗都要绑
+    container.querySelectorAll('[data-act="filter-clear"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.filter = {};
+        this.keepFilterFocus = this.filterOpen;
+        void this.refreshPanel();
+      });
+    });
+    container.querySelector('[data-act="filter-close"]')?.addEventListener('click', () => {
+      this.filterOpen = false;
       void this.refreshPanel();
     });
     container.querySelector('[data-act="select"]')?.addEventListener('click', () => {
+      this.selectMode = !this.selectMode;
+      this.selected.clear();
+      void this.refreshPanel();
+    });
+    // 头行没有「批量」之后，底栏这颗是唯一入口
+    container.querySelector('[data-act="batch"]')?.addEventListener('click', () => {
       this.selectMode = !this.selectMode;
       this.selected.clear();
       void this.refreshPanel();
@@ -840,6 +1063,9 @@ export class UIManager {
   async startCardRound(queue: ReviewItem[], onDone?: () => void): Promise<void> {
     const container = this.entriesContainer;
     if (!container || !queue.length) return;
+    /* 二次确认放在所有销毁动作**之前**：用户点取消时面板里该是什么还是什么，
+       不能先把上一轮的会话拆掉、再问「要不要开始」。 */
+    if (!(await this.confirmCardStart(queue))) return;
     const prevSprint = this.sprint;
     this.sprint = null;
     prevSprint?.destroy();
@@ -920,6 +1146,86 @@ export class UIManager {
     });
     this.cardSession = session;
     session.start();
+  }
+
+  /**
+   * 开卡前的二次确认（2026-11-15）。
+   *
+   * 只在**单张开卡**时问：整轮十几张卡逐张弹框会把人烦死，而且那本来就不是
+   * 「我想先看一眼这张卡」的语境。抽认卡让改问句和原文、做题卡让删题，
+   * 其余方式没有可改的东西就不弹空框。返回 false = 用户取消了，别开会话。
+   */
+  private async confirmCardStart(queue: ReviewItem[]): Promise<boolean> {
+    if (queue.length !== 1) return true;
+    if (!(getSettings() as any).reviewCardConfirm) return true;
+    const item = queue[0];
+    const card = item.card;
+    if (!card) return true;
+    const mode = modeOfCard(card);
+    if (mode !== 'flashcard' && mode !== 'quiz') return true;
+
+    const questions = mode === 'quiz' ? ((await getCardQuiz(card.key)) ?? undefined) : undefined;
+    /* 题库还没生成（没配 AI / 加入时生成失败）：没有可删的题，弹出来只会看到一个
+       空列表和一个点不动的「开始」。交给会话自己去补内容 / 降级看全文。 */
+    if (mode === 'quiz' && !questions?.length) return true;
+    const res = await confirmBeforeRound({
+      item,
+      mode,
+      questions,
+      regenerateQuiz:
+        mode === 'quiz'
+          ? async () => {
+              const { regenerateCardContent } = await import('./index');
+              await regenerateCardContent(item.filePath);
+              return (await getCardQuiz(card.key)) ?? null;
+            }
+          : undefined,
+      regenerateAsk:
+        mode === 'flashcard'
+          ? async () => {
+              try {
+                return await generateFlashcard(card, () => createAI());
+              } catch {
+                return null;
+              }
+            }
+          : undefined,
+    });
+    if (!res.go) return false;
+
+    if (mode === 'flashcard') {
+      const patch: Partial<ReviewCard> = {};
+      const nextText = typeof res.text === 'string' ? res.text : card.text;
+      if (nextText !== card.text) patch.text = nextText;
+      const nextQ = String(res.question ?? '').trim();
+      if (nextQ && nextQ !== card.qa?.q) patch.qa = { q: nextQ, a: nextText, at: Date.now() };
+      if (Object.keys(patch).length) {
+        patch.manual = true; // 手改过就不要再被后台预生成顶掉
+        try {
+          await this.dataManager?.updateCard(card.key, patch);
+          Object.assign(card, patch);
+        } catch (e) {
+          notifySaveError(e, '保存卡片修改');
+        }
+      }
+      return true;
+    }
+
+    /* 做题卡：删题只在确认时生效。全删光就不让开始——不然进会话拿不到题，
+       会被当成「本篇没题」直接跳过，用户以为自己白点了一次。 */
+    const left = res.questions ?? [];
+    if (!left.length) {
+      notice('这一轮的题都删掉了：先点「重新生成整份题库」，或把删掉的补回来');
+      return false;
+    }
+    if (left.length !== (questions?.length ?? 0)) {
+      try {
+        await saveCardQuiz(card.key, left);
+      } catch (e) {
+        notifySaveError(e, '保存题库');
+      }
+    }
+    return true;
   }
 
   /** 队列里所有到期卡片（给「开始本轮」按类型分流用） */

@@ -27,9 +27,8 @@ import { DEFAULT_W, currentR as fsrsCurrentR } from './fsrs';
 import { motionStats, motionHistory } from './motion';
 
 import { markOwned } from '../core/scope';
-let statsMask: HTMLElement | null = null;
-let statsPopup: HTMLElement | null = null;
-let statsEsc: { unregister: () => void } | null = null;
+/* 统计弹窗的两个根节点与 ESC 句柄已随「内置页」一并退役（2026-11-15）；
+   复习历史弹窗仍是独立浮层，状态在下方 hist* 一组里。 */
 
 // ======================= 影院形制内容件（R11 重刷） =======================
 
@@ -98,55 +97,37 @@ function rankListHTML(items: Array<{ name: string; sub: string; meta: string }>)
     </div>`).join('');
 }
 
-// ======================= 统计弹窗 =======================
-/** 打开统计弹窗（全局视图）。R 口径与调度同源：读拟合权重 currentW()（item 12）；
- *  issue 361：同时取拟合元数据，标注当前拟合档位（基础拟合/全参拟合） */
+// ======================= 统计（内置页） =======================
+/**
+ * 打开复习统计。
+ *
+ * 2026-11-15 用户拍板：**统计不再做成弹窗**，统一进复习面板的「数据」内置页。
+ * 这里保留旧签名（命令、降级路径、测试都按它调用），实现改成「打开面板并切到数据页」；
+ * 弹窗壳（`#bzrv-stats-mask` / `#bzrv-stats-popup`）随之退役，`paintStatsInto`
+ * 仍是唯一的内容渲染入口——内置页与任何将来的容器继续共用它。
+ */
 export async function showStatsModal(app: App, dm: ReviewDataManager): Promise<void> {
-  const items = await dm.loadItems();
-  let w: number[] | undefined;
-  let fit: FittedParams | null = null;
-  try {
-    const appMod = await import('./app');
-    w = appMod.reviewApp.currentW();
-    fit = typeof appMod.reviewApp.fitMeta === 'function' ? appMod.reviewApp.fitMeta() : null;
-  } catch {
-    w = undefined; // 取不到拟合权重 → computeStats 回退默认
+  const { uiManager } = await import('./index');
+  if (uiManager) {
+    await uiManager.openData();
+    return;
   }
-  renderStatsModal(app, dm, items, w, fit);
+  /* 面板还没装起来（极端情况：插件刚加载就执行命令）。退化成「先把面板开起来」，
+     统计内容由面板自己在数据页里画，不再另开一层弹窗。 */
+  const { openReviewPanel } = await import('./index');
+  openReviewPanel(app);
+  void dm;
 }
 
-/** 渲染统计弹窗（600px 窄卡） */
-function renderStatsModal(app: App, dm: ReviewDataManager, items: ReviewItem[], w?: number[], fit?: FittedParams | null): void {
-  closeStatsModal();
-  statsMask = document.createElement('div');
-  statsMask.id = 'bzrv-stats-mask';
-  statsMask.className = 'bzrv-overlay-mask'; // issue 365：遮罩底/blur 收编 core 单源（弹窗 fixed 自居中不受 flex/padding 影响）
-  statsMask.style.display = 'block';
-  bindMaskDismiss(statsMask, closeStatsModal); // 手势配对判据（core/mask-dismiss）
-
-  statsPopup = document.createElement('div');
-  statsPopup.id = 'bzrv-stats-popup';
-  statsPopup.style.display = 'flex';
-  topifyZ(statsMask, statsPopup); // ADR-0067：显示时发号单形制（构造期不再 allocZ 占号）
-
-  const header = document.createElement('div');
-  header.className = 'bzrv-win-head bzrv-review-stats-head';
-  header.innerHTML = `
-    <h3 class="bzrv-review-title">复习统计</h3>
-  `;
-  statsPopup.appendChild(header);
-
-  const body = document.createElement('div');
-  body.id = 'bzrv-stats-body';
-  body.className = 'bz-bzrv-stats-body';
-  statsPopup.appendChild(body);
-
-  markOwned(statsMask);
-  document.body.appendChild(statsMask);
-  markOwned(statsPopup);
-  document.body.appendChild(statsPopup);
-
-
+/** 把统计内容画进任意容器（批 8：面板内置「数据」页与 600px 弹窗共用同一份） */
+export function paintStatsInto(
+  body: HTMLElement,
+  app: App,
+  dm: ReviewDataManager,
+  items: ReviewItem[],
+  w?: number[],
+  fit?: FittedParams | null,
+): void {
   const stats = computeStats(items, { w });
   body.innerHTML = buildStatsHTML(app, dm, items, stats, fit);
   mountIcons(body); // R11：sec 板块头 lucide 兑现
@@ -171,11 +152,6 @@ function renderStatsModal(app: App, dm: ReviewDataManager, items: ReviewItem[], 
         openTimeline(el);
       }
     });
-  });
-
-  statsEsc = escManager.register('bzrv-review-stats', {
-    isVisible: () => !!statsMask && statsMask.style.display === 'block',
-    close: closeStatsModal,
   });
 }
 
@@ -372,12 +348,12 @@ export function closeTimeline(): void {
   histPopup = null;
 }
 
+/**
+ * 关闭统计相关浮层（签名保留：unload 清场与测试都调它）。
+ *
+ * 统计已经进内置页，这里只剩「连带关掉复习历史浮层」——历史行仍会从统计页
+ * 点开，它是唯一还在用的浮层。
+ */
 export function closeStatsModal(): void {
-  statsEsc?.unregister();
-  statsEsc = null;
-  if (statsMask) statsMask.remove();
-  if (statsPopup) statsPopup.remove();
-  statsMask = null;
-  statsPopup = null;
   closeTimeline();
 }

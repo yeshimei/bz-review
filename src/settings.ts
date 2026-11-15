@@ -34,8 +34,22 @@ export default interface BzSettings {
   reviewFitEveryN: number;
   /** 拟合的召回阈值 */
   reviewRThreshold: number;
-  /** 划线卡复习方式：AI 抽认卡 / AI 填空 / 上下文 / AI 做题 / 展开全文 */
+  /**
+   * 旧版的**全局**划线卡复习方式（AI 抽认卡 / 填空 / 上下文 / 做题 / 展开全文）。
+   *
+   * 2026-11-15 起复习方式跟着每张卡自己走（`ReviewCard.mode`），这个字段只做两件事：
+   *   1. 老卡片（没有 `mode`）的回落值；
+   *   2. 加入计划时的默认值（`reviewCardDefaultMethod` 为「手动」时不再读它）。
+   * 新代码不要直接读它，用 `card-ai.ts` 的 `modeOfCard()`；设置页也不再暴露这个开关。
+   */
   reviewCardMode: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
+  /**
+   * 新卡默认制卡方式：manual = 每次让用户选（默认）；
+   * 选了具体方式就不再弹选择界面，新卡一律按它制。
+   */
+  reviewCardDefaultMethod: 'manual' | 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
+  /** 开卡前是否弹二次确认面板（抽认卡可改内容、做题卡可删题）；默认开 */
+  reviewCardConfirm: boolean;
   /** 评级键位（四个字符，顺序＝忘了/困难/一般/简单；默认 1234） */
   reviewRatingKeys: string;
   /** 休假到哪天（ISO；空 = 不休假）。到期那天把整份计划顺延，回来不雪崩 */
@@ -111,6 +125,9 @@ export const DEFAULT_SETTINGS: BzSettings = {
   reviewFitEveryN: 10,
   reviewRThreshold: 0.9,
   reviewCardMode: 'flashcard',
+  /* 默认「手动」：加入计划那一刻每次问用户选哪种制卡方式（用户 2026-11-15 拍板的默认值） */
+  reviewCardDefaultMethod: 'manual',
+  reviewCardConfirm: true,
   reviewRatingKeys: '1234',
   reviewVacationUntil: '',
   reviewVacationFrom: '',

@@ -66,4 +66,31 @@ describe('筛选', () => {
     expect(describeFilter({ deck: '课程/数学', kind: 'card', query: '极限' })).toBe('课程/数学 · 只看划线 · 含「极限」');
     expect(describeFilter({})).toBe('');
   });
+
+  /* 「状态」下拉以前是空转的：能选、能显示，但 applyFilter 不看它 —— 用户选完
+     列表一点变化都没有。这里按三区列同一套口径钉住三种状态。 */
+  it('按状态筛：走三区列的口径，逾期 / 今天 / 未来各取各的', () => {
+    const now = Date.now();
+    const day = 86400000;
+    const items = [
+      note('逾期.md', { nextReviewDate: new Date(now - 2 * day).toISOString() }),
+      note('今天.md', { nextReviewDate: new Date(now + 60_000).toISOString() }),
+      note('未来.md', { nextReviewDate: new Date(now + 5 * day).toISOString() }),
+    ] as any[];
+    expect(applyFilter(items, { status: 'overdue' }).map((i) => i.name)).toEqual(['逾期']);
+    expect(applyFilter(items, { status: 'today' }).map((i) => i.name)).toEqual(['今天']);
+    expect(applyFilter(items, { status: 'future' }).map((i) => i.name)).toEqual(['未来']);
+    expect(applyFilter(items, { status: 'all' })).toHaveLength(3);
+  });
+
+  it('状态与关键字叠加：先按关键字挑，再按状态挑', () => {
+    const now = Date.now();
+    const day = 86400000;
+    const items = [
+      note('课程/数学/逾期.md', { nextReviewDate: new Date(now - day).toISOString() }),
+      note('课程/数学/未来.md', { nextReviewDate: new Date(now + 3 * day).toISOString() }),
+      note('课程/英语/逾期.md', { nextReviewDate: new Date(now - day).toISOString() }),
+    ] as any[];
+    expect(applyFilter(items, { query: '数学', status: 'overdue' }).map((i) => i.name)).toEqual(['逾期']);
+  });
 });

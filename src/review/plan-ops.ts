@@ -19,6 +19,7 @@ import type { ReviewCard, ReviewDataManager, ReviewItem } from './data';
 import type { ReviewAddOutcome, ReviewAddSummary, ReviewNoteStatus } from './reader-api';
 import { stripMdExt } from '../core/utils';
 import { removeCardQuiz } from './card-quiz-store';
+import { stampCardModes } from './card-mode';
 
 /** 路径规整：只留非空字符串（外部传 null / 数字 / 空白一律当没传） */
 function cleanPath(path: unknown): string {
@@ -125,7 +126,9 @@ export async function removeNote(dm: ReviewDataManager, path: string): Promise<b
  */
 export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCard[]): Promise<ReviewAddSummary> {
   const all = Array.isArray(cards) ? cards : [];
-  const list = all.filter((c) => !!cleanPath(c?.key) && !!String(c?.text ?? '').trim());
+  /* 方式跟着卡走（2026-11-15）：阅读器批量加划线时不可能逐张弹选择框，所以这里
+     统一盖一次章（口径见 card-mode.ts 的 stampCardModes）。 */
+  const list = stampCardModes(all.filter((c) => !!cleanPath(c?.key) && !!String(c?.text ?? '').trim()));
   const out: ReviewAddSummary = { added: 0, exists: 0, notFound: all.length - list.length };
   if (!list.length) return out;
   const res = await dm.addCards(list);

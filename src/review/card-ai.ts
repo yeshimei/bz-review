@@ -18,23 +18,12 @@ import type { QuizQuestion } from './quiz-core/manager';
 import { generateFlashcard } from './flashcard';
 import { generateCardQuiz } from './card-quiz';
 import { generateCloze, ruleCloze } from './cloze';
+import type { CardMode } from './card-mode';
 
-/**
- * 划线卡的四种复习方式（外加 plain：不生成任何内容，直接展开全文）。
- *
- *   flashcard 抽认卡：正面问句，背面原文
- *   cloze     填空：挖掉一两处，凭上下文补回来
- *   quiz      做题：AI 出选择题
- *   context   上下文：给前后文，回忆中间那句（不需要预先生成内容）
- */
-export type CardMode = 'flashcard' | 'cloze' | 'quiz' | 'context' | 'plain';
-
-/** 当前设置选的是哪种；没设过/脏值一律按抽认卡 */
-export function cardModeOf(settings?: any): CardMode {
-  const raw = (settings ?? tryGetSettings())?.reviewCardMode;
-  if (raw === 'quiz' || raw === 'plain' || raw === 'cloze' || raw === 'context') return raw;
-  return 'flashcard';
-}
+/* 方式的判定口径搬到 `card-mode.ts`（纯函数、不依赖模型服务，可被单测钉住）；
+   这里原样再导出，既有调用方一行都不用改。 */
+export type { CardMode } from './card-mode';
+export { CARD_MODES, cardModeOf, defaultCardMethod, isCardMode, modeOfCard } from './card-mode';
 
 /** 每轮抽题比例（分母）：2=一半、3=三分之一、4=四分之一 */
 export function cardQuizRatioOf(settings?: any): number {

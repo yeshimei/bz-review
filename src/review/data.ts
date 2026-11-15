@@ -74,6 +74,14 @@ export interface ReviewCard {
   /** 填空卡：挖空后的句子 + 各空位答案 */
   cloze?: { text: string; blanks: string[]; at: number };
   /**
+   * 这张卡自己的制卡 / 复习方式（2026-11-15）。
+   *
+   * 以前方式只有一个全局开关，改一次全库的卡都换样；现在方式在**制卡那一刻**
+   * 定下来存在卡上，每张卡各走各的（抽认卡、填空、上下文、做题、展开全文）。
+   * 老卡片没有这个字段 —— `card-ai.ts` 的 `modeOfCard()` 回落到全局旧值。
+   */
+  mode?: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
+  /**
    * 用户手改过（批 2）：后台自动补内容一律跳过，别把刚写的话顶掉。
    * 点「重新生成」仍可覆盖（那条路走 force）。
    */

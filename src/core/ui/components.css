@@ -871,7 +871,7 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 [id^="bzrv-"], [id^="knowledge-"],
 #add-diary-popup, .diary-datetime-scroll-container,
 #bzrv-entries, #bzrv-confirm-popup,
-#bzrv-stats-popup, #bzrv-history-popup, #bzrv-quiz-popup {
+#bzrv-history-popup, #bzrv-quiz-popup {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -885,7 +885,6 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 .diary-datetime-scroll-container::-webkit-scrollbar, .diary-datetime-scroll-container *::-webkit-scrollbar,
 #bzrv-entries::-webkit-scrollbar, #bzrv-entries *::-webkit-scrollbar,
 #bzrv-confirm-popup::-webkit-scrollbar, #bzrv-confirm-popup *::-webkit-scrollbar,
-#bzrv-stats-popup::-webkit-scrollbar, #bzrv-stats-popup *::-webkit-scrollbar,
 #bzrv-history-popup::-webkit-scrollbar, #bzrv-history-popup *::-webkit-scrollbar,
 #bzrv-quiz-popup::-webkit-scrollbar, #bzrv-quiz-popup *::-webkit-scrollbar {
   display: none;

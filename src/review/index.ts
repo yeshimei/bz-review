@@ -7,6 +7,7 @@ import type { App } from 'obsidian';
 import { notice, notifyUndo, notifySaveError, notifyActionError } from '../core/notice';
 import { onDomainEvent, emitDomainEvent } from '../core/domain-bus';
 import { ReviewDataManager, isCardItem } from './data';
+import type { ReviewCard } from './data';
 import { ReviewWatcher } from './watch';
 import { UIManager } from './ui';
 import { reviewApp } from './app';
@@ -19,7 +20,8 @@ import type { Rating } from './fsrs';
 import { setReviewPlanApi } from './reader-api';
 import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
 import { tryGetSettings } from '../core/settings-provider';
-import { cardModeOf, ensureCardContent, queueCardPreparation, safeMakeAI, type CardMode, type CardPrepareContext } from './card-ai';
+import { cardModeOf, defaultCardMethod, ensureCardContent, modeOfCard, queueCardPreparation, safeMakeAI, type CardMode, type CardPrepareContext } from './card-ai';
+import { pickCardMethod } from './card-flow';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import {
   addNote as planAddNote,
@@ -75,7 +77,8 @@ export async function regenerateCardContent(key: string): Promise<boolean> {
   const items = await dataManager.loadItems();
   const card = items.find((i) => i.filePath === key && isCardItem(i))?.card;
   if (!card) return false;
-  const mode = cardModeOf();
+  /* 方式跟着卡走（2026-11-15）：卡上存了就用卡上的，老卡才回落到全局旧值。 */
+  const mode = modeOfCard(card);
   try {
     return await ensureCardContent(card, cardPrepareCtx(mode === 'plain' ? 'flashcard' : mode), true);
   } catch {
@@ -308,6 +311,74 @@ export async function reviewAddCurrent(app: App): Promise<void> {
   } catch (e: any) {
     // C9：动作失败提示走 notifyActionError 单源（白拿 onRetry 挂「重试」出口，效率整改 8）
     notifyActionError(e, '加入复习计划', { onRetry: () => void reviewAddCurrent(app) });
+  }
+}
+
+/**
+ * 定下这张卡用哪种方式制卡（2026-11-15）。
+ *
+ * 设置里选了具体方式就直接用它、不再打扰；默认「手动」时才弹选择框，
+ * 框里勾了「以后别问」就把选择写回设置——用户不用再跑一趟设置页。
+ */
+async function resolveCardMethod(): Promise<CardMode | null> {
+  const preset = defaultCardMethod();
+  if (preset) return preset;
+  const picked = await pickCardMethod();
+  if (!picked) return null;
+  if (picked.remember) {
+    const { getSettings, saveSettings } = await import('../core/settings-provider');
+    (getSettings() as any).reviewCardDefaultMethod = picked.mode;
+    await saveSettings();
+  }
+  return picked.mode;
+}
+
+/**
+ * 把**选中的内容**放进复习计划（review-add-selection，2026-11-15）。
+ *
+ * 以前只能整篇笔记加入，或者靠 `::` 语法手写卡片文件；用户想复习某一段话，
+ * 得先造一篇笔记。现在选中任意文字就能直接做成一张卡，方式当场选。
+ */
+export async function reviewAddSelection(app: App): Promise<void> {
+  ensureReview(app);
+  const file = app.workspace.getActiveFile();
+  if (!file) {
+    notice('请先打开一个笔记');
+    return;
+  }
+  const editor =
+    app.workspace.activeEditor?.editor ?? (app as unknown as { editor?: { getSelection(): string } }).editor;
+  const text = String(editor?.getSelection?.() ?? '').trim();
+  if (!text) {
+    notice('先选中要加入复习的内容');
+    return;
+  }
+  const method = await resolveCardMethod();
+  if (!method) return;
+
+  try {
+    /* 钥匙必须是「不可能是真实路径」的字符串——排期表拿它当 filePath 用，
+       真实路径会让它在列表里被当成一篇笔记去打开。 */
+    const key = `sel:${file.path}:${Date.now()}`;
+    const card: ReviewCard = {
+      key,
+      bookTitle: file.basename,
+      text,
+      mode: method,
+    };
+    const res = await dataManager!.addCards([card]);
+    if (!res.added) {
+      notice(res.rejected ? '划线卡已到上限：高级版可以继续加' : '这段内容已经在复习计划里了');
+      return;
+    }
+    /* 内容在后台补：模型慢的时候不该把「已加入」卡住（同划线卡口径） */
+    if (method !== 'plain' && method !== 'context') {
+      void queueCardPreparation([key], cardPrepareCtx(method));
+    }
+    notice(`已加入复习计划（${text.slice(0, 12)}${text.length > 12 ? '…' : ''}）`);
+    await uiManager?.refreshPanel();
+  } catch (e) {
+    notifyActionError(e, '把选中内容加入复习计划', { onRetry: () => void reviewAddSelection(app) });
   }
 }
 

@@ -10,6 +10,7 @@
  */
 import { emptyHtmlStr, esc, iconSpan, stripTitleMarks } from '../core/ui/str';
 import type { ReviewItem } from './data';
+import type { ItemFilter } from './deck';
 import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
 import { partitionQueue, dueLaterTodayCount, etaTextOf, isEarlyDue, isDueToday } from './queue';
 import { computeStats, RATING_NAMES } from './stats';
@@ -133,6 +134,30 @@ export interface QueueViewCtx {
   selectMode?: boolean;
   /** 已选条目（filePath 集合） */
   selected?: ReadonlySet<string>;
+  /** 筛选区展开（批 8：不再弹窗，就地展开在头行下面） */
+  filterOpen?: boolean;
+  /** 当前筛选（展开时回填控件） */
+  filter?: ItemFilter;
+  /** 可选牌组（展开时给下拉；由调用方 collectFacets 算好） */
+  decks?: readonly string[];
+}
+
+const KIND_OPTS: ReadonlyArray<readonly [string, string]> = [
+  ['all', '全部类型'],
+  ['note', '只看笔记'],
+  ['card', '只看划线'],
+];
+const STATUS_OPTS: ReadonlyArray<readonly [string, string]> = [
+  ['all', '不限状态'],
+  ['overdue', '只看逾期'],
+  ['today', '只看今天'],
+  ['future', '只看未来'],
+];
+
+function optsHtml(opts: ReadonlyArray<readonly [string, string]>, cur: string): string {
+  return opts
+    .map(([v, label]) => `<option value="${v}"${v === cur ? ' selected' : ''}>${label}</option>`)
+    .join('');
 }
 
 function colHead(count: number, name: string): string {
@@ -209,11 +234,31 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
           <!-- ⚙️ 设置：2026-11-13 用户拍板回到主界面（与 bz Reader 同形制），原生设置页已下线。
                ✕ 桌面端隐藏（styles.css ≥769px 规则，浮层点遮罩/ESC 关），移动端保留。 -->
           <button class="bzrv-icon-btn" data-act="filter" title="筛选（牌组 / 类型 / 状态）">${iconSpan('list-filter', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="select" title="批量选择">${iconSpan('square-check-big', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="arch" title="已完成（复习过的条目）">${iconSpan('folder-check', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="data" title="数据（统计与负荷）">${iconSpan('chart-column', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="settings" title="设置">${iconSpan('settings', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
       </div>
       </div>`;
+
+  /* 筛选区（就地展开，替代原来那个 Obsidian 原生弹窗）：关键字一行、三个下拉一行。
+     控件带 data-fld，事件在 ui.bindQueueEvents 里绑；改完即时生效，没有「应用」这一步。 */
+  const deckOpts = [
+    `<option value=""${!ctx.filter?.deck ? ' selected' : ''}>全部牌组</option>`,
+    ...(ctx.decks ?? []).slice(0, 40).map((d) => `<option value="${esc(d)}"${ctx.filter?.deck === d ? ' selected' : ''}>${esc(d)}</option>`),
+  ].join('');
+  const filterPanel = ctx.filterOpen
+    ? `<div class="bzrv-q-filter">
+        <input class="bzrv-input bzrv-q-filter-q" data-fld="q" value="${esc(String(ctx.filter?.query ?? ''))}" placeholder="关键字：标题 / 路径 / 卡片原文" />
+        <div class="bzrv-q-filter-row">
+          <select class="bzrv-input" data-fld="kind">${optsHtml(KIND_OPTS, String(ctx.filter?.kind ?? 'all'))}</select>
+          <select class="bzrv-input" data-fld="deck">${deckOpts}</select>
+          <select class="bzrv-input" data-fld="status">${optsHtml(STATUS_OPTS, String(ctx.filter?.status ?? 'all'))}</select>
+          <button class="bzrv-btn bzrv-btn--ghost" data-act="filter-clear">清除</button>
+          <button class="bzrv-btn bzrv-btn--ghost" data-act="filter-close">收起</button>
+        </div>
+      </div>`
+    : '';
 
   // 空库 → 头行 + 引导条 + 空态宿主（uiEmpty 由 ui.ts 挂载并绑两条路动作）
   if (!items.length) {
@@ -235,7 +280,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         </span>
       </div>`
         : '';
-    return `<div class="bzrv-q-view">${head}${strip}<div class="bzrv-q-cols bzrv-q-empty-wrap"><div data-empty-host></div></div>${emptyFooter}</div>`;
+    return `<div class="bzrv-q-view">${head}${filterPanel}${strip}<div class="bzrv-q-cols bzrv-q-empty-wrap"><div data-empty-host></div></div>${emptyFooter}</div>`;
   }
 
   // item 8：今日全清（开始本轮集合为空 = 逾期/今日/提前全无）→ 绿点 +「今日已清空」+ 隐藏主按钮
@@ -281,12 +326,13 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   /* 「已完成」只数真的复习完了的。col.done 里还混着挂起（文件缺失）的条目——
      直接拿它的长度当完成数，会让「已完成 2 篇」里藏着一条早就丢了文件的记录。 */
   const doneCount = items.filter((i) => i.completed || i.isCompleted).length;
+  /* 已完成挪到头行图标后，底栏这颗换成「批量选择」——不然它就彻底没了入口。 */
   const archItem = ctx.showArchived
     ? `<span class="bzrv-q-fitem bzrv-touch-target--lg is-back" data-act="arch" title="点此返回队列">
         ${iconSpan('undo-2', 'bzrv-q-ic')}<span class="lbl">返回队列</span>
       </span>`
-    : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="arch" title="查看已完成复习">
-        ${iconSpan('folder', 'bzrv-q-ic')}<span class="lbl">已完成 <b>${doneCount}</b> 条</span>
+    : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="batch" title="批量选择">
+        ${iconSpan('square-check-big', 'bzrv-q-ic')}<span class="lbl">批量选择</span>
       </span>`;
   /* 回收站入口只在真有东西时出现：没删过东西的人不需要一个永远空着的入口，
      删过的人则必须有地方把东西捞回来（以前只有几秒的 toast 撤销，错过就没了）。 */
@@ -327,7 +373,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       </div>`
     : '';
 
-  return `<div class="bzrv-q-view">${head}${filterBar}${batchBar}${strip}${body}${footer}</div>`;
+  return `<div class="bzrv-q-view">${head}${filterPanel}${filterBar}${batchBar}${strip}${body}${footer}</div>`;
 }
 
 // ==================== 回收站视图 ====================

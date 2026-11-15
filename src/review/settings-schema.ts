@@ -18,7 +18,6 @@ import type { SettingsSchema } from '../core/settings-schema';
 import type { ReviewItem } from './data';
 import type { ReviewDataManager } from './data';
 import { getReviewFilePath, getReviewMetaPath } from './data';
-import { cardModeOf } from './card-ai';
 import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
 import { copyReviewData, migrateFromBz } from '../data/migrate';
 import { panelModeOf } from './panel-mode';
@@ -232,34 +231,42 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '划线卡',
         rows: [
           {
+            /* 2026-11-15 用户拍板：复习方式不再是「全局一个开关」——它在制卡那一刻
+               定下来、存在卡上，每张卡各走各的。设置里只留「新卡默认用哪种」，
+               默认「手动」= 每次加卡都问一句（选择框还能勾「以后别问」）。 */
             type: 'select',
-            name: '复习方式',
-            desc: '划线卡按哪种方式复习',
+            name: '新卡默认方式',
+            desc: '加卡时用哪种方式制卡；选「每次问我」就每张都问一遍',
             help:
-              '五种都只复习这张卡自己的内容，不打开任何笔记。' +
-              '「AI 抽认卡」先给一句不能照抄原文的问句，想不起来再看原文；' +
-              '「AI 填空」把关键短语挖掉，自己填；' +
-              '「上下文」只给前后几句，猜中间被藏起来的那段；' +
-              '「AI 做题」按划线长短生成 3~15 道四选一，每轮只抽其中一部分；' +
-              '「展开全文」不调用 AI，直接把整段话摆出来，你自己评难度。' +
-              'AI 内容在加入复习计划时生成一次；老卡第一次用到时会现生成。想换的话，' +
-              '在复习面板里右键那张卡点「重新生成」。',
+              '这张卡做成什么形式，在「加入复习计划那一刻」定下来，之后复习就按它走，' +
+              '同一份计划里抽认卡、填空题、做题卡可以并存。\n' +
+              '选「每次问我」：每次加卡都弹一个选择框（里面可以勾「以后别再问」）；' +
+              '选了具体方式：加卡不再打扰，直接按它制。\n' +
+              '已经建好的老卡不受影响，换方式请在复习面板里右键那张卡点「重新生成」。',
             binding: {
-              // 设置里存的是五个字面量之一，schema 的 key 只接 string 型键，所以自管读写
-              get: () => cardModeOf(),
+              get: () => String((getSettings() as any).reviewCardDefaultMethod || 'manual'),
               set: (v: string) => {
-                (getSettings() as any).reviewCardMode =
-                  v === 'quiz' || v === 'plain' || v === 'cloze' || v === 'context' ? v : 'flashcard';
+                (getSettings() as any).reviewCardDefaultMethod =
+                  v === 'quiz' || v === 'plain' || v === 'cloze' || v === 'context' || v === 'flashcard'
+                    ? v
+                    : 'manual';
               },
               save: () => saveSettings(),
             },
             options: [
+              { value: 'manual', label: '每次问我（默认）' },
               { value: 'flashcard', label: 'AI 抽认卡' },
               { value: 'cloze', label: 'AI 填空' },
               { value: 'context', label: '上下文' },
               { value: 'quiz', label: 'AI 做题' },
               { value: 'plain', label: '展开全文（不用 AI）' },
             ],
+          },
+          {
+            type: 'toggle',
+            name: '开卡前先看一眼',
+            desc: '点开一张卡时先弹确认框：抽认卡可改、做题卡可删题',
+            binding: { key: 'reviewCardConfirm' },
           },
           {
             type: 'select',
@@ -281,7 +288,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               { value: '3', label: '三分之一' },
               { value: '4', label: '四分之一' },
             ],
-            visibleWhen: (s) => (s as any).reviewCardMode === 'quiz',
+            visibleWhen: (s) => (s as any).reviewCardDefaultMethod === 'quiz',
             isChild: true,
           },
         ],

@@ -22,6 +22,7 @@ import {
   openReviewAnalysis,
   openQuizPractice,
   reviewAddCurrent,
+  reviewAddSelection,
   reviewRemoveCurrent,
   reviewJumpOverdue,
   reviewStart,
@@ -90,6 +91,15 @@ export default class ReviewPlugin extends Plugin {
       id: 'review-add',
       name: t('把当前笔记加入复习计划', 'Add current note to review plan'),
       callback: withReview((app) => reviewAddCurrent(app)),
+    });
+    /* 选中一段文字就能做成一张卡（2026-11-15）。走 editorCallback：只有在笔记里
+       有光标时才可用，菜单里不会出现一颗点了没反应的命令。 */
+    this.addCommand({
+      id: 'review-add-selection',
+      name: t('把选中内容加入复习计划', 'Add selection to review plan'),
+      editorCallback: () => {
+        void reviewAddSelection(this.app);
+      },
     });
     this.addCommand({
       id: 'review-remove',

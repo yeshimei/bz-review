@@ -8,6 +8,8 @@
  * 划线卡用书名。用户怎么组织库，牌组就怎么长，不需要再维护一份分组表。
  */
 import type { ReviewItem } from './data';
+import { DEFAULT_W } from './fsrs';
+import { DEFAULT_R_THRESHOLD, partitionQueue } from './queue';
 
 export type GroupBy = 'folder' | 'book';
 
@@ -93,7 +95,7 @@ export function applyFilter(items: readonly ReviewItem[], filter: ItemFilter = {
   const q = String(filter.query ?? '').trim();
   const kind = filter.kind ?? 'all';
   const deck = String(filter.deck ?? '').trim();
-  return items.filter((it) => {
+  const kept = items.filter((it) => {
     if (kind === 'note' && isCardItem(it)) return false;
     if (kind === 'card' && !isCardItem(it)) return false;
     if (deck) {
@@ -106,6 +108,24 @@ export function applyFilter(items: readonly ReviewItem[], filter: ItemFilter = {
     if (!matchesQuery(it, q)) return false;
     return true;
   });
+  const status = filter.status ?? 'all';
+  if (status === 'all') return kept;
+  /* 状态筛：借三区列的分区结果（口径单源），但两边都有坑——partitionQueue 看的是
+     loadItems 预置的 isOverdue/isCompleted 运行期字段，脱离读盘路径（单测、外部调用）
+     时这些字段不存在，一条都分不出来。所以先按持久化字段补一遍，再交给 partitionQueue。 */
+  const now = Date.now();
+  const staged = kept.map((it) => ({
+    ...it,
+    isCompleted: !!(it as any).isCompleted || !!(it as any).completed,
+    isOverdue:
+      typeof (it as any).isOverdue === 'boolean'
+        ? (it as any).isOverdue
+        : !!it.nextReviewDate && new Date(it.nextReviewDate).getTime() <= now,
+  })) as ReviewItem[];
+  const cols = partitionQueue(staged, DEFAULT_R_THRESHOLD, DEFAULT_W);
+  const bucket = status === 'overdue' ? cols.overdue : status === 'today' ? cols.today : cols.future;
+  const keys = new Set(bucket.map((i) => i.filePath));
+  return kept.filter((i) => keys.has(i.filePath));
 }
 
 /** 筛选是否为空（决定要不要显示「清除」） */
