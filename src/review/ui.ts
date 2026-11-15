@@ -53,6 +53,8 @@ import {
 import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
 import { ratingForKey } from './keys';
 import { openCardEditor } from './card-edit';
+import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
+import { openFilterDialog } from './filter-dialog';
 import { removeNote as planRemoveNote } from './plan-ops';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
@@ -120,6 +122,12 @@ export class UIManager {
   private trashEntries: TrashEntry[] = [];
   /** 回收站条数（底部入口按它决定显不显示） */
   private trashCount = 0;
+  /** 当前筛选（批 4b）；面板关掉再开仍然保留——用户刚筛完不想又重设一遍 */
+  private filter: ItemFilter = {};
+  /** 批量选择模式 */
+  private selectMode = false;
+  /** 已选条目（filePath） */
+  private selected = new Set<string>();
   private escHandle: { unregister: () => void } | null = null;
   /** 动效 boot 消费标志：showMain 置位，首个 renderEntries 消费（后台刷新静默不重播） */
   private motionBootPending = false;
@@ -259,8 +267,11 @@ export class UIManager {
     this.createMainUI();
     if (!this.mask || !this.popup) return;
     this.closingView = false;
-    /* 关面板时停在回收站，下次打开还停在回收站会很奇怪——每次打开都从队列开始。 */
+    /* 关面板时停在回收站，下次打开还停在回收站会很奇怪——每次打开都从队列开始。
+       选择模式同理：跨会话保留选择只会造成误删，一律清掉。筛选保留。 */
     this.showTrash = false;
+    this.selectMode = false;
+    this.selected.clear();
     if (this.hostedInView) {
       /* 原生页：遮罩不参与（标签页里没有「点外面关掉」这回事），面板直接占满内容区。
          拖拽缩放与焦点圈闭也一并跳过——那是浮层才需要的两件事。 */
@@ -366,14 +377,30 @@ export class UIManager {
       scrollTops.set(col.className, col.scrollTop);
     });
     const prevBegin = container.querySelector<HTMLElement>('[data-act="begin"]');
-    container.innerHTML = this.queueViewHtml(items);
+    /* 筛选只作用于列表（批 4b）：数据一条没少，只是不显示。
+       「开始本轮」仍按到期走——筛选是查看工具，不该悄悄改变复习范围。 */
+    const visible = applyFilter(items, this.filter);
+    const filtering = !isEmptyFilter(this.filter);
+    container.innerHTML = this.queueViewHtml(visible);
     /* 「开始本轮」节点复用：面板刚打开那一两秒里队列常被再刷一次（样式落盘 / 逾期检查 /
        外层动作回调）。如果这次重绘正好落在按下与松开之间，旧按钮已经被换成新节点，
        click 事件（要求 down/up 落在同一元素）就整个丢掉——用户看到的是一次点了没反应。
        把旧节点塞回原位，监听器和按压态都还在，这一下点得住。 */
     const nextBegin = container.querySelector<HTMLElement>('[data-act="begin"]');
     if (prevBegin && nextBegin) nextBegin.replaceWith(prevBegin);
-    if (!items.length) {
+    if (!visible.length && filtering) {
+      /* 有数据但筛没了：说清楚是筛掉的，别让用户以为计划空了 */
+      const host = container.querySelector('[data-empty-host]');
+      if (host) {
+        host.appendChild(
+          uiEmpty({
+            icon: 'list-filter',
+            title: '没有符合筛选的条目',
+            desc: `当前条件：${describeFilter(this.filter)}`,
+          })
+        );
+      }
+    } else if (!visible.length) {
       // item 10：空库两条路引导（组件库 uiEmpty 工厂）
       const host = container.querySelector('[data-empty-host]');
       if (host) {
@@ -406,7 +433,7 @@ export class UIManager {
       if (top != null) col.scrollTop = top;
     });
     if (focusKey) restoreFocusKey(container, focusKey);
-    this.bindQueueEvents(container, items);
+    this.bindQueueEvents(container, visible);
     // 动效：仅首屏编排（boot 消费即熄）；刷新渲染静默（E6 滚位/焦点还原不受扰动）
     if (this.motionBootPending) {
       this.motionBootPending = false;
@@ -445,6 +472,51 @@ export class UIManager {
       });
     });
     container.querySelector('[data-act="trash-restore-all"]')?.addEventListener('click', () => void this.restoreAllTrash());
+  }
+
+  /** 批量移出（批 4b）：先进回收站，误删可捞回来 */
+  private async batchRemove(): Promise<void> {
+    const keys = [...this.selected];
+    if (!keys.length) {
+      notice('先点几张卡片选中', 'warning');
+      return;
+    }
+    const v = await openFlowDialog({
+      title: `移出 ${keys.length} 条？`,
+      message: '移出后先进回收站，30 天内都能恢复，排期与复习历史一并保留。',
+      actions: [
+        { label: '取消', value: 'cancel' },
+        { label: '移出', value: 'ok', cta: true, danger: true },
+      ],
+    });
+    if (v !== 'ok') return;
+    try {
+      const n = await this.dataManager!.removeItems(keys);
+      notice(`已移出 ${n} 条，可在回收站恢复`, 'success');
+      this.selected.clear();
+      this.selectMode = false;
+    } catch (e) {
+      notifySaveError(e, '移出复习计划');
+    }
+    await this.refreshPanel();
+  }
+
+  /** 批量顺延（批 4b）：出差一周回来再说的场景 */
+  private async batchPostpone(): Promise<void> {
+    const keys = [...this.selected];
+    if (!keys.length) {
+      notice('先点几张卡片选中', 'warning');
+      return;
+    }
+    try {
+      const n = await this.dataManager!.postponeItems(keys, 7);
+      notice(`已把 ${n} 条顺延 7 天`, 'success');
+      this.selected.clear();
+      this.selectMode = false;
+    } catch (e) {
+      notifySaveError(e, '批量顺延');
+    }
+    await this.refreshPanel();
   }
 
   /** 全部恢复（清空回收站之前的那条退路） */
@@ -529,6 +601,9 @@ export class UIManager {
       rThreshold: this.rThreshold(),
       w: this.wSource(),
       trashCount: this.trashCount,
+      filterText: describeFilter(this.filter),
+      selectMode: this.selectMode,
+      selected: this.selected,
     });
   }
 
@@ -595,10 +670,54 @@ export class UIManager {
     // item 10：空态两条路（把当前笔记加入复习 / 监听文件夹配置说明）
     container.querySelector('[data-act="add-current"]')?.addEventListener('click', () => void this.addCurrentNote());
     container.querySelector('[data-act="watch-help"]')?.addEventListener('click', () => void this.showWatchHelp());
+    // 筛选 / 批量选择（批 4b）
+    container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
+      void (async () => {
+        const items = await this.dataManager.loadItems();
+        openFilterDialog(this.app, collectFacets(items), this.filter, (f) => {
+          this.filter = f;
+          this.selected.clear();
+          void this.refreshPanel();
+        });
+      })();
+    });
+    container.querySelector('[data-act="filter-clear"]')?.addEventListener('click', () => {
+      this.filter = {};
+      void this.refreshPanel();
+    });
+    container.querySelector('[data-act="select"]')?.addEventListener('click', () => {
+      this.selectMode = !this.selectMode;
+      this.selected.clear();
+      void this.refreshPanel();
+    });
+    container.querySelector('[data-act="batch-cancel"]')?.addEventListener('click', () => {
+      this.selectMode = false;
+      this.selected.clear();
+      void this.refreshPanel();
+    });
+    container.querySelector('[data-act="batch-delete"]')?.addEventListener('click', () => void this.batchRemove());
+    container.querySelector('[data-act="batch-postpone"]')?.addEventListener('click', () => void this.batchPostpone());
+
     // 搜索框已退役（issue 254 迭代拍板）
     // 卡片点击（到期条目 → 单条冲刺；.no = 未来/不可做，div 无 disabled 用类排除）
-    container.querySelectorAll<HTMLElement>('.bzrv-q-card[data-id]:not(.no)').forEach((card) => {
+    container.querySelectorAll<HTMLElement>('.bzrv-q-card[data-id]').forEach((card) => {
       const activate = () => {
+        const path = card.dataset.path || '';
+        /* 选择模式下点卡片 = 勾选，不打开笔记：打开笔记会把面板顶掉，等于选不了第二条 */
+        if (this.selectMode) {
+          if (!path) return;
+          if (this.selected.has(path)) this.selected.delete(path);
+          else this.selected.add(path);
+          card.classList.toggle('is-picked', this.selected.has(path));
+          const check = card.querySelector<HTMLElement>('.bzrv-q-check');
+          if (check) {
+            check.classList.toggle('is-on', this.selected.has(path));
+            check.textContent = this.selected.has(path) ? '✓' : '';
+          }
+          const strip = container.querySelector<HTMLElement>('.bzrv-q-strip.is-batch strong');
+          if (strip) strip.textContent = `已选 ${this.selected.size} 条`;
+          return;
+        }
         const it = items.find((x) => x.id === card.dataset.id);
         if (it && isPlayable(it)) {
           motionDrawCard(card); // 抽卡手感：先一记「抽走」再切题面

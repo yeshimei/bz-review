@@ -6140,6 +6140,39 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-ctx-side.is-after:is([data-bzrv], [data-bzrv] *) { border-right: 2px solid var(--bzrv-border); }
 .bzrv-cs-ctx-hole:is([data-bzrv], [data-bzrv] *) { padding: 10px 12px; border: 1px dashed var(--bzrv-border); border-radius: var(--bzrv-radius-xs); font-size: var(--bzrv-font-caption); line-height: 1.6; color: var(--bzrv-text-3); text-align: center; }
 .bzrv-cs-ctx-hint:is([data-bzrv], [data-bzrv] *) { padding: 8px 12px; border-left: 2px solid var(--bzrv-brand); border-radius: 0 var(--bzrv-radius-xs) var(--bzrv-radius-xs) 0; background: var(--bzrv-surface-2); font-size: var(--bzrv-font-meta); line-height: 1.7; color: var(--bzrv-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ===== 批 4b：批量选择与筛选条 ===== */
+.bzrv-q-card.is-selecting:is([data-bzrv], [data-bzrv] *) {
+  cursor: pointer;
+  padding-left: 30px;
+  position: relative;
+}
+.bzrv-q-card.is-selecting.is-picked:is([data-bzrv], [data-bzrv] *) {
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -1px;
+}
+.bzrv-q-check:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  color: var(--text-on-accent);
+}
+.bzrv-q-check.is-on:is([data-bzrv], [data-bzrv] *) {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+.bzrv-q-strip.is-filter:is([data-bzrv], [data-bzrv] *),
+.bzrv-q-strip.is-batch:is([data-bzrv], [data-bzrv] *) {
+  flex-wrap: wrap;
+  gap: 6px;
+}
 /* ==================== 记忆分析特刊（analysis/ 全屏逐幕层） ====================
    视觉语言：夜账守火——深青底、细线、磷光青强调；数字 tabular-nums，无衬线。
    颜色只走 --ra-* 变量层（明暗两套），幕内不写死颜色；滚动条不自造（ADR-0122，

@@ -683,3 +683,36 @@
 .bzrv-cs-ctx-side.is-after { border-right: 2px solid var(--bzrv-border); }
 .bzrv-cs-ctx-hole { padding: 10px 12px; border: 1px dashed var(--bzrv-border); border-radius: var(--bzrv-radius-xs); font-size: var(--bzrv-font-caption); line-height: 1.6; color: var(--bzrv-text-3); text-align: center; }
 .bzrv-cs-ctx-hint { padding: 8px 12px; border-left: 2px solid var(--bzrv-brand); border-radius: 0 var(--bzrv-radius-xs) var(--bzrv-radius-xs) 0; background: var(--bzrv-surface-2); font-size: var(--bzrv-font-meta); line-height: 1.7; color: var(--bzrv-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ===== 批 4b：批量选择与筛选条 ===== */
+.bzrv-q-card.is-selecting {
+  cursor: pointer;
+  padding-left: 30px;
+  position: relative;
+}
+.bzrv-q-card.is-selecting.is-picked {
+  outline: 1px solid var(--interactive-accent);
+  outline-offset: -1px;
+}
+.bzrv-q-check {
+  position: absolute;
+  left: 8px;
+  top: 10px;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 15px;
+  text-align: center;
+  color: var(--text-on-accent);
+}
+.bzrv-q-check.is-on {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+}
+.bzrv-q-strip.is-filter,
+.bzrv-q-strip.is-batch {
+  flex-wrap: wrap;
+  gap: 6px;
+}

@@ -127,6 +127,12 @@ export interface QueueViewCtx {
   w?: number[];
   /** 回收站条数（0/缺省不显示入口——没删过东西时多一个入口只是噪音） */
   trashCount?: number;
+  /** 筛选说明（空 = 没筛选）；状态条上显示并给「清除」 */
+  filterText?: string;
+  /** 批量选择模式：卡片左侧出勾选位，底部换批量操作条 */
+  selectMode?: boolean;
+  /** 已选条目（filePath 集合） */
+  selected?: ReadonlySet<string>;
 }
 
 function colHead(count: number, name: string): string {
@@ -139,12 +145,16 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
   const due = dueLabelOf(item, now);
   const canPlay = isPlayable(item, now) && !item.isMissing;
   const title = item.isCompleted ? `<s>${esc(item.name)}</s>` : esc(item.name);
+  const selectMode = ctx.selectMode === true;
+  const picked = selectMode && !!ctx.selected?.has(item.filePath);
   const cls = [
     'bzrv-q-card',
     item.isOverdue ? 'danger' : '',
     item.isCompleted ? 'done' : '',
     canPlay ? '' : 'no',
     item.isMissing ? 'missing' : '',
+    selectMode ? 'is-selecting' : '',
+    picked ? 'is-picked' : '',
   ].join(' ').trim();
   const tags = [
     /* 类型标签。两类条目在队列里长得一模一样，用户分不清「被讨厌的勇气」是那篇
@@ -161,8 +171,13 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
        已完成和 FSRS 不重复（FSRS 右上 Lv.n、这里 R%），照旧保留。 */
     item.completed || item.phase === 'fsrs' ? stageTagHtml(item, w, now) : '',
   ].join('');
+  /* 批量选择时左侧出勾选位：点卡片 = 选中/取消，不再打开笔记（否则一碰就跳走，根本选不了） */
+  const check = selectMode
+    ? `<span class="bzrv-q-check ${picked ? 'is-on' : ''}" aria-hidden="true">${picked ? '✓' : ''}</span>`
+    : '';
   return `
-      <div class="${cls}" data-id="${item.id}" role="button" tabindex="${canPlay || item.isMissing ? '0' : '-1'}" aria-disabled="${canPlay ? 'false' : 'true'}">
+      <div class="${cls}" data-id="${item.id}" data-path="${esc(item.filePath)}" role="button" tabindex="${canPlay || item.isMissing ? '0' : '-1'}" aria-disabled="${canPlay ? 'false' : 'true'}">
+        ${check}
         <div class="bzrv-q-card-top"><span class="bzrv-q-card-title">${title}</span><span class="bzrv-q-card-stage">${item.isMissing ? '挂起' : stageNum(item)}</span></div>
         <div class="bzrv-q-card-meta">${tags}</div>
       </div>`;
@@ -193,6 +208,8 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         <div class="bzrv-panel-head-btns">
           <!-- ⚙️ 设置：2026-11-13 用户拍板回到主界面（与 bz Reader 同形制），原生设置页已下线。
                ✕ 桌面端隐藏（styles.css ≥769px 规则，浮层点遮罩/ESC 关），移动端保留。 -->
+          <button class="bzrv-icon-btn" data-act="filter" title="筛选（牌组 / 类型 / 状态）">${iconSpan('list-filter', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="select" title="批量选择">${iconSpan('square-check-big', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="settings" title="设置">${iconSpan('settings', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
       </div>
@@ -288,7 +305,29 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         </span>
       </div>`;
 
-  return `<div class="bzrv-q-view">${head}${strip}${body}${footer}</div>`;
+  /* 筛选条：说清楚「列表被筛过、开始本轮不受影响」——不说的话，用户会以为
+     筛选后开始本轮只复习筛出来的那些，结果被多塞了一堆条目。 */
+  const filterBar = ctx.filterText
+    ? `<div class="bzrv-q-strip is-filter">
+        <span class="bzrv-q-strip-dot warn"></span>
+        <strong>筛选中</strong>
+        <span class="bzrv-q-strip-txt">${esc(ctx.filterText)} · 列表 ${items.length} 条（开始本轮仍按到期走）</span>
+        <button class="bzrv-btn bzrv-btn--ghost" data-act="filter-clear">清除</button>
+      </div>`
+    : '';
+  /* 批量条：按钮就三个，删除明确写「移出计划」并说明进回收站，
+     免得有人以为这个动作不可逆。 */
+  const batchBar = ctx.selectMode
+    ? `<div class="bzrv-q-strip is-batch">
+        <strong>已选 ${ctx.selected?.size ?? 0} 条</strong>
+        <span class="bzrv-q-strip-txt">点卡片选中；移出后在回收站里能捞回来</span>
+        <button class="bzrv-btn" data-act="batch-postpone">顺延 7 天</button>
+        <button class="bzrv-btn" data-act="batch-delete">移出计划</button>
+        <button class="bzrv-btn bzrv-btn--ghost" data-act="batch-cancel">取消</button>
+      </div>`
+    : '';
+
+  return `<div class="bzrv-q-view">${head}${filterBar}${batchBar}${strip}${body}${footer}</div>`;
 }
 
 // ==================== 回收站视图 ====================

@@ -522,6 +522,25 @@ export class ReviewDataManager {
     });
   }
 
+  /**
+   * 批量顺延（批 4b）：把选中条目的下次复习日期一起往后推。
+   * 单趟 RMW：批量操作最容易写成 N 次读盘，几十条就是几十次整文件重写。
+   */
+  postponeItems(keys: readonly string[], days: number): Promise<number> {
+    const set = new Set(keys);
+    const delta = Math.max(1, Math.round(days)) * 86400000;
+    return this.mutate((items) => {
+      let n = 0;
+      for (const it of items) {
+        if (!set.has(it.filePath)) continue;
+        const base = it.nextReviewDate ? new Date(it.nextReviewDate).getTime() : Date.now();
+        it.nextReviewDate = new Date((Number.isFinite(base) ? base : Date.now()) + delta).toISOString();
+        n++;
+      }
+      return n;
+    });
+  }
+
   /** 手动指定下次复习日期（批 3）：考试、出差、借书到期都靠它 */
   setNextReview(filePath: string, iso: string): Promise<boolean> {
     const t = new Date(iso).getTime();
