@@ -1153,6 +1153,8 @@ export function mountFloatingRatingBar(opts: {
     closed = true;
     document.removeEventListener('keydown', onDigitKey);
     el.remove();
+    // 通知容器据此让位（手机上通知正好落在条子上，会盖住「暂停」这颗按钮）
+    if (!document.querySelector('.bzrv-review-bar')) document.body.classList.remove('bzrv-bar-on');
   };
   el.querySelectorAll<HTMLButtonElement>('.bzrv-review-bar-btn').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -1190,6 +1192,8 @@ export function mountFloatingRatingBar(opts: {
   });
   markOwned(el);
   document.body.appendChild(el);
+  // 通知容器据此上移让位；close 时摘掉（见上）
+  document.body.classList.add('bzrv-bar-on');
   motionRatingBar(el); // 底部弹升入场（保留 translateX(-50%) 居中）
   el.focus({ preventScroll: true });
   return { close };

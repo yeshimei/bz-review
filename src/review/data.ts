@@ -14,6 +14,7 @@ import { FSRS_FIRST_INTERVALS, LADDER_MAX, TOTAL_STAGES } from './fsrs';
 import { clipWToBounds } from './fit';
 import { canAddCard, canAddNote, quotaBlock, type PlanCounts } from '../data/entitlement';
 import {
+  fingerprintsOf,
   mergeReviewItems,
   parseReviewFile,
   reviewMeta,
@@ -238,7 +239,7 @@ export class ReviewDataManager {
    *   4. 写之前留当天第一份快照（回滚点）。
    * 运行时字段（file/isCompleted/…）由 stripRuntime 统一剥掉，不落盘。
    */
-  async saveItems(items: ReviewItem[]): Promise<void> {
+  async saveItems(items: ReviewItem[], base?: ReadonlyMap<string, string>): Promise<void> {
     const now = new Date();
     const path = getReviewFilePath();
     const raw = await diskReadText(this.app, path);
@@ -257,7 +258,7 @@ export class ReviewDataManager {
 
     const next = stampChangedItems(items.map((i) => stripRuntime(i as any)), disk, now);
     const tombstones = tombstonesOf(await loadTrash(this.app));
-    const merged = mergeReviewItems(next, disk, { now, tombstones });
+    const merged = mergeReviewItems(next, disk, { now, tombstones, base });
 
     if (merged.conflicts.length || merged.revived.length) {
       const saved = await backupOriginal(this.app, path, raw ?? undefined);
@@ -282,8 +283,11 @@ export class ReviewDataManager {
   private mutate<T>(fn: (items: ReviewItem[]) => T | Promise<T>): Promise<T> {
     return enqueueFileTask(getReviewFilePath(), async () => {
       const items = await this.loadItems();
+      /* 改动前的快照就是合并基准：fn 之后 items 已经变了，拿不到「原来长什么样」。
+         没有它，saveItems 里那次「与磁盘现值合并」会把本机自己的改动当成远端冲突。 */
+      const base = fingerprintsOf(items);
       const result = await fn(items);
-      await this.saveItems(items);
+      await this.saveItems(items, base);
       return result;
     });
   }

@@ -69,7 +69,12 @@ const CSV_COLUMNS = [
   'lastDifficulty',
 ] as const;
 
-/** 导出 CSV（给人看的那一份；不做导回） */
+/**
+ * 导出 CSV（给人看的那一份；不做导回）。
+ *
+ * 带 UTF-8 BOM + CRLF：Windows 版 Excel 打开 CSV 不看内容只看这两样——
+ * 没有 BOM 中文整列乱码，只有 LF 会全挤在一行。「给人看」那份的意义就在这里。
+ */
 export function toCsv(items: readonly ReviewItem[]): string {
   const head = CSV_COLUMNS.join(',');
   const rows = items.map((it) =>
@@ -79,7 +84,7 @@ export function toCsv(items: readonly ReviewItem[]): string {
       return csvCell((it as any)[c]);
     }).join(',')
   );
-  return [head, ...rows].join('\n') + '\n';
+  return '\uFEFF' + [head, ...rows].join('\r\n') + '\r\n';
 }
 
 /** 导出文件名（带时间，连点两次也不会互相覆盖） */

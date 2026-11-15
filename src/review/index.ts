@@ -238,6 +238,7 @@ export function openReviewPanel(app: App): void {
       uiManager?.detachToBody();
       for (const leaf of leaves) void leaf.detach();
     }
+    reviewApp.hideOverdueNotice();
     void uiManager?.showMain();
     return;
   }
@@ -249,6 +250,9 @@ async function openPanelView(app: App): Promise<void> {
   const found = app.workspace.getLeavesOfType(REVIEW_VIEW_TYPE);
   if (found.length) {
     await app.workspace.revealLeaf(found[0]);
+    /* 亮出已有标签页不会走 onOpen，通知得在这里也收一次：常驻逾期通知正压在
+       面板右上角那三颗按钮上（点击会落在通知上）。 */
+    reviewApp.hideOverdueNotice();
     return;
   }
   const leaf = app.workspace.getLeaf('tab');

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_W, FSRS, FSRS_FIRST_INTERVALS, LADDER_MAX, scheduleNext } from '../src/review/fsrs';
+import {
+  DEFAULT_W,
+  FSRS,
+  FSRS_FIRST_INTERVALS,
+  LADDER_MAX,
+  MIN_INTERVAL_DAYS,
+  clampIntervalDays,
+  formatInterval,
+  scheduleNext,
+} from '../src/review/fsrs';
 
 const now = new Date('2026-11-15T09:00:00.000Z');
 
@@ -42,6 +51,46 @@ describe('阶梯阶段（9 级前）', () => {
   it('简单两级的跳跃不会越过 9 级上限', () => {
     const d = scheduleNext(ladder(LADDER_MAX - 1), 'easy', now);
     expect(d.stage).toBe(LADDER_MAX);
+  });
+});
+
+/* 真机事故：新卡评「忘了」（第 0 档 = 1 分钟）提示条写「1m 后复习」，
+   实际排到 14.4 分钟后——下限被写成 0.01 天，把再学步和文案对不上了。
+   下限只能等于阶梯表最小档，不能自己造一个。 */
+describe('间隔钳位', () => {
+  it('下限就等于阶梯表第一档（1 分钟），不再延长到 14 分钟', () => {
+    expect(MIN_INTERVAL_DAYS).toBeCloseTo(1 / 1440, 10);
+    expect(clampIntervalDays(FSRS_FIRST_INTERVALS[0], 1, 0)).toBeCloseTo(1 / 1440, 10);
+  });
+
+  it('正常间隔原样返回（缩放系数为 1、不设上限时不动它）', () => {
+    expect(clampIntervalDays(7, 1, 0)).toBe(7);
+  });
+
+  it('缩放系数只乘不除，非法值按 1 处理', () => {
+    expect(clampIntervalDays(7, 2, 0)).toBe(14);
+    expect(clampIntervalDays(7, 0, 0)).toBe(7);
+    expect(clampIntervalDays(7, Number.NaN, 0)).toBe(7);
+  });
+
+  it('上限只管大间隔，不会把短间隔抬上去', () => {
+    expect(clampIntervalDays(1000, 1, 365)).toBe(365);
+    expect(clampIntervalDays(0.25, 1, 365)).toBeCloseTo(0.25, 10);
+  });
+});
+
+describe('间隔说人话', () => {
+  it('分钟/小时/天各说各的，不再一律四舍五入成天', () => {
+    expect(formatInterval(1 / 1440)).toBe('1m');
+    expect(formatInterval(30 / 1440)).toBe('30m');
+    expect(formatInterval(0.25)).toBe('6h');
+    expect(formatInterval(1)).toBe('1d');
+    expect(formatInterval(7)).toBe('7d');
+  });
+
+  it('极端小值不会被说成 0m', () => {
+    expect(formatInterval(0)).toBe('1m');
+    expect(formatInterval(0.0001)).toBe('1m');
   });
 });
 

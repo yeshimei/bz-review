@@ -6,7 +6,14 @@ import { notice, notify, notifyUndo } from '../core/notice';
 import type { NoticeHandle } from '../core/notice';
 import { getApp } from '../core/app';
 import { getSettings, saveSettings } from '../core/settings-provider';
-import { FSRS, FSRS_FIRST_TEXTS, scheduleNext, currentR as fsrsCurrentR } from './fsrs';
+import {
+  FSRS,
+  FSRS_FIRST_TEXTS,
+  clampIntervalDays,
+  formatInterval,
+  scheduleNext,
+  currentR as fsrsCurrentR,
+} from './fsrs';
 import type { Rating } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager, isCardItem } from './data';
@@ -27,6 +34,7 @@ import { computeStats, dateKey } from './stats';
 import { emitDomainEvent } from '../core/domain-bus';
 import { markOwned } from '../core/scope';
 import { diskPathStat } from '../core/storage';
+import { REVIEW_VIEW_TYPE } from './panel-mode';
 import { stripRuntime } from './store-format';
 
 /** item 5：普通复习离篇宽限期（ms）——持续离篇超过此时长才算中断；测试可注入 */
@@ -278,7 +286,8 @@ export const reviewApp = {
     /* 最长间隔上限（批 3）：FSRS 动态间隔在稳定度很高时会算出几千天，
        实际等于「这条以后再也不会出现」。0 = 不限，其余按天截断。 */
     const capDays = Number((getSettings() as any).reviewMaxIntervalDays) || 0;
-    const scaledDays = Math.max(0.01, Math.min(decision.intervalDays * scale, capDays > 0 ? capDays : Infinity));
+    // 下限 = 阶梯表第一档（1 分钟）：以前写死 0.01 天，把「1m 后复习」悄悄拉成 14 分钟
+    const scaledDays = clampIntervalDays(decision.intervalDays, scale, capDays);
     const nextDate = new Date(now.getTime() + scaledDays * 86400000);
 
     /* 撤销快照在写盘之前取：评级是就地改对象，写完之后拿不到「改之前」。
@@ -339,9 +348,9 @@ export const reviewApp = {
     } else if (decision.phase === 'ladder') {
       notifyUndo(`${FSRS_FIRST_TEXTS[decision.stage]}后复习`, undo, { type: 'success' });
     } else {
-      const days = Math.round(scaledDays);
       const rPct = Math.round((decision.R || 0) * 100);
-      notifyUndo(`R=${rPct}%，下次复习：${days > 0 ? days + '天' : '1天'}后`, undo, { type: 'success' });
+      // 说人话：FSRS 动态间隔常在小时级，四舍五入成「1 天」会和实际排期对不上
+      notifyUndo(`R=${rPct}%，下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
     }
     // ADR-0077：评级也累计拟合计数（含阶梯阶段；样本过滤在 fit.ts 内做）。
     // fire-and-forget：计数在入口同步累加，拟合自防重入；不 await 避免大历史时卡评级路径
@@ -485,6 +494,12 @@ export const reviewApp = {
     const { uiManager } = await import('./index');
     if (uiManager?.inSprint) {
       notice('做题冲刺进行中，先结束当前会话再开始本轮');
+      return;
+    }
+    /* 暂停着还点「开始本轮」= 接着上一轮走。重开一轮会把断点白扔掉，用户看到的是
+       「我刚停的那几篇怎么又要从头来」；这也是暂停后唯一稳定的恢复入口。 */
+    if (this._roundPaused && this._pendingRound) {
+      this.resumeRound();
       return;
     }
     const app = getApp();
@@ -733,39 +748,47 @@ export const reviewApp = {
     this._pendingRound = { items: overdueNotes, index }; // item 5：断点（完成/清零时置空）
     const leaf = app.workspace.getLeaf(false);
     await leaf.openFile(file as TFile);
-    // 连续复习：常驻单框动态更新（同键存活时原地合并，不刷屏）
-    const reviewMsg = `复习中 (${index + 1}/${overdueNotes.length}): ${item.name}`;
-    // U9：复用前验活（对齐 _overdueNotice 先例）——progress 通知到期消失后旧句柄 setMessage
-    // 是 no-op，不验活会让后续每篇的进度提示静默失效
-    if (this._reviewNotice && this._reviewNotice.el?.isConnected) {
-      this._reviewNotice.setMessage(reviewMsg);
-    } else {
-      this._reviewNotice = notify(reviewMsg, { type: 'progress', dedupeKey: 'review-loop' });
-    }
-    // item 4：挂悬浮迷你评级条（fire-and-forget：不阻塞轮询/翻篇链路；ui 不可用时静默降级为命令评级）
+    // item 4：挂悬浮迷你评级条（ui 不可用时静默降级为命令评级）
     this.hideReviewBar();
-    void (async () => {
-      try {
-        const { mountFloatingRatingBar } = await import('./ui');
-        this._reviewBar = mountFloatingRatingBar({
-          name: item.name,
-          index: index + 1,
-          total: overdueNotes.length,
-          remaining: Math.max(0, overdueNotes.length - index - 1),
-          onRate: (rating) => {
-            // 评级写盘 → 下方轮询检测 lastReviewed 更新自动翻篇（本条收起由按钮点击即收）
-            void this.markReview(item.filePath, rating);
-          },
-          onSkip: () => {
-            // 跳过：不评级不写盘，直接进下一篇
-            void advance();
-          },
-          onPause: () => this.pauseRound(),
-        });
-      } catch {
-        /* ignore */
+    let barMounted = false;
+    try {
+      const { mountFloatingRatingBar } = await import('./ui');
+      this._reviewBar = mountFloatingRatingBar({
+        name: item.name,
+        index: index + 1,
+        total: overdueNotes.length,
+        remaining: Math.max(0, overdueNotes.length - index - 1),
+        onRate: (rating) => {
+          // 评级写盘 → 下方轮询检测 lastReviewed 更新自动翻篇（本条收起由按钮点击即收）
+          void this.markReview(item.filePath, rating);
+        },
+        onSkip: () => {
+          // 跳过：不评级不写盘，直接进下一篇
+          void advance();
+        },
+        onPause: () => this.pauseRound(),
+      });
+      barMounted = true;
+    } catch {
+      /* ignore */
+    }
+    /* 浮条自己就在显示「篇名 3/7」，再挂一条同内容的进度通知，手机上正好压在
+       评级按钮上（通知 z 更高，点「忘了/困难」会落到通知上）。挂上浮条就不弹它；
+       浮条挂不上时才退回通知这条老路。 */
+    if (barMounted) {
+      if (this._reviewNotice?.el?.isConnected) this._reviewNotice.hide();
+      this._reviewNotice = null;
+    } else {
+      // 连续复习：常驻单框动态更新（同键存活时原地合并，不刷屏）
+      const reviewMsg = `复习中 (${index + 1}/${overdueNotes.length}): ${item.name}`;
+      // U9：复用前验活（对齐 _overdueNotice 先例）——progress 通知到期消失后旧句柄 setMessage
+      // 是 no-op，不验活会让后续每篇的进度提示静默失效
+      if (this._reviewNotice && this._reviewNotice.el?.isConnected) {
+        this._reviewNotice.setMessage(reviewMsg);
+      } else {
+        this._reviewNotice = notify(reviewMsg, { type: 'progress', dedupeKey: 'review-loop' });
       }
-    })();
+    }
 
     let checkCount = 0;
     const maxChecks = 120; // 120 × 2.5s = 300s：超时绝对时长与旧 300×1s 持平（拍板「行为语义不变」）
@@ -890,21 +913,37 @@ export const reviewApp = {
   /**
    * 暂停本轮（批 2）。
    *
-   * 与「离开笔记被判中断」区分：这是用户自己按的，不给警告、不丢断点，
-   * 评完手上这条就停在原地，回来点「继续」接着走。
+   * 与「离开笔记被判中断」区分：这是用户自己按的，不给警告、不丢断点。
+   *
+   * 暂停必须**当场掐掉轮询**（真机事故）：以前只隐藏浮条、interval 还活着，
+   * 于是「继续」撞上 reviewLoop 的防重入守卫（「本轮复习已在进行」）根本没反应；
+   * 那条带「继续」的提示十几秒后自己消失，这一轮就彻底卡死在暂停态——
+   * 浮条没了、评级按钮没了、命令也进不去，只能重载应用。
    */
   pauseRound(): void {
     this._roundPaused = true;
     this.hideReviewBar();
-    /* 断点本来就指着「当前这条」（reviewLoop 每次打开前写一次）。
-       暂停意味着这条评完就停，所以断点往后挪一格；已经暂停过就别重复挪。 */
-    const cur = this._pendingRound;
-    if (cur && cur.index < cur.items.length) {
-      this._pendingRound = { items: cur.items, index: Math.min(cur.items.length, cur.index + 1) };
-    }
+    /* 只掐轮询、保留断点：stopReviewLoops 是卸载用的，它连 _pendingRound 一起清，
+       用它暂停等于把「继续」的落点也删了（真机复现：暂停后提示「本轮已经结束了」）。 */
+    for (const t of this._reviewLoops) clearInterval(t);
+    this._reviewLoops.clear();
+    /* 断点留在「当前这条」不动：暂停前没评的那篇，继续时应该回到它，
+       而不是悄悄跳过（以前 index+1 会把手上这篇直接丢出本轮，只剩一句
+       「还剩 0 条」，用户以为复习被吞了）。 */
+    // 进度通知跟着暂停收掉：留着「复习中」转圈，等于告诉用户还在跑
+    if (this._reviewNotice?.el?.isConnected) this._reviewNotice.hide();
+    this._reviewNotice = null;
     const r = this._pendingRound;
-    const left = r ? Math.max(0, r.items.length - r.index) : 0;
-    notify(`已暂停，还剩 ${left} 条`, {
+    /* 没有断点 = 这一轮其实已经走完了（浮条是最后一条留下的残影）：别报「还剩 0 条」
+       再挂个点了没反应的「继续」，直接说结束。 */
+    if (!r) {
+      this._roundPaused = false;
+      notice('本轮已经结束了', 'info');
+      return;
+    }
+    const left = Math.max(0, r.items.length - r.index);
+    // 提示条只是顺手给个入口；真正的恢复入口是面板「开始本轮」与「开始复习」命令
+    notify(`已暂停，还有 ${left} 条没看（点「开始本轮」接着走）`, {
       type: 'info',
       action: { label: '继续', onClick: () => void this.resumeRound() },
     });
@@ -1177,6 +1216,13 @@ export const reviewApp = {
         await this.applyReviewStyles(getApp(), undefined, items);
       }
       if ((getSettings() as any).enableAutoNotify === false) return; // 通知开关关 → 不弹通知
+      /* 面板正摆在眼前时不再挂常驻逾期通知：面板上就有逾期条数和「开始本轮」，
+         多一条常驻通知只会压住面板右上角那三颗按钮（通知 z 更高，点击落在通知上，
+         「设置」直接点不动——真机实测）。切回笔记后下一轮轮询会自然补上。 */
+      if (this.panelOnScreen()) {
+        this.hideOverdueNotice();
+        return;
+      }
       const overdueMap = new Map<string, ReviewItem>(
         items.filter((i) => i.isOverdue && !i.completed && !i.isMissing).map((i) => [i.filePath, i])
       );
@@ -1214,6 +1260,22 @@ export const reviewApp = {
       }
     } catch (e) {
       console.error('复习计划检查出错:', e);
+    }
+  },
+
+  /** 收起逾期常驻通知（面板打开时用；句柄已被点掉时幂等无害） */
+  hideOverdueNotice(): void {
+    if (this._overdueNotice?.el?.isConnected) this._overdueNotice.hide();
+    this._overdueNotice = null;
+  },
+
+  /** 复习面板是否正摆在眼前（原生页形态 = 当前标签页就是它） */
+  panelOnScreen(): boolean {
+    try {
+      const leaf = getApp()?.workspace?.activeLeaf;
+      return !!leaf && leaf.view?.getViewType?.() === REVIEW_VIEW_TYPE;
+    } catch {
+      return false;
     }
   },
 

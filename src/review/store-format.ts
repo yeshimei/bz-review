@@ -78,6 +78,19 @@ function updatedMs(item: any): number {
 }
 
 /**
+ * 条目键 → 内容指纹。合并的「基准」就是上一次读盘时算出的这张表：
+ * 有了它才知道「另一边到底动没动」，而不是只看「两边现在不一样」。
+ */
+export function fingerprintsOf(items: readonly any[]): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const it of items) {
+    const k = itemKey(it);
+    if (k && !m.has(k)) m.set(k, contentFingerprint(it));
+  }
+  return m;
+}
+
+/**
  * 解析磁盘原文（已 JSON.parse 的对象）：
  * - 裸数组 → 旧版，items 原样；
  * - `{items:[...]}` → 新版；
@@ -121,6 +134,15 @@ export interface MergeOptions {
   now: Date;
   /** 回收站墓碑：key → 删除时间（毫秒）。比条目时间新的墓碑算「真删了」 */
   tombstones?: Map<string, number>;
+  /**
+   * 上次读盘时的内容指纹（key → 指纹，见 `fingerprintsOf`）。
+   *
+   * 没有它就只能比「两边现在一不一样」——本机刚改的那条必然和盘上旧值不同，
+   * 于是每次评级都被判成「别的设备改过」，弹出警告并留一份 .bak（真机实测事故）。
+   * 给了基准才能分清：盘上还是老样子（只有本机动过，不算冲突）、盘上变了但本机没动
+   * （采用远端）、两边都变了（这才是冲突）。
+   */
+  base?: ReadonlyMap<string, string>;
 }
 
 export interface MergeResult {
@@ -194,9 +216,25 @@ export function mergeReviewItems(
       if (!buriedL) out.push(l);
       continue;
     }
-    if (contentFingerprint(l) === contentFingerprint(r)) {
+    const fpL = contentFingerprint(l);
+    const fpR = contentFingerprint(r);
+    if (fpL === fpR) {
       out.push(updatedMs(r) > updatedMs(l) ? r : l);
       continue;
+    }
+    /* 两边内容不同，未必是冲突：先问基准——盘上这一条还是上次读到的样子，
+       说明只有本机动过（最常见的路径：用户刚评完这条）；反过来本机没动、
+       盘上变了，说明是另一台设备的改动，直接采用远端。两条都不成立才是真冲突。 */
+    const baseFp = opts.base?.get(key);
+    if (baseFp !== undefined) {
+      if (fpR === baseFp) {
+        out.push(l);
+        continue;
+      }
+      if (fpL === baseFp) {
+        out.push(r);
+        continue;
+      }
     }
     conflicts.push(key);
     out.push(updatedMs(r) > updatedMs(l) ? r : l);

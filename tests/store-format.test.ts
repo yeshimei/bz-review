@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   REVIEW_SCHEMA_VERSION,
+  fingerprintsOf,
   mergeReviewItems,
   parseReviewFile,
   reviewMeta,
@@ -120,5 +121,57 @@ describe('两台设备合并', () => {
     const r = mergeReviewItems([], remote, opts(tombstones));
     expect(r.items).toHaveLength(1);
     expect(r.revived).toEqual([]);
+  });
+});
+
+/* 真机事故：单机复习 4 次，弹了 4 次「在别的设备上也被改过」并留了 4 份 .bak。
+   原因是合并只知道「两边内容不一样」，不知道「另一边到底动没动」——本机刚改的那条
+   必然和盘上旧值不同，于是每次写盘都判成冲突。给了基准（上次读到的内容）之后，
+   只有「远端也动过」才算冲突。 */
+describe('三路合并（带基准）', () => {
+  const opts = (base?: Map<string, string>) => ({
+    now: new Date('2026-11-15T10:00:00.000Z'),
+    base,
+  });
+
+  it('本机单独改过：不算冲突，本机的改动留着', () => {
+    const disk = [{ ...A, stage: 1 }];
+    const base = fingerprintsOf(disk);
+    const local = [{ ...A, updatedAt: '2026-11-15T09:00:00.000Z', stage: 5 }];
+    const r = mergeReviewItems(local, disk, opts(base));
+    expect(r.conflicts).toEqual([]);
+    expect(r.items[0].stage).toBe(5);
+  });
+
+  it('远端单独改过（本机没动）：不算冲突，采用远端', () => {
+    const base = fingerprintsOf([{ ...A, stage: 1 }]);
+    const disk = [{ ...A, updatedAt: '2026-11-15T09:00:00.000Z', stage: 6 }];
+    const local = [{ ...A, stage: 1 }];
+    const r = mergeReviewItems(local, disk, opts(base));
+    expect(r.conflicts).toEqual([]);
+    expect(r.items[0].stage).toBe(6);
+  });
+
+  it('两边都改过：才算冲突', () => {
+    const base = fingerprintsOf([{ ...A, stage: 1 }]);
+    const disk = [{ ...A, updatedAt: '2026-11-15T09:00:00.000Z', stage: 6 }];
+    const local = [{ ...A, updatedAt: '2026-11-15T09:30:00.000Z', stage: 5 }];
+    const r = mergeReviewItems(local, disk, opts(base));
+    expect(r.conflicts).toEqual(['a']);
+  });
+
+  it('没有基准时照旧保守处理（老调用点行为不变）', () => {
+    const local = [{ ...A, updatedAt: '2026-11-12T00:00:00.000Z', stage: 7 }];
+    const remote = [{ ...A, updatedAt: '2026-11-14T00:00:00.000Z', stage: 3 }];
+    const r = mergeReviewItems(local, remote, opts());
+    expect(r.conflicts).toHaveLength(1);
+  });
+
+  it('基准里没有的新条目（本机刚加的）不算冲突', () => {
+    const base = fingerprintsOf([A]);
+    const local = [A, { ...B, updatedAt: '2026-11-15T09:00:00.000Z' }];
+    const r = mergeReviewItems(local, [A], opts(base));
+    expect(r.conflicts).toEqual([]);
+    expect(r.items).toHaveLength(2);
   });
 });

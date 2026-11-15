@@ -7,6 +7,7 @@
  */
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { ensureReview, uiManager } from './index';
+import { reviewApp } from './app';
 import { t } from '../i18n';
 import { markOwned } from '../core/scope';
 import { REVIEW_VIEW_TYPE } from './panel-mode';
@@ -34,6 +35,9 @@ export class ReviewPanelView extends ItemView {
     markOwned(this.contentEl);
     this.contentEl.addClass('bzrv-panel-host');
     uiManager?.mountInto(this.contentEl);
+    /* 面板自己的右上角就有筛选/多选/设置三颗按钮，常驻逾期通知会正压在上面
+       （通知 z 更高，点击落在通知上）——进面板先把它收掉。 */
+    reviewApp.hideOverdueNotice();
     /* 原生页里的 ✕ 与 ESC 都走 hideMain → 这里：关掉标签页本身。
        样式撑满由 styles.css 的 .bzrv-panel-in-view 接管。 */
     if (uiManager) {

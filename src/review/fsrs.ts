@@ -78,6 +78,36 @@ export const FSRS_FIRST_TEXTS = ['1m', '30m', '6h', '1d', '3d', '7d', '15d', '30
 export const TOTAL_STAGES = 10;
 export const LADDER_MAX = 9; // stage≥9 进入 fsrs 阶段
 
+/**
+ * 最短间隔：1 分钟，与阶梯表第一档同值。
+ *
+ * 以前这里写的是 0.01 天（14.4 分钟），新卡评「忘了」明明提示「1m 后复习」，
+ * 实际却排到 14 分钟后——再学步被悄悄放大 14 倍。下限只能等于表里最小档，
+ * 想改就一起改表与文案，不再另造一个数。
+ */
+export const MIN_INTERVAL_DAYS = FSRS_FIRST_INTERVALS[0];
+
+/** 落盘前钳位：乘缩放系数（只对 FSRS 动态间隔生效，调用方决定传不传）→ 压到 [最短, 上限] */
+export function clampIntervalDays(days: number, scale = 1, capDays = 0): number {
+  const k = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  const cap = capDays > 0 ? capDays : Infinity;
+  return Math.min(Math.max(days * k, MIN_INTERVAL_DAYS), cap);
+}
+
+/**
+ * 间隔说人话（给评级后的提示条用）。
+ *
+ * FSRS 阶段的动态间隔会落在小时甚至分钟级（评「忘了」时 S 掉到 0.2 天很常见），
+ * 以前统一四舍五入成「1 天」，提示条说的和实际排的对不上。
+ */
+export function formatInterval(days: number): string {
+  const minutes = Math.round(days * 1440);
+  if (minutes < 60) return `${Math.max(1, minutes)}m`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.round(hours / 24)}d`;
+}
+
 // ==================== 调度纯函数（ladder→fsrs 两阶段；markReview 落盘依据） ====================
 
 /** 调度输入快照（条目排期相关字段子集；对齐 ReviewItem 持久化字段） */

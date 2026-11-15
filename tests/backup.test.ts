@@ -51,9 +51,18 @@ describe('备份文件', () => {
 describe('CSV 导出', () => {
   it('表头固定，一行一条', () => {
     const csv = toCsv([item('a'), item('b')] as any);
-    const lines = csv.trim().split('\n');
+    const lines = csv.replace(/^\uFEFF/, '').trim().split('\r\n');
     expect(lines).toHaveLength(3);
     expect(lines[0].startsWith('id,kind,filePath,name')).toBe(true);
+  });
+
+  /* Windows 版 Excel 按本地编码猜 CSV：不带 BOM 的 UTF-8 打开就是一串乱码，
+     行尾也认 CRLF（只给 LF 时整份挤成一行）。这两条是「给人看的」那份文件的全部意义。 */
+  it('带 UTF-8 BOM + CRLF，Windows Excel 打开不乱码', () => {
+    const csv = toCsv([item('a')] as any);
+    expect(csv.startsWith('\uFEFF')).toBe(true);
+    expect(csv).toContain('\r\n');
+    expect(csv.replace(/\r\n/g, '')).not.toContain('\n');
   });
 
   it('带逗号/引号的内容要转义，否则 Excel 一打开就串列', () => {
