@@ -716,3 +716,41 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* ===== 批 5：手机端与减动效 ===== */
+@media (max-width: 640px) {
+  /* 手机上一列到底：三列并排在 375px 宽里每列只剩一百来像素，标题全被截断 */
+  .bzrv-q-cols {
+    grid-template-columns: 1fr !important;
+  }
+  .bzrv-q-col {
+    max-height: none;
+  }
+  .bzrv-q-card {
+    padding: 12px 14px;
+    min-height: 52px;
+  }
+  .bzrv-q-footer .bzrv-q-fitem,
+  .bzrv-review-bar-btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .bzrv-panel-head-btns .bzrv-icon-btn {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .bzrv-q-strip {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 系统设了「减少动态效果」就别再播：动画对前庭敏感的人是真难受，不是审美问题 */
+  .bzrv-q-view *,
+  .bzrv-review-bar * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -185,6 +185,43 @@ export default class ReviewPlugin extends Plugin {
       }),
     });
     this.addCommand({
+      id: 'review-forecast',
+      name: t('未来复习负荷', 'Upcoming workload'),
+      callback: withReview(async (app) => {
+        const { reviewApp } = await import('./review/app');
+        const { forecastLoad } = await import('./review/queue');
+        const { openForecastDialog } = await import('./review/forecast-dialog');
+        reviewApp.ensure(app);
+        const items = await reviewApp.dataManager!.loadItems();
+        openForecastDialog(app, forecastLoad(items, 30));
+      }),
+    });
+    this.addCommand({
+      id: 'review-export-stats',
+      name: t('导出统计（CSV）', 'Export stats (CSV)'),
+      callback: withReview(async (app) => {
+        const { reviewApp } = await import('./review/app');
+        const { exportStatsCsv } = await import('./review/export-actions');
+        const { notice } = await import('./core/notice');
+        reviewApp.ensure(app);
+        const items = await reviewApp.dataManager!.loadItems();
+        notice(`统计已导出：${await exportStatsCsv(app, items)}`, 'success');
+      }),
+    });
+    this.addCommand({
+      id: 'review-export-cards',
+      name: t('划线卡导出为笔记', 'Export highlights to note'),
+      callback: withReview(async (app) => {
+        const { reviewApp } = await import('./review/app');
+        const { exportCardsMarkdown } = await import('./review/export-actions');
+        const { notice } = await import('./core/notice');
+        reviewApp.ensure(app);
+        const items = await reviewApp.dataManager!.loadItems();
+        const path = await exportCardsMarkdown(app, items);
+        notice(`已导出划线卡：${path}`, 'success');
+      }),
+    });
+    this.addCommand({
       id: 'review-report',
       name: t('复习分析报告', 'Review report'),
       callback: withReview((app) => openReviewReport(app)),

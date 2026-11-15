@@ -272,6 +272,13 @@ export async function openReviewReport(app: App): Promise<void> {
  *  空库/无动画宿主/装配失败在层内回落经典统计弹层（press 降级口径） */
 export async function openReviewAnalysis(app: App): Promise<void> {
   ensureReview(app);
+  /* 简化分析（批 5）：低配手机 / 远程桌面直接给文字报告，不跑 16 幕动效。
+     走同一条命令、同一个入口，用户不用记两个功能名。 */
+  const { getSettings } = await import('../core/settings-provider');
+  if ((getSettings() as any).reviewAnalysisPlain) {
+    await openReviewReport(app);
+    return;
+  }
   const mod = await import('./analysis/index');
   await mod.openReviewAnalysis(app);
 }

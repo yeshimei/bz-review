@@ -345,6 +345,21 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             binding: { key: 'reviewRatingKeys' },
             placeholder: '1234',
           },
+          {
+            /* 过了点才提醒、同一天只提醒一次；留空等于关掉，仍保留「有逾期就提示」。 */
+            type: 'text',
+            name: '每日提醒',
+            desc: '填 09:00 这样的时间；留空 = 不提醒',
+            binding: { key: 'reviewRemindAt' },
+            placeholder: '例如 20:00',
+          },
+          {
+            /* 低配机 / 远程桌面：16 幕动效是负担，直接给文字报告。 */
+            type: 'toggle',
+            name: '简化分析',
+            desc: '记忆分析改成纯文字报告，不跑动画（低配手机 / 远程桌面用）',
+            binding: { key: 'reviewAnalysisPlain' },
+          },
           // 深审新-14②/A14：超界改渲染器声明钳制（min/max 进界并回写输入框，R9 通路显示值=落盘值），
           // 原.onChange「超上界回 1」复刻删除——输入 8 落 5 且回显 5，不再出现显示 8 落 1 的缝
           {

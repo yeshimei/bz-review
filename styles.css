@@ -6173,6 +6173,44 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* ===== 批 5：手机端与减动效 ===== */
+@media (max-width: 640px) {
+  /* 手机上一列到底：三列并排在 375px 宽里每列只剩一百来像素，标题全被截断 */
+  .bzrv-q-cols:is([data-bzrv], [data-bzrv] *) {
+    grid-template-columns: 1fr !important;
+  }
+  .bzrv-q-col:is([data-bzrv], [data-bzrv] *) {
+    max-height: none;
+  }
+  .bzrv-q-card:is([data-bzrv], [data-bzrv] *) {
+    padding: 12px 14px;
+    min-height: 52px;
+  }
+  .bzrv-q-footer .bzrv-q-fitem:is([data-bzrv], [data-bzrv] *),
+  .bzrv-review-bar-btn:is([data-bzrv], [data-bzrv] *) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .bzrv-panel-head-btns .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *) {
+    min-width: 40px;
+    min-height: 40px;
+  }
+  .bzrv-q-strip:is([data-bzrv], [data-bzrv] *) {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 系统设了「减少动态效果」就别再播：动画对前庭敏感的人是真难受，不是审美问题 */
+  .bzrv-q-view *:is([data-bzrv], [data-bzrv] *),
+  .bzrv-review-bar *:is([data-bzrv], [data-bzrv] *) {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
 /* ==================== 记忆分析特刊（analysis/ 全屏逐幕层） ====================
    视觉语言：夜账守火——深青底、细线、磷光青强调；数字 tabular-nums，无衬线。
    颜色只走 --ra-* 变量层（明暗两套），幕内不写死颜色；滚动条不自造（ADR-0122，

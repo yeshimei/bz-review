@@ -13,9 +13,17 @@ import { ReviewDataManager, isCardItem } from './data';
 import { loadFittedParams, saveFittedParams, FIT_PARAMS_VERSION, getReviewFilePath, type FittedParams } from './data';
 import { fitFromItems, mergeFittedW } from './fit';
 import { DEFAULT_W } from './fsrs';
-import { DEFAULT_R_THRESHOLD, applyRoundLimits, isDueToday, isEarlyDue, isOnVacation, roundQueue } from './queue';
+import {
+  DEFAULT_R_THRESHOLD,
+  applyRoundLimits,
+  isDueToday,
+  isEarlyDue,
+  isOnVacation,
+  roundQueue,
+  shouldRemindNow,
+} from './queue';
 import { resolveWeights } from './weights';
-import { computeStats } from './stats';
+import { computeStats, dateKey } from './stats';
 import { emitDomainEvent } from '../core/domain-bus';
 import { markOwned } from '../core/scope';
 import { diskPathStat } from '../core/storage';
@@ -903,6 +911,29 @@ export const reviewApp = {
   },
 
   /**
+   * 每日定时提醒（批 5）。
+   *
+   * 以前的提醒只有「有逾期就弹」，一天里可能弹好几次、也可能用户正好没开库。
+   * 现在按设置的时间点每天提醒一次：过了点才提醒，同一天只提醒一次；
+   * 没有到期条目就不打扰。
+   */
+  syncDailyReminder(items: ReviewItem[]): void {
+    const s = getSettings() as any;
+    const now = new Date();
+    if (!shouldRemindNow(now, s.reviewRemindAt, s.reviewRemindLast)) return;
+    const round = roundQueue(items, Number(s.reviewRThreshold) || DEFAULT_R_THRESHOLD, this.currentW());
+    if (!round.length) return;
+    s.reviewRemindLast = dateKey(now);
+    void saveSettings();
+    notify(`今天有 ${round.length} 条要复习`, {
+      type: 'info',
+      duration: 0,
+      dedupeKey: 'review-daily-remind',
+      action: { label: '去复习', onClick: () => void this.startRoundSprint() },
+    });
+  },
+
+  /**
    * 休假收尾（批 3）：结束那天把整份计划的「下次复习日期」整体顺延。
    *
    * 为什么要顺延：不休假期间条目照样走到期，回来就是一屏逾期几百条，很多人
@@ -1138,8 +1169,13 @@ export const reviewApp = {
       const dm = this.dataManager!;
       const items = await dm.loadItems();
       this._lastItems = items; // F9：轮询结果入快照（染色关闭时 applyReviewStyles 不读盘，快照在此保活）
-      // 染色刷新保留（原 60s 轮询职责：逾期文件实时变红；是否染色由 reviewTreeBadge 决定）
-      await this.applyReviewStyles(getApp(), undefined, items);
+      this.syncDailyReminder(items);
+      /* 染色刷新保留（原 60s 轮询职责：逾期文件实时变红；是否染色由 reviewTreeBadge 决定）。
+         窗口在后台时不刷：文件树根本看不见，刷一遍等于白跑一次 DOM 改写（批 7 性能）。
+         通知照常，回来第一轮会把颜色补齐。 */
+      if (typeof document === 'undefined' || !document.hidden) {
+        await this.applyReviewStyles(getApp(), undefined, items);
+      }
       if ((getSettings() as any).enableAutoNotify === false) return; // 通知开关关 → 不弹通知
       const overdueMap = new Map<string, ReviewItem>(
         items.filter((i) => i.isOverdue && !i.completed && !i.isMissing).map((i) => [i.filePath, i])

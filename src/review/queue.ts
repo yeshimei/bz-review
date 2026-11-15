@@ -167,3 +167,70 @@ export function dueTimeLabel(item: ReviewItem, now: Date = new Date()): string |
 export function dueLaterTodayCount(items: ReviewItem[], now: Date = new Date()): number {
   return items.filter((i) => active(i) && dueTimeLabel(i, now) !== null).length;
 }
+
+// ==================== 批 5：定时提醒 / 负荷预测 ====================
+
+/**
+ * 现在该不该弹每日提醒（批 5）。
+ *
+ * 以前只有「有逾期就弹」，开着库就可能在上午九点弹一次、下午三点再弹一次。
+ * 定时提醒的语义是「每天一次，到点提醒」：过了点才提醒（晚一点开着也无所谓），
+ * 同一天只提醒一次（靠调用方记日期，这里只判时间）。
+ */
+export function shouldRemindNow(now: Date, at: string | undefined | null, lastRemindedDate?: string | null): boolean {
+  const text = String(at ?? '').trim();
+  const m = /^(\d{1,2}):(\d{2})$/.exec(text);
+  if (!m) return false;
+  const hh = Number(m[1]);
+  const mm = Number(m[2]);
+  if (hh > 23 || mm > 59) return false;
+  const due = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm, 0, 0);
+  if (now.getTime() < due.getTime()) return false;
+  return String(lastRemindedDate ?? '') !== dateKey(now);
+}
+
+export interface LoadPoint {
+  /** YYYY-MM-DD（本地日） */
+  day: string;
+  count: number;
+}
+
+/**
+ * 未来 N 天的复习负荷（批 5）。
+ *
+ * 用途是「别把假期排满」：用户看到一个尖峰就知道那天要复习 120 条，
+ * 与其到那天再崩，不如现在把间隔拉开。
+ */
+export function forecastLoad(items: readonly ReviewItem[], days: number = 30, now: Date = new Date()): LoadPoint[] {
+  const span = Math.max(1, Math.min(365, Math.round(days)));
+  const buckets = new Map<string, number>();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (let i = 0; i < span; i++) {
+    const d = new Date(start.getTime() + i * 86400000);
+    buckets.set(dateKey(d), 0);
+  }
+  for (const it of items) {
+    if (!active(it) || !it.nextReviewDate) continue;
+    const d = new Date(it.nextReviewDate);
+    if (!Number.isFinite(d.getTime())) continue;
+    const key = dateKey(d);
+    if (!buckets.has(key)) continue;
+    buckets.set(key, (buckets.get(key) ?? 0) + 1);
+  }
+  return [...buckets.entries()].map(([day, count]) => ({ day, count }));
+}
+
+/** 未来 N 天的总量与峰值（弹窗里一句话说清） */
+export function forecastSummary(points: readonly LoadPoint[]): { total: number; peak: number; peakDay: string } {
+  let total = 0;
+  let peak = 0;
+  let peakDay = '';
+  for (const p of points) {
+    total += p.count;
+    if (p.count > peak) {
+      peak = p.count;
+      peakDay = p.day;
+    }
+  }
+  return { total, peak, peakDay };
+}

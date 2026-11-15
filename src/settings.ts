@@ -52,6 +52,12 @@ export default interface BzSettings {
   reviewReviewLimit: number;
   /** 本轮顺序：先清到期（due-first）/ 先上新卡（new-first）；用字符串是为了走通用文本绑定 */
   reviewOrder: string;
+  /** 每日提醒时间 HH:MM（空 = 不提醒） */
+  reviewRemindAt: string;
+  /** 上次提醒的日期（YYYY-MM-DD，防一天弹多次；用户看不到） */
+  reviewRemindLast: string;
+  /** 低配/纯文字：分析改走文字报告，不跑动效 */
+  reviewAnalysisPlain: boolean;
   /** 做题时每轮抽题比例（1/3、1/2…） */
   reviewCardQuizRatio: number;
   /** 被监控并自动加入复习的文件夹 */
@@ -113,6 +119,9 @@ export const DEFAULT_SETTINGS: BzSettings = {
   reviewNewLimit: 0,
   reviewReviewLimit: 0,
   reviewOrder: 'due-first',
+  reviewRemindAt: '',
+  reviewRemindLast: '',
+  reviewAnalysisPlain: false,
   reviewCardQuizRatio: 3,
   reviewWatchedFolders: [],
   reviewExcludedNotes: [],
