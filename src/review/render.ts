@@ -12,7 +12,7 @@ import { emptyHtmlStr, esc, iconSpan, stripTitleMarks } from '../core/ui/str';
 import type { ReviewItem } from './data';
 import type { ItemFilter } from './deck';
 import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
-import { partitionQueue, dueLaterTodayCount, etaTextOf, isEarlyDue, isDueToday } from './queue';
+import { partitionQueue, etaTextOf, isEarlyDue, isDueToday } from './queue';
 import { compareReviewLoad, computeStats, RATING_NAMES } from './stats';
 import { ratingKeys } from './keys';
 
@@ -287,10 +287,6 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   // （partitionQueue 的 today 列已含提前卡 → overdue+today 与 roundQueue 同集合，item 6 同口径）
   const clearToday = col.overdue.length + col.today.length === 0;
   const futureCount = col.future.length;
-  /* 文件不在了的条目只躺在归档列表里，待复习这边一条都看不见——用户根本不知道
-     自己有卡挂着。状态条上带一句，至少有个线索可循。 */
-  const missingCount = items.filter((i) => i.isMissing).length;
-
   // V1 原型拍板（issue 253）：归档视图状态条 = 绿点 +「已完成复习」+ 回队列指引（旧态误用红点「开始本轮」）
   const strip = ctx.showArchived
     ? `<div class="bzrv-q-strip">
@@ -306,7 +302,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
         <strong>开始本轮</strong>
-        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延${dueLaterTodayCount(items, new Date(now)) ? ` · 今天稍后还有 ${dueLaterTodayCount(items, new Date(now))} 条` : ''}${missingCount ? ` · ${missingCount} 条文件缺失` : ''}</span>
+        <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延</span>
         <button class="bzrv-btn bzrv-btn--primary" data-act="begin">开始本轮</button>
       </div>`;
 

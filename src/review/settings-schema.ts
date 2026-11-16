@@ -10,7 +10,10 @@
  * settings-panel 桌面侧栏经 reviewSettingsSchema 消费（入口契约保持自 review/ui re-export）。
  */
 import type { App } from 'obsidian';
+import { Setting } from 'obsidian';
 import { notice } from '../core/notice';
+import { attachHelpTip } from '../core/ui/help-tip';
+import { applyAccent } from '../settings';
 import { diskReadText, jsonFileStore } from '../core/storage';
 import { openFlowDialog } from '../core/flow-dialog';
 import { getSettings, saveSettings } from '../core/settings-provider';
@@ -31,6 +34,11 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
   /** 数据目录迁移：上一次已生效的目录（防抖窗口里连续输入只搬一次） */
   let dirTimer: ReturnType<typeof setTimeout> | null = null;
   let lastDir = String((getSettings() as any).storagePath || 'CONFIG/REVIEW');
+  const ACCENT_NAME = '强调色';
+  const ACCENT_DESC = '跟随 Obsidian / 铜金 / 黛蓝 / 苔青；换色后全插件交互色一起变';
+  const ACCENT_HELP =
+    '「跟随 Obsidian」跟着宿主的强调色走，读不到时回退铜金；其余三档是固定色板。\n' +
+    '选中态、主按钮、链接、进度条、状态点、焦点环都会跟着变，明暗色各自适配。';
   return {
     groups: [
       /* 授权 / 数据 / AI 三组原先只在原生设置页（settings-tab.ts）里。2026-11-13 用户拍板：
@@ -186,6 +194,66 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         icon: 'layout-panel-left',
         name: '界面',
         rows: [
+          {
+            /* 强调色：4 档分段 + 彩色圆点，自绘插槽（core 渲染器对 custom 行只建包装容器，
+               名称/说明需自己用 Setting 渲出来）。切换即写内存 + 落盘 + 改 body 属性实时生效。 */
+            type: 'custom',
+            name: ACCENT_NAME,
+            desc: ACCENT_DESC,
+            help: ACCENT_HELP,
+            render: (body: HTMLElement) => {
+              const setting = new Setting(body).setName(ACCENT_NAME).setDesc(ACCENT_DESC);
+              const nameEl = (setting as unknown as { nameEl?: HTMLElement }).nameEl;
+              if (nameEl) attachHelpTip(nameEl, { text: ACCENT_HELP });
+              const modes = [
+                { value: 'auto', label: '跟随 Obsidian' },
+                { value: 'copper', label: '铜金' },
+                { value: 'indigo', label: '黛蓝' },
+                { value: 'moss', label: '苔青' },
+              ] as const;
+              const seg = document.createElement('div');
+              seg.className = 'bzrv-segmented bzrv-accent-seg';
+              seg.setAttribute('role', 'radiogroup');
+              seg.setAttribute('aria-label', ACCENT_NAME);
+              const btns: HTMLButtonElement[] = [];
+              const current = (): string => {
+                const v = String((getSettings() as any).accent || 'auto');
+                return modes.some((m) => m.value === v) ? v : 'auto';
+              };
+              const paint = (): void => {
+                const cur = current();
+                for (const b of btns) {
+                  const on = b.dataset.value === cur;
+                  b.classList.toggle('is-on', on);
+                  b.setAttribute('aria-checked', String(on));
+                }
+              };
+              for (const m of modes) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'bzrv-segmented-btn';
+                btn.dataset.value = m.value;
+                btn.setAttribute('role', 'radio');
+                btn.setAttribute('aria-checked', 'false');
+                const dot = document.createElement('span');
+                dot.className = 'bzrv-choice-dot bzrv-accent-dot';
+                dot.dataset.acc = m.value;
+                btn.appendChild(dot);
+                btn.appendChild(document.createTextNode(m.label));
+                btn.addEventListener('click', () => {
+                  (getSettings() as any).accent = m.value;
+                  applyAccent(m.value);
+                  void saveSettings();
+                  paint();
+                  notice(`强调色：${m.label}`);
+                });
+                btns.push(btn);
+                seg.appendChild(btn);
+              }
+              setting.controlEl.appendChild(seg);
+              paint();
+            },
+          },
           {
             type: 'select',
             name: '打开方式',

@@ -113,6 +113,21 @@
   --bzrv-ratio-square: 1 / 1;
   --bzrv-ratio-4-3: 4 / 3;
   --bzrv-ratio-16-9: 16 / 9;
+
+  /* ── 强调色（accent）—— 交互色单一来源 ──
+     派生色用 color-mix 跟随主色；档位由 body[data-bzaccent] 在文件末尾覆盖，
+     明暗两套实际值在 .theme-dark / .theme-light 里给。这里给无主题类的末级兜底。 */
+  --bzrv-accent: #9a7434;
+  --bzrv-accent-soft: color-mix(in srgb, var(--bzrv-accent) 12%, transparent);
+  --bzrv-accent-line: color-mix(in srgb, var(--bzrv-accent) 40%, transparent);
+  --bzrv-on-accent: #ffffff;
+
+  /* 设置页 4 档圆点 swatch 的色值（亮色；暗色在 .theme-dark 覆盖）。
+     auto 跟随 Obsidian 主色，读不到回退铜金亮色。 */
+  --bzrv-accent-dot-auto: var(--interactive-accent, #9a7434);
+  --bzrv-accent-dot-copper: #9a7434;
+  --bzrv-accent-dot-indigo: #3f5b8f;
+  --bzrv-accent-dot-moss: #4c6b52;
 }
 
 /* ── 暗色（默认）── */
@@ -144,11 +159,24 @@ body.theme-light [data-bzrv] {
   --bzrv-text-3: #5f5f6b;
   --bzrv-text-invert: #141418;
 
-  /* 品牌（默认中性暖橙） */
-  --bzrv-brand: #e67341;
-  --bzrv-brand-hover: #ef8352;
-  --bzrv-brand-soft: rgba(230, 115, 65, 0.16);
-  --bzrv-on-brand: #ffffff;
+  /* 强调色（默认 auto：跟随 Obsidian，读不到回退铜金暗色） */
+  --bzrv-accent: var(--interactive-accent, #c8a464);
+  --bzrv-accent-soft: color-mix(in srgb, var(--bzrv-accent) 12%, transparent);
+  --bzrv-accent-line: color-mix(in srgb, var(--bzrv-accent) 40%, transparent);
+  /* 暗档主色是浅色（铜金/黛蓝/苔青），白字压上去对比度不够；照原型用深墨字 */
+  --bzrv-on-accent: #1a1408;
+
+  /* 品牌别名：老消费方 --bzrv-brand* 自动跟随强调色，无需逐个改 */
+  --bzrv-brand: var(--bzrv-accent);
+  --bzrv-brand-hover: color-mix(in srgb, var(--bzrv-accent) 82%, white);
+  --bzrv-brand-soft: var(--bzrv-accent-soft);
+  --bzrv-on-brand: var(--bzrv-on-accent);
+
+  /* 设置页圆点暗色档 */
+  --bzrv-accent-dot-auto: var(--interactive-accent, #c8a464);
+  --bzrv-accent-dot-copper: #c8a464;
+  --bzrv-accent-dot-indigo: #8aa7d6;
+  --bzrv-accent-dot-moss: #93b79a;
 
   /* 语义 */
   --bzrv-success: #3fb96a;
@@ -167,7 +195,7 @@ body.theme-light [data-bzrv] {
   --bzrv-thumb: #ffffff;
   --bzrv-thumb-soft: #b9b9c4;
   --bzrv-code-bg: rgba(255, 255, 255, 0.07);
-  --bzrv-mark-bg: rgba(230, 115, 65, 0.28);
+  --bzrv-mark-bg: color-mix(in srgb, var(--bzrv-accent) 28%, transparent);
 }
 
 /* ── 亮色 ── */
@@ -187,10 +215,17 @@ body.theme-light [data-bzrv] {
   --bzrv-text-3: #9a9aa5;
   --bzrv-text-invert: #ffffff;
 
-  --bzrv-brand: #e2571c;
-  --bzrv-brand-hover: #cc4a12;
-  --bzrv-brand-soft: rgba(226, 87, 28, 0.12);
-  --bzrv-on-brand: #ffffff;
+  /* 强调色（默认 auto：跟随 Obsidian，读不到回退铜金亮色） */
+  --bzrv-accent: var(--interactive-accent, #9a7434);
+  --bzrv-accent-soft: color-mix(in srgb, var(--bzrv-accent) 12%, transparent);
+  --bzrv-accent-line: color-mix(in srgb, var(--bzrv-accent) 40%, transparent);
+  --bzrv-on-accent: #ffffff;
+
+  /* 品牌别名：老消费方 --bzrv-brand* 自动跟随强调色，无需逐个改 */
+  --bzrv-brand: var(--bzrv-accent);
+  --bzrv-brand-hover: color-mix(in srgb, var(--bzrv-accent) 85%, black);
+  --bzrv-brand-soft: var(--bzrv-accent-soft);
+  --bzrv-on-brand: var(--bzrv-on-accent);
 
   --bzrv-success: #1f9d4d;
   --bzrv-warning: #b57c13;
@@ -206,5 +241,37 @@ body.theme-light [data-bzrv] {
   --bzrv-thumb: #ffffff;
   --bzrv-thumb-soft: #9a9aa5;
   --bzrv-code-bg: rgba(20, 20, 24, 0.06);
-  --bzrv-mark-bg: rgba(226, 87, 28, 0.22);
+  --bzrv-mark-bg: color-mix(in srgb, var(--bzrv-accent) 22%, transparent);
+}
+
+/* ═══════════ 强调色档位覆盖（body[data-bzaccent]） ═══════════
+   纯变量块：只改 --bzrv-accent 主色（auto 档另改 --bzrv-on-accent）；
+   --bzrv-accent-soft/line、--bzrv-brand* 与 --bzrv-mark-bg 在同一元素上
+   按 color-mix 自动跟随，无需逐档重写。通用块给亮色，.theme-dark 块
+   （特异性更高）给暗色；auto 两档均读 Obsidian 的 --interactive-accent，
+   读不到才回退对应亮度的铜金，前景优先读宿主的 --text-on-accent。 */
+[data-bzaccent="auto"] {
+  --bzrv-accent: var(--interactive-accent, #9a7434);
+  --bzrv-on-accent: var(--text-on-accent, #ffffff);
+}
+[data-bzaccent="copper"] { --bzrv-accent: #9a7434; }
+[data-bzaccent="indigo"] { --bzrv-accent: #3f5b8f; }
+[data-bzaccent="moss"]   { --bzrv-accent: #4c6b52; }
+.theme-dark[data-bzaccent="auto"] {
+  --bzrv-accent: var(--interactive-accent, #c8a464);
+  --bzrv-on-accent: var(--text-on-accent, #1a1408);
+}
+.theme-dark[data-bzaccent="copper"] { --bzrv-accent: #c8a464; }
+.theme-dark[data-bzaccent="indigo"] { --bzrv-accent: #8aa7d6; }
+.theme-dark[data-bzaccent="moss"]   { --bzrv-accent: #93b79a; }
+
+/* 设置页强调色控件：4 档彩色圆点 + 选中分段吃强调色（.ui 组件之上加修饰，不裸奔颜色） */
+.bzrv-accent-dot[data-acc="auto"]   { background: var(--bzrv-accent-dot-auto); }
+.bzrv-accent-dot[data-acc="copper"] { background: var(--bzrv-accent-dot-copper); }
+.bzrv-accent-dot[data-acc="indigo"] { background: var(--bzrv-accent-dot-indigo); }
+.bzrv-accent-dot[data-acc="moss"]   { background: var(--bzrv-accent-dot-moss); }
+.bzrv-accent-seg .bzrv-segmented-btn.is-on {
+  background: var(--bzrv-accent-soft) !important;
+  color: var(--bzrv-accent) !important;
+  box-shadow: inset 0 0 0 1px var(--bzrv-accent-line) !important;
 }

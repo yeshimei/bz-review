@@ -9,7 +9,7 @@
  * 分开存，两个插件同时装也不会互相覆盖。
  */
 import { Plugin } from 'obsidian';
-import { DEFAULT_SETTINGS } from './settings';
+import { DEFAULT_SETTINGS, applyAccent } from './settings';
 import type BzSettings from './settings';
 import { setApp } from './core/app';
 import { setSettingsProvider, setSettingsSaver, setSettingsPanelOpener } from './core/settings-provider';
@@ -82,6 +82,8 @@ export default class ReviewPlugin extends Plugin {
 
   async onload(): Promise<void> {
     await this.loadSettings();
+    // 强调色：把落盘档位挂到 body，CSS 按 body[data-bzaccent] 选色；之后设置页切换会就地同步。
+    applyAccent(this.settings.accent);
 
     // 样式作用域兜底：捕捉没走 markOwned 的自有节点（内联 HTML、第三方插入），
     // 给它们补上 data-bzrv，否则这些节点拿不到本插件的样式。

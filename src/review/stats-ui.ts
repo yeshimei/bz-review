@@ -47,17 +47,17 @@ function sectionHTML(title: string, icon: string, body: string): string {
 }
 
 function emptyHTML(): string {
-  return '<p class="bzrv-stats-empty">暂无数据</p>';
+  return '<div class="bzrv-stats-empty"><i data-lucide="inbox" class="bzrv-ic bzrv-stats-empty-ic"></i><span>暂无数据</span></div>';
 }
 
-/** 水平条形行（cinema bar-row 形制；color 数据驱动内联——评级色/板块主题色） */
-function barRowHTML(entries: Array<{ label: string; value: number }>, color: string): string {
+/** 水平条形行（cinema bar-row 形制；默认走强调色 token，color 仅在数据驱动的评级色时内联） */
+function barRowHTML(entries: Array<{ label: string; value: number }>, color?: string): string {
   if (!entries.length) return emptyHTML();
   const max = Math.max(...entries.map((e) => e.value), 1);
   return entries.map((e) => `
     <div class="bar-row">
       <span class="bar-label">${esc(e.label)}</span>
-      <span class="bar-track"><span class="bar-fill" style="width:${Math.round((e.value / max) * 100)}%;background:${color};"></span></span>
+      <span class="bar-track"><span class="bar-fill" style="width:${Math.round((e.value / max) * 100)}%;${color ? `background:${color};` : ''}"></span></span>
       <span class="bar-num">${e.value}</span>
     </div>`).join('');
 }
@@ -231,7 +231,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   }));
   const loadHTML = sectionHTML('复习负载', 'calendar-days',
     statInlineHTML([`今日 ${todayCnt} 篇`, `明日 ${tmrCnt} 篇`, `峰值 ${maxDist} 篇/天`]) +
-    barRowHTML(distBars, '#D6E4FF'));
+    barRowHTML(distBars));
 
   // 复习时间线（top-row 排名行，点行/Enter → 独立复习历史弹窗）
   const withHistory = items
@@ -256,7 +256,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
 
   // 最近 7 天（bar-row 水平条）
   const daily7 = stats.daily7.map((d) => ({ label: d.date.slice(5).replace('-', '/'), value: d.count }));
-  const weekHTML = sectionHTML('最近 7 天复习量', 'bar-chart-3', barRowHTML(daily7, '#E6DFF5'));
+  const weekHTML = sectionHTML('最近 7 天复习量', 'bar-chart-3', barRowHTML(daily7));
 
   return cards + fitChips + compareHTML + ratingHTML + loadHTML + timelineHTML + weekHTML;
 }

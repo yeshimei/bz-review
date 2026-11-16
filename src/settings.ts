@@ -7,11 +7,29 @@
  * `core/settings-provider.ts` 的 `panelSizePersist` 会拿 `keyof BzSettings` 做
  * 编译期约束，所以字段名必须与 bz 那份逐字一致——改了会让面板尺寸记忆静默失效。
  */
+
+/** 强调色档位：auto 跟随 Obsidian，其余为固定色板。落盘值，body 挂 data-bzaccent 供 CSS 选档。 */
+export type AccentMode = 'auto' | 'copper' | 'indigo' | 'moss';
+
+const ACCENT_MODES: AccentMode[] = ['auto', 'copper', 'indigo', 'moss'];
+
+/** 非法/历史遗留值一律回落 auto，别把脏档位写到 body 上 */
+export function normalizeAccent(v: unknown): AccentMode {
+  return ACCENT_MODES.includes(v as AccentMode) ? (v as AccentMode) : 'auto';
+}
+
+/** 把强调色档位挂到 body，CSS 按 body[data-bzaccent] + .theme-light/.theme-dark 选色。 */
+export function applyAccent(v: unknown): void {
+  document.body.dataset.bzaccent = normalizeAccent(v);
+}
+
 export default interface BzSettings {
   /** 共享 JSON 数据目录（复习的 review.json 住这里） */
   storagePath: string;
   /** 界面语言：auto / zh / en */
   language: string;
+  /** 强调色档位（界面交互色单一来源）：auto 跟随 Obsidian，读不到回退铜金 */
+  accent: AccentMode;
   /** 高级版激活码（离线验签） */
   licenseKey: string;
 
@@ -113,6 +131,7 @@ export const DEFAULT_SETTINGS: BzSettings = {
      两个插件同时装也不会抢同一个 review.json。 */
   storagePath: 'CONFIG/REVIEW',
   language: 'auto',
+  accent: 'auto',
   licenseKey: '',
 
   enableAutoNotify: true,

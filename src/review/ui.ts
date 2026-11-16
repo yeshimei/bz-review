@@ -584,7 +584,7 @@ export class UIManager {
 
       if (it.card) {
         const tag = document.createElement('span');
-        tag.className = 'bzrv-arch-tag';
+        tag.className = 'bzrv-q-tag is-kind-card';
         tag.textContent = '划线卡';
         row.appendChild(tag);
       }
