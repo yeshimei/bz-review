@@ -11,7 +11,7 @@ export function uiCardChoice<T extends string>(opts: BzCardPickOpts<T>): { el: H
   const el = document.createElement('div');
   el.className = 'bzrv-cardpick' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
-  if (opts.label) el.setAttribute('aria-label', opts.label);
+  if (opts.label) el.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: opts.label }));
   const btns = new Map<T, HTMLButtonElement>();
   let cur = opts.value;
 

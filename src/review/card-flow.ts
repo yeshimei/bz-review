@@ -234,8 +234,8 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
         const del = document.createElement('button');
         del.type = 'button';
         del.className = 'bzrv-icon-btn';
-        del.title = '删掉这道题';
         del.textContent = '✕';
+        del.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '删掉这道题' }));
         del.addEventListener('click', () => {
           removed.push({ q, at: Date.now() });
           list = list.filter((x) => x !== q);
@@ -262,7 +262,7 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
         chip.type = 'button';
         chip.className = 'bzrv-btn bzrv-btn--ghost bzrv-card-confirm-chip';
         chip.textContent = '补回这题';
-        chip.title = r.q.question;
+        chip.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: r.q.question }));
         chip.addEventListener('click', () => {
           list.splice(Math.min(i, list.length), 0, r.q);
           removed.splice(i, 1);

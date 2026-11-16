@@ -33,7 +33,7 @@ function buildRow(item: BzRailItem): HTMLButtonElement {
     const badge = document.createElement('span');
     badge.className = 'bzrv-rail-badge';
     badge.textContent = item.badge.t;
-    badge.setAttribute('aria-label', item.badge.label);
+    badge.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: item.badge.label }));
     if (item.badge.tint) badge.style.setProperty('--bzrv-rail-tint', item.badge.tint);
     b.appendChild(badge);
   } else if (item.dot) {

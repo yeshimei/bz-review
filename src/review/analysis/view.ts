@@ -326,6 +326,6 @@ export function analysisHtml(data: RaData): string {
 export function analysisFixedHtml(): string {
   return `<div class="ra-fixed">
     <div class="ra-shutter" data-r="shutter" aria-hidden="true"><i class="t"></i><i class="b"></i></div>
-    <div class="ra-lampcol" data-r="rail">${RA_SCENES.map((s, i) => `<i class="ra-lamp" data-r="lamp" data-i="${i}" title="${esc(s.name)}"></i>`).join('')}</div>
+    <div class="ra-lampcol" data-r="rail">${RA_SCENES.map((s, i) => `<i class="ra-lamp" data-r="lamp" data-i="${i}"><span class="bzrv-sr-only">${esc(s.name)}</span></i>`).join('')}</div>
   </div>`;
 }

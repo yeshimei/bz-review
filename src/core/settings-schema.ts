@@ -499,15 +499,15 @@ interface MaskableEl {
 function wireSecretEye(setting: Setting, el: MaskableEl): void {
   let revealed = false;
   setting.addExtraButton((b) => {
-    b.setIcon('eye').setTooltip('显示 / 隐藏');
-    b.extraSettingsEl.setAttribute('aria-label', '显示密钥');
+    b.setIcon('eye');
+    b.extraSettingsEl.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '显示密钥' }));
     b.extraSettingsEl.setAttribute('aria-pressed', 'false');
     b.onClick(() => {
       revealed = !revealed;
       el.type = revealed ? 'text' : 'password';
       b.setIcon(revealed ? 'eye-off' : 'eye');
       b.extraSettingsEl.setAttribute('aria-pressed', String(revealed));
-      b.extraSettingsEl.setAttribute('aria-label', revealed ? '隐藏密钥' : '显示密钥');
+      b.extraSettingsEl.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: revealed ? '隐藏密钥' : '显示密钥' }));
     });
   });
 }
@@ -574,7 +574,6 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
         btn.type = 'button';
         btn.className = 'bz-row-addon';
         btn.textContent = addon.text;
-        btn.title = addon.title || '点击复制';
         btn.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();

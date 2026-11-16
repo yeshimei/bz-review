@@ -59,7 +59,6 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
   el.className = 'bzrv-vsplit';
   el.setAttribute('role', 'separator');
   el.setAttribute('aria-orientation', 'vertical');
-  el.title = '拖动调整两侧宽度';
 
   const isCoarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
   if (isCoarse) {

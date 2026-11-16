@@ -178,7 +178,14 @@ export function createIconBtn(
 ): HTMLButtonElement {
   const b = document.createElement('button');
   b.textContent = text;
-  b.title = title;
+  /* Obsidian 会把 title / aria-label 变成悬停气泡；这里改用视觉隐藏文本，
+     读屏仍读到名字，指针移上不再冒莫名其妙的小黑框。 */
+  if (title) {
+    const sr = document.createElement('span');
+    sr.className = 'bzrv-sr-only';
+    sr.textContent = title;
+    b.appendChild(sr);
+  }
   // 规格：普通按钮 14px/22×26；关闭按钮 13px/21×25（--close 类，styles.css）
   b.className = text === '❌' ? 'bzrv-icon-btn bzrv-icon-btn--close' : 'bzrv-icon-btn';
   if (extra) b.style.cssText = extra;

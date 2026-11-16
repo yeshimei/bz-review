@@ -21,6 +21,7 @@ export type {
 } from './types';
 
 // 组件工厂（每组件一文件）
+export { srText, withSrText } from './sr-text';
 export { uiIcon } from './icon';
 export { uiIconSpan, mountIcons } from './icons';
 export { uiBtn, uiIconBtn, uiBtnRow, uiDialogActions } from './button';
