@@ -93,9 +93,8 @@ export async function openReviewAnalysis(app: App): Promise<void> {
     close.type = 'button';
     close.className = 'bzrv-ra-close';
     close.setAttribute('data-ra-close', '');
-    close.title = '关闭';
-    close.setAttribute('aria-label', '关闭');
     close.textContent = '✕';
+    close.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
     ovl.appendChild(close);
   }
   markOwned(ovl);

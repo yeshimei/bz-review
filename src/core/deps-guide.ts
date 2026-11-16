@@ -92,7 +92,6 @@ function checkboxOf(item: PlanItem): HTMLInputElement {
   input.value = item.id;
   input.checked = !!(item.required || item.pickedByDefault);
   if (item.required) input.disabled = true;
-  input.setAttribute('aria-label', item.name);
   return input;
 }
 
@@ -206,7 +205,7 @@ export function openDepsGuide(app: unknown = getApp()): void {
   closeBtn.type = 'button';
   closeBtn.className = 'bzrv-deps-x';
   closeBtn.textContent = '✕';
-  closeBtn.setAttribute('aria-label', '关闭');
+  closeBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
   head.append(el('span', 'bzrv-deps-t', 'bz 依赖什么'), closeBtn);
 
   const body = el('div', 'bzrv-deps-b');
@@ -292,7 +291,7 @@ export function openDepsGuide(app: unknown = getApp()): void {
   videoBtn.className = 'bzrv-btn';
   videoBtn.textContent = '看视频教程';
   // 界面上不堆分P（2026-11-01 用户口径：按钮、行名一律「视频教程」，不写「共几集」）
-  videoBtn.title = '在浏览器里打开（B 站）';
+  videoBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '在浏览器里打开（B 站）' }));
   const copyBtn = document.createElement('button');
   copyBtn.type = 'button';
   copyBtn.className = 'bzrv-btn bzrv-btn--primary';

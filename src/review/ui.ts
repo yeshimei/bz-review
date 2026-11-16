@@ -471,7 +471,7 @@ export class UIManager {
     const title = this.page === 'stats' ? '数据' : this.page === 'arch' ? '已完成' : '设置';
     container.innerHTML = `<div class="bzrv-q-view bzrv-page">
       <div class="bzrv-panel-head">
-        <button class="bzrv-icon-btn" data-act="page-back" title="返回复习计划">←</button>
+        <button class="bzrv-icon-btn" data-act="page-back"><span class="bzrv-sr-only">返回复习计划</span>←</button>
         <div class="bzrv-panel-title">${title}</div>
         <span class="bzrv-panel-head-sp"></span>
       </div>

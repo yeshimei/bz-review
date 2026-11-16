@@ -33,8 +33,7 @@ export function uiSearch(opts: BzSearchOpts): {
     clearBtn = document.createElement('button');
     clearBtn.type = 'button';
     clearBtn.className = 'bzrv-search-clear';
-    clearBtn.title = '清除搜索';
-    clearBtn.setAttribute('aria-label', '清除搜索');
+    clearBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '清除搜索' }));
     clearBtn.hidden = !input.value.trim();
     clearBtn.appendChild(uiIcon('x'));
     clearBtn.addEventListener('click', () => {

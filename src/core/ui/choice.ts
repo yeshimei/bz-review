@@ -13,7 +13,7 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
   const el = document.createElement('div');
   el.className = 'bzrv-choice' + (opts.float ? ' bzrv-choice--float' : '') + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
-  el.setAttribute('aria-label', opts.label || '');
+  el.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
   const btns = new Map<T, HTMLButtonElement>();
   let cur: T = opts.value;
 

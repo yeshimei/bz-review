@@ -95,7 +95,7 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
   // 读屏语义（对齐 flow-dialog 契约）：弹窗容器为模态 dialog，标题随 head 透出
   popup.setAttribute('role', 'dialog');
   popup.setAttribute('aria-modal', 'true');
-  if (opts.title) popup.setAttribute('aria-label', opts.title);
+  if (opts.title) popup.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: opts.title }));
 
   if (opts.head) {
     const head = document.createElement('div');

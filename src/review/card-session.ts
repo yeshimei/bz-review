@@ -557,15 +557,15 @@ export class CardSession {
     const canRegen = this.mode() !== 'plain' && this.mode() !== 'context' && !!this.opts.regenerate;
 
     host.innerHTML = `
-      <div class="bzrv-cs" role="group" aria-label="划线卡复习">
+      <div class="bzrv-cs" role="group"><span class="bzrv-sr-only">划线卡复习</span>
         <div class="bzrv-cs-head">
-          <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit" title="退出本轮">退出</button>
+          <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit"><span class="bzrv-sr-only">退出本轮</span>退出</button>
           <span class="bzrv-cs-pos">${esc(pos)}</span>
           <span class="bzrv-cs-src">${esc(sourceOf(item))}</span>
           <span class="bzrv-cs-stage">${esc(stageNum(item))}</span>
           ${
             this.opts.onEdit
-              ? `<button type="button" class="bzrv-btn bzrv-cs-edit" data-act="edit" title="改原文或想法（改过之后不再自动生成）">编辑</button>`
+              ? `<button type="button" class="bzrv-btn bzrv-cs-edit" data-act="edit"><span class="bzrv-sr-only">改原文或想法（改过之后不再自动生成）</span>编辑</button>`
               : ''
           }
           ${

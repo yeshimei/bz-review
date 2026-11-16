@@ -118,7 +118,7 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   const close = document.createElement('button');
   close.className = 'bzrv-rw-close';
   close.type = 'button';
-  close.setAttribute('aria-label', '关闭');
+  close.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
   close.innerHTML =
     '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" ' +
     'stroke-width="1.3" stroke-linecap="round"><path d="M1 1l11 11M12 1L1 12"/></svg>';

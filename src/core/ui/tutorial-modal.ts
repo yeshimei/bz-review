@@ -57,7 +57,7 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   const cover = document.createElement('button');
   cover.type = 'button';
   cover.className = 'bzrv-tut-cover';
-  cover.setAttribute('aria-label', url ? `去 B 站看${opts.title}` : '教程视频还没发布');
+  cover.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: url ? `去 B 站看${opts.title}` : '教程视频还没发布' }));
   cover.addEventListener('click', watch);
 
   const play = document.createElement('span');

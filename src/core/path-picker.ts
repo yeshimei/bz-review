@@ -181,7 +181,6 @@ export function renderPathChips(
     const label = path === '' ? '（库根目录）' : path;
     const chip = document.createElement('span');
     chip.className = 'bzrv-path-picker-chip' + (onChipClick ? ' bzrv-path-picker-chip--click' : '');
-    chip.title = label;
     const name = document.createElement('span');
     name.className = 'bzrv-path-picker-chip-name';
     name.textContent = label;
@@ -189,7 +188,7 @@ export function renderPathChips(
     const x = document.createElement('button');
     x.className = 'bzrv-path-picker-chip-x';
     x.textContent = '✕';
-    x.setAttribute('aria-label', `移除 ${label}`);
+    x.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: `移除 ${label}` }));
     x.onclick = () => onChange(selected.filter((p) => p !== path));
     chip.appendChild(name);
     chip.appendChild(x);
@@ -427,7 +426,12 @@ export function openPathPicker(opts: PathPickerOptions): void {
   search.className = 'bzrv-path-picker-search';
   search.placeholder = '搜索目录…';
   search.spellcheck = false;
-  search.setAttribute('aria-label', '搜索目录');
+  const searchLabel = document.createElement('label');
+  searchLabel.className = 'bzrv-sr-only';
+  searchLabel.htmlFor = 'bzrv-path-picker-search';
+  searchLabel.textContent = '搜索目录';
+  search.id = 'bzrv-path-picker-search';
+  search.setAttribute('aria-labelledby', searchLabel.id);
 
   // 目录列表（滚动）
   const listEl = document.createElement('div');
@@ -524,7 +528,6 @@ export function openPathPicker(opts: PathPickerOptions): void {
       const name = document.createElement('span');
       name.className = 'bzrv-path-picker-name';
       name.textContent = folder === '' ? '（库根目录）' : folder;
-      name.title = folder === '' ? '（库根目录）' : folder;
       row.appendChild(box);
       row.appendChild(name);
       row.onclick = () => {
@@ -612,7 +615,7 @@ export function openPathPicker(opts: PathPickerOptions): void {
 
   renderList();
   updateSel();
-  popup.append(head, search, listEl, foot);
+  popup.append(head, searchLabel, search, listEl, foot);
   markOwned(mask);
   document.body.appendChild(mask);
   markOwned(popup);

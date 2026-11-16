@@ -4,6 +4,7 @@
  * ============================================================ */
 import type { BzButtonOpts, BzIconBtnOpts } from './types';
 import { uiIcon } from './icon';
+import { withSrText } from './sr-text';
 
 /** 通用按钮（.bzrv-btn），样式库规格由 components.css 提供 */
 export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
@@ -16,7 +17,7 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
   if (opts.on) cls.push('is-on');
   if (opts.className) cls.push(opts.className);
   b.className = cls.join(' ');
-  if (opts.title) b.title = opts.title;
+  withSrText(b, opts.title);
   if (opts.disabled) b.disabled = true;
   if (opts.icon) {
     if (opts.chip) {
@@ -49,7 +50,7 @@ export function uiIconBtn(opts: BzIconBtnOpts): HTMLButtonElement {
   if (opts.close) cls.push('bzrv-icon-btn--close');
   if (opts.className) cls.push(opts.className);
   b.className = cls.join(' ');
-  if (opts.title) b.title = opts.title;
+  withSrText(b, opts.title);
   if (opts.disabled) b.disabled = true;
   if (opts.danger) b.setAttribute('data-danger', '');
   b.appendChild(uiIcon(opts.icon));

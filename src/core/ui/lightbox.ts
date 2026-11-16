@@ -82,7 +82,7 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   const closeBtn = document.createElement('button');
   closeBtn.type = 'button';
   closeBtn.className = 'bzrv-lightbox-close';
-  closeBtn.setAttribute('aria-label', '关闭');
+  closeBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
   closeBtn.appendChild(uiIcon('x'));
   head.appendChild(title);
   head.appendChild(closeBtn);
@@ -141,12 +141,12 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
     prevBtn = document.createElement('button');
     prevBtn.type = 'button';
     prevBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-prev';
-    prevBtn.setAttribute('aria-label', '上一张');
+    prevBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '上一张' }));
     prevBtn.appendChild(uiIcon('chevron-left'));
     nextBtn = document.createElement('button');
     nextBtn.type = 'button';
     nextBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-next';
-    nextBtn.setAttribute('aria-label', '下一张');
+    nextBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '下一张' }));
     nextBtn.appendChild(uiIcon('chevron-right'));
     prevBtn.addEventListener('click', () => show(idx - 1));
     nextBtn.addEventListener('click', () => show(idx + 1));

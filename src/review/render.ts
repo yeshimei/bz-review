@@ -233,11 +233,11 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         <div class="bzrv-panel-head-btns">
           <!-- ⚙️ 设置：2026-11-13 用户拍板回到主界面（与 bz Reader 同形制），原生设置页已下线。
                ✕ 桌面端隐藏（styles.css ≥769px 规则，浮层点遮罩/ESC 关），移动端保留。 -->
-          <button class="bzrv-icon-btn" data-act="filter" title="筛选（牌组 / 类型 / 状态）">${iconSpan('list-filter', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="arch" title="已完成（复习过的条目）">${iconSpan('folder-check', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="data" title="数据（统计与负荷）">${iconSpan('chart-column', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="settings" title="设置">${iconSpan('settings', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="filter"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="arch"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="data"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="settings"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="close"><span class="bzrv-sr-only">关闭</span>${iconSpan('x', 'bzrv-q-ic')}</button>
       </div>
       </div>`;
 
@@ -275,7 +275,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
     const emptyFooter =
       (ctx.trashCount ?? 0) > 0
         ? `<div class="bzrv-q-footer">
-        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash" title="最近删掉的条目，可以捞回来">
+        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash"><span class="bzrv-sr-only">最近删掉的条目，可以捞回来</span>
           ${iconSpan('trash-2', 'bzrv-q-ic')}<span class="lbl">回收站 <b>${ctx.trashCount}</b> 条</span>
         </span>
       </div>`
@@ -331,7 +331,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   const savedItem =
     loadCmp && loadCmp.notes >= 3 && loadCmp.saved > 0
       ? `<i class="sep"></i>
-        <span class="bzrv-q-fitem" title="按 1/2/4/7/15/30/60/120 天的老办法，同样这些笔记、同样这些天，要复习 ${loadCmp.fixed} 次">
+        <span class="bzrv-q-fitem"><span class="bzrv-sr-only">按 1/2/4/7/15/30/60/120 天的老办法，同样这些笔记、同样这些天，要复习 ${loadCmp.fixed} 次</span>
           ${iconSpan('trending-down', 'bzrv-q-ic')}<span class="lbl">比固定间隔少 <b>${loadCmp.saved}</b> 次</span>
         </span>`
       : '';
@@ -340,16 +340,16 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   const doneCount = items.filter((i) => i.completed || i.isCompleted).length;
   /* 已完成挪到头行图标后，底栏这颗换成「批量选择」——不然它就彻底没了入口。 */
   const archItem = ctx.showArchived
-    ? `<span class="bzrv-q-fitem bzrv-touch-target--lg is-back" data-act="arch" title="点此返回队列">
+    ? `<span class="bzrv-q-fitem bzrv-touch-target--lg is-back" data-act="arch"><span class="bzrv-sr-only">点此返回队列</span>
         ${iconSpan('undo-2', 'bzrv-q-ic')}<span class="lbl">返回队列</span>
       </span>`
-    : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="batch" title="批量选择">
+    : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="batch"><span class="bzrv-sr-only">批量选择</span>
         ${iconSpan('square-check-big', 'bzrv-q-ic')}<span class="lbl">批量选择</span>
       </span>`;
   /* 回收站入口只在真有东西时出现：没删过东西的人不需要一个永远空着的入口，
      删过的人则必须有地方把东西捞回来（以前只有几秒的 toast 撤销，错过就没了）。 */
   const trashItem = (ctx.trashCount ?? 0) > 0
-    ? `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash" title="最近删掉的条目，可以捞回来">
+    ? `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash"><span class="bzrv-sr-only">最近删掉的条目，可以捞回来</span>
         ${iconSpan('trash-2', 'bzrv-q-ic')}<span class="lbl">回收站 <b>${ctx.trashCount}</b> 条</span>
       </span>`
     : '';
@@ -358,7 +358,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         ${archItem}
         ${trashItem ? `<i class="sep"></i>${trashItem}` : ''}
         <i class="sep"></i>
-        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="stats" title="逐幕回放全馆记忆">
+        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="stats"><span class="bzrv-sr-only">逐幕回放全馆记忆</span>
           ${iconSpan('flame', 'bzrv-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
         </span>
         ${savedItem}
@@ -415,8 +415,8 @@ export function trashViewHtml(entries: ReadonlyArray<{ key: string; title: strin
         <div class="bzrv-panel-head-sub">删掉的条目还能捞回来</div>
         <span class="bzrv-panel-head-sp"></span>
         <div class="bzrv-panel-head-btns">
-          <button class="bzrv-icon-btn" data-act="trash-back" title="返回队列">${iconSpan('arrow-left', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="trash-back"><span class="bzrv-sr-only">返回队列</span>${iconSpan('arrow-left', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="close"><span class="bzrv-sr-only">关闭</span>${iconSpan('x', 'bzrv-q-ic')}</button>
         </div>
       </div>`;
   const strip = `<div class="bzrv-q-strip">
@@ -447,10 +447,10 @@ export function trashViewHtml(entries: ReadonlyArray<{ key: string; title: strin
         </span>
         ${
           entries.length
-            ? `<i class="sep"></i><span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash-restore-all" title="把这些条目全部放回复习计划">
+            ? `<i class="sep"></i><span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash-restore-all"><span class="bzrv-sr-only">把这些条目全部放回复习计划</span>
                 ${iconSpan('archive-restore', 'bzrv-q-ic')}<span class="lbl">全部恢复</span>
               </span>
-              <i class="sep"></i><span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash-clear" title="清空后不可恢复">
+              <i class="sep"></i><span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash-clear"><span class="bzrv-sr-only">清空后不可恢复</span>
                 ${iconSpan('trash-2', 'bzrv-q-ic')}<span class="lbl">清空回收站</span>
               </span>`
             : ''
@@ -477,8 +477,8 @@ export function sprintHeadHtml(mode?: 'round' | 'single' | 'redo'): string {
           ${sub}
         </div>
         <div class="tools">
-          <button class="bzrv-icon-btn" data-action="skip" title="跳过此篇（不评级，移到队尾）">${iconSpan('skip-forward', 'bzrv-sprint-ic')}</button>
-          <button class="bzrv-icon-btn" data-action="quit" title="回面板">${iconSpan('x', 'bzrv-sprint-ic')}</button>
+          <button class="bzrv-icon-btn" data-action="skip"><span class="bzrv-sr-only">跳过此篇（不评级，移到队尾）</span>${iconSpan('skip-forward', 'bzrv-sprint-ic')}</button>
+          <button class="bzrv-icon-btn" data-action="quit"><span class="bzrv-sr-only">回面板</span>${iconSpan('x', 'bzrv-sprint-ic')}</button>
         </div>
       </div>`;
 }
@@ -676,7 +676,7 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
       ? ctx.folders
           .map((f) => {
             const label = f === '' ? '（库根目录）' : f;
-            return `<span class="bzrv-qp-chip"><span class="bzrv-qp-chip-name" title="${esc(label)}">${esc(label)}</span><button type="button" class="bzrv-qp-chip-x" data-rm-folder="${esc(f)}" aria-label="移除 ${esc(label)}">${iconSpan('x', 'bzrv-q-ic')}</button></span>`;
+            return `<span class="bzrv-qp-chip"><span class="bzrv-qp-chip-name"><span class="bzrv-sr-only">${esc(label)}</span>${esc(label)}</span><button type="button" class="bzrv-qp-chip-x" data-rm-folder="${esc(f)}"><span class="bzrv-sr-only">移除 ${esc(label)}</span>${iconSpan('x', 'bzrv-q-ic')}</button></span>`;
           })
           .join('')
       : `<span class="bzrv-qp-detail">还没选文件夹</span>`;
@@ -705,17 +705,17 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
         <div class="bzrv-panel-head-pipe"></div>
         <div class="bzrv-panel-head-sub">只刷题 · 不排期复习</div>
         <span class="bzrv-panel-head-sp"></span>
-        <button class="bzrv-icon-btn" data-act="close" title="关闭">${iconSpan('x', 'bzrv-q-ic')}</button>
+        <button class="bzrv-icon-btn" data-act="close"><span class="bzrv-sr-only">关闭</span>${iconSpan('x', 'bzrv-q-ic')}</button>
       </div>
       <div class="bzrv-qp-body">
         <div class="bzrv-qp-sec">
           <div class="bzrv-qp-sec-label">出题范围</div>
-          <div class="bzrv-segmented" role="radiogroup" aria-label="出题范围">${scopeSeg}</div>
+          <div class="bzrv-segmented" role="radiogroup"><span class="bzrv-sr-only">出题范围</span>${scopeSeg}</div>
           <div class="bzrv-qp-detail-wrap">${detail}</div>
         </div>
         <div class="bzrv-qp-sec">
           <div class="bzrv-qp-sec-label">本轮题量</div>
-          <div class="bzrv-segmented" role="radiogroup" aria-label="本轮题量">${batchSeg}</div>
+          <div class="bzrv-segmented" role="radiogroup"><span class="bzrv-sr-only">本轮题量</span>${batchSeg}</div>
         </div>
         <div class="bzrv-qp-meta" data-role="bank-meta">${meta}</div>
         <button class="bzrv-btn bzrv-btn--primary bzrv-qp-start" data-act="start">开始做题</button>
@@ -753,7 +753,7 @@ export function reviewBarHtml(p: { name: string; index: number; total: number; r
   const btns = ['again', 'hard', 'good', 'easy']
     .map(
       (r) =>
-        `<button class="bzrv-review-bar-btn bzrv-touch-target--sm is-${r}" data-rating="${r}" title="快捷键 ${esc(keys[r as 'again'])}">${RATING_NAMES[r]}</button>`
+        `<button class="bzrv-review-bar-btn bzrv-touch-target--sm is-${r}" data-rating="${r}"><span class="bzrv-sr-only">快捷键 ${esc(keys[r as 'again'])}</span>${RATING_NAMES[r]}</button>`
     )
     .join('');
   /* 剩余条数与粗估耗时：连着复习时用户最想知道「还要坐多久」，
@@ -763,7 +763,7 @@ export function reviewBarHtml(p: { name: string; index: number; total: number; r
   return `
     <span class="bzrv-review-bar-info">${esc(stripTitleMarks(p.name))}<i>(${p.index}/${p.total})</i>${extra}</span>
     <span class="bzrv-review-bar-act">${btns}
-      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-skip" data-rating="skip" title="不评级，直接下一篇">${'跳过'}</button>
-      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-pause" data-rating="pause" title="评完这条停下，断点保留">${'暂停'}</button>
+      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-skip" data-rating="skip"><span class="bzrv-sr-only">不评级，直接下一篇</span>${'跳过'}</button>
+      <button class="bzrv-review-bar-btn bzrv-touch-target--sm is-pause" data-rating="pause"><span class="bzrv-sr-only">评完这条停下，断点保留</span>${'暂停'}</button>
     </span>`;
 }

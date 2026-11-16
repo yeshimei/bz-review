@@ -74,12 +74,12 @@ function softRowHTML(entries: Array<{ label: string; value: number }>, color: st
     </div>`).join('');
 }
 
-/** kv 摘要行（cinema kv-inline 形制；title 悬浮注解保留） */
+/** kv 摘要行（cinema kv-inline 形制；副信息用视觉隐藏文本承载，不挂 title 原生气泡） */
 function statInlineHTML(items: Array<string | { text: string; title?: string }>): string {
   return `<div class="kv-inline">${items
     .map((s) => {
       const o = typeof s === 'string' ? { text: s } : s;
-      return `<span${o.title ? ` title="${escapeHtml(o.title)}"` : ''}>${o.text}</span>`;
+      return `<span>${o.title ? `<span class="bzrv-sr-only">${escapeHtml(o.title)}</span>` : ''}${o.text}</span>`;
     })
     .join('')}</div>`;
 }
@@ -88,8 +88,7 @@ function statInlineHTML(items: Array<string | { text: string; title?: string }>)
 function rankListHTML(items: Array<{ name: string; sub: string; meta: string }>): string {
   if (!items.length) return emptyHTML();
   return items.map((it, i) => `
-    <div class="top-row${i < 3 ? ' is-top' : ''}" data-idx="${i}" role="button" tabindex="0"
-      aria-label="查看 ${escapeHtml(it.name)} 的复习历史" title="查看复习历史">
+    <div class="top-row${i < 3 ? ' is-top' : ''}" data-idx="${i}" role="button" tabindex="0"><span class="bzrv-sr-only">查看 ${escapeHtml(it.name)} 的复习历史</span>
       <span class="top-no">${i + 1}</span>
       <span class="top-name">${escapeHtml(it.name)}</span>
       ${it.sub ? `<span class="top-sub">${it.sub}</span>` : ''}
