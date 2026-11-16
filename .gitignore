@@ -7,3 +7,4 @@ scripts/keys/
 .DS_Store
 *.log
 .build/
+prototypes/
