@@ -11,6 +11,8 @@ const mode = process.argv[2] === "production" ? "production" : process.argv[2] =
 const prod = mode === "production";
 
 // 日常开发显式把 BZ_REVIEW_VAULT_DIR 指到测试库：
+// 2026-11-17 起测试库是 E:/Obsidian/bz review——bz-reader 与本插件同库
+// 配合测试（复习桥接），书和测试笔记都备在那个库里；旧测试库 bz reader 不再部署。
 //   E:/Obsidian/bz reader/.obsidian/plugins/bz-review
 // 缺省（发版）落主库。
 const VAULT_PLUGIN_DIR =
