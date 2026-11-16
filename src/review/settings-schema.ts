@@ -13,6 +13,7 @@ import type { App } from 'obsidian';
 import { Setting } from 'obsidian';
 import { notice } from '../core/notice';
 import { attachHelpTip } from '../core/ui/help-tip';
+import { withSrText } from '../core/ui/sr-text';
 import { applyAccent } from '../settings';
 import { diskReadText, jsonFileStore } from '../core/storage';
 import { openFlowDialog } from '../core/flow-dialog';
@@ -214,7 +215,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               const seg = document.createElement('div');
               seg.className = 'bzrv-segmented bzrv-accent-seg';
               seg.setAttribute('role', 'radiogroup');
-              seg.setAttribute('aria-label', ACCENT_NAME);
+              withSrText(seg, ACCENT_NAME);
               const btns: HTMLButtonElement[] = [];
               const current = (): string => {
                 const v = String((getSettings() as any).accent || 'auto');
