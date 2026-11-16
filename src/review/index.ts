@@ -23,6 +23,8 @@ import { tryGetSettings } from '../core/settings-provider';
 import { cardModeOf, defaultCardMethod, ensureCardContent, modeOfCard, queueCardPreparation, safeMakeAI, type CardMode, type CardPrepareContext } from './card-ai';
 import { pickCardMethod } from './card-flow';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
+import { cardQuota, quizOf, withoutPrepared } from './reader-input';
+import { planCounts } from './data';
 import {
   addNote as planAddNote,
   addNotes as planAddNotes,
@@ -151,13 +153,31 @@ export function ensureReview(app: App): void {
       const res = await planAddCards(dataManager, cards);
       if (res.added) {
         notePlanAdded(cards[0]?.key ?? '');
-        void queueCardPreparation(res.addedKeys ?? [], cardPrepareCtx(cardModeOf()));
+        /* 做题：阅读器出好的题先落进题库。必须在排队之前写完——
+           ensureCardContent 靠 loadQuiz 判断「已有题就跳过」，写晚了就会
+           二次生成，把用户在阅读器里删改过的题顶掉。 */
+        const quizzes = quizOf(cards, res.addedKeys ?? []);
+        for (const [key, list] of Object.entries(quizzes)) {
+          try {
+            await saveCardQuiz(key, list);
+          } catch {
+            /* 题库写失败不该让「已加入」翻车：卡片还在，复习时能退回普通提示 */
+          }
+        }
+        /* 只给没自带题面/题目的卡排队补内容。qa 那些由 plan-ops 的
+           addedKeys 已排除，这里再挡一层 questions，双保险。 */
+        const needPrepare = withoutPrepared(res.addedKeys ?? [], cards);
+        if (needPrepare.length) void queueCardPreparation(needPrepare, cardPrepareCtx(cardModeOf()));
       }
       return res;
     },
     removeCard: async (key) => (dataManager ? planRemoveCard(dataManager, key) : false),
     /* 只读查询：不触发 notePlanAdded（没加东西），也不刷新面板 */
     statusOf: async (paths) => (dataManager ? planStatusOf(dataManager, paths) : []),
+    quota: async () => {
+      if (!dataManager) return { used: 0, limit: 0, remaining: 0, full: false };
+      return cardQuota(planCounts(await dataManager.loadItems()));
+    },
   });
   uiManager = new UIManager(app, dataManager);
   // item 12：R 展示与调度排期同口径——UI 层权重源接拟合权重 currentW()（拟合重算后自动生效）

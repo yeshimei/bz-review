@@ -139,7 +139,7 @@ export function isCardItem(item: ReviewItem | null | undefined): boolean {
  * 迁移进来的老数据可能早就超限，那种情况按「已满」处理：不删用户的东西，
  * 只是不能再加新的。
  */
-function planCounts(items: readonly ReviewItem[]): PlanCounts {
+export function planCounts(items: readonly ReviewItem[]): PlanCounts {
   let notes = 0;
   let cards = 0;
   for (const it of items) {

@@ -12,6 +12,8 @@
  */
 
 /** 没加进去的原因：已在计划中 / 文件不存在 */
+import type { CardMode } from './card-mode';
+
 export type ReviewAddReason = 'exists' | 'notFound';
 
 export interface ReviewAddOutcome {
@@ -97,6 +99,34 @@ export interface ReviewCardInput {
    * 没给就还是老路子：加入之后按 `reviewCardMode` 在后台补内容。
    */
   qa?: { q: string; a: string };
+  /**
+   * 这张卡按哪种方式复习（可选，2026-11-16 配合「方式跟着卡走」）。
+   *
+   * 2026-11-15 起复习方式存在卡上（`ReviewCard.mode`），不再是一个全局开关。
+   * 阅读器是唯一知道「这张卡里到底有什么」的一方，所以它该说话：
+   *   · 已经出好问答对的（`qa` 有值）→ 传 `flashcard`，直接用题面考，
+   *     不能让 Review 那边按「做题」再生成一份题库；
+   *   · 只交了划线原文 → 可以不传，由 `stampCardModes` 按用户设的默认方式盖章。
+   *
+   * 不传时行为与以前完全一致（批量加卡统一盖默认方式）。
+   */
+  mode?: CardMode;
+  /**
+   * 做题卡已经出好的选择题（可选，2026-11-17）。
+   *
+   * 阅读器三选一里选了「做题」并出了题，就随卡片一起交过来；这里落进
+   * 独立题库。给了题的卡不再排队让 Review 二次生成——用户在阅读器里
+   * 删过、补过、重新生成过的题必须原样保留。不给则走原来的生成路径。
+   */
+  questions?: Array<{ q: string; options: string[]; correct: number[]; explain?: string }>;
+}
+
+/** 卡片类额度（阅读器批量列表据此提前标「超出基础版上限」） */
+export interface CardQuota {
+  used: number;
+  limit: number;
+  remaining: number;
+  full: boolean;
 }
 
 export interface ReviewPlanApi {
@@ -112,6 +142,8 @@ export interface ReviewPlanApi {
   removeCard(key: string): Promise<boolean>;
   /** 批量查现状（一趟读盘）；返回顺序与入参一致 */
   statusOf(paths: string[]): Promise<ReviewNoteStatus[]>;
+  /** 划线卡额度预知（无限额时 limit/remaining 是 Infinity） */
+  quota(): Promise<CardQuota>;
 }
 
 let source: ReviewPlanApi | null = null;

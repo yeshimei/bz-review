@@ -54,8 +54,8 @@ export default class ReviewPlugin extends Plugin {
    * 就点了「加入复习」，那时域还没初始化、门面是空的。
    */
   readonly reviewApi = {
-    /** 契约版本：Reader 侧按它判断「这个版本的 Review 认不认识新字段」 */
-    version: 1,
+    /** 契约版本：v2 起认得 quota() 与卡片的 questions 字段（做题题目落地） */
+    version: 2,
     addCards: async (cards: ReviewCardInput[]): Promise<ReviewAddSummary> => {
       ensureReview(this.app);
       const api = getReviewPlanApi();
@@ -71,6 +71,12 @@ export default class ReviewPlugin extends Plugin {
       ensureReview(this.app);
       const api = getReviewPlanApi();
       return api ? api.statusOf(paths) : [];
+    },
+    /** 划线卡额度：阅读器批量列表据此提前标「超出基础版上限」（契约 v2） */
+    quota: async () => {
+      ensureReview(this.app);
+      const api = getReviewPlanApi();
+      return api ? api.quota() : { used: 0, limit: 0, remaining: 0, full: false };
     },
   };
 
