@@ -15,23 +15,11 @@
  * 不再各写一套弹窗——壳子只有一份，长得一样，关法也一样。
  * ============================================================ */
 import { openFlowDialog } from '../core/flow-dialog';
+import { CARD_MODE_LABELS } from './card-mode-meta';
+export { CARD_MODE_LABELS, cardModeLabel } from './card-mode-meta';
 import type { CardMode } from './card-ai';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { ReviewItem } from './data';
-
-/** 五种方式在界面上的名字（顺序＝复习时的推荐顺序） */
-export const CARD_MODE_LABELS: ReadonlyArray<{ value: CardMode; label: string; hint: string }> = [
-  { value: 'flashcard', label: 'AI 抽认卡', hint: '先给一句不能照抄原文的问句，想不起来再看原文' },
-  { value: 'quiz', label: 'AI 做题', hint: '按内容生成四选一，每轮只抽其中一部分' },
-  { value: 'cloze', label: 'AI 填空', hint: '把关键短语挖掉，自己填回去' },
-  { value: 'context', label: '上下文', hint: '只给前后几句，回忆被藏起来的那段' },
-  { value: 'plain', label: '展开全文', hint: '不调用 AI，直接摆出原文，自己评难度' },
-];
-
-/** 一句人话的名字：设置页与提示都用它 */
-export function cardModeLabel(mode: CardMode): string {
-  return CARD_MODE_LABELS.find((m) => m.value === mode)?.label ?? mode;
-}
 
 /** 制卡方式选择的结果：方式 + 是否要「以后别再问」 */
 export interface PickCardMethodResult {

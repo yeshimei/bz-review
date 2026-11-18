@@ -1529,6 +1529,21 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   --bzrv-ratio-square: 1 / 1;
   --bzrv-ratio-4-3: 4 / 3;
   --bzrv-ratio-16-9: 16 / 9;
+
+  /* ── 强调色（accent）—— 交互色单一来源 ──
+     派生色用 color-mix 跟随主色；档位由 body[data-bzaccent] 在文件末尾覆盖，
+     明暗两套实际值在 .theme-dark / .theme-light 里给。这里给无主题类的末级兜底。 */
+  --bzrv-accent: #9a7434;
+  --bzrv-accent-soft: color-mix(in srgb, var(--bzrv-accent) 12%, transparent);
+  --bzrv-accent-line: color-mix(in srgb, var(--bzrv-accent) 40%, transparent);
+  --bzrv-on-accent: #ffffff;
+
+  /* 设置页 4 档圆点 swatch 的色值（亮色；暗色在 .theme-dark 覆盖）。
+     auto 跟随 Obsidian 主色，读不到回退铜金亮色。 */
+  --bzrv-accent-dot-auto: var(--interactive-accent, #9a7434);
+  --bzrv-accent-dot-copper: #9a7434;
+  --bzrv-accent-dot-indigo: #3f5b8f;
+  --bzrv-accent-dot-moss: #4c6b52;
 }
 
 /* ── 暗色（默认）── */
@@ -1560,11 +1575,24 @@ body.theme-light [data-bzrv] {
   --bzrv-text-3: #5f5f6b;
   --bzrv-text-invert: #141418;
 
-  /* 品牌（默认中性暖橙） */
-  --bzrv-brand: #e67341;
-  --bzrv-brand-hover: #ef8352;
-  --bzrv-brand-soft: rgba(230, 115, 65, 0.16);
-  --bzrv-on-brand: #ffffff;
+  /* 强调色（默认 auto：跟随 Obsidian，读不到回退铜金暗色） */
+  --bzrv-accent: var(--interactive-accent, #c8a464);
+  --bzrv-accent-soft: color-mix(in srgb, var(--bzrv-accent) 12%, transparent);
+  --bzrv-accent-line: color-mix(in srgb, var(--bzrv-accent) 40%, transparent);
+  /* 暗档主色是浅色（铜金/黛蓝/苔青），白字压上去对比度不够；照原型用深墨字 */
+  --bzrv-on-accent: #1a1408;
+
+  /* 品牌别名：老消费方 --bzrv-brand* 自动跟随强调色，无需逐个改 */
+  --bzrv-brand: var(--bzrv-accent);
+  --bzrv-brand-hover: color-mix(in srgb, var(--bzrv-accent) 82%, white);
+  --bzrv-brand-soft: var(--bzrv-accent-soft);
+  --bzrv-on-brand: var(--bzrv-on-accent);
+
+  /* 设置页圆点暗色档 */
+  --bzrv-accent-dot-auto: var(--interactive-accent, #c8a464);
+  --bzrv-accent-dot-copper: #c8a464;
+  --bzrv-accent-dot-indigo: #8aa7d6;
+  --bzrv-accent-dot-moss: #93b79a;
 
   /* 语义 */
   --bzrv-success: #3fb96a;
@@ -1583,7 +1611,7 @@ body.theme-light [data-bzrv] {
   --bzrv-thumb: #ffffff;
   --bzrv-thumb-soft: #b9b9c4;
   --bzrv-code-bg: rgba(255, 255, 255, 0.07);
-  --bzrv-mark-bg: rgba(230, 115, 65, 0.28);
+  --bzrv-mark-bg: color-mix(in srgb, var(--bzrv-accent) 28%, transparent);
 }
 
 /* ── 亮色 ── */
@@ -1603,10 +1631,17 @@ body.theme-light [data-bzrv] {
   --bzrv-text-3: #9a9aa5;
   --bzrv-text-invert: #ffffff;
 
-  --bzrv-brand: #e2571c;
-  --bzrv-brand-hover: #cc4a12;
-  --bzrv-brand-soft: rgba(226, 87, 28, 0.12);
-  --bzrv-on-brand: #ffffff;
+  /* 强调色（默认 auto：跟随 Obsidian，读不到回退铜金亮色） */
+  --bzrv-accent: var(--interactive-accent, #9a7434);
+  --bzrv-accent-soft: color-mix(in srgb, var(--bzrv-accent) 12%, transparent);
+  --bzrv-accent-line: color-mix(in srgb, var(--bzrv-accent) 40%, transparent);
+  --bzrv-on-accent: #ffffff;
+
+  /* 品牌别名：老消费方 --bzrv-brand* 自动跟随强调色，无需逐个改 */
+  --bzrv-brand: var(--bzrv-accent);
+  --bzrv-brand-hover: color-mix(in srgb, var(--bzrv-accent) 85%, black);
+  --bzrv-brand-soft: var(--bzrv-accent-soft);
+  --bzrv-on-brand: var(--bzrv-on-accent);
 
   --bzrv-success: #1f9d4d;
   --bzrv-warning: #b57c13;
@@ -1622,7 +1657,39 @@ body.theme-light [data-bzrv] {
   --bzrv-thumb: #ffffff;
   --bzrv-thumb-soft: #9a9aa5;
   --bzrv-code-bg: rgba(20, 20, 24, 0.06);
-  --bzrv-mark-bg: rgba(226, 87, 28, 0.22);
+  --bzrv-mark-bg: color-mix(in srgb, var(--bzrv-accent) 22%, transparent);
+}
+
+/* ═══════════ 强调色档位覆盖（body[data-bzaccent]） ═══════════
+   纯变量块：只改 --bzrv-accent 主色（auto 档另改 --bzrv-on-accent）；
+   --bzrv-accent-soft/line、--bzrv-brand* 与 --bzrv-mark-bg 在同一元素上
+   按 color-mix 自动跟随，无需逐档重写。通用块给亮色，.theme-dark 块
+   （特异性更高）给暗色；auto 两档均读 Obsidian 的 --interactive-accent，
+   读不到才回退对应亮度的铜金，前景优先读宿主的 --text-on-accent。 */
+[data-bzaccent="auto"] {
+  --bzrv-accent: var(--interactive-accent, #9a7434);
+  --bzrv-on-accent: var(--text-on-accent, #ffffff);
+}
+[data-bzaccent="copper"] { --bzrv-accent: #9a7434; }
+[data-bzaccent="indigo"] { --bzrv-accent: #3f5b8f; }
+[data-bzaccent="moss"]   { --bzrv-accent: #4c6b52; }
+.theme-dark[data-bzaccent="auto"] {
+  --bzrv-accent: var(--interactive-accent, #c8a464);
+  --bzrv-on-accent: var(--text-on-accent, #1a1408);
+}
+.theme-dark[data-bzaccent="copper"] { --bzrv-accent: #c8a464; }
+.theme-dark[data-bzaccent="indigo"] { --bzrv-accent: #8aa7d6; }
+.theme-dark[data-bzaccent="moss"]   { --bzrv-accent: #93b79a; }
+
+/* 设置页强调色控件：4 档彩色圆点 + 选中分段吃强调色（.ui 组件之上加修饰，不裸奔颜色） */
+.bzrv-accent-dot[data-acc="auto"]:is([data-bzrv], [data-bzrv] *)   { background: var(--bzrv-accent-dot-auto); }
+.bzrv-accent-dot[data-acc="copper"]:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent-dot-copper); }
+.bzrv-accent-dot[data-acc="indigo"]:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent-dot-indigo); }
+.bzrv-accent-dot[data-acc="moss"]:is([data-bzrv], [data-bzrv] *)   { background: var(--bzrv-accent-dot-moss); }
+.bzrv-accent-seg .bzrv-segmented-btn.is-on:is([data-bzrv], [data-bzrv] *) {
+  background: var(--bzrv-accent-soft) !important;
+  color: var(--bzrv-accent) !important;
+  box-shadow: inset 0 0 0 1px var(--bzrv-accent-line) !important;
 }
 /* ============================================================
  * bz 组件库样式（src/core/ui/）
@@ -5561,6 +5628,18 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-q-strip strong:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); }
 .bzrv-q-strip-txt:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); flex: 1; min-width: 0; }
 .bzrv-q-strip .bzrv-btn:is([data-bzrv], [data-bzrv] *) { height: 28px; padding: 0 14px; font-size: var(--bzrv-font-label); }
+/* 三页交互色统一走强调色 token：组件层主按钮前景 --bzrv-on-brand 固定白，切到浅亮
+   强调档会糊；这里按页兜底为 --bzrv-on-accent，语义色按钮不受影响。 */
+.bzrv-page .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *),
+.bzrv-q-strip .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *) {
+  background: var(--bzrv-accent) !important;
+  color: var(--bzrv-on-accent) !important;
+}
+.bzrv-page .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *):hover,
+.bzrv-q-strip .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *):hover {
+  background: var(--bzrv-accent) !important;
+  filter: brightness(1.06);
+}
 
 /* ==================== 三区列 ==================== */
 .bzrv-q-cols:is([data-bzrv], [data-bzrv] *) { display: flex; gap: var(--bzrv-space-md); padding: 0 20px var(--bzrv-space-md); flex: 1; min-height: 0; }
@@ -5576,9 +5655,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 /* 卡片（div role=button——不用裸 button，规避 Obsidian 核心 button 默认样式干扰裂开） */
 .bzrv-q-card:is([data-bzrv], [data-bzrv] *) { display: block; width: 100%; text-align: left; background: var(--bzrv-surface-2); color: var(--bzrv-text-1); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm); padding: var(--bzrv-space-sm) 10px; margin-bottom: 6px; cursor: pointer; transition: border-color var(--bzrv-dur-fast), box-shadow var(--bzrv-dur-fast); box-sizing: border-box; min-width: 0; }@media (hover: hover) {
 
-.bzrv-q-card:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-brand); }
+.bzrv-q-card:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-accent-line); }
 }
-.bzrv-q-card:is([data-bzrv], [data-bzrv] *):focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 1px; }
+.bzrv-q-card:is([data-bzrv], [data-bzrv] *):focus-visible { outline: 2px solid var(--bzrv-accent); outline-offset: 1px; }
 .bzrv-q-card.no:is([data-bzrv], [data-bzrv] *) { cursor: default; opacity: .72; }@media (hover: hover) {
 
 .bzrv-q-card.no:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-border); }
@@ -5607,7 +5686,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 /* issue 253（V1 原型拍板）：待重做旗标显性化——红 tag 提示该篇首次评级∈{忘了,困难} */
 .bzrv-q-tag.is-redo:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-danger) 18%, transparent); color: var(--bzrv-danger); font-weight: 600; }
 /* 类型标签：划线卡 vs 笔记。两类条目在队列里长得一模一样，加点区别 */
-.bzrv-q-tag.is-kind-card:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-brand) 12%, transparent); color: var(--bzrv-brand); }
+.bzrv-q-tag.is-kind-card:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent-soft); color: var(--bzrv-accent); }
 .bzrv-q-tag.is-kind-note:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-surface-2); color: var(--bzrv-text-3); }
 /* item 10：空态宿主（uiEmpty 组件库类不重复定义，仅限宽居中） */
 .bzrv-q-empty-wrap:is([data-bzrv], [data-bzrv] *) { align-items: center; justify-content: center; }
@@ -5630,9 +5709,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-q-fitem:hover .lbl:is([data-bzrv], [data-bzrv] *), .bzrv-q-fitem:hover b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-1); }
 }
 /* 归档态「返回队列」提醒钮（issue 254 迭代）：品牌色示意可点回跳 */
-.bzrv-q-fitem.is-back:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-brand); font-weight: 600; }@media (hover: hover) {
+.bzrv-q-fitem.is-back:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); font-weight: 600; }@media (hover: hover) {
 
-.bzrv-q-fitem.is-back .lbl:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-brand); }
+.bzrv-q-fitem.is-back .lbl:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-accent); }
 }
 /* 桌面去头行钮（issue 254 迭代拍板）：✕ 桌面隐藏（点遮罩/ESC 关，ui.ts 既有），
    仅移动端全屏保留；⚠ 须锁 #bzrv-popup 作用域——本文件构建后全局聚合，裸 .bzrv-panel-head 会误伤他域 */
@@ -5651,7 +5730,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-sprint-loading:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 60px 20px; color: var(--bzrv-text-2); font-size: var(--bzrv-font-label); }
 /* 加载圈：深审 A15 补 bz 前缀（bz-q-spinner）——原裸 spinner 类名是无主通用名，不进全局聚合。
    ⚠ DOM 消费在 src/review/render.ts（冲刺加载态），同步改类名前该处样式会暂时脱落（主线程收口）。 */
-.bzrv-q-spinner:is([data-bzrv], [data-bzrv] *) { width: 16px; height: 16px; border: 2px solid var(--bzrv-border); border-top-color: var(--bzrv-brand); border-radius: 50%; animation: bzrv-spin .8s linear infinite; }
+.bzrv-q-spinner:is([data-bzrv], [data-bzrv] *) { width: 16px; height: 16px; border: 2px solid var(--bzrv-border); border-top-color: var(--bzrv-accent); border-radius: 50%; animation: bzrv-spin .8s linear infinite; }
 
 /* 冲刺主体：题卡（左） + 本轮队列（右） */
 .bzrv-sprint-body:is([data-bzrv], [data-bzrv] *) { display: flex; gap: 14px; padding: var(--bzrv-space-xs) 20px 14px; flex: 1; min-height: 0; }
@@ -5669,14 +5748,14 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 /* 选项（div role=button，规避核心 button 默认；禁用态走 .is-disabled） */
 .bzrv-sprint-opt:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); width: 100%; text-align: left; background: var(--bzrv-surface-1); color: var(--bzrv-text-1); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm); padding: 9px var(--bzrv-space-md); cursor: pointer; box-sizing: border-box; }@media (hover: hover) {
 
-.bzrv-sprint-opt:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-brand); background: var(--bzrv-surface-hover); }
+.bzrv-sprint-opt:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-accent-line); background: var(--bzrv-surface-hover); }
 }
-.bzrv-sprint-opt:is([data-bzrv], [data-bzrv] *):focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 1px; }
+.bzrv-sprint-opt:is([data-bzrv], [data-bzrv] *):focus-visible { outline: 2px solid var(--bzrv-accent); outline-offset: 1px; }
 .bzrv-sprint-opt .k:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); font-weight: 700; color: var(--bzrv-text-2); flex-shrink: 0; width: 18px; }
 .bzrv-sprint-opt .t:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); flex: 1; }
 .bzrv-sprint-opt .m:is([data-bzrv], [data-bzrv] *) { flex-shrink: 0; width: 16px; text-align: center; }
-.bzrv-sprint-opt.is-sel:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-brand); background: color-mix(in srgb, var(--bzrv-brand) 12%, transparent); }
-.bzrv-sprint-opt.is-sel .k:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-brand); }
+.bzrv-sprint-opt.is-sel:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-accent); background: var(--bzrv-accent-soft); }
+.bzrv-sprint-opt.is-sel .k:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); }
 .bzrv-sprint-opt.is-correct:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-success); background: color-mix(in srgb, var(--bzrv-success) 14%, transparent); }
 .bzrv-sprint-opt.is-correct .k:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-success); }
 .bzrv-sprint-opt.is-wrong:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-danger); background: color-mix(in srgb, var(--bzrv-danger) 14%, transparent); }
@@ -5708,7 +5787,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-sq-list:is([data-bzrv], [data-bzrv] *) { flex: 1; overflow-y: auto; }
 .bzrv-sq-item:is([data-bzrv], [data-bzrv] *) { padding: 6px var(--bzrv-space-sm); border-radius: 6px; background: var(--bzrv-surface-2); border: 1px solid var(--bzrv-border); margin-bottom: 5px; }
 .bzrv-sq-item .nm:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-1); word-break: break-word; } /* 标题不截断（issue 254 迭代）：换行完整展示 */
-.bzrv-sq-item.doing:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-brand); }
+.bzrv-sq-item.doing:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-accent); }
 .bzrv-sq-item.passed:is([data-bzrv], [data-bzrv] *) { opacity: .8; }
 .bzrv-sq-item.passed .nm s:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-3); }
 /* 深审 U7：passed/failed 的 meta 着色两行死规则已删（队列项只产 nm 节点，meta 元素不存在） */
@@ -5770,7 +5849,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-review-bar-act:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 .bzrv-review-bar-btn:is([data-bzrv], [data-bzrv] *) { border: 1px solid var(--bzrv-border); background: var(--bzrv-surface-1); color: var(--bzrv-text-1); border-radius: var(--bzrv-radius-sm); padding: 5px var(--bzrv-space-md); font-size: 12.5px; cursor: pointer; }@media (hover: hover) {
 
-.bzrv-review-bar-btn:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-brand); background: var(--bzrv-surface-hover); }
+.bzrv-review-bar-btn:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-accent-line); background: var(--bzrv-surface-hover); }
 }
 /* 评级四档语义色：忘了=危险 / 困难=警示 / 一般·简单=成功（简单与一般同归积极绿，档位由文字区分） */
 .bzrv-review-bar-btn.is-again:is([data-bzrv], [data-bzrv] *) { border-left: 3px solid var(--bzrv-danger); }
@@ -5812,7 +5891,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-stats-body .stat-card .k:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); letter-spacing: .14em; color: var(--bzrv-text-3); margin-top: 3px; }
 .bzrv-stats-body .sec:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: 11px; padding: 13px 15px; margin: 12px 16px; }
 .bzrv-stats-body .sec-title:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-label); font-weight: 700; color: var(--bzrv-text-1); margin-bottom: 11px; }
-.bzrv-stats-body .sec-title .bzrv-ic:is([data-bzrv], [data-bzrv] *) { display: inline-flex; width: 13px; height: 13px; color: var(--bzrv-warning); }
+.bzrv-stats-body .sec-title .bzrv-ic:is([data-bzrv], [data-bzrv] *) { display: inline-flex; width: 13px; height: 13px; color: var(--bzrv-accent); }
 .bzrv-stats-body .sec-title .bzrv-ic svg:is([data-bzrv], [data-bzrv] *) { width: 100%; height: 100%; }
 .bzrv-stats-body .sec-title:is([data-bzrv], [data-bzrv] *)::after { content: ""; flex: 1; height: 1px; background: var(--bzrv-border); }
 .bzrv-stats-body .bar-row:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
@@ -5831,15 +5910,19 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 
 .bzrv-stats-body .top-row:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-hover); }
 }
-.bzrv-stats-body .top-row:is([data-bzrv], [data-bzrv] *):focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 1px; }
+.bzrv-stats-body .top-row:is([data-bzrv], [data-bzrv] *):focus-visible { outline: 2px solid var(--bzrv-accent); outline-offset: 1px; }
 .bzrv-stats-body .top-no:is([data-bzrv], [data-bzrv] *) { width: 20px; flex: none; text-align: center; font-family: Georgia, serif; font-style: italic; color: var(--bzrv-text-3); }
-.bzrv-stats-body .top-row.is-top .top-no:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-warning); font-weight: 700; }
+.bzrv-stats-body .top-row.is-top .top-no:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); font-weight: 700; }
 .bzrv-stats-body .top-name:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; color: var(--bzrv-text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bzrv-stats-body .top-sub:is([data-bzrv], [data-bzrv] *) { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
 .bzrv-stats-body .top-val:is([data-bzrv], [data-bzrv] *) { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; }
 /* 空态（形制对齐 cinema cn-empty：居中小字 + 字距） */
-.bzrv-stats-empty:is([data-bzrv], [data-bzrv] *) { padding: 18px 0; text-align: center; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); letter-spacing: .1em; }
+.bzrv-stats-empty:is([data-bzrv], [data-bzrv] *) { padding: 18px 0; text-align: center; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); letter-spacing: .1em; display: flex; align-items: center; justify-content: center; gap: var(--bzrv-space-xs); }
+.bzrv-stats-empty-ic:is([data-bzrv], [data-bzrv] *) { width: 16px; height: 16px; color: var(--bzrv-accent); }
 .bzrv-stats-hint:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); text-align: center; padding-top: 8px; }
+/* 条浪默认色走强调色，评级分布等数据驱动色仍行内覆盖；空态图标统一 lucide */
+.bzrv-stats-body .bar-fill:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); }
+.bzrv-stats-body .soft-fill:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent-soft); }
 
 /* ==================== 复习历史时间线（issue 270：时间轴竖线式内联收编） ====================
    圆点/评级字色为 RATING_COLORS 数据驱动动态色，保留行内 background/color。 */
@@ -5874,7 +5957,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
    quiz 并入 review（9c603ed7）时 src/quiz/styles.css 96 行被删未迁入，本节恢复。
    token 对档（core/ui/tokens.css）：--background-primary/secondary → --bzrv-surface-2/1、
    --text-normal → --bzrv-text-1、--background-modifier-border/hover → --bzrv-border/--bzrv-surface-hover、
-   --interactive-accent/--text-on-accent → --bzrv-brand/--bzrv-on-brand；
+   --interactive-accent/--text-on-accent → --bzrv-accent/--bzrv-on-accent；
    对错硬编码绿/红 → --bzrv-success/--bzrv-danger（15% 透底改 color-mix 等价）；
    遮罩用 --bzrv-overlay + token 毛玻璃 --bzrv-overlay-blur（memo item-1789106289860 推翻「明确不采用」口径）；
    弹窗壳规格对齐组件库 modal（--bzrv-radius-md / --bzrv-shadow-lg / 82vh 限高）。
@@ -5924,7 +6007,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 }
 .quiz-option-btn.correct:is([data-bzrv], [data-bzrv] *) { border-color:var(--bzrv-success) !important; background:color-mix(in srgb, var(--bzrv-success) 15%, transparent); }
 .quiz-option-btn.wrong:is([data-bzrv], [data-bzrv] *) { border-color:var(--bzrv-danger) !important; background:color-mix(in srgb, var(--bzrv-danger) 15%, transparent); }
-.quiz-option-btn.selected:is([data-bzrv], [data-bzrv] *) { border-color:var(--bzrv-brand); background:var(--bzrv-surface-hover); }
+.quiz-option-btn.selected:is([data-bzrv], [data-bzrv] *) { border-color:var(--bzrv-accent-line); background:var(--bzrv-accent-soft); }
 .quiz-option-btn .check-mark:is([data-bzrv], [data-bzrv] *) { opacity:0; transition:opacity 0.2s; flex-shrink:0; }
 .quiz-option-btn.selected .check-mark:is([data-bzrv], [data-bzrv] *) { opacity:1; }
 /* R4：check-mark 的 lucide 对勾尺寸（iconSpan 占位兑现为 span.bzrv-ic） */
@@ -5935,8 +6018,8 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   padding:8px 20px;
   border:none;
   border-radius:6px;
-  background:var(--bzrv-brand);
-  color:var(--bzrv-on-brand);
+  background:var(--bzrv-accent);
+  color:var(--bzrv-on-accent);
   font-size:15px;
   cursor:pointer;
   align-self:center;
@@ -6114,7 +6197,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-qp-start:is([data-bzrv], [data-bzrv] *) { height: 38px; font-size: var(--bzrv-font-label); }
 .bzrv-qp-foot:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); line-height: 1.5; }
 .bzrv-qp-acc:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); }
-.bzrv-qp-acc b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-brand); font-weight: 700; font-size: var(--bzrv-font-emphasis); }
+.bzrv-qp-acc b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); font-weight: 700; font-size: var(--bzrv-font-emphasis); }
 
 /* ==================== 动效层注入件（2026-09-22 批，src/review/motion.ts 消费） ====================
    绝对定位 · pointer-events:none · aria-hidden · 演完自毁——终态 UI 与无动效版完全一致。
@@ -6122,41 +6205,94 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-rv-seal:is([data-bzrv], [data-bzrv] *) { position: absolute; top: 4px; right: 6px; width: 34px; height: 34px; border: 2px solid var(--bzrv-danger); border-radius: 50%; color: var(--bzrv-danger); display: flex; align-items: center; justify-content: center; font-family: Georgia, 'KaiTi', 'STKaiti', serif; font-size: 14px; font-weight: 700; line-height: 1; letter-spacing: 1px; pointer-events: none; z-index: 3; background: color-mix(in srgb, var(--bzrv-surface-2, #fff) 55%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bzrv-danger) 32%, transparent); }
 .bzrv-rv-seal:is([data-bzrv], [data-bzrv] *)::before { content: ''; position: absolute; inset: 2.5px; border: 1px dashed color-mix(in srgb, var(--bzrv-danger) 55%, transparent); border-radius: 50%; }
 .bzrv-rv-seal--big:is([data-bzrv], [data-bzrv] *) { top: -8px; right: 4px; width: 78px; height: 78px; font-size: 30px; border-width: 3px; z-index: 4; }
-.bzrv-rv-ring:is([data-bzrv], [data-bzrv] *) { position: absolute; border: 2px solid var(--bzrv-brand); border-radius: 50%; pointer-events: none; transform: translate(-50%,-50%); z-index: 4; }
+.bzrv-rv-ring:is([data-bzrv], [data-bzrv] *) { position: absolute; border: 2px solid var(--bzrv-accent); border-radius: 50%; pointer-events: none; transform: translate(-50%,-50%); z-index: 4; }
 .bzrv-rv-sweep:is([data-bzrv], [data-bzrv] *) { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; z-index: 5; }
 .bzrv-rv-sweep u:is([data-bzrv], [data-bzrv] *) { position: absolute; top: 0; bottom: 0; left: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent); }
 .bzrv-rv-failflash:is([data-bzrv], [data-bzrv] *) { position: absolute; inset: 0; pointer-events: none; z-index: 6; background: radial-gradient(ellipse at center, transparent 40%, color-mix(in srgb, var(--bzrv-danger) 36%, transparent) 100%); }
 
-/* ==================== 划线卡复习会话（2026-11-11，src/review/card-session.ts） ====================
-   卡片内容全在排期表里，复习时不打开任何文件。三种方式（抽认卡 / 做题 / 展开全文）
-   共用这层壳；选项按钮直接复用做题家的 .quiz-option-btn（含 correct/wrong 配色），
-   所以此处只补布局与「问句 / 原文」的排版。 */
-/* flex:1 而不是 height:100%：父级 #bzrv-entries 的高度是 flex 拉伸出来的，
-   它自己的 height 属性仍是 auto，子元素的百分比高度会解析成 auto——卡片会话
-   于是只有内容那么高（实测 136px），面板再高也是下面一大片空白。 */
-.bzrv-cs:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
-.bzrv-cs-head:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
-/* 退出钮（触屏唯一出口）：矮一档、靠左，别跟「重新生成」抢注意力 */
-.bzrv-cs-exit:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
-.bzrv-cs-pos:is([data-bzrv], [data-bzrv] *) { font-variant-numeric: tabular-nums; flex: none; }
+/* ==================== 划线卡复习会话 · 双栏工作台（2026-11-18 改版） ====================
+   全屏松散的根因是内容没有宽度上限：原来 .bzrv-cs 直接 flex 撑满，题面跟着窗口
+   拉到一千多像素。现在改成「浅底舞台 + 720px 白卡 + 336px 工作栏」：窗口越宽，
+   多出来的空间越有去处，而不是把字拉长。卡片类型（五种）靠 [data-tone] 换色档，
+   切换时给一次淡入与一句提示，让「换形态」这件事被看见。
+   所有选择器仍挂在 .bzrv-cs-* 之下，作用域由 build-css 统一收进 [data-bzrv]。 */
+.bzrv-cs:is([data-bzrv], [data-bzrv] *) { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-sm); box-sizing: border-box; }
+.bzrv-cs [data-tone="purple"] { --tone-color: #7160cf; }
+.bzrv-cs [data-tone="blue"] { --tone-color: #3c72c0; }
+.bzrv-cs [data-tone="orange"] { --tone-color: #c4552d; }
+.bzrv-cs [data-tone="green"] { --tone-color: #3f8d69; }
+.bzrv-cs [data-tone="gray"] { --tone-color: #8a8a92; }
+
+.bzrv-cs-top:is([data-bzrv], [data-bzrv] *) { flex: none; height: 44px; display: flex; align-items: center; gap: var(--bzrv-space-sm); padding: 0 20px; border-bottom: 1px solid var(--bzrv-border); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-cs-brand:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); font-weight: 700; color: var(--bzrv-text-1); }
 .bzrv-cs-src:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 阶段号：队列卡片有，会话里原来没有——复习到一半不知道这张在第几级 */
-.bzrv-cs-stage:is([data-bzrv], [data-bzrv] *) { flex: none; font-variant-numeric: tabular-nums; }
-.bzrv-cs-regen:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
-.bzrv-cs-body:is([data-bzrv], [data-bzrv] *) { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--bzrv-space-md); }
-/* 内容少时垂直居中，别把一整屏空白留在中间（移动端尤其明显）。
-   用 auto 外边距而不是 justify-content: center——后者在内容溢出时会把顶部裁掉。 */
-.bzrv-cs-body > :is([data-bzrv], [data-bzrv] *):first-child { margin-top: auto; }
-.bzrv-cs-body > :is([data-bzrv], [data-bzrv] *):last-child { margin-bottom: auto; }
+.bzrv-cs-stage-label:is([data-bzrv], [data-bzrv] *) { flex: none; font-variant-numeric: tabular-nums; }
+/* 退出钮（触屏唯一出口）：矮一档、靠右，别跟「重新生成」抢注意力 */
+.bzrv-cs-exit:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-tabs:is([data-bzrv], [data-bzrv] *) { flex: none; display: flex; gap: 6px; padding: 8px 20px 0; overflow-x: auto; }
+.bzrv-cs-tab:is([data-bzrv], [data-bzrv] *) { display: inline-flex; align-items: center; gap: 6px; flex: none; border: 1px solid var(--bzrv-border); background: var(--bzrv-surface-1); color: var(--bzrv-text-2); border-radius: 999px; padding: 5px 11px; font-family: inherit; font-size: var(--bzrv-font-caption); cursor: pointer; }
+.bzrv-cs-tab.is-on:is([data-bzrv], [data-bzrv] *) { border-color: var(--tone-color); color: var(--tone-color); background: color-mix(in srgb, var(--tone-color) 10%, transparent); font-weight: 600; }
+.bzrv-cs-tab b:is([data-bzrv], [data-bzrv] *) { font-variant-numeric: tabular-nums; opacity: .75; }
+
+.bzrv-cs-grid:is([data-bzrv], [data-bzrv] *) { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 336px; }
+.bzrv-cs-stage:is([data-bzrv], [data-bzrv] *) { min-width: 0; overflow-y: auto; background: var(--bzrv-surface-1); padding: 22px 26px; display: flex; flex-direction: column; gap: 14px; }
+.bzrv-cs-card:is([data-bzrv], [data-bzrv] *) { width: 100%; max-width: 720px; margin: 0 auto; background: var(--bzrv-surface-2); border: 1px solid var(--bzrv-border); border-radius: 12px; box-shadow: var(--bzrv-shadow-lg, 0 4px 18px rgba(30, 30, 40, .06)); padding: 22px 26px; display: flex; flex-direction: column; gap: 16px; }
+.bzrv-cs-card.is-entering:is([data-bzrv], [data-bzrv] *) { animation: bzrvCsEnter .24s ease-out; }
+@keyframes bzrvCsEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.bzrv-cs-card-top:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 8px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-mode:is([data-bzrv], [data-bzrv] *) { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 9px; background: color-mix(in srgb, var(--tone-color) 12%, transparent); color: var(--tone-color); font-weight: 600; }
+.bzrv-cs-mode-ic:is([data-bzrv], [data-bzrv] *) { font-size: 10px; }
+.bzrv-cs-sp:is([data-bzrv], [data-bzrv] *) { flex: 1; }
+.bzrv-cs-pos:is([data-bzrv], [data-bzrv] *) { font-variant-numeric: tabular-nums; color: var(--bzrv-text-3); }
+.bzrv-cs-edit:is([data-bzrv], [data-bzrv] *), .bzrv-cs-regen:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-actions:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; }
+.bzrv-cs-foot:is([data-bzrv], [data-bzrv] *) { width: 100%; max-width: 720px; margin: 0 auto; flex: none; }
+.bzrv-cs-rate:is([data-bzrv], [data-bzrv] *) { display: flex; gap: var(--bzrv-space-sm); }
+.bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; height: 40px; }
+.bzrv-cs-hint:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+
+.bzrv-cs-side:is([data-bzrv], [data-bzrv] *) { border-left: 1px solid var(--bzrv-border); background: var(--bzrv-surface-2); padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.bzrv-cs-sec-t:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); letter-spacing: .04em; }
+.bzrv-cs-dist:is([data-bzrv], [data-bzrv] *) { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--bzrv-surface-3); }
+.bzrv-cs-dist i:is([data-bzrv], [data-bzrv] *) { display: block; height: 100%; background: var(--tone-color); }
+.bzrv-cs-legend:is([data-bzrv], [data-bzrv] *) { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); margin-bottom: 14px; }
+.bzrv-cs-legend .lg:is([data-bzrv], [data-bzrv] *) { display: inline-flex; align-items: center; gap: 4px; }
+.bzrv-cs-legend .lg i:is([data-bzrv], [data-bzrv] *) { width: 7px; height: 7px; border-radius: 2px; background: var(--tone-color); }
+.bzrv-cs-legend .lg b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-1); font-variant-numeric: tabular-nums; }
+.bzrv-cs-qlist:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 4px; }
+.bzrv-cs-qrow:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 1px solid var(--bzrv-border); border-radius: 7px; background: var(--bzrv-surface-1); color: var(--bzrv-text-2); padding: 7px 9px; font-family: inherit; font-size: var(--bzrv-font-caption); cursor: pointer; box-sizing: border-box; }
+.bzrv-cs-qrow.current:is([data-bzrv], [data-bzrv] *) { border-color: var(--tone-color); background: color-mix(in srgb, var(--tone-color) 10%, transparent); color: var(--bzrv-text-1); font-weight: 600; }
+.bzrv-cs-qrow.done:is([data-bzrv], [data-bzrv] *) { opacity: .5; }
+.bzrv-cs-qno:is([data-bzrv], [data-bzrv] *) { width: 17px; flex: none; color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; }
+.bzrv-cs-qic:is([data-bzrv], [data-bzrv] *) { width: 19px; height: 19px; flex: none; border-radius: 4px; background: color-mix(in srgb, var(--tone-color) 12%, transparent); color: var(--tone-color); display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.bzrv-cs-qname:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-cs-qmode:is([data-bzrv], [data-bzrv] *) { flex: none; color: var(--bzrv-text-3); }
+.bzrv-cs-meta:is([data-bzrv], [data-bzrv] *) { margin-top: auto; border-top: 1px solid var(--bzrv-border); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-cs-meta div:is([data-bzrv], [data-bzrv] *) { display: flex; justify-content: space-between; gap: 8px; }
+.bzrv-cs-meta b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-2); font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-cs-notice:is([data-bzrv], [data-bzrv] *) { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--bzrv-text-1); color: var(--bzrv-surface-2); border-radius: 999px; padding: 6px 14px; font-size: var(--bzrv-font-caption); box-shadow: var(--bzrv-shadow-lg, 0 4px 18px rgba(30, 30, 40, .12)); animation: bzrvCsEnter .18s ease-out; white-space: nowrap; }
+
+/* 窄窗口（含 Obsidian 侧栏挤占后的窄标签页）：工作栏收成顶部一条，卡片占满舞台 */
+@media (max-width: 1100px) {
+  .bzrv-cs-grid:is([data-bzrv], [data-bzrv] *) { grid-template-columns: minmax(0, 1fr); }
+  .bzrv-cs-stage:is([data-bzrv], [data-bzrv] *) { padding: 18px 20px; }
+  .bzrv-cs-card:is([data-bzrv], [data-bzrv] *) { padding: 18px 20px; }
+  .bzrv-cs-side:is([data-bzrv], [data-bzrv] *) { border-left: none; border-top: 1px solid var(--bzrv-border); padding: 12px 20px; flex-direction: row; align-items: center; gap: 14px; overflow-x: auto; }
+  .bzrv-cs-dist:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 120px; }
+  .bzrv-cs-legend:is([data-bzrv], [data-bzrv] *) { margin-bottom: 0; flex: none; }
+  .bzrv-cs-qlist:is([data-bzrv], [data-bzrv] *), .bzrv-cs-meta:is([data-bzrv], [data-bzrv] *) { display: none; }
+}
+@media (max-width: 768px) {
+  .bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
+}
+
+/* 正文排版（各卡型共用） */
+.bzrv-cs-body:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: var(--bzrv-space-md); }
 .bzrv-cs-prompt:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-emphasis); line-height: 1.75; color: var(--bzrv-text-1); }
 .bzrv-cs-prompt.is-loading:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
-.bzrv-cs-text:is([data-bzrv], [data-bzrv] *) { margin: 0; padding: 10px 14px; border-left: 3px solid var(--bzrv-brand); background: var(--bzrv-surface-2); border-radius: 0 var(--bzrv-radius-sm) var(--bzrv-radius-sm) 0; font-size: var(--bzrv-font-label); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--bzrv-text-1); }
+.bzrv-cs-text:is([data-bzrv], [data-bzrv] *) { margin: 0; padding: 10px 14px; border-left: 3px solid var(--tone-color, var(--bzrv-accent)); background: var(--bzrv-surface-1); border-radius: 0 var(--bzrv-radius-sm) var(--bzrv-radius-sm) 0; font-size: var(--bzrv-font-label); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--bzrv-text-1); }
 .bzrv-cs-idea:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); line-height: 1.65; }
-.bzrv-cs-back:is([data-bzrv], [data-bzrv] *) { align-self: flex-start; font-size: var(--bzrv-font-caption); color: var(--bzrv-brand); text-decoration: none; }
-.bzrv-cs-foot:is([data-bzrv], [data-bzrv] *) { flex: none; display: flex; flex-direction: column; gap: var(--bzrv-space-sm); }
-.bzrv-cs-rate:is([data-bzrv], [data-bzrv] *) { display: flex; gap: var(--bzrv-space-sm); flex-wrap: wrap; }
-.bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 92px; height: 40px; }
-.bzrv-cs-hint:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-cs-back:is([data-bzrv], [data-bzrv] *) { align-self: flex-start; font-size: var(--bzrv-font-caption); color: var(--bzrv-accent); text-decoration: none; }
 .bzrv-cs-quiz-head:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-question:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-label); font-weight: 500; line-height: 1.7; color: var(--bzrv-text-1); }
 .bzrv-cs-options:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 6px; }
@@ -6168,10 +6304,6 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-quiz-done:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 6px; }
 .bzrv-cs-quiz-acc:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-emphasis); font-weight: 600; color: var(--bzrv-text-1); }
 .bzrv-cs-quiz-rating:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); }
-@media (max-width: 768px) {
-  .bzrv-cs:is([data-bzrv], [data-bzrv] *) { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
-  .bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
-}
 
 /* ==================== 划线卡：填空 / 上下文（2026-11-13，src/review/card-session.ts） ====================
    填空把空位做成行内输入框（16px 防 iOS 聚焦缩放），上下文用前后文夹住中间的「洞」。
@@ -6179,7 +6311,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-cloze:is([data-bzrv], [data-bzrv] *) { display: block; margin: 0; font-size: var(--bzrv-font-label); line-height: 2.2; color: var(--bzrv-text-1); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bzrv-cs-cloze-hint:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-slot:is([data-bzrv], [data-bzrv] *) { display: inline-block; box-sizing: border-box; height: auto; min-width: 4ch; max-width: 20ch; margin: 0 1px; padding: 1px 4px; border: none; border-bottom: 1px solid var(--bzrv-text-3); border-radius: 0; background: var(--bzrv-surface-2); box-shadow: none; color: var(--bzrv-text-1); font-family: inherit; font-size: 16px; line-height: 1.5; text-align: center; vertical-align: baseline; }
-.bzrv-cs-slot:is([data-bzrv], [data-bzrv] *):focus { outline: none; border-bottom-color: var(--bzrv-brand); background: var(--bzrv-surface-1); box-shadow: none; }
+.bzrv-cs-slot:is([data-bzrv], [data-bzrv] *):focus { outline: none; border-bottom-color: var(--bzrv-accent); background: var(--bzrv-surface-1); box-shadow: none; }
 .bzrv-cs-slot.is-ok:is([data-bzrv], [data-bzrv] *), .bzrv-cs-slot.is-ok:is([data-bzrv], [data-bzrv] *):focus { border-bottom-color: var(--bzrv-success); color: var(--bzrv-success); }
 .bzrv-cs-slot.is-bad:is([data-bzrv], [data-bzrv] *), .bzrv-cs-slot.is-bad:is([data-bzrv], [data-bzrv] *):focus { border-bottom-color: var(--bzrv-danger); color: var(--bzrv-danger); }
 .bzrv-cs-slot-n:is([data-bzrv], [data-bzrv] *) { display: inline-block; margin: 0 1px 0 3px; font-size: var(--bzrv-font-caption); line-height: 1; color: var(--bzrv-text-3); vertical-align: super; }
@@ -6192,7 +6324,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-ctx-side.is-before:is([data-bzrv], [data-bzrv] *) { border-left: 2px solid var(--bzrv-border); }
 .bzrv-cs-ctx-side.is-after:is([data-bzrv], [data-bzrv] *) { border-right: 2px solid var(--bzrv-border); }
 .bzrv-cs-ctx-hole:is([data-bzrv], [data-bzrv] *) { padding: 10px 12px; border: 1px dashed var(--bzrv-border); border-radius: var(--bzrv-radius-xs); font-size: var(--bzrv-font-caption); line-height: 1.6; color: var(--bzrv-text-3); text-align: center; }
-.bzrv-cs-ctx-hint:is([data-bzrv], [data-bzrv] *) { padding: 8px 12px; border-left: 2px solid var(--bzrv-brand); border-radius: 0 var(--bzrv-radius-xs) var(--bzrv-radius-xs) 0; background: var(--bzrv-surface-2); font-size: var(--bzrv-font-meta); line-height: 1.7; color: var(--bzrv-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bzrv-cs-ctx-hint:is([data-bzrv], [data-bzrv] *) { padding: 8px 12px; border-left: 2px solid var(--bzrv-accent); border-radius: 0 var(--bzrv-radius-xs) var(--bzrv-radius-xs) 0; background: var(--bzrv-surface-2); font-size: var(--bzrv-font-meta); line-height: 1.7; color: var(--bzrv-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* ===== 批 4b：批量选择与筛选条 ===== */
 .bzrv-q-card.is-selecting:is([data-bzrv], [data-bzrv] *) {
@@ -6201,7 +6333,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   position: relative;
 }
 .bzrv-q-card.is-selecting.is-picked:is([data-bzrv], [data-bzrv] *) {
-  outline: 1px solid var(--interactive-accent);
+  outline: 1px solid var(--bzrv-accent);
   outline-offset: -1px;
 }
 .bzrv-q-check:is([data-bzrv], [data-bzrv] *) {
@@ -6210,16 +6342,16 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   top: 10px;
   width: 16px;
   height: 16px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
+  border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-xs);
   font-size: 11px;
   line-height: 15px;
   text-align: center;
-  color: var(--text-on-accent);
+  color: var(--bzrv-on-accent);
 }
 .bzrv-q-check.is-on:is([data-bzrv], [data-bzrv] *) {
-  background: var(--interactive-accent);
-  border-color: var(--interactive-accent);
+  background: var(--bzrv-accent);
+  border-color: var(--bzrv-accent);
 }
 .bzrv-q-strip.is-filter:is([data-bzrv], [data-bzrv] *),
 .bzrv-q-strip.is-batch:is([data-bzrv], [data-bzrv] *) {
@@ -6372,7 +6504,6 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   border: 1px solid var(--bzrv-border);
 }
 .bzrv-arch-name:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bzrv-arch-tag:is([data-bzrv], [data-bzrv] *) { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 /* ==================== 记忆分析特刊（analysis/ 全屏逐幕层） ====================
    视觉语言：夜账守火——深青底、细线、磷光青强调；数字 tabular-nums，无衬线。
    颜色只走 --ra-* 变量层（明暗两套），幕内不写死颜色；滚动条不自造（ADR-0122，
