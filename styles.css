@@ -5713,11 +5713,6 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 
 .bzrv-q-fitem.is-back .lbl:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-accent); }
 }
-/* 桌面去头行钮（issue 254 迭代拍板）：✕ 桌面隐藏（点遮罩/ESC 关，ui.ts 既有），
-   仅移动端全屏保留；⚠ 须锁 #bzrv-popup 作用域——本文件构建后全局聚合，裸 .bzrv-panel-head 会误伤他域 */
-@media (min-width: 769px) {
-  #bzrv-popup .bzrv-panel-head [data-act="close"] { display: none; }
-}
 .bzrv-q-footer .sep:is([data-bzrv], [data-bzrv] *) { width: 1px; height: 12px; background: var(--bzrv-border); }
 
 /* ==================== 整窗冲刺（bz-sprint-*） ==================== */
@@ -6246,8 +6241,10 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-mode-ic:is([data-bzrv], [data-bzrv] *) { font-size: 10px; }
 .bzrv-cs-sp:is([data-bzrv], [data-bzrv] *) { flex: 1; }
 .bzrv-cs-pos:is([data-bzrv], [data-bzrv] *) { margin-left: 6px; font-variant-numeric: tabular-nums; color: var(--bzrv-text-3); }
-.bzrv-cs-edit:is([data-bzrv], [data-bzrv] *), .bzrv-cs-regen:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
 .bzrv-cs-actions:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; }
+/* 「回到原文 / 听这张」单独一行；编辑和重新生成已挪到卡片管理器 */
+.bzrv-cs-foot-actions:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.bzrv-cs-foot-actions .bzrv-cs-back:is([data-bzrv], [data-bzrv] *) { align-self: center; margin: 0; }
 .bzrv-cs-foot:is([data-bzrv], [data-bzrv] *) { width: 100%; max-width: 720px; margin: 0 auto; flex: none; }
 .bzrv-cs-rate:is([data-bzrv], [data-bzrv] *) { display: flex; gap: var(--bzrv-space-sm); }
 .bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; height: 40px; }
@@ -6551,6 +6548,38 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-mgr-where:is([data-bzrv], [data-bzrv] *) { display: none; }
   .bzrv-mgr-row:is([data-bzrv], [data-bzrv] *) { flex-wrap: wrap; }
   .bzrv-mgr-ops:is([data-bzrv], [data-bzrv] *) { width: 100%; justify-content: flex-end; }
+}
+
+/* ==================== 2026-11-19 移动端布局收口 ==================== */
+
+/* 头行图标高亮：点一下进页，再点一下回主列表 */
+.bzrv-panel-head-btns .bzrv-icon-btn.is-on:is([data-bzrv], [data-bzrv] *) {
+  color: var(--bzrv-accent);
+  background: color-mix(in srgb, var(--bzrv-accent) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bzrv-accent) 30%, transparent);
+}
+
+/* 编辑这张卡：不再用 Obsidian Setting 的左右排布，手机上输入框占满宽 */
+.bzrv-edit-modal:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 16px; }
+.bzrv-edit-field:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 6px; }
+.bzrv-edit-head:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); font-weight: 600; color: var(--bzrv-text-1); }
+.bzrv-edit-desc:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); line-height: 1.5; }
+.bzrv-edit-area:is([data-bzrv], [data-bzrv] *) {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 96px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.bzrv-edit-actions:is([data-bzrv], [data-bzrv] *) { display: flex; justify-content: flex-end; gap: 10px; }
+.bzrv-edit-actions .bzrv-btn:is([data-bzrv], [data-bzrv] *) { min-width: 80px; }
+@media (max-width: 768px) {
+  .bzrv-edit-modal:is([data-bzrv], [data-bzrv] *) { gap: 18px; }
+  .bzrv-edit-actions:is([data-bzrv], [data-bzrv] *) { flex-direction: column-reverse; }
+  .bzrv-edit-actions .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 100%; min-height: 44px; }
+  .bzrv-edit-area:is([data-bzrv], [data-bzrv] *) { font-size: 16px; }
 }
 /* ==================== 记忆分析特刊（analysis/ 全屏逐幕层） ====================
    视觉语言：夜账守火——深青底、细线、磷光青强调；数字 tabular-nums，无衬线。

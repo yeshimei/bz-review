@@ -75,12 +75,12 @@ describe('按书档案视图', () => {
 describe('卡片管理器视图', () => {
   const items = [card('a', '围城', '第一章'), { ...card('n', '', '', {}), kind: 'note', filePath: '课程/笔记.md', card: undefined } as unknown as ReviewItem];
 
-  it('搜索框 + 按书/类型/状态筛选 + 每行五个动作齐全', () => {
+  it('编辑与重新生成已挪进管理器，每行七个动作齐全', () => {
     const html = managerViewHtml(items, { now: NOW.getTime(), decks: ['围城', '课程'] });
     for (const fld of ['mgr-q', 'mgr-kind', 'mgr-deck', 'mgr-status']) {
       expect(html).toContain(`data-fld="${fld}"`);
     }
-    for (const act of ['mgr-suspend', 'mgr-bury', 'mgr-restore', 'mgr-schedule', 'mgr-delete']) {
+    for (const act of ['mgr-edit', 'mgr-regen', 'mgr-suspend', 'mgr-bury', 'mgr-restore', 'mgr-schedule', 'mgr-delete']) {
       expect(html).toContain(`data-act="${act}"`);
     }
     expect(html).toContain('围城');
