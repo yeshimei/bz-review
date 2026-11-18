@@ -17,9 +17,9 @@
 import type { App } from 'obsidian';
 import type { ReviewCard, ReviewDataManager, ReviewItem } from './data';
 import type { ReviewAddOutcome, ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './reader-api';
-import { normalizeCardInput, keysWithQa } from './card-input';
+import { normalizeCardInput, normalizeQuestions, keysWithQa } from './card-input';
 import { stripMdExt } from '../core/utils';
-import { removeCardQuiz } from './card-quiz-store';
+import { removeCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { stampCardModes } from './card-mode';
 
 /** 路径规整：只留非空字符串（外部传 null / 数字 / 空白一律当没传） */
@@ -142,10 +142,25 @@ export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCard
   out.added = res.added;
   out.exists = res.skipped;
   if (res.rejected) out.rejected = res.rejected;
-  /* 只有「这次新进来、而且没带现成题面」的卡才需要排队补内容。
-     阅读器已经出好题的（qa 有值）直接跳过，免得把题换个说法重出一次。 */
+
+  /* 阅读器三选一里的「做题」会把出好的题一起交来：原样落进独立题库，
+     不能让 Review 再生成一份（用户在阅读器里删过、改过的题必须保留）。 */
+  const quizByKey = new Map<string, ReviewCardInput['questions']>();
+  for (const c of all) {
+    const k = String(c?.key ?? '').trim();
+    if (k && Array.isArray(c?.questions) && c.questions.length) quizByKey.set(k, c.questions);
+  }
+  for (const k of res.keys) {
+    const raw = quizByKey.get(k);
+    if (!raw?.length) continue;
+    const questions = normalizeQuestions(raw);
+    if (questions.length) await saveCardQuiz(k, questions);
+  }
+
+  /* 只有「这次新进来、而且没带现成内容」的卡才需要排队补内容：
+     qa（抽认卡问句）或题库（做题卡）已经给了的都跳过，免得换个说法重出一次。 */
   const hasQa = keysWithQa(list);
-  const need = res.keys.filter((k) => !hasQa.has(k));
+  const need = res.keys.filter((k) => !hasQa.has(k) && !quizByKey.has(k));
   if (need.length) out.addedKeys = need;
   return out;
 }
