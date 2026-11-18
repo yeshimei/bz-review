@@ -33,7 +33,7 @@ export async function openNextDateDialog(app: App, file: TFile | null): Promise<
   let value = toDateInput(item.nextReviewDate);
   new Setting(modal.contentEl)
     .setName('日期')
-    .setDesc('填 YYYY-MM-DD；到那天会进「今天」列。想今晚再看就填今天。')
+    .setDesc('填 yyyy-mm-dd；到那天会进「今天」列。想今晚再看就填今天。')
     .addText((t) => {
       t.setValue(value).onChange((v) => {
         value = v;

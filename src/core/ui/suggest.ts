@@ -73,18 +73,18 @@ export function uiSuggest(opts: BzSuggestOpts): {
       if (on) b.classList.add('is-on');
       const icon = opts.iconOf?.(raw);
       if (icon) {
-        const ic = createEl('span');
+        const ic = createSpan();
         ic.className = 'bzrv-suggest-ic';
         if (typeof icon === 'string') ic.textContent = icon;
         else ic.appendChild(icon);
         b.appendChild(ic);
       }
-      const label = createEl('span');
+      const label = createSpan();
       label.textContent = opts.labelOf ? opts.labelOf(raw) : raw;
       b.appendChild(label);
       const hint = opts.hintOf?.(raw);
       if (hint) {
-        const h = createEl('span');
+        const h = createSpan();
         h.className = 'bzrv-suggest-hint';
         h.textContent = hint;
         b.appendChild(h);

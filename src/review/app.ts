@@ -1,7 +1,7 @@
 /**
  * 复习计划核心应用（ticket 16 修正版：对齐源码 App，含 quizReviewLoop/reviewLoop）
  */
-import type { App, TFile } from 'obsidian';
+import { TFile, type App } from 'obsidian';
 import { notice, notify, notifyUndo } from '../core/notice';
 import type { NoticeHandle } from '../core/notice';
 import { getApp } from '../core/app';
@@ -15,11 +15,12 @@ import {
   currentR as fsrsCurrentR,
 } from './fsrs';
 import type { Rating } from './fsrs';
-import type { ReviewItem } from './data';
+import type { ReviewItem, ReviewHistoryEntry } from './data';
+import type { QuizMasterUI } from './quiz-core';
+import type { QuizQuestion } from './quiz-core/manager';
 import { ReviewDataManager, isCardItem } from './data';
 import { loadFittedParams, saveFittedParams, FIT_PARAMS_VERSION, getReviewFilePath, type FittedParams } from './data';
 import { fitFromItems, mergeFittedW } from './fit';
-import { DEFAULT_W } from './fsrs';
 import {
   DEFAULT_R_THRESHOLD,
   applyRoundLimits,
@@ -89,7 +90,7 @@ export const reviewApp = {
   checkInterval: null as number | null,
   dataManager: null as ReviewDataManager | null,
   /** 测试注入：对齐源码 window.__quiz 语义 */
-  _quizOverride: null as any | null,
+  _quizOverride: null as QuizMasterUI | null,
   /** 连续复习单框通知（同键合并，动态更新消息） */
   _reviewNotice: null as NoticeHandle | null,
   /** 已通知逾期的笔记路径（ticket 100：diff 记忆集合，避免重复刷屏） */
@@ -115,7 +116,7 @@ export const reviewApp = {
   /** 用户主动暂停本轮（与「中断」区分：这是自己按的，不该弹警告） */
   _roundPaused: false,
   /** 评级撤销栈（最近 20 次；批 2）——每条记下评级前那一条的完整状态 */
-  _undoStack: [] as Array<{ filePath: string; at: number; item: Record<string, any> }>,
+  _undoStack: [] as Array<{ filePath: string; at: number; item: Record<string, unknown> }>,
   /** F9：最近一次全量读盘的条目快照（60s 轮询/染色全量刷时更新）——vault modify 高频路径复用，
    *  不再每次保存任意 md 都全量读 review.json */
   _lastItems: null as ReviewItem[] | null,
@@ -134,13 +135,13 @@ export const reviewApp = {
     this._reviewBar = null;
   },
 
-  async getQuiz(): Promise<any> {
+  async getQuiz(): Promise<QuizMasterUI> {
     if (this._quizOverride) return this._quizOverride;
     return (await import('./quiz-core')).quizUI;
   },
 
   /** 做题家就绪兜底：已初始化但缺 AI → 幂等 ensureQuiz 补建（ensureQuiz 就地写 quizUI.ai，同一单例引用生效） */
-  async quizWithAI(): Promise<any> {
+  async quizWithAI(): Promise<QuizMasterUI> {
     const quiz = await this.getQuiz();
     if (quiz && !quiz.ai) {
       try {
@@ -164,7 +165,7 @@ export const reviewApp = {
       const fit = await loadFittedParams(app);
       this._fitMeta = fit;
       this._fittedW = fit ? mergeFittedW(fit.w) : null;
-    } catch (e) {
+    } catch {
       this._fitMeta = null;
       this._fittedW = null;
     }
@@ -292,7 +293,7 @@ export const reviewApp = {
 
     /* 撤销快照在写盘之前取：评级是就地改对象，写完之后拿不到「改之前」。
        只留持久字段（stripRuntime 剥掉 file/isCompleted 等派生态）。 */
-    const before = JSON.parse(JSON.stringify(stripRuntime(item as any))) as Record<string, any>;
+    const before = JSON.parse(JSON.stringify(stripRuntime(item))) as Record<string, unknown>;
 
     // F8：时间门禁移入 RMW 队列内基于磁盘现值复判——并发双评级时后写者在队内读到已刷新的
     // 排期即拒（抛 ReviewGateRejected 由外层转人话 notice），不再双写历史。
@@ -314,14 +315,15 @@ export const reviewApp = {
         it.lastDifficulty = rating;
         it.totalReviews = (it.totalReviews || 0) + 1;
         if (!it.reviewHistory) it.reviewHistory = [];
-        const entry: Record<string, unknown> = { timestamp: now.toISOString(), stage: decision.historyStage, rating };
+        const entry: ReviewHistoryEntry = { timestamp: now.toISOString(), stage: decision.historyStage, rating };
         // ADR-0077：S/D 记入历史（下游拟合配对依赖上一条含 stability/difficulty）
-        if (decision.historyStability !== null) {
+        // 二者在 scheduleNext 里总是同步给出（同为null或同为数），故一起收窄
+        if (decision.historyStability !== null && decision.historyDifficulty !== null) {
           entry.stability = decision.historyStability;
           entry.difficulty = decision.historyDifficulty;
         }
         if (decision.R !== null) entry.R = Math.round(decision.R * 100);
-        it.reviewHistory.push(entry as (typeof it.reviewHistory)[number]);
+        it.reviewHistory.push(entry);
         it.nextReviewDate = nextDate.toISOString();
         if (decision.enteringFsrs) it.completed = false; // 进入 FSRS 不算完成
 
@@ -385,8 +387,8 @@ export const reviewApp = {
   /** 重做出题（ADR-0044/Q7-②）：清空旧题 → ensureQuestions 全新生成；失败或空题回退剩余错题。
    *  A1：异常与空题分支统一把存量错题写回题库——旧题只换不丢（旧实现清空后异常/空题不回写，
    *  「答错的题留在题库留给下次」的积累池会静默丢失） */
-  async regenerateQuestions(filePath: string): Promise<any[]> {
-    const quiz: any = await this.getQuiz();
+  async regenerateQuestions(filePath: string): Promise<QuizQuestion[]> {
+    const quiz = await this.getQuiz();
     if (!quiz || !quiz.ai) return [];
     const leftover = (await quiz.manager.getQuestionsForNote(getApp(), filePath)) || [];
     await quiz.manager.saveQuestionsForNote(getApp(), filePath, []);
@@ -403,21 +405,21 @@ export const reviewApp = {
       await quiz.manager.saveQuestionsForNote(getApp(), filePath, leftover);
     }
     const picked = fresh.length ? fresh : leftover;
-    return picked.map((q: any, i: number) => ({ ...q, notePath: filePath, _index: i }));
+    return picked.map((q, i) => ({ ...q, notePath: filePath, _index: i }));
   },
 
   /** 批量生成题目（返回 {filePath: questions[]} 映射）：先快照存量题再清库触发重出。
    *  A1：生成成功才覆盖写新题，失败/空篇把存量题原样写回（saveQuestionsForNote 内 mutateQuiz
    *  RMW 合并，参照 quiz-core session「生成后合并」形态）——AI 整体失败/逐篇失败均不再丢存量题 */
-  async batchGenerateQuestions(items: ReviewItem[]): Promise<Record<string, any[]>> {
-    const quiz: any = await this.getQuiz();
+  async batchGenerateQuestions(items: ReviewItem[]): Promise<Record<string, QuizQuestion[]>> {
+    const quiz = await this.getQuiz();
     if (!quiz || !quiz.ai || !(await aiReady())) {
       console.warn('做题家未初始化（缺少 AI）');
       warnQuizAiOnce();
       return {};
     }
     const app = getApp();
-    const leftovers = new Map<string, any[]>();
+    const leftovers = new Map<string, QuizQuestion[]>();
     for (const item of items) {
       const cur = (await quiz.manager.getQuestionsForNote(app, item.filePath)) || [];
       leftovers.set(item.filePath, cur);
@@ -433,11 +435,11 @@ export const reviewApp = {
       }
       throw e;
     }
-    const out: Record<string, any[]> = {};
+    const out: Record<string, QuizQuestion[]> = {};
     for (const item of items) {
       const qs = await quiz.manager.getQuestionsForNote(app, item.filePath);
       if (qs && qs.length) {
-        out[item.filePath] = qs.map((q: any, i: number) => ({
+        out[item.filePath] = qs.map((q, i) => ({
           ...q,
           notePath: item.filePath,
           _index: i,
@@ -468,7 +470,7 @@ export const reviewApp = {
     this.ensure(app);
     // 行为流（issue 261）：开始复习入小橘行为流（review:started）
     emitDomainEvent('review', { kind: 'started' });
-    const quiz: any = await this.quizWithAI();
+    const quiz = await this.quizWithAI();
     if (!quiz || !quiz.ai || !(await aiReady())) {
       // A2：做题家不可用（getAIProvider 试准——ensureQuiz 无条件 createAI 不校验配置）：
       // 降级为普通复习（打开笔记等自评），不再进做题链路空转一圈
@@ -514,7 +516,7 @@ export const reviewApp = {
     let items = await this.dataManager!.loadItems();
     const pend = this.pendingRedoItems(items);
     if (pend.length && getSettings().forceQuizForReview) {
-      const quiz: any = await this.quizWithAI();
+      const quiz = await this.quizWithAI();
       if (quiz && quiz.ai && (await aiReady())) {
         await this.runSprintSession(pend, 'redo');
         // 重做会话结束后重新读盘：pendingRedo 已清的 = 通过集（会话内 updateItem 落盘）
@@ -600,7 +602,7 @@ export const reviewApp = {
       await this.reviewLoop(limited, 0);
       return;
     }
-    let quiz: any = null;
+    let quiz: QuizMasterUI | null = null;
     try {
       quiz = await this.quizWithAI();
     } catch {
@@ -636,11 +638,11 @@ export const reviewApp = {
       /* ignore */
     }
 
-    const quiz: any = await this.getQuiz();
+    const quiz = await this.getQuiz();
     // 懒批量：首篇 fetch 触发整轮后台生成；后续篇目直接读已生成结果
     // （进 session 即出界面 + loading，不在进 session 前同步干等 AI）
     let batchStarted = false;
-    let batchMap: Record<string, any[]> | null = null;
+    let batchMap: Record<string, QuizQuestion[]> | null = null;
     const ensureBatch = async (): Promise<void> => {
       if (batchStarted) return;
       batchStarted = true;
@@ -659,7 +661,7 @@ export const reviewApp = {
         // 现成题直接读（single：现成无则重新生成；redo：重新生成）
         const qs = await quiz?.manager?.getQuestionsForNote(app, item.filePath);
         if (qs && qs.length) {
-          return qs.map((q: any, i: number) => ({ ...q, notePath: item.filePath, _index: i }));
+          return qs.map((q, i) => ({ ...q, notePath: item.filePath, _index: i }));
         }
         if (!quiz?.ai) return null;
         if (mode === 'round') {
@@ -699,9 +701,9 @@ export const reviewApp = {
         }
         // 打开原文（复习此笔记语义）
         const file = app.vault.getAbstractFileByPath(item.filePath);
-        if (file) {
+        if (file instanceof TFile) {
           const leaf = app.workspace.getLeaf(false);
-          await leaf.openFile(file as TFile);
+          await leaf.openFile(file);
         }
       },
     });
@@ -747,7 +749,7 @@ export const reviewApp = {
     }
     this._pendingRound = { items: overdueNotes, index }; // item 5：断点（完成/清零时置空）
     const leaf = app.workspace.getLeaf(false);
-    await leaf.openFile(file as TFile);
+    if (file instanceof TFile) await leaf.openFile(file);
     // item 4：挂悬浮迷你评级条（ui 不可用时静默降级为命令评级）
     this.hideReviewBar();
     let barMounted = false;
@@ -834,7 +836,8 @@ export const reviewApp = {
       }
       await this.reviewLoop(overdueNotes, index + 1);
     };
-    const interval = window.setInterval(async () => {
+    const interval = window.setInterval(() => {
+      void (async () => {
       checkCount++;
       const activeFile = app.workspace.getActiveFile();
       if (!activeFile || activeFile.path !== item.filePath) {
@@ -890,6 +893,7 @@ export const reviewApp = {
           return;
         }
       }
+      })();
     }, REVIEW_POLL_INTERVAL_MS);
     // P3：句柄入账（stopReviewLoops 统一清理），防插件禁用后轮询残留
     this._reviewLoops.add(interval);
@@ -1090,7 +1094,7 @@ export const reviewApp = {
         this._styledPaths.delete(path);
         continue;
       }
-      const target = el.querySelector('div.tree-item-inner') as HTMLElement | null;
+      const target = el.querySelector<HTMLElement>('div.tree-item-inner');
       if (!target) continue;
       const badge = target.querySelector('.bzrv-stage-badge');
       if (badge) badge.remove();
@@ -1099,7 +1103,7 @@ export const reviewApp = {
       if (!item) {
         // 仅回退「本插件曾染色」的路径（从未染色的非条目节点不触碰，缩范围语义）
         if (this._styledPaths.has(path)) {
-          target.style.color = '';
+          target.style.removeProperty('color');
           this._styledPaths.delete(path);
         }
         continue;
@@ -1145,7 +1149,7 @@ export const reviewApp = {
         } else badgeIcon = 'calendar'; // item 14：📅 → lucide calendar
       }
       if (badgeIcon || timeText) {
-        const badgeEl = createEl('span');
+        const badgeEl = createSpan();
         badgeEl.className = 'bzrv-stage-badge';
         // 寄生在 Obsidian 自己的文件树/标签里，不在插件容器内：自己挂作用域锚点
         markOwned(badgeEl);
@@ -1183,7 +1187,7 @@ export const reviewApp = {
     for (const path of this._styledPaths) {
       const target = els.get(path)?.querySelector('div.tree-item-inner') as HTMLElement | null;
       if (target) {
-        target.style.color = '';
+        target.style.removeProperty('color');
         target.querySelector('.bzrv-stage-badge')?.remove();
       }
     }
@@ -1272,8 +1276,13 @@ export const reviewApp = {
   /** 复习面板是否正摆在眼前（原生页形态 = 当前标签页就是它） */
   panelOnScreen(): boolean {
     try {
-      const leaf = getApp()?.workspace?.activeLeaf;
-      return !!leaf && leaf.view?.getViewType?.() === REVIEW_VIEW_TYPE;
+      /* activeLeaf 是官方 lint 的 no-deprecated 豁免项：minAppVersion 1.7.2 下无等价替代
+         （要的正是「当前标签页」这个语义，getActiveViewOfType 只认 ItemView，覆盖不到）。
+         这里用局部结构类型读同一字段，行为不变，也不带 deprecated 类型标记。 */
+      const ws = getApp()?.workspace as
+        | { activeLeaf?: { view?: { getViewType?: () => string } } }
+        | undefined;
+      return !!ws?.activeLeaf && ws.activeLeaf.view?.getViewType?.() === REVIEW_VIEW_TYPE;
     } catch {
       return false;
     }

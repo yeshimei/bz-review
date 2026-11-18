@@ -165,8 +165,14 @@ export function downloadRemotesFor(fileName: string): string[] {
  * ============================================================ */
 
 /** 一条镜像基址的合法形状（只接受 http/https，去尾斜杠；空/非法 → 空串） */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function normalizeMirrorBase(raw: unknown): string {
-  const text = String(raw ?? '').trim().replace(/\/+$/, '');
+  const text = textOf(raw).trim().replace(/\/+$/, '');
   if (!text) return '';
   if (!/^https?:\/\/[^\s]+$/i.test(text)) return '';
   return text;
@@ -175,7 +181,7 @@ export function normalizeMirrorBase(raw: unknown): string {
 /** 用户填的镜像基址（空格/逗号/换行分隔，可多条；读不到设置 → 空数组） */
 export function mirrorBases(): string[] {
   try {
-    const raw = String((tryGetSettings() as { resourceMirror?: unknown }).resourceMirror ?? '');
+    const raw = textOf((tryGetSettings() as { resourceMirror?: unknown }).resourceMirror);
     return raw
       .split(/[\s,;]+/)
       .map(normalizeMirrorBase)

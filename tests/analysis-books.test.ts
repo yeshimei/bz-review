@@ -38,7 +38,7 @@ describe('按书档案视图', () => {
   it('列出书名、张数、章节数、留存率、忘了率、逾期与最容易忘 / 记得最牢', () => {
     const rows = bookSummariesOf(
       [
-        card('a', '围城', '第一章', { reviewHistory: [{ rating: 'again' }, { rating: 'good' }] }),
+        card('a', '围城', '第一章', { reviewHistory: [{ rating: 'again', timestamp: '' }, { rating: 'good', timestamp: '' }] }),
         card('b', '围城', '第二章'),
       ],
       { now: NOW }

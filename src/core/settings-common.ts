@@ -9,7 +9,6 @@
  */
 import { notice } from './notice';
 import { getSettings, saveSettings, tryGetSettings } from './settings-provider';
-import type { GroupDecl, SettingsRow, SettingsSnapshot } from './settings-schema';
 
 /** 重载提示文案：快照设置改动后通知重载插件生效（正文不带 emoji，铁律 7） */
 const RELOAD_SETTINGS_NOTICE = '设置已保存，重载插件后生效';
@@ -22,15 +21,16 @@ const RELOAD_SETTINGS_NOTICE = '设置已保存，重载插件后生效';
 export function numStrBinding(key: string, def: number): { get: () => number; set: (v: number) => void; save: () => void } {
   return {
     get: () => {
-      const raw = (tryGetSettings())[key];
+      // 设置键是运行期字符串，显式走 Record 视图把索引结果收窄成 unknown（不再用 any）
+      const raw: unknown = (tryGetSettings() as unknown as Record<string, unknown>)[key];
       if (raw === '' || raw === null || raw === undefined) return def;
       const n = Number(raw);
       return Number.isFinite(n) && n > 0 ? n : def;
     },
     set: (v: number) => {
-      (getSettings())[key] = String(v);
+      (getSettings() as unknown as Record<string, unknown>)[key] = String(v);
     },
-    save: () => saveSettings(),
+    save: () => { void saveSettings(); },
   };
 }
 

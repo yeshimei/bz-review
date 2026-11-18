@@ -62,6 +62,43 @@ function getQ3Settings(): AISettingsLike {
   return _settingsProvider ? _settingsProvider() : {};
 }
 
+// ---------------- 局部类型（消除 any：API 响应用最小接口 + 类型守卫逐字段收窄） ----------------
+
+/** OpenAI 兼容聊天响应（错误 / 完成 / 流式块共用的最小结构；字段可选，逐字段 typeof 收窄） */
+interface ChatApiResponse {
+  error?: { message?: string; type?: string };
+  message?: string;
+  choices?: Array<{ message?: { content?: string }; delta?: { content?: string } }>;
+}
+
+/** 聊天请求体（已知字段 + modelOptions 透传字段统一 unknown，不再用 any） */
+type ChatBody = {
+  model?: string;
+  messages?: AIMessage[];
+  max_tokens?: number;
+  stream?: boolean;
+  [key: string]: unknown;
+};
+
+/** requestUrl 响应里实际用到的最小面（只断言一次，不散落 as any） */
+type RequestUrlResp = { status: number; text: string };
+
+/** QuickAdd 旧配置（legacy 兜底读取，只取 ai.providers[0] 的端点与密钥） */
+interface QuickAddConfig {
+  ai?: { providers?: Array<{ endpoint?: string; apiKey?: string }> };
+}
+
+/** 从未知 rejection 原因安全取文案（throw 原因未必是 Error） */
+function errorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return typeof e === 'string' ? e : '未知错误';
+}
+
+/** Promise rejection reason 归一为 Error（满足 prefer-promise-reject-errors，保留原 Error） */
+function asError(e: unknown): Error {
+  return e instanceof Error ? e : new Error(errorMessage(e));
+}
+
 // ---------------- provider 注册表（策略模式，ticket 170） ----------------
 
 /** 思考档位一项：面板档位 → 请求体片段（body = null 表示不注入任何思考参数 = 跟随模型默认） */
@@ -279,7 +316,7 @@ export function thinkingBodyFor(providerId: string | undefined, level: string | 
  * 保留判据的理由：域内确有「与面板档位不同」的实测语义（knowledge/mount-suggest 的 low 档，
  * ADR-0140 实测默认档 143s / low 7s），显式优先让这类调用点不被面板设置改写。
  */
-export function hasExplicitThinkingOption(mo: Record<string, any>): boolean {
+export function hasExplicitThinkingOption(mo: Record<string, unknown>): boolean {
   return 'enable_thinking' in mo || 'reasoning_effort' in mo || 'thinking' in mo;
 }
 
@@ -371,10 +408,11 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
   if (!key && name === 'deepseek') {
     // deepseek 兼容兜底：settings 缺 key 时读 QuickAdd data.json（legacy，无 UI）
     try {
-      const raw = await getApp().vault.adapter.read('.obsidian/plugins/quickadd/data.json');
-      const cfg = JSON.parse(raw);
-      const provider = cfg.ai && cfg.ai.providers && cfg.ai.providers[0];
-      if (provider && provider.endpoint && provider.apiKey) {
+      const app = getApp();
+      const raw = await app.vault.adapter.read(`${app.vault.configDir}/plugins/quickadd/data.json`);
+      const cfg = JSON.parse(raw) as QuickAddConfig;
+      const provider = cfg.ai?.providers?.[0];
+      if (provider?.endpoint && provider.apiKey) {
         return cachePut({
           id: 'deepseek',
           endpoint: String(provider.endpoint).replace(/\/+$/, ''),
@@ -382,7 +420,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
           defaultMaxTokens: desc.defaultMaxTokens,
         });
       }
-    } catch (e) { /* 读取失败由调用方提示 */ }
+    } catch { /* 读取失败由调用方提示 */ }
   }
   // ollama 本地服务无鉴权：空密钥放行（其余提供商缺 key 即拦截）
   if (!key && name !== 'ollama') {
@@ -449,18 +487,20 @@ function timeoutError(idleMs: number = AI_IDLE_TIMEOUT_MS): Error {
  * 图片走 base64 塞在请求体里，可达数 MB——上行慢时「建连不回包」的等待远超 60s，
  * 用默认阈值会把正常上传误判成超时（它还算 TimeoutError，会再走一次 requestUrl 重发，等于白传两遍）。
  */
-function idleTimeoutOf(body: any): number {
+function idleTimeoutOf(body: ChatBody): number {
   const msgs = Array.isArray(body?.messages) ? body.messages : [];
-  const hasImage = msgs.some(
-    (m: any) => Array.isArray(m?.content) && m.content.some((p: any) => p?.type === 'image_url')
-  );
+  const hasImage = msgs.some((m) => {
+    const content = m?.content;
+    if (!Array.isArray(content)) return false;
+    return content.some((p) => p?.type === 'image_url');
+  });
   return hasImage ? AI_IMAGE_IDLE_TIMEOUT_MS : AI_IDLE_TIMEOUT_MS;
 }
 
 /** SSE 流式解析（fetch + ReadableStream）；signal 可中止，onDelta 逐段增量回调（ticket 141）。
  *  内部 AbortController 组合外部 signal 与空闲超时（C1）：建连不回包 / 流中途停发超时即中止
  *  （带图请求阈值放宽，见 idleTimeoutOf） */
-async function streamChatCompletions(provider: AIProvider, body: any, signal?: AbortSignal, onDelta?: (delta: string) => void): Promise<string> {
+async function streamChatCompletions(provider: AIProvider, body: ChatBody, signal?: AbortSignal, onDelta?: (delta: string) => void): Promise<string> {
   const idleMs = idleTimeoutOf(body);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -485,7 +525,7 @@ async function streamChatCompletions(provider: AIProvider, body: any, signal?: A
   };
   try {
     armIdle();
-    const resp = await fetch(`${provider.endpoint}/chat/completions`, {
+    const resp = await window.fetch(`${provider.endpoint}/chat/completions`, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
@@ -494,17 +534,17 @@ async function streamChatCompletions(provider: AIProvider, body: any, signal?: A
     if (!resp.ok) {
       let msg = `API ${resp.status}`;
       try {
-        const err = await resp.json();
+        const err = (await resp.json()) as ChatApiResponse;
         if (err.error && err.error.message) msg = err.error.message;
-      } catch (e) { /* 保留状态码 */ }
+      } catch { /* 保留状态码 */ }
       throw new Error(msg);
     }
     // 响应无流（老 WebView / 非 SSE）→ 直接读完整 JSON（json() 期间空闲超时仍生效）
-    if (!resp.body || typeof (resp.body as any).getReader !== 'function') {
-      const data: any = await resp.json();
+    if (!resp.body || typeof resp.body.getReader !== 'function') {
+      const data = (await resp.json()) as ChatApiResponse;
       return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
     }
-    const reader = (resp.body as any).getReader();
+    const reader = resp.body.getReader();
     const decoder = new TextDecoder();
     let full = '', buf = '';
     while (true) {
@@ -518,21 +558,21 @@ async function streamChatCompletions(provider: AIProvider, body: any, signal?: A
         buf = buf.slice(nl + 1);
         if (!line.startsWith('data:')) continue;
         const payload = line.slice(5).trim();
-        if (payload === '[DONE]') { try { reader.cancel(); } catch (e) { /* 忽略 */ } return full; }
+        if (payload === '[DONE]') { try { void reader.cancel(); } catch { /* 忽略 */ } return full; }
         try {
-          const chunk = JSON.parse(payload);
+          const chunk = JSON.parse(payload) as ChatApiResponse;
           const delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
           if (delta) {
             full += delta;
             try {
               onDelta?.(delta); // 增量回调异常不影响流式解析
-            } catch (e) { /* 忽略 */ }
+            } catch { /* 忽略 */ }
           }
-        } catch (e) { /* 忽略坏 chunk */ }
+        } catch { /* 忽略坏 chunk */ }
       }
     }
     return full;
-  } catch (e: any) {
+  } catch (e: unknown) {
     // 超时中止（内部 controller 触发且外部 signal 未取消）→ 人话超时错误（TimeoutError，
     // 非 AbortError——prompt 层按可兜底失败处理，requestUrl 通道重试一次）
     if (controller.signal.aborted && !(signal && signal.aborted)) throw timeoutError(idleMs);
@@ -546,7 +586,7 @@ async function streamChatCompletions(provider: AIProvider, body: any, signal?: A
 /** 非流式（requestUrl：Obsidian 官方 API，无 CORS 限制）；requestUrl 不支持中止 → 前后查 signal，已取消按丢弃处理。
  *  C1：requestUrl 本身无超时也不可中止，这里以 race 兜底——超 60s 未应答 promise 先行 settle 报超时，
  *  调用方不再永久转圈（底层连接无法显式取消，迟到结果由 race 消费侧丢弃不产生 unhandled rejection） */
-async function chatCompletionsNonStream(provider: AIProvider, body: any, signal?: AbortSignal): Promise<string> {
+async function chatCompletionsNonStream(provider: AIProvider, body: ChatBody, signal?: AbortSignal): Promise<string> {
   if (signal?.aborted) throw abortError();
   const idleMs = idleTimeoutOf(body);
   const headers: Record<string, string> = {
@@ -554,7 +594,7 @@ async function chatCompletionsNonStream(provider: AIProvider, body: any, signal?
     'Authorization': `Bearer ${provider.apiKey}`,
     ...(provider.extraHeaders || {}),
   };
-  const resp: any = await new Promise<any>((resolve, reject) => {
+  const resp = await new Promise<RequestUrlResp>((resolve, reject) => {
     let timer: number | null = null;
     const settle = (fn: () => void) => {
       if (timer !== null) window.clearTimeout(timer);
@@ -568,11 +608,11 @@ async function chatCompletionsNonStream(provider: AIProvider, body: any, signal?
       body: JSON.stringify({ ...body, stream: false }),
     }).then(
       (r) => settle(() => resolve(r)),
-      (e) => settle(() => reject(e))
+      (e: unknown) => settle(() => reject(asError(e)))
     );
   });
   if (signal?.aborted) throw abortError();
-  const data = JSON.parse(resp.text);
+  const data = JSON.parse(resp.text) as ChatApiResponse;
   // 兼容 OpenAI 与部分第三方网关的错误格式（如 {type, error:{type,message}}）
   const errMsg = (data.error && (data.error.message || data.error.type)) || (data.message && data.message);
   if (errMsg) throw new Error(`API ${resp.status}: ${errMsg}`);
@@ -664,9 +704,9 @@ function buildUserContent(input: string | { text: string; images?: string[] }): 
 }
 
 /** 报文 messages：{messages} 多轮输入原样用（smartcat 行为流），单条输入包成一条 user 消息 */
-function buildMessages(input: AIInput): any[] {
-  if (input && typeof input === 'object' && Array.isArray((input as any).messages)) {
-    return (input as any).messages;
+function buildMessages(input: AIInput): AIMessage[] {
+  if (input && typeof input === 'object' && 'messages' in input && Array.isArray(input.messages)) {
+    return input.messages;
   }
   return [{ role: 'user', content: buildUserContent(input as string | { text: string; images?: string[] }) }];
 }
@@ -675,15 +715,17 @@ function buildMessages(input: AIInput): any[] {
 
 export interface AIOptions {
   provider?: string | { endpoint?: string; apiKey?: string; model?: string };
-  modelOptions?: Record<string, any>;
-  [key: string]: any;
+  modelOptions?: Record<string, unknown>;
+  signal?: AbortSignal;
+  onDelta?: (delta: string) => void;
+  [key: string]: unknown;
 }
 
 export class AIService {
   defaultModel: string;
-  defaultOptions: any;
+  defaultOptions: AIOptions;
 
-  constructor(params?: any, defaultModel = 'deepseek-v4-flash', defaultOptions: any = {}) {
+  constructor(params?: unknown, defaultModel = 'deepseek-v4-flash', defaultOptions: AIOptions = {}) {
     this.defaultModel = defaultModel;
     this.defaultOptions = defaultOptions;
   }
@@ -704,7 +746,7 @@ export class AIService {
     // max_tokens（issue 334/ADR-0148 面板独裁）：唯一权威 = provider 解析结果
     // （设置面板「最大输出 token」per-provider 覆盖 > 注册表默认）；调用方传 max_tokens 一律忽略
     const effMaxTokens = provider.defaultMaxTokens || 4096;
-    const body: Record<string, any> = {
+    const body: ChatBody = {
       model: effModel,
       messages: buildMessages(input),
       max_tokens: effMaxTokens,
@@ -723,19 +765,19 @@ export class AIService {
       const thinking = thinkingBodyFor(provider.id, s.aiThinkingOverrides?.[provider.id || '']);
       if (thinking) Object.assign(body, thinking);
     }
-    const signal = mergedOptions.signal instanceof AbortSignal ? (mergedOptions.signal as AbortSignal) : undefined;
-    const onDelta = typeof mergedOptions.onDelta === 'function' ? (mergedOptions.onDelta as (delta: string) => void) : undefined;
+    const signal = mergedOptions.signal instanceof AbortSignal ? mergedOptions.signal : undefined;
+    const onDelta = typeof mergedOptions.onDelta === 'function' ? mergedOptions.onDelta : undefined;
     try {
       const content = await streamChatCompletions(provider, body, signal, onDelta);
       return content;
-    } catch (streamError: any) {
+    } catch (streamError: unknown) {
       if (signal?.aborted) throw streamError; // 用户取消：不再走 requestUrl 兜底
       // fetch 失败（CORS/网络）→ requestUrl 非流式兜底
       try {
         const content = await chatCompletionsNonStream(provider, body, signal);
         return content;
-      } catch (e: any) {
-        throw new Error(`AI 请求失败: ${streamError.message}（fallback: ${e.message}）`);
+      } catch (e: unknown) {
+        throw new Error(`AI 请求失败: ${errorMessage(streamError)}（fallback: ${errorMessage(e)}）`);
       }
     }
   }
@@ -757,15 +799,15 @@ export class AIService {
     this.defaultModel = model;
   }
 
-  setDefaultOptions(options: any) {
+  setDefaultOptions(options: AIOptions) {
     this.defaultOptions = options;
   }
 
   // ---------- 内部辅助方法 ----------
 
-  _mergeOptions(options: AIOptions): any {
+  _mergeOptions(options: AIOptions): AIOptions {
     // 浅合并，对于嵌套的 modelOptions 需要特殊处理
-    const merged: any = { ...this.defaultOptions, ...options };
+    const merged: AIOptions = { ...this.defaultOptions, ...options };
     // 如果两者都有 modelOptions，进行合并
     if (this.defaultOptions.modelOptions || options.modelOptions) {
       merged.modelOptions = {
@@ -777,8 +819,8 @@ export class AIService {
   }
 
   /** 准备选项：复制 extraOptions，并设置指定的 modelOptions 字段（用户显式传入优先） */
-  _prepareOptions(extraOptions: AIOptions, modelSettings: Record<string, any>): AIOptions {
-    const options: any = { ...extraOptions };
+  _prepareOptions(extraOptions: AIOptions, modelSettings: Record<string, unknown>): AIOptions {
+    const options: AIOptions = { ...extraOptions };
     if (!options.modelOptions) options.modelOptions = {};
     const userModelOpts = options.modelOptions;
     options.modelOptions = { ...modelSettings, ...userModelOpts };
@@ -792,7 +834,7 @@ export class AIService {
  * 输出上限唯一权威 = provider 解析结果（设置面板 per-provider 覆盖 > 注册表默认），
  * 调用方在 modelOptions 里传 max_tokens 也会被 prompt() 忽略。
  */
-export function createAI(params?: any, defaultModel = 'deepseek-v4-flash', defaultOptions: any = {}): AIService {
+export function createAI(params?: unknown, defaultModel = 'deepseek-v4-flash', defaultOptions: AIOptions = {}): AIService {
   return new AIService(params, defaultModel, defaultOptions);
 }
 

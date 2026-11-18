@@ -2,11 +2,39 @@
  * 通用工具函数（Q3.js window.__utils 移植 + 原脚本内联工具）
  * 行为与 Q3.js 逐字一致（spec「Q3 core 层逐行提取」）。
  */
-import moment from 'moment';
+import { moment } from 'obsidian';
 import { getApp } from './app';
 import { httpGetText, requestUrlAsFetch } from './http';
 import { pad2, relTime as baseRelTime, stripMdExt, localDayKey, stripTitleMarks } from './ui/str';
 import { notice } from './notice';
+
+/**
+ * unknown → 安全文本。primitive 直接 String（与 String(v) 逐字等价）；
+ * 对象是显式 toString()（与 String(obj) 同语义，但不触发 no-base-to-string 的「默认 [object Object] 化」告警）。
+ * null/undefined → 空串，与既有 `String(v ?? '')` 行为一致。
+ */
+function toText(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return (v as { toString(): string }).toString(); // object / symbol / function
+}
+
+/** 可 catch 的 Promise（app.openUrl / electron.shell.openExternal 的异步 rejection 兜底） */
+type Catchable = { catch(onRejected: () => void): unknown };
+function isCatchable(v: unknown): v is Catchable {
+  return !!v && typeof (v as { catch?: unknown }).catch === 'function';
+}
+
+/** 注入 app 上 openUrl 的最小形状（openUrl 可能同步返回 void，也可能返回 Promise） */
+interface UrlOpener {
+  openUrl(url: string): unknown;
+}
+
+/** 桌面端 window.require('electron') 的最小形状 */
+interface ElectronWindow extends Window {
+  require?: (module: string) => { shell?: { openExternal(url: string): unknown } };
+}
 
 // ==================== YAML 标量转义单源（AS1/C27/一致#1 三域收编） ====================
 
@@ -31,7 +59,7 @@ export function escapeYamlText(s: string): string {
  * auto-summary frontmatter 重建共用——读侧 unquote 反转义同源对齐（AS1）。
  */
 export function yamlEscapeQuoted(v: unknown): string {
-  return `"${escapeYamlText(String(v ?? ''))}"`;
+  return `"${escapeYamlText(toText(v))}"`;
 }
 
 /**
@@ -112,7 +140,7 @@ export function formatFileSize(bytes: number | null | undefined): string | null 
  * 昨天/前天/周几/MM-DD/YYYY-MM-DD 为 moment 增强档保留（行为不回退）。
  */
 export function formatRelativeTime(date: Date | string | number, now: Date = new Date()): string {
-  const target = moment(date as any);
+  const target = moment(date);
   if (!target.isValid()) return '无效日期';
 
   // 判断原始输入是否包含时间部分（仅当传入字符串时）
@@ -143,8 +171,6 @@ export function formatRelativeTime(date: Date | string | number, now: Date = new
   if (target.isSame(nowMoment.startOf('day'), 'day')) {
     return baseRelTime(target.format('YYYY-MM-DD HH:mm:ss'), now.getTime());
   }
-
-  const diffMinutes = Math.floor(diffSeconds / 60);
 
   // 昨天 / 前天
   const yesterdayStart = moment(now).subtract(1, 'days').startOf('day');
@@ -189,14 +215,14 @@ export function getPlatformName(
   customMap?: { host?: string; keyword?: string; name: string }[]
 ): string | null {
   if (!url) return null;
-  const map = (customMap || DEFAULT_PLATFORM_MAP) as any;
+  const map: { host?: string; keyword?: string; name: string }[] = customMap || DEFAULT_PLATFORM_MAP;
   try {
     const host = new URL(url).hostname.toLowerCase();
-    for (let i = 0; i < map.length; i++) {
-      if (map[i].host && (host === map[i].host || host.endsWith('.' + map[i].host))) return map[i].name;
-      if (map[i].keyword && host.includes(map[i].keyword)) return map[i].name;
+    for (const entry of map) {
+      if (entry.host && (host === entry.host || host.endsWith('.' + entry.host))) return entry.name;
+      if (entry.keyword && host.includes(entry.keyword)) return entry.name;
     }
-  } catch (e) { /* 无效 URL 返回 null */ }
+  } catch { /* 无效 URL 返回 null */ }
   return null;
 }
 
@@ -208,8 +234,7 @@ export function getCurrentNoteInfo(): { path: string; name: string } | null {
 
 /** getCurrentCursorPosition()：当前光标位置 {line, ch} 或 null */
 export function getCurrentCursorPosition(): { line: number; ch: number } | null {
-  const ws = getApp().workspace as any;
-  const ed = ws.activeEditor && ws.activeEditor.editor;
+  const ed = getApp().workspace.activeEditor?.editor;
   return ed ? { line: ed.getCursor().line, ch: ed.getCursor().ch } : null;
 }
 
@@ -252,7 +277,7 @@ export function cmpZh(a: string, b: string): number {
  *  跨域顶层拉它曾构成全仓唯一的域间顶层静态环（home/river → recap/aggregate → home/weekly，
  *  违反 ADR-0002）——下沉重单源后 recap 改引此处，环断；日期串工具与 localDayKey 同居。 */
 export function parseLocalDay(s: unknown): number | null {
-  const m = /^\s*(\d{4})-(\d{1,2})-(\d{1,2})/.exec(String(s ?? ''));
+  const m = /^\s*(\d{4})-(\d{1,2})-(\d{1,2})/.exec(toText(s));
   if (!m) return null;
   const y = Number(m[1]);
   const mo = Number(m[2]);
@@ -277,7 +302,7 @@ export function hash31(str: string): number {
 }
 
 /** debounce(fn, ms)：尾触防抖，返回带 cancel() 的防抖函数（新收敛能力；既有手写定时器形态各异，暂不批量替换） */
-export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T & { cancel(): void } {
+export function debounce<T extends (...args: never[]) => void>(fn: T, ms: number): T & { cancel(): void } {
   let t: number | undefined;
   const wrapped = (...args: Parameters<T>) => {
     if (t !== undefined) window.clearTimeout(t);
@@ -302,9 +327,10 @@ export function yieldToMainThread(timeoutMs = 200): Promise<void> {
       resolve();
       return;
     }
-    const ric = (window as any).requestIdleCallback;
-    if (typeof ric === 'function') ric(() => resolve(), { timeout: timeoutMs });
-    else window.setTimeout(resolve, 0);
+    const idleWindow = window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number };
+    if (typeof idleWindow.requestIdleCallback === 'function') {
+      idleWindow.requestIdleCallback(() => resolve(), { timeout: timeoutMs });
+    } else window.setTimeout(resolve, 0);
   });
 }
 
@@ -329,6 +355,8 @@ export function secureRandomPassword(length: number, charset: string): string {
 
 /** 复制敏感内容 + 60s 自动清空剪贴板（模块级单定时器：双域并存共用一支，后复制重置前清空） */
 const CLIPBOARD_CLEAR_DELAY_MS = 60_000;
+/** 剪贴板兜底 textarea 的隐藏样式（一次性内联样式，非主题静态样式） */
+const CLIPBOARD_FALLBACK_CSS = 'position:fixed;opacity:0';
 let clipboardClearTimer: number | null = null;
 
 /** 取消未触发的自动清空（卸载清理用，防插件禁用后定时器仍写剪贴板） */
@@ -346,7 +374,7 @@ export function armClipboardClear(): void {
     clipboardClearTimer = null;
     try {
       void navigator.clipboard.writeText('').catch(() => {});
-    } catch (e) {
+    } catch {
       /* 尽力而为 */
     }
   }, CLIPBOARD_CLEAR_DELAY_MS);
@@ -357,7 +385,7 @@ export function copySensitiveText(text: string): Promise<void> {
   try {
     return navigator.clipboard.writeText(text).then(() => armClipboardClear());
   } catch (e) {
-    return Promise.reject(e);
+    return Promise.reject(e instanceof Error ? e : new Error(toText(e)));
   }
 }
 
@@ -376,19 +404,19 @@ export async function copySensitiveWithFallback(text: string): Promise<boolean> 
   try {
     await copySensitiveText(text);
     return true;
-  } catch (e) {
+  } catch {
     // 降级：textarea 选中法
     try {
       const ta = createEl('textarea');
       ta.value = text;
-      ta.style.cssText = 'position:fixed;opacity:0';
+      ta.style.cssText = CLIPBOARD_FALLBACK_CSS;
       document.body.appendChild(ta);
       ta.select();
       const ok = document.execCommand('copy');
       ta.remove();
       if (ok) armClipboardClear();
       return ok;
-    } catch (e2) {
+    } catch {
       return false;
     }
   }
@@ -410,15 +438,15 @@ export async function copySensitiveWithFallback(text: string): Promise<boolean> 
  */
 export function openExternalUrl(app: unknown, url: string): void {
   try {
-    const r = (app as any).openUrl(url);
-    if (r && typeof (r as Promise<void>).catch === 'function') {
-      (r as Promise<void>).catch(() => {
+    const r = (app as UrlOpener).openUrl(url);
+    if (isCatchable(r)) {
+      r.catch(() => {
         if (!openViaElectron(url)) openViaWindow(url);
       });
       return;
     }
     return;
-  } catch (e) { /* 落 electron 兜底 */ }
+  } catch { /* 落 electron 兜底 */ }
   if (!openViaElectron(url)) openViaWindow(url);
 }
 
@@ -426,15 +454,14 @@ export function openExternalUrl(app: unknown, url: string): void {
  *  rejection 落 window.open（返回的 true 只代表「已发起」）。无 electron → false。 */
 function openViaElectron(url: string): boolean {
   try {
-    const electron = (window as any).require && (window as any).require('electron');
+    const ew = window as ElectronWindow;
+    const electron = ew.require && ew.require('electron');
     if (electron && electron.shell) {
       const p = electron.shell.openExternal(url);
-      if (p && typeof (p as Promise<void>).catch === 'function') {
-        (p as Promise<void>).catch(() => openViaWindow(url));
-      }
+      if (isCatchable(p)) p.catch(() => openViaWindow(url));
       return true;
     }
-  } catch (e) { /* 落 window.open 兜底 */ }
+  } catch { /* 落 window.open 兜底 */ }
   return false;
 }
 
@@ -443,6 +470,6 @@ function openViaWindow(url: string): void {
   try {
     const w = window.open(url, '_blank');
     if (w) return;
-  } catch (e) { /* 环境不支持（jsdom 等）落提示 */ }
+  } catch { /* 环境不支持（jsdom 等）落提示 */ }
   notice('无法打开链接，请复制到浏览器打开', 'error');
 }

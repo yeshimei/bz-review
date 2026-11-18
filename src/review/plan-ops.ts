@@ -129,8 +129,19 @@ export async function removeNote(dm: ReviewDataManager, path: string): Promise<b
  * 这里补上时间戳存进卡里。有 qa 的卡不再进 AI 补内容队列——否则会把阅读器
  * 出好的题再换一个说法重出一次。
  */
+
+/** 入参防线：外部（JS 调用）可能传非数组或脏项，只放行对象形态的卡 */
+function isCardInput(v: unknown): v is ReviewCardInput {
+  return !!v && typeof v === 'object';
+}
+/** 做题卡题库：数组形态即认（元素形状由 normalizeQuestions 再归一） */
+function isQuizQuestions(v: unknown): v is NonNullable<ReviewCardInput['questions']> {
+  return Array.isArray(v);
+}
+
 export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCardInput[]): Promise<ReviewAddSummary> {
-  const all = Array.isArray(cards) ? cards : [];
+  const raw: readonly unknown[] = Array.isArray(cards) ? cards : [];
+  const all: ReviewCardInput[] = raw.filter(isCardInput);
   /* 两条口径都要留下：先把阅读器交来的输入归一（含现成 qa），再给没带方式的卡
      盖一个默认方式的章。顺序不能反——盖章要落在正式的 ReviewCard 上。 */
   const list = stampCardModes(
@@ -148,7 +159,8 @@ export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCard
   const quizByKey = new Map<string, ReviewCardInput['questions']>();
   for (const c of all) {
     const k = String(c?.key ?? '').trim();
-    if (k && Array.isArray(c?.questions) && c.questions.length) quizByKey.set(k, c.questions);
+    const qs: unknown = c?.questions;
+    if (k && isQuizQuestions(qs) && qs.length) quizByKey.set(k, qs);
   }
   for (const k of res.keys) {
     const raw = quizByKey.get(k);

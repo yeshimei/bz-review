@@ -358,11 +358,12 @@ export default class ReviewPlugin extends Plugin {
   onunload(): void {
     unloadReview();
     // 原生页：插件卸了，挂在工作区里的标签页也要一起摘（否则留下一个空白 tab）
-    this.app.workspace.detachLeavesOfType(REVIEW_VIEW_TYPE);
+    
   }
 
   async loadSettings(): Promise<void> {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loaded: unknown = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded && typeof loaded === 'object' ? loaded : {});
   }
 
   async saveSettings(): Promise<void> {

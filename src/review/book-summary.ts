@@ -62,13 +62,15 @@ function groupOf(it: ReviewItem): { key: string; book: string; kind: BookGroupKi
 function nameOf(it: ReviewItem): string {
   const name = String(it?.name ?? '').trim();
   if (name) return name;
-  const text = String((it as any)?.card?.text ?? '').trim();
+  const text = String(it.card?.text ?? '').trim();
   if (text) return text.slice(0, 24);
   return String(it?.filePath ?? '未命名');
 }
 
-const isDone = (it: ReviewItem): boolean => !!(it.completed || (it as any).isCompleted);
-const isLive = (it: ReviewItem): boolean => !isDone(it) && !(it as any).isMissing;
+/** 旧数据里可能还留着 isCompleted / isMissing 两个历史字段名，读取时类型收窄后再取 */
+type LegacyFlags = ReviewItem & { isCompleted?: unknown; isMissing?: unknown };
+const isDone = (it: ReviewItem): boolean => !!(it.completed || (it as LegacyFlags).isCompleted);
+const isLive = (it: ReviewItem): boolean => !isDone(it) && !(it as LegacyFlags).isMissing;
 
 /** 按书汇总。w / now 可注入，便于测试与重放；缺省走 FSRS 默认权重与当前时刻。 */
 export function bookSummariesOf(
@@ -104,7 +106,7 @@ export function bookSummariesOf(
     for (const it of g.items) {
       for (const h of Array.isArray(it.reviewHistory) ? it.reviewHistory : []) {
         reviews++;
-        if (String((h as any)?.rating ?? '') === 'again') again++;
+        if (String(h.rating ?? '') === 'again') again++;
       }
     }
 

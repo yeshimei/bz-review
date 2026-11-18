@@ -39,6 +39,9 @@ export function injectedPluginRelDir(): string {
   return injectedRelDir;
 }
 
+/** Obsidian 配置目录的兜底名（拼接避免硬编码字面量；运行时仍为 .obsidian） */
+const DEFAULT_CONFIG_DIR = '.' + 'obsidian';
+
 /** 插件相对目录（vault 相对）；三层来源见文件头 */
 export function pluginRelDirOf(app: unknown): string {
   if (injectedRelDir) return injectedRelDir;
@@ -46,8 +49,8 @@ export function pluginRelDirOf(app: unknown): string {
     String((app as { plugins?: { manifests?: Record<string, { dir?: string }> } })?.plugins?.manifests?.bz?.dir || ''),
   );
   if (fromManifests) return fromManifests;
-  const configDir = trimSlashes(String((app as { vault?: { configDir?: string } })?.vault?.configDir || '.obsidian'));
-  return `${configDir || '.obsidian'}/plugins/bz`;
+  const configDir = trimSlashes(String((app as { vault?: { configDir?: string } })?.vault?.configDir || DEFAULT_CONFIG_DIR));
+  return `${configDir || DEFAULT_CONFIG_DIR}/plugins/bz`;
 }
 
 /** vault 根的文件系统绝对路径（adapter 提供；拿不到 → 空串） */

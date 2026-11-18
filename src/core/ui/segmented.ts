@@ -9,7 +9,7 @@ export function uiSegmented<T extends string>(opts: BzSegOpts<T>): { el: HTMLDiv
   const el = createDiv();
   el.className = 'bzrv-segmented' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
-  el.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
+  el.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
   const btns = new Map<T, HTMLButtonElement>();
   opts.options.forEach((o) => {
     const b = createEl('button');

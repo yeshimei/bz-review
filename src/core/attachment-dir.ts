@@ -22,6 +22,11 @@
  */
 import { getApp } from './app';
 
+/** Vault.getConfig 不在公开类型里、老宿主也可能没有；按最小形状读，返回值收窄成 string 才用 */
+interface VaultWithConfig {
+  getConfig?: (key: string) => unknown;
+}
+
 /** 目录来源（设置页/空态文案要如实说图存哪了） */
 export type AssetDirSource = 'setting' | 'obsidian' | 'fallback';
 
@@ -31,9 +36,16 @@ export interface AssetDir {
   source: AssetDirSource;
 }
 
+/** 把 unknown 安全转成可拼接的字符串：null/undefined/对象一律不再触发 no-base-to-string */
+function textOf(v: unknown): string {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 /** 去首尾斜杠 + 反斜杠归一（多处目录解析共用） */
 export function cleanDir(v: unknown): string {
-  return String(v ?? '').trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
+  return textOf(v).trim().replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
 }
 
 /**
@@ -43,9 +55,10 @@ export function cleanDir(v: unknown): string {
 export function obsidianAttachmentDir(): string | null {
   let raw = '';
   try {
-    const vault: any = getApp().vault;
-    raw = String(vault?.getConfig?.('attachmentFolderPath') ?? '');
-  } catch (e) {
+    const vault = getApp().vault as unknown as VaultWithConfig;
+    const configured: unknown = vault.getConfig?.('attachmentFolderPath');
+    raw = typeof configured === 'string' ? configured : '';
+  } catch {
     return null; // 宿主不支持 / 取值抛错：按「没设」处理，调用方回落域内缺省
   }
   const v = raw.trim().replace(/\\/g, '/');

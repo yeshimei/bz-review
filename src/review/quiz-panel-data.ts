@@ -17,7 +17,11 @@ import type { QuizQuestion } from './quiz-core/manager';
 
 /** 整库笔记清单（md；环境目录子树剪枝；路径升序稳定输出） */
 export function listVaultNotes(app: App): string[] {
-  const files: Array<{ path?: string }> = (app?.vault as any)?.getMarkdownFiles?.() || [];
+  const vault: unknown = app?.vault;
+  const files: Array<{ path?: string }> =
+    vault && typeof vault === 'object' && 'getMarkdownFiles' in vault
+      ? (vault as { getMarkdownFiles?: () => Array<{ path?: string }> }).getMarkdownFiles?.() || []
+      : [];
   const out: string[] = [];
   for (const f of files) {
     const p = String(f?.path || '');

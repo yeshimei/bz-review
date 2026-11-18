@@ -7,6 +7,7 @@
 import type { App } from 'obsidian';
 import { jsonFileStore, storageFile } from '../core/storage';
 import { tryGetSettings } from '../core/settings-provider';
+import type { ReviewItem } from './data';
 import { addToTrash, pruneTrash, takeFromTrash, type TrashEntry } from './trash';
 
 /** 回收站文件（与 review.json 同目录，跟着库走） */
@@ -16,12 +17,17 @@ export function getTrashFilePath(): string {
 }
 
 function store(app: App) {
-  return jsonFileStore<any>(getTrashFilePath(), { app, defaultValue: [] });
+  return jsonFileStore<TrashEntry[]>(getTrashFilePath(), { app, defaultValue: [] });
+}
+
+/** 落盘条目守卫：只认带非空字符串 key 的对象形态 */
+function isTrashEntry(e: unknown): e is TrashEntry {
+  return !!e && typeof e === 'object' && typeof (e as TrashEntry).key === 'string' && !!(e as TrashEntry).key;
 }
 
 function normalize(raw: unknown): TrashEntry[] {
   if (!Array.isArray(raw)) return [];
-  return raw.filter((e) => e && typeof e === 'object' && typeof e.key === 'string' && e.key);
+  return raw.filter(isTrashEntry);
 }
 
 export async function loadTrash(app: App): Promise<TrashEntry[]> {
@@ -29,7 +35,7 @@ export async function loadTrash(app: App): Promise<TrashEntry[]> {
 }
 
 /** 删除条目时调用：追加进回收站并清掉过期的 */
-export async function pushTrash(app: App, items: readonly any[], now: Date = new Date()): Promise<void> {
+export async function pushTrash(app: App, items: readonly ReviewItem[], now: Date = new Date()): Promise<void> {
   if (!items.length) return;
   const list = pruneTrash(normalize(await store(app).read()), now);
   await store(app).write(addToTrash(list, items, now));

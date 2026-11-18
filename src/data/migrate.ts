@@ -132,7 +132,7 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
     }
     let hasData = false;
     try {
-      const parsed = JSON.parse(existing);
+      const parsed: unknown = JSON.parse(existing);
       hasData = Array.isArray(parsed) ? parsed.length > 0 : !!parsed;
     } catch {
       // 目标文件是坏的：同样不覆盖，但把它当成「有数据」，让用户先自己处理
@@ -162,7 +162,11 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
   /* 导入不按配额截断——老用户攒的数据不该因为换了插件就少一半。但**得说一声**：
      85 条原样搬进来，而免费版上限是 20 篇 + 50 条，用户完全不知道自己在超限状态，
      之后加任何新笔记都被拦，只会觉得「导入之后就不能用了」。 */
-  const cardCount = items.filter((i: any) => i?.kind === 'card' && i?.card).length;
+  const cardCount = items.filter((i: unknown) => {
+    if (!i || typeof i !== 'object') return false;
+    const rec = i as { kind?: unknown; card?: unknown };
+    return rec.kind === 'card' && !!rec.card;
+  }).length;
   const noteCount = items.length - cardCount;
   const overNotes = Math.max(0, noteCount - FREE_NOTE_LIMIT);
   const overCards = Math.max(0, cardCount - FREE_CARD_LIMIT);

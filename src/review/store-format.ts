@@ -28,52 +28,69 @@ export function reviewMeta(now: Date): ReviewMeta {
 
 /** loadItems 派生、不落盘的运行时字段（比对内容时必须剔除，否则一次列表刷新就算全员改动） */
 const RUNTIME_FIELDS = ['file', 'isCompleted', 'isOverdue', 'isMissing', 'currentStage', 'totalStages'] as const;
+type RuntimeField = typeof RUNTIME_FIELDS[number];
 
-export interface ParsedReviewFile {
-  items: any[];
-  /** 磁盘上是旧版裸数组（读取照常，下次写入升级） */
-  legacyArray: boolean;
-  /** 既不是数组也不是带 items 的对象：当坏档处理，但不擅自覆盖 */
-  broken: boolean;
+/** 落盘条目的通用形态。旧版/脏数据字段可能缺失、值类型不定，故值一律 unknown。
+ *  只在此文件内部使用：调用方各自有更精确的类型（ReviewItem 等），传进来时按 unknown 收窄。 */
+type ReviewRecord = Record<string, unknown>;
+
+/** unknown → 键值表（非对象按空表处理，调用方据此安全读属性） */
+function asRecord(value: unknown): ReviewRecord {
+  return value && typeof value === 'object' ? (value as ReviewRecord) : {};
+}
+
+/** 身份字段（id/filePath）→ 字符串。只对基础类型取值，脏对象不当身份（避免 '[object Object]' 假键）。 */
+function textOf(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+  return '';
 }
 
 /** 剥掉运行时字段（写盘白名单口径，单源在这里） */
-export function stripRuntime<T extends Record<string, any>>(item: T): Omit<T, typeof RUNTIME_FIELDS[number]> {
-  const out: Record<string, any> = {};
-  for (const [k, v] of Object.entries(item)) {
+export function stripRuntime<T>(item: T): Omit<T, RuntimeField> {
+  const out: ReviewRecord = {};
+  for (const [k, v] of Object.entries(asRecord(item))) {
     if ((RUNTIME_FIELDS as readonly string[]).includes(k)) continue;
     out[k] = v;
   }
-  return out as Omit<T, typeof RUNTIME_FIELDS[number]>;
+  return out as Omit<T, RuntimeField>;
 }
 
 /** 条目身份：优先 id（同一条目改名后仍是它），退回 filePath */
-export function itemKey(item: any): string {
-  const id = String(item?.id ?? '').trim();
+export function itemKey(item: unknown): string {
+  const r = asRecord(item);
+  const id = textOf(r.id).trim();
   if (id) return id;
-  return String(item?.filePath ?? '').trim();
+  return textOf(r.filePath).trim();
 }
 
 /** 深度排序键，去掉键顺序差异造成的「假改动」 */
-function canonicalValue(value: any): any {
-  if (Array.isArray(value)) return value.map(canonicalValue);
+function canonicalValue(value: unknown): unknown {
+  if (Array.isArray(value)) return (value as unknown[]).map(canonicalValue);
   if (value && typeof value === 'object') {
-    const out: Record<string, any> = {};
-    for (const k of Object.keys(value).sort()) out[k] = canonicalValue(value[k]);
+    const out: ReviewRecord = {};
+    const src = value as ReviewRecord;
+    for (const k of Object.keys(src).sort()) out[k] = canonicalValue(src[k]);
     return out;
   }
   return value;
 }
 
 /** 内容指纹：剔除运行时字段与 updatedAt 后比较（updatedAt 本身不是内容） */
-export function contentFingerprint(item: any): string {
-  const body = stripRuntime(item ?? {}) as Record<string, any>;
+export function contentFingerprint(item: unknown): string {
+  const body: ReviewRecord = { ...asRecord(stripRuntime(item ?? {})) };
   delete body.updatedAt;
   return JSON.stringify(canonicalValue(body));
 }
 
-function updatedMs(item: any): number {
-  const t = item?.updatedAt ? new Date(item.updatedAt).getTime() : 0;
+function updatedMs(item: unknown): number {
+  const v = asRecord(item).updatedAt;
+  const t =
+    typeof v === 'string' || typeof v === 'number'
+      ? new Date(v).getTime()
+      : v instanceof Date
+        ? v.getTime()
+        : 0;
   return Number.isFinite(t) ? t : 0;
 }
 
@@ -81,7 +98,7 @@ function updatedMs(item: any): number {
  * 条目键 → 内容指纹。合并的「基准」就是上一次读盘时算出的这张表：
  * 有了它才知道「另一边到底动没动」，而不是只看「两边现在不一样」。
  */
-export function fingerprintsOf(items: readonly any[]): Map<string, string> {
+export function fingerprintsOf(items: readonly unknown[]): Map<string, string> {
   const m = new Map<string, string>();
   for (const it of items) {
     const k = itemKey(it);
@@ -95,18 +112,28 @@ export function fingerprintsOf(items: readonly any[]): Map<string, string> {
  * - 裸数组 → 旧版，items 原样；
  * - `{items:[...]}` → 新版；
  * - 其它形态 → broken（调用方留档后自行决定，不在这里造数据）。
+ *
+ * items 用 unknown[]：调用方按自己的精确类型（ReviewItem）收窄，不把 any 泄漏出去。
  */
+export interface ParsedReviewFile {
+  items: unknown[];
+  /** 磁盘上是旧版裸数组（读取照常，下次写入升级） */
+  legacyArray: boolean;
+  /** 既不是数组也不是带 items 的对象：当坏档处理，但不擅自覆盖 */
+  broken: boolean;
+}
+
 export function parseReviewFile(raw: unknown): ParsedReviewFile {
-  if (Array.isArray(raw)) return { items: raw, legacyArray: true, broken: false };
-  if (raw && typeof raw === 'object' && Array.isArray((raw as { items?: unknown }).items)) {
-    return { items: (raw as { items: unknown[] }).items as any[], legacyArray: false, broken: false };
+  if (Array.isArray(raw)) return { items: raw as unknown[], legacyArray: true, broken: false };
+  if (raw && typeof raw === 'object' && Array.isArray((raw as ReviewRecord).items)) {
+    return { items: (raw as ReviewRecord).items as unknown[], legacyArray: false, broken: false };
   }
   return { items: [], legacyArray: false, broken: true };
 }
 
 /** 写盘用的数组形态：剥运行时字段，别的原样（含逐条 updatedAt） */
-export function serializeReviewItems(items: readonly any[]): any[] {
-  return items.map((i) => stripRuntime(i));
+export function serializeReviewItems(items: readonly unknown[]): ReviewRecord[] {
+  return items.map((i) => asRecord(stripRuntime(i)));
 }
 
 /**
@@ -115,18 +142,19 @@ export function serializeReviewItems(items: readonly any[]): any[] {
  * 老数据没有 updatedAt → 视为「未知时间」，一旦与磁盘不同就盖戳；
  * 与磁盘一模一样的条目保留原时间戳（这样另一台设备的改动才判得出新旧）。
  */
-export function stampChangedItems(next: readonly any[], disk: readonly any[], now: Date): any[] {
+export function stampChangedItems(next: readonly unknown[], disk: readonly unknown[], now: Date): ReviewRecord[] {
   const iso = now.toISOString();
-  const diskByKey = new Map<string, any>();
+  const diskByKey = new Map<string, unknown>();
   for (const it of disk) {
     const k = itemKey(it);
     if (k && !diskByKey.has(k)) diskByKey.set(k, it);
   }
   return next.map((item) => {
+    const r = asRecord(item);
     const old = diskByKey.get(itemKey(item));
-    if (!old) return { ...item, updatedAt: iso };
-    if (contentFingerprint(old) !== contentFingerprint(item)) return { ...item, updatedAt: iso };
-    return { ...item, updatedAt: item.updatedAt || old.updatedAt };
+    if (!old) return { ...r, updatedAt: iso };
+    if (contentFingerprint(old) !== contentFingerprint(item)) return { ...r, updatedAt: iso };
+    return { ...r, updatedAt: r.updatedAt || asRecord(old).updatedAt };
   });
 }
 
@@ -146,7 +174,7 @@ export interface MergeOptions {
 }
 
 export interface MergeResult {
-  items: any[];
+  items: ReviewRecord[];
   /** 两边都改过、只能留一份的条目（调用方留档 + 提示） */
   conflicts: string[];
   /** 被墓碑挡下的远端条目（同样是冲突信号） */
@@ -160,17 +188,17 @@ export interface MergeResult {
  * 顺序：沿用本机顺序，远端独有的追加在尾部（队列顺序不因同步而乱跳）。
  */
 export function mergeReviewItems(
-  local: readonly any[],
-  remote: readonly any[],
+  local: readonly unknown[],
+  remote: readonly unknown[],
   opts: MergeOptions
 ): MergeResult {
   const tombstones = opts.tombstones ?? new Map<string, number>();
   const conflicts: string[] = [];
   const revived: string[] = [];
-  const out: any[] = [];
+  const out: ReviewRecord[] = [];
 
-  const index = (arr: readonly any[]): Map<string, any> => {
-    const m = new Map<string, any>();
+  const index = (arr: readonly unknown[]): Map<string, unknown> => {
+    const m = new Map<string, unknown>();
     for (const it of arr) {
       const k = itemKey(it);
       if (k && !m.has(k)) m.set(k, it);
@@ -182,16 +210,17 @@ export function mergeReviewItems(
 
   /* 墓碑既可能按 id 记，也可能按 filePath 记（回收站存的是路径）——
      两边都要查，否则「删掉的条目」与「另一台设备的副本」永远碰不上面。 */
-  const deletedAt = (key: string, item: any): number | undefined => {
+  const deletedAt = (key: string, item: unknown): number | undefined => {
     let best: number | undefined;
-    for (const k of [key, String(item?.filePath ?? ''), String(item?.id ?? '')]) {
+    const r = asRecord(item);
+    for (const k of [key, textOf(r.filePath), textOf(r.id)]) {
       if (!k) continue;
       const t = tombstones.get(k);
       if (t !== undefined && (best === undefined || t > best)) best = t;
     }
     return best;
   };
-  const isBuried = (key: string, item: any): boolean => {
+  const isBuried = (key: string, item: unknown): boolean => {
     const t = deletedAt(key, item);
     return t !== undefined && updatedMs(item) <= t;
   };
@@ -209,17 +238,17 @@ export function mergeReviewItems(
     if (!l && !r) continue;
     if (l && buriedL && !r) continue;
     if (!l) {
-      if (!buriedR) out.push(r);
+      if (!buriedR) out.push(asRecord(r));
       continue;
     }
     if (!r || buriedR) {
-      if (!buriedL) out.push(l);
+      if (!buriedL) out.push(asRecord(l));
       continue;
     }
     const fpL = contentFingerprint(l);
     const fpR = contentFingerprint(r);
     if (fpL === fpR) {
-      out.push(updatedMs(r) > updatedMs(l) ? r : l);
+      out.push(asRecord(updatedMs(r) > updatedMs(l) ? r : l));
       continue;
     }
     /* 两边内容不同，未必是冲突：先问基准——盘上这一条还是上次读到的样子，
@@ -228,16 +257,16 @@ export function mergeReviewItems(
     const baseFp = opts.base?.get(key);
     if (baseFp !== undefined) {
       if (fpR === baseFp) {
-        out.push(l);
+        out.push(asRecord(l));
         continue;
       }
       if (fpL === baseFp) {
-        out.push(r);
+        out.push(asRecord(r));
         continue;
       }
     }
     conflicts.push(key);
-    out.push(updatedMs(r) > updatedMs(l) ? r : l);
+    out.push(asRecord(updatedMs(r) > updatedMs(l) ? r : l));
   }
 
   return { items: out, conflicts, revived };

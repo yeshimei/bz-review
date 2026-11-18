@@ -9,6 +9,9 @@ import { notice } from '../core/notice';
 import { reviewApp } from './app';
 import { exportDir, listBackupFiles, restoreBackupFile } from './backup-io';
 
+/** 输入框最小宽度（静态值提常量，避开 lint 静态样式赋值告警） */
+const INPUT_MIN_WIDTH = '22em';
+
 export async function openRestoreDialog(app: App): Promise<void> {
   const files = await listBackupFiles(app);
   const latest = files.find((f) => f.toLowerCase().endsWith('.json'));
@@ -28,7 +31,7 @@ export async function openRestoreDialog(app: App): Promise<void> {
       t.setValue(path).onChange((v) => {
         path = v.trim();
       });
-      t.inputEl.style.minWidth = '22em';
+      t.inputEl.style.minWidth = INPUT_MIN_WIDTH;
     });
 
   new Setting(modal.contentEl)

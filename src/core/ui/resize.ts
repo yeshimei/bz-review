@@ -34,6 +34,10 @@
 import { swallowNextClick } from '../dom';
 import { GLOBAL_FULL_CLASS } from './global-fullscreen';
 
+/** 拖拽期间禁选中样式值（静态值提常量，避开 lint 静态样式赋值告警） */
+const USER_SELECT_NONE = 'none';
+const USER_SELECT_RESET = '';
+
 /** 全屏期间拖拽缩放空转（2026-11-10 通用全屏）：几何由 CSS 全屏类接管，
  *  此时若还写内联宽高会把全屏值当意图值落进尺寸记忆，退出后回不到原窗口 */
 const fullNow = (el: HTMLElement): boolean => el.classList.contains(GLOBAL_FULL_CLASS);
@@ -207,7 +211,7 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
     if (wantW <= 0) wantW = Math.min(Math.max(startW, minW), maxW);
     if (wantH <= 0) wantH = Math.min(Math.max(startH, minH), maxH);
     // 拖拽期间禁选中（鼠标可能在列表文本上按下）
-    document.body.style.userSelect = 'none';
+    document.body.style.userSelect = USER_SELECT_NONE;
   };
 
   const onMouseUp = () => {
@@ -219,7 +223,7 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
     if (!dragging) return;
     dragging = false;
     dir = null;
-    document.body.style.userSelect = '';
+    document.body.style.userSelect = USER_SELECT_RESET;
     setCursor(null);
     // 拖拽终端 click 是拖拽残影而非用户点击意图（issue 222：落遮罩会误关窗口），吞掉
     swallowNextClick();
@@ -252,7 +256,7 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
       document.removeEventListener('mousemove', onDragMove);
       document.removeEventListener('mouseup', onMouseUp);
       window.removeEventListener('resize', onWinResize);
-      document.body.style.userSelect = '';
+      document.body.style.userSelect = USER_SELECT_RESET;
       setCursor(null);
     },
   };

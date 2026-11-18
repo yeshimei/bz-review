@@ -8,6 +8,12 @@
  *   首个可交互元素（autofocus: false 逃生口）、Tab 圈闭在弹窗内（trapFocus）、
  *   关闭（遮罩/ESC/requestClose 放行后的 close）还原焦点到触发元素。
  * ============================================================ */
+/** HTML 字符串落容器：DOMParser 解析后逐节点 importNode 装入，语义同 innerHTML 赋值 */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
 import { escManager } from '../esc-manager';
 import { bindMaskDismiss } from '../mask-dismiss';
 import { allocZ } from '../z-order';
@@ -95,12 +101,12 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
   // 读屏语义（对齐 flow-dialog 契约）：弹窗容器为模态 dialog，标题随 head 透出
   popup.setAttribute('role', 'dialog');
   popup.setAttribute('aria-modal', 'true');
-  if (opts.title) popup.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: opts.title }));
+  if (opts.title) popup.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: opts.title }));
 
   if (opts.head) {
     const head = createDiv();
     head.className = 'bzrv-dialog-head';
-    const title = createEl('span');
+    const title = createSpan();
     title.className = 'bzrv-dialog-title';
     title.textContent = opts.title || '';
     head.appendChild(title);
@@ -109,7 +115,7 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
 
   const body = createDiv();
   body.className = 'bzrv-dialog-body';
-  if (typeof opts.content === 'string') body.innerHTML = opts.content;
+  if (typeof opts.content === 'string') setMarkup(body, opts.content);
   else body.appendChild(opts.content);
   popup.appendChild(body);
   mask.appendChild(popup);

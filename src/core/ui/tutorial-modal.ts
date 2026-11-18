@@ -57,19 +57,19 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   const cover = createEl('button');
   cover.type = 'button';
   cover.className = 'bzrv-tut-cover';
-  cover.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: url ? `去 B 站看${opts.title}` : '教程视频还没发布' }));
+  cover.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: url ? `去 B 站看${opts.title}` : '教程视频还没发布' }));
   cover.addEventListener('click', watch);
 
-  const play = createEl('span');
+  const play = createSpan();
   play.className = 'bzrv-tut-play';
   play.setAttribute('aria-hidden', 'true');
 
-  const text = createEl('span');
+  const text = createSpan();
   text.className = 'bzrv-tut-cover-text';
-  const kicker = createEl('span');
+  const kicker = createSpan();
   kicker.className = 'bzrv-tut-kicker';
   kicker.textContent = url ? 'B 站 · 视频教程' : 'B 站 · 即将上线';
-  const name = createEl('span');
+  const name = createSpan();
   name.className = 'bzrv-tut-name';
   name.textContent = opts.title;
   text.append(kicker, name);

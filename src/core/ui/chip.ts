@@ -27,18 +27,18 @@ export function uiChip(opts: BzChipOpts): HTMLButtonElement {
   withSrText(c, opts.title);
   if (opts.disabled) c.disabled = true;
   if (opts.icon) c.appendChild(uiIcon(opts.icon));
-  const label = createEl('span');
+  const label = createSpan();
   label.textContent = opts.label;
   c.appendChild(label);
   if (typeof opts.count === 'number') {
-    const cnt = createEl('span');
+    const cnt = createSpan();
     cnt.className = 'bzrv-chip-cnt';
     cnt.textContent = String(opts.count);
     c.appendChild(cnt);
   }
   if (opts.removable && !opts.locked) {
     // ✕ 用 span[role=button]（HTML 不允许 button 嵌套 button——L11）
-    const x = createEl('span');
+    const x = createSpan();
     x.className = 'bzrv-chip-x';
     x.setAttribute('role', 'button');
     x.appendChild(srText(`移除 ${opts.label}`));

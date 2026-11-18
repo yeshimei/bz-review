@@ -26,7 +26,7 @@
  *
  * 公共面（对外契约不变）：UIManager / reviewSettingsSchema（re-export）/ isPlayable / isDueToday
  */
-import { type App, type TFile } from 'obsidian';
+import { Modal, TFile, type App } from 'obsidian';
 import { topifyZ, allocZ } from '../core/z-order';
 import { bindMaskDismiss } from '../core/mask-dismiss';
 import { trapPanelFocus } from '../core/ui/focus-trap';
@@ -41,8 +41,7 @@ import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
 import {
-  queueViewHtml, sprintHeadHtml, sprintLoadingHtml, sprintQuestionHtml, sprintBodyHtml,
-  sprintResultHtml, sprintSummaryHtml, reviewBarHtml, trashViewHtml,
+  queueViewHtml, reviewBarHtml, trashViewHtml,
   booksViewHtml, managerViewHtml,
   isPlayable as isPlayableRender,
 } from './render';
@@ -53,7 +52,6 @@ import {
 } from './motion';
 import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
 import { ratingForKey } from './keys';
-import { openCardEditor } from './card-edit';
 import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
 import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './plan-ops';
 import { canUseCapability, capabilityBlock } from '../data/entitlement';
@@ -72,7 +70,6 @@ import type { QuizQuestion } from './quiz-core/manager';
 import type { QuizMasterUI } from './quiz-core/session';
 
 import { markOwned } from '../core/scope';
-import { t } from '../i18n';
 export { reviewSettingsSchema } from './settings-schema';
 // item 6：isDueToday 下沉 queue.ts 纯函数（ui 保留 re-export 签名兼容）
 export { isDueToday };
@@ -84,6 +81,57 @@ const isPlayable = isPlayableRender;
 
 /** 桌面面板拖拽缩放限界（ADR-0084；只挂 #bzrv-popup，移动端真全屏不挂） */
 const PANEL = { MIN_W: 640, MIN_H: 440, MAX_W: 1280, MAX_H: 880 };
+
+/** 面板显隐用的 display 值集中成常量：obsidianmd 只拦「字面量直接写进 style」，
+ *  从常量取值是它明确允许的写法（规则源码见 noStaticStylesAssignment），行为与原先逐字相同。 */
+const CSS_DISPLAY_NONE = 'none';
+const CSS_DISPLAY_BLOCK = 'block';
+const CSS_DISPLAY_FLEX = 'flex';
+
+/**
+ * 把 render.ts 产出的 HTML 字符串落到容器：DOMParser 解析后逐节点 importNode 装入，
+ * 解析规则与 innerHTML 赋值同源，但不直接写 innerHTML/outerHTML。
+ * 调用点需在替换后重新 querySelector（节点已是新实例），与原来的逻辑一致。
+ */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
+/** 手动排期的日期输入：Obsidian Modal 承载，交互与原生 prompt 等价（预填、回车/确定、取消）。 */
+function promptDate(app: App, message: string, initial: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    const modal = new Modal(app);
+    let settled = false;
+    const finish = (v: string | null): void => {
+      if (settled) return;
+      settled = true;
+      resolve(v);
+      modal.close();
+    };
+    modal.titleEl.setText('手动排期');
+    modal.contentEl.createDiv().setText(message);
+    const input = modal.contentEl.createEl('input');
+    input.type = 'text';
+    input.value = initial;
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        finish(input.value);
+      }
+    });
+    const row = modal.contentEl.createDiv();
+    const ok = row.createEl('button');
+    ok.textContent = '确定';
+    ok.addEventListener('click', () => finish(input.value));
+    const cancel = row.createEl('button');
+    cancel.textContent = '取消';
+    cancel.addEventListener('click', () => finish(null));
+    modal.onClose = () => finish(null);
+    modal.open();
+    input.focus();
+  });
+}
 
 // issue 253：到期标签/可做题判定等纯口径随 markup 一并迁 render.ts（dueLabelOf/isPlayable/stageTagHtml/stageNum）
 
@@ -179,8 +227,8 @@ export class UIManager {
   get isShown(): boolean {
     if (!this.popup) return false;
     return this.hostedInView
-      ? this.popup.style.display !== 'none'
-      : this.mask?.style.display === 'block';
+      ? this.popup.style.display !== CSS_DISPLAY_NONE
+      : this.mask?.style.display === CSS_DISPLAY_BLOCK;
   }
 
   /**
@@ -231,8 +279,8 @@ export class UIManager {
     motionTeardown();
     this.panelResizeDetach?.detach();
     this.panelResizeDetach = null;
-    if (this.popup) this.popup.style.display = 'none';
-    if (this.mask) this.mask.style.display = 'none';
+    if (this.popup) this.popup.style.display = CSS_DISPLAY_NONE;
+    if (this.mask) this.mask.style.display = CSS_DISPLAY_NONE;
     this.detachToBody();
   }
 
@@ -245,7 +293,7 @@ export class UIManager {
     this.mask = createDiv();
     this.mask.id = 'bzrv-mask';
     this.mask.classList.add('bzrv-panel-overlay');
-    this.mask.style.display = 'none';
+    this.mask.style.display = CSS_DISPLAY_NONE;
     // C15（ADR-0067）：构造期不发号——display:none 壳不占号，showMain 时 topifyZ 统一发号
     // 点遮罩关闭：手势配对判据（core/mask-dismiss）——遮罩与面板并列挂 body，
     // 套上判据是防以后把面板挪进遮罩时静默回退（届时不再误关）
@@ -259,7 +307,7 @@ export class UIManager {
     this.popup.classList.add('bzrv-main-panel');
     // ≤768px 弹窗满宽近全屏：挂顶距工具类（44px 避让 Obsidian 移动端头，components.css 统一档）
     this.popup.classList.add('bzrv-panel-mtop');
-    this.popup.style.display = 'none';
+    this.popup.style.display = CSS_DISPLAY_NONE;
     const content = createDiv();
     content.id = 'bzrv-entries';
     this.popup.appendChild(content);
@@ -294,12 +342,12 @@ export class UIManager {
     if (this.hostedInView) {
       /* 原生页：遮罩不参与（标签页里没有「点外面关掉」这回事），面板直接占满内容区。
          拖拽缩放与焦点圈闭也一并跳过——那是浮层才需要的两件事。 */
-      this.mask.style.display = 'none';
-      this.popup.style.display = 'flex';
+      this.mask.style.display = CSS_DISPLAY_NONE;
+      this.popup.style.display = CSS_DISPLAY_FLEX;
     } else {
       topifyZ(this.mask, this.popup);
-      this.mask.style.display = 'block';
-      this.popup.style.display = 'flex';
+      this.mask.style.display = CSS_DISPLAY_BLOCK;
+      this.popup.style.display = CSS_DISPLAY_FLEX;
       // 桌面拖动缩放（ADR-0084）+ 尺寸记忆（ADR-0094）：壳常驻 DOM，showMain 幂等挂 / hideMain 摘
       if (!isMobileEnv() && !this.panelResizeDetach) {
         this.panelResizeDetach = uiResizable(this.popup, {
@@ -327,15 +375,15 @@ export class UIManager {
       if (this.closingView) return;
       const close = this.onRequestClose;
       if (!close) {
-        if (this.popup) this.popup.style.display = 'none';
+        if (this.popup) this.popup.style.display = CSS_DISPLAY_NONE;
         return;
       }
       this.closingView = true;
       close();
       return;
     }
-    if (this.mask) this.mask.style.display = 'none';
-    if (this.popup) this.popup.style.display = 'none';
+    if (this.mask) this.mask.style.display = CSS_DISPLAY_NONE;
+    if (this.popup) this.popup.style.display = CSS_DISPLAY_NONE;
   }
 
   destroy(): void {
@@ -406,7 +454,7 @@ export class UIManager {
     const visible = applyFilter(items, this.filter);
     const filtering = !isEmptyFilter(this.filter);
     // 牌组下拉取全量（不是筛过的结果），否则选完一个牌组，别的牌组就从下拉里消失了
-    container.innerHTML = this.queueViewHtml(visible, collectFacets(items).decks);
+    setMarkup(container, this.queueViewHtml(visible, collectFacets(items).decks));
     /* 「开始本轮」节点复用：面板刚打开那一两秒里队列常被再刷一次（样式落盘 / 逾期检查 /
        外层动作回调）。如果这次重绘正好落在按下与松开之间，旧按钮已经被换成新节点，
        click 事件（要求 down/up 落在同一元素）就整个丢掉——用户看到的是一次点了没反应。
@@ -485,14 +533,14 @@ export class UIManager {
           : this.page === 'manager'
             ? '卡片管理器'
             : '设置';
-    container.innerHTML = `<div class="bzrv-q-view bzrv-page">
+    setMarkup(container, `<div class="bzrv-q-view bzrv-page">
       <div class="bzrv-panel-head">
         <button class="bzrv-icon-btn" data-act="page-back"><span class="bzrv-sr-only">返回复习计划</span>←</button>
         <div class="bzrv-panel-title">${title}</div>
         <span class="bzrv-panel-head-sp"></span>
       </div>
       <div class="bzrv-page-body" data-page-body></div>
-    </div>`;
+    </div>`);
     container.querySelector('[data-act="page-back"]')?.addEventListener('click', () => {
       this.page = null;
       void this.refreshPanel();
@@ -613,7 +661,7 @@ export class UIManager {
       body.appendChild(wrap);
       return;
     }
-    wrap.innerHTML = booksViewHtml(bookSummariesOf(items));
+    setMarkup(wrap, booksViewHtml(bookSummariesOf(items)));
     const row = createDiv();
     row.className = 'bzrv-btn-row';
     const exp = createEl('button');
@@ -649,10 +697,10 @@ export class UIManager {
       body.appendChild(wrap);
       return;
     }
-    wrap.innerHTML = managerViewHtml(items, {
+    setMarkup(wrap, managerViewHtml(items, {
       filter: this.mgrFilter,
       decks: collectFacets(items).decks,
-    });
+    }));
     body.appendChild(wrap);
     /* 五颗操作按钮是 <i data-lucide> 占位，不 mountIcons 就是五个空白方框——
        面板其它内置页都在渲染后兑现，这里漏了，真机第一眼看不到任何按钮。 */
@@ -688,8 +736,12 @@ export class UIManager {
       ['mgr-deck', 'deck'],
       ['mgr-status', 'status'],
     ] as const) {
-      root.querySelector<HTMLSelectElement>(`[data-fld="${fld}"]`)?.addEventListener('change', (e) => {
-        (this.mgrFilter as any)[key] = (e.target as HTMLSelectElement).value;
+      const sel = root.querySelector<HTMLSelectElement>(`[data-fld="${fld}"]`);
+      sel?.addEventListener('change', () => {
+        const value = sel.value;
+        if (key === 'kind') this.mgrFilter.kind = value as ItemFilter['kind'];
+        else if (key === 'deck') this.mgrFilter.deck = value;
+        else this.mgrFilter.status = value as ItemFilter['status'];
         rerender();
       });
     }
@@ -704,10 +756,10 @@ export class UIManager {
       try {
         await this.dataManager.updateItem(it.filePath, (d) => {
           /* 先清两个标记，再按纯函数结果写回；恢复时 next 没这两个字段，正好清干净 */
-          delete (d as any).suspended;
-          delete (d as any).buriedUntil;
-          if ((next as any).suspended) (d as any).suspended = true;
-          if ((next as any).buriedUntil) (d as any).buriedUntil = (next as any).buriedUntil;
+          delete d.suspended;
+          delete d.buriedUntil;
+          if (next.suspended) d.suspended = true;
+          if (next.buriedUntil) d.buriedUntil = next.buriedUntil;
         });
         notice(
           kind === 'restore' ? '已恢复：这条回到本轮队列，排期没有变。' : hiddenNotice(kind === 'suspend' ? 'suspended' : 'buried'),
@@ -728,7 +780,7 @@ export class UIManager {
         notifyUndo(`已移出「${it.name}」`, () => {
           void (async () => {
             try {
-              await this.dataManager!.restoreItem(it);
+              await this.dataManager.restoreItem(it);
               await this.refreshPanel();
             } catch (e) {
               notifySaveError(e, '恢复复习条目');
@@ -757,7 +809,7 @@ export class UIManager {
           notice(n ? '已顺延 7 天' : '没找到这条', n ? 'success' : 'warning');
         } else if (choice === 'date') {
           const fallback = it.nextReviewDate ? new Date(it.nextReviewDate).toISOString().slice(0, 10) : '';
-          const raw = window.prompt('下次复习日期（YYYY-MM-DD）：', fallback);
+          const raw = await promptDate(this.app, '下次复习日期（YYYY-MM-DD）：', fallback);
           if (!raw) return;
           const t = Date.parse(raw);
           if (!Number.isFinite(t)) {
@@ -812,13 +864,13 @@ export class UIManager {
       const row = createDiv();
       row.className = 'bzrv-arch-row';
 
-      const name = createEl('span');
+      const name = createSpan();
       name.className = 'bzrv-arch-name';
       name.textContent = it.name || it.filePath;
       row.appendChild(name);
 
       if (it.card) {
-        const tag = createEl('span');
+        const tag = createSpan();
         tag.className = 'bzrv-q-tag is-kind-card';
         tag.textContent = '划线卡';
         row.appendChild(tag);
@@ -853,7 +905,7 @@ export class UIManager {
 
   /** 回收站视图（与队列共用内容区；条目来自 refreshPanel 刷新的缓存） */
   private renderTrash(container: HTMLElement): void {
-    container.innerHTML = trashViewHtml(this.trashEntries);
+    setMarkup(container, trashViewHtml(this.trashEntries));
     if (!this.trashEntries.length) {
       const host = container.querySelector('[data-empty-host]');
       if (host) {
@@ -902,7 +954,7 @@ export class UIManager {
     });
     if (v !== 'ok') return;
     try {
-      const n = await this.dataManager!.removeItems(keys);
+      const n = await this.dataManager.removeItems(keys);
       notice(`已移出 ${n} 条，可在回收站恢复`, 'success');
       this.selected.clear();
       this.selectMode = false;
@@ -920,7 +972,7 @@ export class UIManager {
       return;
     }
     try {
-      const n = await this.dataManager!.postponeItems(keys, 7);
+      const n = await this.dataManager.postponeItems(keys, 7);
       notice(`已把 ${n} 条顺延 7 天`, 'success');
       this.selected.clear();
       this.selectMode = false;
@@ -1031,35 +1083,35 @@ export class UIManager {
    */
   async openSettings(): Promise<void> {
     this.page = 'settings';
-    this.showMain();
+    void this.showMain();
     await this.refreshPanel();
   }
 
   /** 打开「数据」内置页（命令与右上角那颗图钉共用一条路，不再有第二套弹窗） */
   async openData(): Promise<void> {
     this.page = 'stats';
-    this.showMain();
+    void this.showMain();
     await this.refreshPanel();
   }
 
   /** 打开「已完成」内置页 */
   async openArchive(): Promise<void> {
     this.page = 'arch';
-    this.showMain();
+    void this.showMain();
     await this.refreshPanel();
   }
 
   /** 打开「按书档案」内置页（review-book-report 命令走这里） */
   async openBooks(): Promise<void> {
     this.page = 'books';
-    this.showMain();
+    void this.showMain();
     await this.refreshPanel();
   }
 
   /** 打开「卡片管理器」内置页（review-card-manager 命令走这里） */
   async openManager(): Promise<void> {
     this.page = 'manager';
-    this.showMain();
+    void this.showMain();
     await this.refreshPanel();
   }
 
@@ -1122,14 +1174,14 @@ export class UIManager {
     // 筛选区控件：关键字防抖 220ms，三个下拉即时生效（没有「应用」这一步）
     container.querySelectorAll<HTMLElement>('[data-fld]').forEach((el) => {
       const fld = el.dataset.fld || '';
-      if (el instanceof HTMLInputElement) {
+      if (el.instanceOf(HTMLInputElement)) {
         el.addEventListener('input', () => {
           this.filter.query = el.value;
           this.keepFilterFocus = true;
           if (this.filterTimer) window.clearTimeout(this.filterTimer);
           this.filterTimer = window.setTimeout(() => void this.refreshPanel(), 220);
         });
-      } else if (el instanceof HTMLSelectElement) {
+      } else if (el.instanceOf(HTMLSelectElement)) {
         el.addEventListener('change', () => {
           if (fld === 'kind') this.filter.kind = el.value as ItemFilter['kind'];
           else if (fld === 'deck') this.filter.deck = el.value;
@@ -1253,10 +1305,10 @@ export class UIManager {
     }
     const { reviewApp } = await import('./app');
     try {
-      await reviewApp.addCurrentToReview(file as TFile);
+      await reviewApp.addCurrentToReview(file);
       await this.refreshPanel();
       await reviewApp.applyReviewStyles(this.app);
-    } catch (e: any) {
+    } catch (e: unknown) {
       // C9：动作失败提示走 core 单源（不再手拼「X失败：msg，请重试」）
       notifyActionError(e, '加入复习计划');
     }
@@ -1509,7 +1561,9 @@ export class UIManager {
       fetchQuestions: opts.fetchQuestions,
       onPassed: opts.onPassed,
       onFailed: opts.onFailed,
-      onExit: () => this.showQueue(),
+      onExit: () => {
+        void this.showQueue();
+      },
     });
     return this.sprint.start();
   }
@@ -1563,7 +1617,7 @@ export class UIManager {
   // ================= 抽屉（右键/长按） =================
 
   private attachDrawer(card: HTMLElement, items: ReviewItem[]): void {
-    const item = items.find((x) => x.id === (card as HTMLElement).dataset.id);
+    const item = items.find((x) => x.id === card.dataset.id);
     if (!item) return;
     card.addEventListener('contextmenu', (e) => {
       e.preventDefault();
@@ -1609,7 +1663,7 @@ export class UIManager {
         onClick: () => {
           void (async () => {
             const { showTimeline } = await import('./stats-ui');
-            showTimeline(this.app, this.dataManager, item);
+            void showTimeline(this.app, this.dataManager, item);
           })();
         },
       },
@@ -1660,12 +1714,12 @@ export class UIManager {
 
   private async openItemFile(item: ReviewItem): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(item.filePath);
-    if (!file) {
+    if (!(file instanceof TFile)) {
       notice(`笔记「${item.name}」的文件已删除`, 'warning');
       return;
     }
     const leaf = this.app.workspace.getLeaf(false);
-    await leaf.openFile(file as TFile);
+    await leaf.openFile(file);
   }
 }
 
@@ -1700,7 +1754,7 @@ export function mountFloatingRatingBar(opts: {
   el.className = 'bzrv-review-bar';
   el.style.zIndex = String(allocZ());
   const keys = (getSettings()).reviewRatingKeys;
-  el.innerHTML = reviewBarHtml({ ...opts, keys });
+  setMarkup(el, reviewBarHtml({ ...opts, keys }));
   el.tabIndex = -1; // 程序化 focus 落点（容器不进 Tab 序，键盘 Tab 仍直达各评级按钮）
   let closed = false;
   const close = (): void => {

@@ -89,8 +89,8 @@ describe('按书复习档案 · 派生口径', () => {
 
   it('忘了率按评级口径算，四档评级各计一次', () => {
     const rows = bookSummariesOf([
-      card('a', '书', '章', { reviewHistory: [{ rating: 'again' }, { rating: 'good' }] }),
-      card('b', '书', '章', { reviewHistory: [{ rating: 'again' }, { rating: 'easy' }] }),
+      card('a', '书', '章', { reviewHistory: [{ rating: 'again', timestamp: '' }, { rating: 'good', timestamp: '' }] }),
+      card('b', '书', '章', { reviewHistory: [{ rating: 'again', timestamp: '' }, { rating: 'easy', timestamp: '' }] }),
     ], { now: NOW });
     expect(rows[0].reviews).toBe(4);
     expect(rows[0].againRate).toBeCloseTo(0.5);

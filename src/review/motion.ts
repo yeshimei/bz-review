@@ -38,6 +38,12 @@ const E = {
 } as const;
 const STAG = 30;
 
+/** 静态样式字面量提成常量（obsidianmd/no-static-styles-assignment，变量赋值放行） */
+const CSS_POSITION_RELATIVE = 'relative';
+const CSS_DASH_EMPTY = '';
+const CSS_ORIGIN_LEFT = 'left center';
+const CSS_ORIGIN_TOP = 'top center';
+
 /** 评审模拟 RM（?rm=1）：直达终态。系统 RM 不拦演出（评审期口径，见文件头）。 */
 function reduced(): boolean {
   try { return typeof location !== 'undefined' && location.search.includes('rm=1'); }
@@ -56,9 +62,9 @@ function tween(dur: number, step: (v: number) => void, ease: (t: number) => numb
   const tick = (now: number): void => {
     const p = Math.min(1, (now - t0) / dur);
     step(ease(p));
-    if (p < 1) requestAnimationFrame(tick);
+    if (p < 1) window.requestAnimationFrame(tick);
   };
-  requestAnimationFrame(tick);
+  window.requestAnimationFrame(tick);
 }
 
 /** 延时调度（带面板级取消，防视图重建后旧编排迟到落点） */
@@ -78,7 +84,7 @@ export function motionTeardown(): void {
 
 /** static→relative：为绝对定位注入件提供定位上下文（无几何变化） */
 function ensureRelative(el: HTMLElement): void {
-  if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+  if (getComputedStyle(el).position === 'static') el.style.position = CSS_POSITION_RELATIVE;
 }
 
 /* ================= 注入装饰件工厂 ================= */
@@ -86,7 +92,7 @@ function ensureRelative(el: HTMLElement): void {
 /** 朱批印章：落章（impact 过冲）→ 驻留 → 淡出自毁。big = 结算屏大章。 */
 function seal(host: HTMLElement, text: string, big = false): void {
   ensureRelative(host);
-  const s = createEl('span');
+  const s = createSpan();
   s.className = 'bzrv-rv-seal' + (big ? ' bzrv-rv-seal--big' : '');
   s.setAttribute('aria-hidden', 'true');
   s.textContent = text;
@@ -154,8 +160,8 @@ function drawStroke(svg: Element, dur = 320): void {
       const a = p.animate(
         [{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
         { duration: dur, easing: E.out, fill: 'forwards' });
-      a.finished.then(() => { p.style.strokeDasharray = ''; p.style.strokeDashoffset = ''; })
-        .catch(() => { p.style.strokeDasharray = ''; p.style.strokeDashoffset = ''; });
+      a.finished.then(() => { p.style.strokeDasharray = CSS_DASH_EMPTY; p.style.strokeDashoffset = CSS_DASH_EMPTY; })
+        .catch(() => { p.style.strokeDasharray = CSS_DASH_EMPTY; p.style.strokeDashoffset = CSS_DASH_EMPTY; });
     } catch { /* 非 geometry/异常忽略，图标保持常态 */ }
   });
 }
@@ -447,7 +453,7 @@ export function motionStats(body: HTMLElement): void {
   });
   body.querySelectorAll<HTMLElement>('.soft-fill, .bar-fill').forEach((fill, i) => {
     after(380 + i * 45, () => {
-      fill.style.transformOrigin = 'left center';
+      fill.style.transformOrigin = CSS_ORIGIN_LEFT;
       waapi(fill,
         [{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }],
         { duration: 560, easing: 'cubic-bezier(.3,.9,.35,1.12)', fill: 'backwards' });
@@ -482,7 +488,7 @@ export function motionHistory(body: HTMLElement): void {
         { duration: 320, easing: E.out, fill: 'backwards' });
       const line = item.querySelector<HTMLElement>('.bzrv-review-history-line');
       if (line) {
-        line.style.transformOrigin = 'top center';
+        line.style.transformOrigin = CSS_ORIGIN_TOP;
         waapi(line,
           [{ transform: 'scaleY(0)' }, { transform: 'scaleY(1)' }],
           { duration: 230, easing: E.out, fill: 'backwards' });

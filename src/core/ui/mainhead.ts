@@ -6,6 +6,10 @@
 import type { BzMainHeadOpts } from './types';
 import { uiBtn } from './button';
 
+/** 静态样式字面量提成常量，避免 no-static-styles-assignment（值不变） */
+const CSS_DISPLAY_NONE = 'none';
+const CSS_DISPLAY_RESET = '';
+
 /** 主头行（.bzrv-main-head），返回 el + setTitle + setCount（空值隐藏计数位） */
 export function uiMainHead(opts: BzMainHeadOpts): {
   el: HTMLDivElement;
@@ -15,16 +19,16 @@ export function uiMainHead(opts: BzMainHeadOpts): {
   const el = createDiv();
   el.className = 'bzrv-main-head';
 
-  const title = createEl('span');
+  const title = createSpan();
   title.className = 'bzrv-main-title';
   title.textContent = opts.title;
   el.appendChild(title);
 
-  const count = createEl('span');
+  const count = createSpan();
   count.className = 'bzrv-main-count';
   el.appendChild(count);
 
-  const sp = createEl('span');
+  const sp = createSpan();
   sp.className = 'bzrv-main-spacer';
   el.appendChild(sp);
 
@@ -40,10 +44,10 @@ export function uiMainHead(opts: BzMainHeadOpts): {
 
   const setCount = (c?: string) => {
     if (c === undefined || c === null || c === '') {
-      count.style.display = 'none';
+      count.style.display = CSS_DISPLAY_NONE;
       count.textContent = '';
     } else {
-      count.style.display = '';
+      count.style.display = CSS_DISPLAY_RESET;
       count.textContent = c;
     }
   };

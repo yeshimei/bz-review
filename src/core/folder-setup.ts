@@ -204,7 +204,7 @@ export function openFolderSettings(domain: FolderDomainId, anchorKey?: string, c
   // 索性先收起来：用户保存完回到库，重新点开域就是新状态——比留一张过期的引导屏诚实。
   try {
     closeBefore?.();
-  } catch (e) {
+  } catch {
     /* 关不掉就留着，不影响打开设置 */
   }
   if (!requestSettingsPanel(plan.settingsId, key)) {

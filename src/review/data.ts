@@ -7,7 +7,7 @@
  * 留档降级（原语 3）。read/saveItems 保持无锁原语（队列内调用，勿再入队——不可重入）。
  */
 import { stripMdExt } from '../core/utils';
-import type { App, TFile } from 'obsidian';
+import { TFile, type App } from 'obsidian';
 import { backupOriginal, diskReadText, enqueueFileTask, jsonFileStore, storageFile } from '../core/storage';
 import { tryGetSettings } from '../core/settings-provider';
 import { FSRS_FIRST_INTERVALS, LADDER_MAX, TOTAL_STAGES } from './fsrs';
@@ -88,6 +88,16 @@ export interface ReviewCard {
   manual?: boolean;
 }
 
+/** 一条复习历史记录（持久化字段；旧数据可能缺 S/D 等，故都可选） */
+export interface ReviewHistoryEntry {
+  timestamp: string;
+  stage?: number;
+  rating: string;
+  stability?: number;
+  difficulty?: number;
+  R?: number;
+}
+
 export interface ReviewItem {
   id: string;
   filePath: string;
@@ -104,7 +114,7 @@ export interface ReviewItem {
   phase: 'ladder' | 'fsrs';
   stability: number;
   difficulty: number;
-  reviewHistory: any[];
+  reviewHistory: ReviewHistoryEntry[];
   totalReviews: number;
   averageConfidence: number;
   nextReviewDate: string | null; // ISO
@@ -176,15 +186,16 @@ export class ReviewDataManager {
   async loadItems(): Promise<ReviewItem[]> {
     /* 形态解析收在 store-format：旧版裸数组照常读（下次落盘自动升级），
        带 version/items 的新文件也读得动，两种形态不用在这里各写一遍。 */
-    const data = await jsonFileStore<any>(getReviewFilePath()).read();
-    const items = parseReviewFile(data).items;
+    const data: unknown = await jsonFileStore<unknown>(getReviewFilePath()).read();
+    /* 磁盘数据不可信：先按 ReviewItem 收窄，再逐条补派生字段（下方 finishSchedule）。 */
+    const items = parseReviewFile(data).items as ReviewItem[];
     const valid: ReviewItem[] = [];
 
     for (const item of items) {
       /* 划线卡：没有文件可查，内容就在条目里。必须在这里分流——下面那段
          「查不到文件 → 标挂起」会把每一张卡都画成删除线、排除出队列。 */
       if (isCardItem(item)) {
-        item.file = null as any;
+        item.file = undefined;
         item.isMissing = false;
         item.name = item.name || cardTitleOf(item.card!);
         this.finishSchedule(item);
@@ -192,9 +203,9 @@ export class ReviewDataManager {
         continue;
       }
       const file = this.app.vault.getAbstractFileByPath(item.filePath);
-      if (!file) {
+      if (!(file instanceof TFile)) {
         // 挂起记录（ticket 098）：文件不存在 → 保留条目（挂起，列表删除线展示、不计逾期、不进复习队列）
-        item.file = null as any;
+        item.file = undefined;
         item.isMissing = true;
         item.name = item.name || stripMdExt(item.filePath.split('/').pop() || '') || item.filePath;
         item.isCompleted = item.completed || false;
@@ -204,8 +215,8 @@ export class ReviewDataManager {
         valid.push(item);
         continue;
       }
-      item.file = file as TFile;
-      item.name = (file as TFile).basename;
+      item.file = file;
+      item.name = file.basename;
       this.finishSchedule(item);
       valid.push(item);
     }
@@ -255,12 +266,12 @@ export class ReviewDataManager {
     const now = new Date();
     const path = getReviewFilePath();
     const raw = await diskReadText(this.app, path);
-    let disk: any[] = [];
+    let disk: ReviewItem[] = [];
     let diskBroken = false;
     if (raw) {
       try {
         const parsed = parseReviewFile(JSON.parse(raw));
-        disk = parsed.items;
+        disk = parsed.items as ReviewItem[];
         diskBroken = parsed.broken;
       } catch {
         diskBroken = true;
@@ -268,7 +279,7 @@ export class ReviewDataManager {
     }
     if (diskBroken) await backupOriginal(this.app, path, raw ?? undefined);
 
-    const next = stampChangedItems(items.map((i) => stripRuntime(i as any)), disk, now);
+    const next = stampChangedItems(items.map((i) => stripRuntime(i)), disk, now);
     const tombstones = tombstonesOf(await loadTrash(this.app));
     const merged = mergeReviewItems(next, disk, { now, tombstones, base });
 
@@ -283,9 +294,9 @@ export class ReviewDataManager {
 
     if (raw) await writeDailySnapshot(this.app, raw, now);
     /* 主体保持数组（旧版插件读到不会当成空计划），版本号进旁挂文件。 */
-    await jsonFileStore<any>(path).write(serializeReviewItems(merged.items));
+    await jsonFileStore<unknown>(path).write(serializeReviewItems(merged.items));
     try {
-      await jsonFileStore<any>(getReviewMetaPath()).write(reviewMeta(now));
+      await jsonFileStore<unknown>(getReviewMetaPath()).write(reviewMeta(now));
     } catch (e) {
       console.warn('[review] 元数据写入失败（不影响主体数据）', e);
     }
@@ -356,7 +367,9 @@ export class ReviewDataManager {
       let added = 0;
       let skipped = 0;
       let rejected = 0;
-      for (const raw of Array.isArray(cards) ? cards : []) {
+      /* Array.isArray 把 readonly ReviewCard[] 收窄成 any[]，这里显式回断言，避免 any 泄漏。 */
+      const list = Array.isArray(cards) ? (cards as ReviewCard[]) : [];
+      for (const raw of list) {
         const key = String(raw?.key ?? '').trim();
         const text = String(raw?.text ?? '').trim();
         if (!key || !text || have.has(key)) {
@@ -472,7 +485,7 @@ export class ReviewDataManager {
   restoreItem(item: ReviewItem): Promise<void> {
     return this.mutate((items) => {
       if (items.some((i) => i.filePath === item.filePath)) return;
-      items.push(stripRuntime(item as any) as ReviewItem);
+      items.push(stripRuntime(item));
     })
       .then(() => removeTrashKeys(this.app, [item.filePath]))
       .then(() => undefined);
@@ -516,8 +529,8 @@ export class ReviewDataManager {
       const { writeSnapshotNow } = await import('./snapshot-store');
       await writeSnapshotNow(this.app, raw, now);
     }
-    await jsonFileStore<any>(getReviewFilePath()).write(serializeReviewItems(items));
-    await jsonFileStore<any>(getReviewMetaPath()).write(reviewMeta(now));
+    await jsonFileStore<unknown>(getReviewFilePath()).write(serializeReviewItems(items));
+    await jsonFileStore<unknown>(getReviewMetaPath()).write(reviewMeta(now));
   }
 
   /**
@@ -573,7 +586,7 @@ export class ReviewDataManager {
    * 撤销评级：把条目整体还原为评级前的快照（批 2）。
    * 只覆盖快照里有的字段，不动运行时派生态；条目已被删就返回 false。
    */
-  restoreSnapshot(filePath: string, snapshot: Record<string, any>): Promise<boolean> {
+  restoreSnapshot(filePath: string, snapshot: Record<string, unknown>): Promise<boolean> {
     return this.mutate((items) => {
       const it = items.find((i) => i.filePath === filePath);
       if (!it) return false;
@@ -624,14 +637,18 @@ export function getReviewFitFilePath(): string {
 }
 
 export async function loadFittedParams(app: App): Promise<FittedParams | null> {
-  const data = (await jsonFileStore<any>(getReviewFitFilePath()).read()) as any;
-  if (!data || !Array.isArray(data.w) || data.w.length < 8) return null;
+  const raw: unknown = await jsonFileStore<unknown>(getReviewFitFilePath()).read();
+  if (!raw || typeof raw !== 'object') return null;
+  /* 盘上文件不可信：只按「w / version 可能是什么」收窄，不把 any 带进后续判断。 */
+  const data = raw as { w?: unknown; version?: unknown };
+  if (!Array.isArray(data.w) || data.w.length < 8) return null;
+  const w = data.w as unknown[];
   // 全参契约完整性：声称 v2 但权重不足 19 维 → 视为字段不齐（null 回退默认，与 w<8 同口径）
-  if (data.version === FIT_PARAMS_VERSION.FULL && data.w.length < 19) return null;
+  if (data.version === FIT_PARAMS_VERSION.FULL && w.length < 19) return null;
   // 脏值防御（审查修复）：任一维非有限数 → 整文件视为坏档（null 回退默认，防 markReview RangeError /
   // NaN 毒化记忆曲线）；有限值逐维钳进 W_BOUNDS（与拟合落盘同界——手改文件越界值不再直灌调度）
-  if (!data.w.every((x: unknown) => Number.isFinite(x))) return null;
-  return { ...(data as FittedParams), w: clipWToBounds(data.w) };
+  if (!w.every((x) => typeof x === 'number' && Number.isFinite(x))) return null;
+  return { ...(raw as FittedParams), w: clipWToBounds(w as number[]) };
 }
 
 export async function saveFittedParams(app: App, fit: FittedParams): Promise<void> {

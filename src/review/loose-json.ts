@@ -9,7 +9,7 @@
  * 东西比没有更糟：用户会把一条读不通的题当成自己的问题。
  * ============================================================ */
 
-export function parseLooseJson(text: string): any {
+export function parseLooseJson(text: string): unknown {
   try {
     return JSON.parse(text);
   } catch {

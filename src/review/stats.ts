@@ -55,10 +55,10 @@ export interface HistoryEntry {
 }
 
 export function historyOf(item: ReviewItem): HistoryEntry[] {
-  return ((item.reviewHistory as any[]) || []).map((h) => ({
+  return (item.reviewHistory || []).map((h) => ({
     timestamp: h.timestamp,
     rating: h.rating,
-    stage: h.stage,
+    stage: h.stage ?? 0,
     stability: h.stability,
     difficulty: h.difficulty,
     R: h.R,

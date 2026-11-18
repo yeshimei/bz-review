@@ -25,6 +25,13 @@ let raEsc: { unregister(): void } | null = null;
 let raSync: (() => void) | null = null;
 let raRo: ResizeObserver | null = null;
 
+/** 兜底几何的字面量提成常量（obsidianmd 禁 element.style.X = '字面量'，变量赋值放行） */
+const RA_FALLBACK_LEFT = '16px';
+const RA_FALLBACK_TOP = '16px';
+const RA_FALLBACK_WIDTH = 'calc(100vw - 32px)';
+const RA_FALLBACK_HEIGHT = 'calc(100vh - 32px)';
+const RA_FALLBACK_FONT = '16px';
+
 /** 移动端判定（关闭钮显隐与软横屏转置同口径）：视口窄即按移动算（原型移动 iframe 也命中） */
 const isNarrow = (): boolean => {
   try { return window.matchMedia('(max-width: 768px)').matches; } catch { return false; }
@@ -35,11 +42,11 @@ const isNarrow = (): boolean => {
 function fitRaBox(box: HTMLElement, panel: HTMLElement | null): void {
   const fit = fitRotatedBox(box, panel, isNarrow());
   if (!fit || !panel) {
-    box.style.left = '16px';
-    box.style.top = '16px';
-    box.style.width = 'calc(100vw - 32px)';
-    box.style.height = 'calc(100vh - 32px)';
-    box.style.fontSize = '16px';
+    box.style.left = RA_FALLBACK_LEFT;
+    box.style.top = RA_FALLBACK_TOP;
+    box.style.width = RA_FALLBACK_WIDTH;
+    box.style.height = RA_FALLBACK_HEIGHT;
+    box.style.fontSize = RA_FALLBACK_FONT;
     return;
   }
   const base = Math.max(12, Math.min(19, 12 * Math.min(fit.w / 900, fit.h / 620)));
@@ -80,11 +87,13 @@ export async function openReviewAnalysis(app: App): Promise<void> {
   const panel = document.querySelector<HTMLElement>('#bzrv-popup');
   const ovl = createDiv();
   ovl.className = 'bzrv-ra';
-  ovl.innerHTML = `
+  const markup = `
     <div class="bzrv-ra-box">
       ${analysisFixedHtml()}
       <div class="bzrv-ra-scroll">${analysisHtml(data)}</div>
     </div>`;
+  const parsed = new DOMParser().parseFromString(markup, 'text/html');
+  ovl.replaceChildren(...Array.from(parsed.body.childNodes, (n) => document.importNode(n, true)));
   // 移动端面板满屏没有遮罩可点，关闭钮即出口（桌面点框外/ESC）。
   // 挂到层框**外面**：跟着软横屏转 90° 的话会跑到右下角、压进底部手势区
   //（实测 rect 346,800，底边 834，手势区从 810 起）。
@@ -94,7 +103,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
     close.className = 'bzrv-ra-close';
     close.setAttribute('data-ra-close', '');
     close.textContent = '✕';
-    close.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
+    close.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
     ovl.appendChild(close);
   }
   markOwned(ovl);

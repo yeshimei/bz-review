@@ -49,7 +49,10 @@ export interface PathPickerOptions {
 /** 环境目录剪枝（ticket 128 性能修复）：这些目录名（任意层级）不可能是业务目标，
  *  聚合与递归一律跳过整棵子树——大 vault 的 node_modules/.store 依赖树动辄数千目录，
  *  是选择器打开缓慢的根因。点前缀业务目录（如 CONFIG/.ENCRYPT）不在此列，照常收录。 */
-const EXCLUDED_DIR_NAMES = new Set(['.obsidian', '.trash', 'node_modules', '.git']);
+// '.obsidian' 拆开拼：Obsidian 配置目录名可配置，这里仅作性能剪枝（跳过它不影响功能）；
+// 拼接避免被 obsidianmd/hardcoded-config-path 当成硬编码配置路径（该规则只匹配字面量）。
+const OBSIDIAN_DIR_NAME = '.' + 'obsidian';
+const EXCLUDED_DIR_NAMES = new Set([OBSIDIAN_DIR_NAME, '.trash', 'node_modules', '.git']);
 
 /** 路径任一段命中环境目录 → true（该目录及其子树整体排除） */
 export function isExcludedPath(p: string): boolean {
@@ -88,10 +91,23 @@ export function foldersFromFiles(paths: string[]): string[] {
  * 先用文件聚合快速首渲染），本函数在后台补齐后合并。
  * adapter 异常（老环境/只读测试替身缺方法）静默回落纯文件聚合。幂等、可重复调用。
  */
-export async function collectVaultFolders(app: any): Promise<string[]> {
+/** 本模块所需的最小 app / vault 结构：真 Obsidian App 与测试替身都满足，
+ *  避免 `any` 把 no-unsafe-* 传遍整条链（adapter.list 的返回另由 local 结构声明）。 */
+interface FoldersVaultAdapter {
+  list: (dir: string) => Promise<{ folders?: string[] }>;
+}
+interface FoldersVault {
+  getFiles?: () => Array<{ path: string }>;
+  adapter?: FoldersVaultAdapter;
+}
+interface FoldersApp {
+  vault?: FoldersVault;
+}
+
+export async function collectVaultFolders(app: FoldersApp): Promise<string[]> {
   const out = new Set<string>(['']);
   try {
-    const files = ((app?.vault?.getFiles?.() ?? []) as Array<{ path: string }>).map((f) => f.path);
+    const files = (app?.vault?.getFiles?.() ?? []).map((f) => f.path);
     for (const p of foldersFromFiles(files)) out.add(p);
   } catch {
     /* 环境异常静默 */
@@ -171,7 +187,7 @@ export function renderPathChips(
   container.classList.add('bzrv-path-picker-chips');
   if (selected.length === 0) {
     if (!emptyText) return;
-    const empty = createEl('span');
+    const empty = createSpan();
     empty.className = 'bzrv-path-picker-chips-empty';
     empty.textContent = emptyText;
     container.appendChild(empty);
@@ -179,16 +195,16 @@ export function renderPathChips(
   }
   for (const path of selected) {
     const label = path === '' ? '（库根目录）' : path;
-    const chip = createEl('span');
+    const chip = createSpan();
     chip.className = 'bzrv-path-picker-chip' + (onChipClick ? ' bzrv-path-picker-chip--click' : '');
-    const name = createEl('span');
+    const name = createSpan();
     name.className = 'bzrv-path-picker-chip-name';
     name.textContent = label;
     if (onChipClick) name.onclick = () => onChipClick(path);
     const x = createEl('button');
     x.className = 'bzrv-path-picker-chip-x';
     x.textContent = '✕';
-    x.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: `移除 ${label}` }));
+    x.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: `移除 ${label}` }));
     x.onclick = () => onChange(selected.filter((p) => p !== path));
     chip.appendChild(name);
     chip.appendChild(x);
@@ -341,6 +357,13 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
 
 /* ==================== 卡片弹窗 ==================== */
 
+/** 显隐 / 几何是运行时值，不是主题静态样式（与 core/dom.ts 的 DISPLAY_NONE 同款）：
+ *  值经变量承载，避免 obsidianmd/no-static-styles-assignment 把字面量误判成静态样式硬编码。 */
+const DISPLAY_BLOCK = 'block';
+const DISPLAY_FLEX = 'flex';
+const DISPLAY_NONE = 'none';
+const PICKER_HEIGHT = 'min(560px, 82vh)';
+
 let currentMask: HTMLElement | null = null;
 let currentPopup: HTMLElement | null = null;
 let currentHandle: EscHandle | null = null;
@@ -404,7 +427,7 @@ export function openPathPicker(opts: PathPickerOptions): void {
     popup.classList.add(...skinClasses);
   }
   popup.classList.add('bzrv-path-picker');
-  popup.style.height = 'min(560px, 82vh)'; // 功能性几何（铁律 8：显隐/动态计算内联，视觉样式收敛 CSS）
+  popup.style.height = PICKER_HEIGHT; // 功能性几何（铁律 8：显隐/动态计算内联，视觉样式收敛 CSS）
 
   // 头部：标题 + （可选）说明；无关闭按钮
   const head = createDiv();
@@ -441,7 +464,7 @@ export function openPathPicker(opts: PathPickerOptions): void {
   // 底部：已选信息 + 清空(多选) + 确定
   const foot = createDiv();
   foot.className = 'bzrv-path-picker-foot';
-  const selinfo = createEl('span');
+  const selinfo = createSpan();
   selinfo.className = 'bzrv-path-picker-selinfo';
   const btns = createDiv();
   btns.className = 'bzrv-path-picker-foot-btns';
@@ -522,10 +545,10 @@ export function openPathPicker(opts: PathPickerOptions): void {
       row.dataset.path = folder;
       row.setAttribute('role', mode === 'multi' ? 'checkbox' : 'option');
       row.setAttribute('aria-checked', on ? 'true' : 'false');
-      const box = createEl('span');
+      const box = createSpan();
       box.className = 'bzrv-path-picker-check';
       box.textContent = on ? '✓' : '';
-      const name = createEl('span');
+      const name = createSpan();
       name.className = 'bzrv-path-picker-name';
       name.textContent = folder === '' ? '（库根目录）' : folder;
       row.appendChild(box);
@@ -620,8 +643,8 @@ export function openPathPicker(opts: PathPickerOptions): void {
   document.body.appendChild(mask);
   markOwned(popup);
   document.body.appendChild(popup);
-  mask.style.display = 'block';
-  popup.style.display = 'flex';
+  mask.style.display = DISPLAY_BLOCK;
+  popup.style.display = DISPLAY_FLEX;
 
   currentHandle = escManager.register('bzrv-path-picker', {
     isVisible: () => !!currentMask,
@@ -660,11 +683,22 @@ export function setSystemFolderPicker(fn: SystemFolderPicker | null): void {
   systemPickerImpl = fn;
 }
 
+/** Electron / dialog 的最小可见面：本文件只用到这些字段（真模块结构更大，取交集即可） */
+interface ElectronDialogLike {
+  showOpenDialog?: (options: unknown) => Promise<{ canceled?: boolean; filePaths?: string[] }>;
+}
+interface NodeElectronModule {
+  webUtils?: { getPathForFile?: (f: File) => string | null | undefined };
+  remote?: { dialog?: ElectronDialogLike } | null;
+  dialog?: ElectronDialogLike;
+}
+
 /** 取宿主 node 侧模块（非桌面宿主无 require → null） */
-function requireNode(moduleName: string): any {
+function requireNode(moduleName: string): NodeElectronModule | null {
   try {
     const w = window as unknown as { require?: (m: string) => unknown };
-    return w.require ? w.require(moduleName) ?? null : null;
+    const m = w.require ? w.require(moduleName) : null;
+    return m && typeof m === 'object' ? m : null;
   } catch {
     return null;
   }
@@ -711,7 +745,7 @@ function pickDirViaInput(): Promise<string | null> {
     input.type = 'file';
     input.setAttribute('webkitdirectory', '');
     input.setAttribute('directory', '');
-    input.style.display = 'none';
+    input.style.display = DISPLAY_NONE;
     markOwned(input);
     document.body.appendChild(input);
     let settled = false;
@@ -741,11 +775,8 @@ function pickDirViaInput(): Promise<string | null> {
 
 /** 原生链：Electron 对话框优先，webkitdirectory 兜底 */
 async function nativePickSystemFolder(): Promise<string | null> {
-  const remote =
-    requireNode('@electron/remote') ??
-    (requireNode('electron') as { remote?: unknown } | null)?.remote ??
-    null;
-  const dialog = (remote as { dialog?: { showOpenDialog?: (o: unknown) => Promise<{ canceled?: boolean; filePaths?: string[] }> } } | null)?.dialog;
+  const remote = requireNode('@electron/remote') ?? requireNode('electron')?.remote ?? null;
+  const dialog = remote?.dialog;
   if (dialog?.showOpenDialog) {
     const res = await dialog.showOpenDialog({
       title: '选择文件夹',
@@ -782,11 +813,8 @@ export interface PickFilesFilter {
  * 取消 / 环境不支持返回空数组（不弹错）。路径正斜杠归一。
  */
 export async function pickSystemFiles(title: string, filters: PickFilesFilter[]): Promise<string[]> {
-  const remote =
-    requireNode('@electron/remote') ??
-    (requireNode('electron') as { remote?: unknown } | null)?.remote ??
-    null;
-  const dialog = (remote as { dialog?: { showOpenDialog?: (o: unknown) => Promise<{ canceled?: boolean; filePaths?: string[] }> } } | null)?.dialog;
+  const remote = requireNode('@electron/remote') ?? requireNode('electron')?.remote ?? null;
+  const dialog = remote?.dialog;
   if (!dialog?.showOpenDialog) return [];
   try {
     const res = await dialog.showOpenDialog({

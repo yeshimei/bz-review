@@ -142,7 +142,7 @@ async function readLocalValidated(app: unknown): Promise<CategoryTable | null> {
   if (text === null) return null;
   try {
     return validateCategoryTable(JSON.parse(text));
-  } catch (e) {
+  } catch {
     return null;
   }
 }

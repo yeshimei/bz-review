@@ -8,7 +8,7 @@
  * 复习面板内部的存量文案目前仍是中文直写（从 bz 搬来，量大），新写的入口、
  * 命令与设置页走这里；双语化按模块逐步收口。
  */
-import { moment } from 'obsidian';
+import { getLanguage, moment } from 'obsidian';
 import { tryGetSettings } from './core/settings-provider';
 
 export type Lang = 'zh' | 'en';
@@ -20,7 +20,7 @@ export function currentLang(): Lang {
        是个纯死字段，用户选了 en 界面还是中文。 */
     const want = String((tryGetSettings() as { language?: string } | null)?.language ?? 'auto').toLowerCase();
     if (want === 'zh' || want === 'en') return want;
-    const stored = window.localStorage.getItem('language');
+    const stored = getLanguage();
     if (stored) return String(stored).toLowerCase().startsWith('zh') ? 'zh' : 'en';
     const ml = String((moment as unknown as { locale?: () => string })?.locale?.() || 'zh-cn').toLowerCase();
     return ml.startsWith('zh') ? 'zh' : 'en';

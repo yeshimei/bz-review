@@ -111,7 +111,7 @@ function onMutation(records: MutationRecord[]): void {
     if (r.type !== 'childList' || !r.addedNodes.length) continue;
     added = true;
     for (const n of Array.from(r.addedNodes)) {
-      if (n instanceof Element && n.parentElement === document.body) watchTopLayer(n);
+      if (n.instanceOf(Element) && n.parentElement === document.body) watchTopLayer(n);
     }
   }
   // 纯属性变化（编辑器里最高频）跳过这一趟全 DOM 扫描，交给同拍合并的 evaluate

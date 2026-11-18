@@ -10,7 +10,7 @@
  * 移动端再跳过 input/textarea，避免弹软键盘遮挡并聚焦到按钮/开关/下拉），
  * 关闭（遮罩/Esc/被顶替）还原焦点到触发元素；popup 挂 role="dialog" aria-modal="true"。
  */
-import { Setting, setIcon } from 'obsidian';
+import { setIcon } from 'obsidian';
 import { createOverlay } from './dom';
 import { escManager } from './esc-manager';
 import { isMobileEnv } from './mobile';
@@ -19,6 +19,11 @@ import { trapFocus } from './ui/focus-trap';
 import type { SettingsSchema } from './settings-schema';
 
 import { markOwned } from './scope';
+
+/** 显示态 display 值（运行时赋值，非主题静态样式；同 core/dom.ts 的 DISPLAY_NONE 口径） */
+const DISPLAY_BLOCK = 'block';
+const DISPLAY_FLEX = 'flex';
+
 /** 弹窗内可交互元素选择器（读屏/焦点管理的通用口径） */
 const FOCUSABLE_SELECTOR = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
@@ -50,13 +55,13 @@ export function createSettingsGroup(container: HTMLElement, opts: { icon: string
   group.className = 'bzrv-settings-group';
   const head = createDiv();
   head.className = 'bzrv-settings-group-head';
-  const icon = createEl('span');
+  const icon = createSpan();
   icon.className = 'bzrv-settings-group-icon';
   setIcon(icon, opts.icon);
-  const name = createEl('span');
+  const name = createSpan();
   name.className = 'bzrv-settings-group-name';
   name.textContent = opts.name;
-  const count = createEl('span');
+  const count = createSpan();
   count.className = 'bzrv-settings-group-count';
   count.textContent = '0 项';
   head.append(icon, name, count);
@@ -84,7 +89,7 @@ function isItemHidden(el: HTMLElement): boolean {
 export function refreshSettingsGroupCounts(content: HTMLElement): void {
   content.querySelectorAll('.bzrv-settings-group').forEach((g) => {
     const body = g.querySelector('.bzrv-settings-group-body');
-    const countEl = g.querySelector('.bzrv-settings-group-count') as HTMLElement | null;
+    const countEl = g.querySelector<HTMLElement>('.bzrv-settings-group-count');
     if (!body || !countEl) return;
     const n = [...body.querySelectorAll('.setting-item')].filter((el) => {
       const h = el as HTMLElement;
@@ -185,8 +190,8 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
   document.body.appendChild(mask);
   markOwned(popup);
   document.body.appendChild(popup);
-  mask.style.display = 'block';
-  popup.style.display = 'flex';
+  mask.style.display = DISPLAY_BLOCK;
+  popup.style.display = DISPLAY_FLEX;
   // UX 整改 37：读屏语义——弹窗容器为 dialog 模态（挂载后设置）
   popup.setAttribute('role', 'dialog');
   popup.setAttribute('aria-modal', 'true');
@@ -219,7 +224,7 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
       popup.remove();
       handle.unregister();
       // 关闭后还原焦点到触发元素（元素仍连接时；被外部清理时跳过）
-      if (prevActive && prevActive instanceof HTMLElement && prevActive.isConnected) {
+      if (prevActive && prevActive.instanceOf(HTMLElement) && prevActive.isConnected) {
         prevActive.focus();
       }
     },

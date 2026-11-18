@@ -23,6 +23,18 @@ export const QUIZ_MAX = 15;
 /** 每轮抽多少：分母。3 = 抽三分之一 */
 export const QUIZ_RATIO = 3;
 
+/** 把 unknown 收窄成数组（避免 Array.isArray 直接把 unknown 收成 any[]） */
+function isUnknownArray(v: unknown): v is unknown[] {
+  return Array.isArray(v);
+}
+
+/** unknown → 文本：string/number/boolean 走 String，nullish 与对象当空串（题目文本不接受对象） */
+function asText(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 /**
  * 这条划线出几道题。
  *
@@ -64,17 +76,19 @@ export function buildCardQuizPrompt(card: ReviewCard, count: number): string {
 }
 
 /** 一道题合不合格：题干非空、四个选项都非空、正确项索引都在 0~3 */
-function validQuestion(raw: any): QuizQuestion | null {
-  const question = String(raw?.question ?? '').trim();
+function validQuestion(raw: unknown): QuizQuestion | null {
+  if (typeof raw !== 'object' || raw === null) return null;
+  const r = raw as Record<string, unknown>;
+  const question = asText(r.question).trim();
   if (!question) return null;
-  const options = Array.isArray(raw?.options) ? raw.options.map((o: any) => String(o ?? '').trim()) : [];
+  const options = isUnknownArray(r.options) ? r.options.map((o: unknown) => asText(o).trim()) : [];
   if (options.length !== 4 || options.some((o: string) => !o)) return null;
-  const indices = Array.isArray(raw?.correctIndices)
-    ? raw.correctIndices.filter((i: any) => Number.isInteger(i) && i >= 0 && i <= 3)
+  const indices = isUnknownArray(r.correctIndices)
+    ? r.correctIndices.filter((i: unknown): i is number => typeof i === 'number' && Number.isInteger(i) && i >= 0 && i <= 3)
     : [];
-  const uniq = Array.from(new Set(indices)) as number[];
+  const uniq = Array.from(new Set(indices));
   if (!uniq.length) return null;
-  const explain = String(raw?.explain ?? '').trim();
+  const explain = asText(r.explain).trim();
   return explain ? { question, options, correctIndices: uniq, explain } : { question, options, correctIndices: uniq };
 }
 
@@ -91,10 +105,10 @@ export function parseCardQuiz(reply: string, card: ReviewCard, limit = QUIZ_MAX)
   const last = text.lastIndexOf('}');
   if (first < 0 || last <= first) return null;
 
-  const parsed: any = parseLooseJson(text.slice(first, last + 1));
-  if (!parsed) return null;
-  const raw = parsed?.questions;
-  if (!Array.isArray(raw) || !raw.length) return null;
+  const parsed: unknown = parseLooseJson(text.slice(first, last + 1));
+  if (!parsed || typeof parsed !== 'object') return null;
+  const raw = (parsed as Record<string, unknown>).questions;
+  if (!isUnknownArray(raw) || !raw.length) return null;
 
   const cap = Math.max(1, Math.min(QUIZ_MAX, Math.round(Number(limit) || QUIZ_MAX)));
   const out: QuizQuestion[] = [];
@@ -144,7 +158,7 @@ export function pickCardQuestions(
   ratio: number = QUIZ_RATIO,
   rand: () => number = Math.random,
 ): QuizQuestion[] {
-  const all = Array.isArray(list) ? list.slice() : [];
+  const all = Array.from(list ?? []);
   if (!all.length) return [];
   const r = Math.max(1, Math.round(Number(ratio) || QUIZ_RATIO));
   const k = Math.max(1, Math.ceil(all.length / r));

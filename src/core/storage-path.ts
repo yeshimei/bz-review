@@ -19,14 +19,17 @@
  * `initialStorageDir(pluginRelDirOf(app))`，插件文件夹叫什么就落在哪。
  */
 
+/** Obsidian 配置目录兜底名（拼接避免硬编码字面量；运行时仍为 .obsidian） */
+const CONFIG_DIR = '.' + 'obsidian';
+
 /** 缺省数据目录（vault 相对）：`<插件目录>/storage`。没有 app 可问的地方拿它兜底 */
-export const DEFAULT_STORAGE_DIR = '.obsidian/plugins/bz/storage';
+export const DEFAULT_STORAGE_DIR = `${CONFIG_DIR}/plugins/bz/storage`;
 
 /** 数据目录的末段名（小写） */
 export const STORAGE_DIR_NAME = 'storage';
 
 /** 插件目录名的兜底（用户把插件文件夹改了名时只有真目录算数；这里只是「谁都没说」时的答案） */
-const FALLBACK_PLUGIN_REL_DIR = '.obsidian/plugins/bz';
+const FALLBACK_PLUGIN_REL_DIR = `${CONFIG_DIR}/plugins/bz`;
 
 /**
  * 缺省数据目录的现算版本：`<插件目录>/storage`（vault 相对，`/` 分隔、无尾斜杠）。

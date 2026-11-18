@@ -16,12 +16,15 @@
  */
 import { Setting } from 'obsidian';
 import type BzSettings from '../settings';
-import { ROW_BTN_RESET_MS, armRowBtnReset, setRowBtnState, shortFailReason } from './settings-btn-state';
+import { armRowBtnReset, setRowBtnState, shortFailReason } from './settings-btn-state';
 import { getSettings, saveSettings, tryGetSettings } from './settings-provider';
 import { renderPathSettingRow } from './path-picker';
 import { createSettingsGroup, markSettingSplitRows, refreshSettingsGroupCounts } from './settings-modal';
 import { uiCardChoice, uiSetlist, attachHelpTip } from './ui';
 import { notifySaveError } from './notice';
+
+/** 多行输入框最小高度（运行时赋值，非主题静态样式；同 core/dom.ts 的 DISPLAY_NONE 口径） */
+const TEXTAREA_MIN_HEIGHT = '132px';
 
 /** 设置快照：visibleWhen 条件函数的入参（键直绑行的当前值；外部数据行请自行闭包捕获）。 */
 export type SettingsSnapshot = Readonly<BzSettings>;
@@ -237,7 +240,9 @@ export function selectOptionsSignature(opts: SelectOption[]): string {
 /** 当前应显示值：绑定值不在选项内（空/历史遗留档位）→ 回落首个选项（原「空值回退首项」口径）。
  *  与 core/thinkingBodyFor「不在表内不注入」同口径——显示值不许落在选项外。 */
 export function selectDisplayValue(read: () => unknown, opts: SelectOption[]): string {
-  const v = String(read() ?? '');
+  const raw = read();
+  // 只把基本类型转成显示值：对象走 String() 会得到 '[object Object]'（no-base-to-string）
+  const v = typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean' ? String(raw) : '';
   return opts.some((o) => o.value === v) ? v : (opts[0]?.value ?? '');
 }
 
@@ -500,14 +505,14 @@ function wireSecretEye(setting: Setting, el: MaskableEl): void {
   let revealed = false;
   setting.addExtraButton((b) => {
     b.setIcon('eye');
-    b.extraSettingsEl.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '显示密钥' }));
+    b.extraSettingsEl.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '显示密钥' }));
     b.extraSettingsEl.setAttribute('aria-pressed', 'false');
     b.onClick(() => {
       revealed = !revealed;
       el.type = revealed ? 'text' : 'password';
       b.setIcon(revealed ? 'eye-off' : 'eye');
       b.extraSettingsEl.setAttribute('aria-pressed', String(revealed));
-      b.extraSettingsEl.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: revealed ? '隐藏密钥' : '显示密钥' }));
+      b.extraSettingsEl.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: revealed ? '隐藏密钥' : '显示密钥' }));
     });
   });
 }
@@ -594,11 +599,12 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
     const setting = newRowSetting(body, row);
 
     const isNumber = row.type === 'number';
+    // isNumber 是判别式别名：两支里 row.binding / row 分别收窄到 number / string 档，无需再断言
     const acc: ValueAccess<string | number> = isNumber
-      ? bindValue(row.binding as RowBinding<number>)
-      : bindValue(row.binding as RowBinding<string>);
+      ? bindValue(row.binding)
+      : bindValue(row.binding);
     // 三类行 onChange 的值参类型不同（string | number），行类型判别后统一签名调用
-    const changeCb = row.onChange as ((value: string | number, ctx: SettingsRowContext) => void) | undefined;
+    const changeCb: ((value: string | number, ctx: SettingsRowContext) => void) | undefined = row.onChange;
     const initial = String(acc.read() ?? '');
     let pending: number | null = null;
     let last = initial;
@@ -636,8 +642,8 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
         const snap = currentSnapshot();
         const n = parseClampedNumber(
           raw,
-          resolveNumberBound((row as NumberRow).min, snap),
-          resolveNumberBound((row as NumberRow).max, snap),
+          resolveNumberBound(row.min, snap),
+          resolveNumberBound(row.max, snap),
         );
         if (n === null && raw.trim() !== '') {
           dirty = false;
@@ -672,8 +678,8 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
           const snap = currentSnapshot();
           const n = parseClampedNumber(
             v,
-            resolveNumberBound((row as NumberRow).min, snap),
-            resolveNumberBound((row as NumberRow).max, snap),
+            resolveNumberBound(row.min, snap),
+            resolveNumberBound(row.max, snap),
           );
           if (n === null) {
             // 空串/非数字不写入（防脏值落盘），已有计时照常走完；非空非法行内报错（效率#14）
@@ -695,7 +701,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
           last = v;
         }
         try {
-          changeCb?.(isNumber ? (acc.read() as number) : v, ctx);
+          changeCb?.(isNumber ? acc.read() : v, ctx);
         } catch (e) {
           // 新-1 连带：域行 onChange 同步抛错不得中断防抖排程（否则落盘只剩 blur/回车兜底）
           console.error(e);
@@ -707,7 +713,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
       const inputEl = t.inputEl;
       if (inputEl) {
         if (isNumber) {
-          const num = row as NumberRow;
+          const num = row;
           inputEl.type = 'number';
           // issue 457/ADR-0193：max 可以是函数（随 provider / 模型联动）——初始求值一次，并挂进
           // customRefreshes，在任意行变更（含切服务商、改模型名）后重设，防止上界停在上一条通道。
@@ -758,7 +764,8 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
         customRefreshes.push(() => {
           if (currentText) {
             const snap = currentSnapshot();
-            const fresh = typeof ref === 'function' ? ref(snap) : String((snap as any)[ref]);
+            const freshRaw = typeof ref === 'function' ? ref(snap) : (snap as unknown as Record<string, unknown>)[ref];
+            const fresh = typeof freshRaw === 'string' || typeof freshRaw === 'number' ? String(freshRaw) : '';
             if (currentText.setValue) {
               dirty = false;
               currentText.setValue(String(fresh ?? ''));
@@ -770,7 +777,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
     // 行内附加按钮（先注册 → 渲染于输入框左侧，2026-09-08 拍板换位的对齐口径；textarea 行同口径，issue 330）：
     // onClick 完成后重读本行绑定值回填显示（不置脏）+ 重求值——供「填入/拉取回填」类动作即时回显。
     // stateful 钮（issue 434）：点击即转圈、resolve 绿✓ / reject 红✕（红叉吞错不外抛——反馈长在按钮上）
-    const actions = (row as TextRow | TextAreaRow | NumberRow | SecretRow).actions;
+    const actions = row.actions;
     if (actions) {
       for (const a of actions) {
         if (a.hidden) continue;
@@ -807,7 +814,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
            第三行上；统一给 6 行，仍可拖拽放大。 */
         if (el.inputEl) {
           el.inputEl.rows = 6;
-          el.inputEl.style.minHeight = '132px';
+          el.inputEl.style.minHeight = TEXTAREA_MIN_HEIGHT;
         }
       });
     else setting.addText(addInto);
@@ -824,7 +831,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
         visibleWhen: (snap: SettingsSnapshot) =>
           (snap as unknown as Record<string, unknown>)[parentToggleKey] === true &&
           (rowArg.visibleWhen ? rowArg.visibleWhen(snap) : true),
-      } as SettingsRow;
+      };
     }
 
     switch (row.type) {
@@ -872,7 +879,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
           fallbackChip: typeof row.fallbackValue === 'function' ? row.fallbackValue() : '',
           onChange: (list) => {
             const v = multi ? list : (list[0] || '').trim().replace(/^\/+|\/+$/g, '');
-            acc.write(v as string | string[]);
+            acc.write(v);
             safePersist(() => acc.persist(), row.name);
             let res: void | string[] | Promise<void | string[]>;
             try {
@@ -894,7 +901,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
             }
             // 回调在落盘后触发（原口径）；返回清单（含异步解析结果）回传 path 行作 chips 渲染口径——
             // 异步否决场景的落盘改写由回调自行负责（如外部 binding 自管写盘）
-            applied = v as string | string[];
+            applied = v;
             warn.fire(multi ? JSON.stringify(v) : String(v));
             reevaluate();
             if (res && typeof (res as { then?: unknown }).then === 'function') {
@@ -937,7 +944,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
           // 重建先清控件区（选项集变化 = 换了一张表，旧 <select> 的 option 不能留）
           while (setting.controlEl.firstChild) setting.controlEl.removeChild(setting.controlEl.firstChild);
           setting.addDropdown((d) => {
-            dd = d as unknown as { setValue: (v: string) => void };
+            dd = d;
             const opts = readOptions();
             for (const opt of opts) d.addOption(opt.value, opt.label);
             d.setValue(selectDisplayValue(() => acc.read(), opts));
@@ -981,15 +988,17 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
           value: String(acc.read() ?? '') || row.options[0].value,
           options: row.options,
           label: row.name,
-          onChange: async (v) => {
-            acc.write(v);
-            reevaluate();
-            try {
-              await acc.persist();
-            } catch (e) {
-              notifySaveError(e, row.name); // N5 同口径
-            }
-            row.onChange?.(v, ctx);
+          onChange: (v) => {
+            void (async () => {
+              acc.write(v);
+              reevaluate();
+              try {
+                await acc.persist();
+              } catch (e) {
+                notifySaveError(e, row.name); // N5 同口径
+              }
+              row.onChange?.(v, ctx);
+            })();
           },
         });
         setting.controlEl.appendChild(pick.el);
@@ -1085,7 +1094,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
               void (async () => {
                 const remaining = readItems().map((x) => x.key).filter((k) => k !== key);
                 try {
-                  await row.onChange?.(remaining, ctx);
+                  row.onChange?.(remaining, ctx);
                 } catch (e) {
                   // C10：移除回调抛错 → 通知 + 回滚重绘（原先 unhandled rejection：
                   // UI 停在已删假象、无提示，renderItems/reevaluate 被跳过）
@@ -1115,8 +1124,11 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
    *  所有 isChild 行跟随它显隐——而非跟随「前面最近的 toggle」——避免组内多个 toggle 时
    *  子项级联绑到错误父项。首个 toggle 自身的 isChild 会被忽略（无父项可跟）。 */
   const renderGroupRows = (body: HTMLElement, rows: SettingsRow[]): void => {
-    const firstToggleKey =
-      (rows.find((r) => r.type === 'toggle' && 'key' in r.binding) as { binding: { key: string } } | undefined)?.binding.key ?? null;
+    const firstToggle = rows.find(
+      (r): r is ToggleRow & { binding: { key: SettingsKeyOfType<boolean> } } =>
+        r.type === 'toggle' && 'key' in r.binding
+    );
+    const firstToggleKey = firstToggle?.binding.key ?? null;
     for (const row of rows) renderRow(body, row, firstToggleKey);
   };
 
@@ -1124,7 +1136,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
     if (group.icon) {
       // 分组卡片形态（createSettingsGroup 基座收编）
       const body = createSettingsGroup(container, { icon: group.icon, name: group.name });
-      const groupEl = (body.parentElement ?? container) as HTMLElement;
+      const groupEl = body.parentElement ?? container;
       if (group.visibleWhen) entries.push({ el: groupEl, visibleWhen: group.visibleWhen });
       renderGroupRows(body, group.rows);
     } else {

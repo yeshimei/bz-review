@@ -43,7 +43,7 @@ export async function listSnapshots(app: App): Promise<string[]> {
 
 export async function readSnapshot(app: App, name: string): Promise<string | null> {
   try {
-    return (await app.vault.adapter.read(`${snapshotDir()}/${name}`)) as string;
+    return (await app.vault.adapter.read(`${snapshotDir()}/${name}`));
   } catch {
     return null;
   }

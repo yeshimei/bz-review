@@ -53,10 +53,10 @@ export function setupAlreadyDone(
   if (explicitInSettings) return false;
   try {
     const key = setupDoneStorageKey(vault);
-    const raw = localStorage.getItem(key);
+    const raw = window.localStorage.getItem(key);
     if (!raw) return false;
     if (!raw.startsWith('{')) {
-      localStorage.removeItem(key); // 旧版裸 '1'：不可信，删掉
+      window.localStorage.removeItem(key); // 旧版裸 '1'：不可信，删掉
       return false;
     }
     return true;

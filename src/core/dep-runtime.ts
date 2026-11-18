@@ -30,6 +30,40 @@ import { DOWNLOADS_DIR, downloadsVaultPath, ensureDir } from './remote-asset';
 import { pluginDirOf } from './plugin-path';
 import { extractZipEntry, findZipEntry, readZipEntries } from './zip';
 import { untar, type TarFile } from './tar';
+
+/* 桌面端通过 window.require 拿 Node 模块；这里只声明本文件真正用到的那几个方法，
+   避免整片 `as any` 把类型检查全部关掉。 */
+interface SpawnResult {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+}
+interface ChildProcessModule {
+  spawnSync(cmd: string, args: string[], opts?: Record<string, unknown>): SpawnResult;
+}
+interface FsModule {
+  existsSync(p: string): boolean;
+}
+interface ZlibModule {
+  gunzipSync(input: Uint8Array): Uint8Array;
+}
+interface BufferCtor {
+  from(data: ArrayBufferLike, byteOffset: number, length: number): Uint8Array;
+}
+interface ElectronWindow extends Window {
+  require?: (id: string) => unknown;
+}
+
+const nodeWindow = (): ElectronWindow | null =>
+  typeof window === 'undefined' ? null : window;
+
+/** Uint8Array 的 .buffer 是 ArrayBufferLike（可能是 SharedArrayBuffer），
+ *  writeBinary 只要 ArrayBuffer；显式复制一份，不用两头都不讨好的 as 断言。 */
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const ab = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(ab).set(bytes);
+  return ab;
+}
 import { readOfflineBytes } from './offline-source';
 import { fetchBytesWithProgress } from './net-progress';
 import { getSettings, saveSettings, tryGetSettings } from './settings-provider';
@@ -91,12 +125,16 @@ interface DepSpec {
   probes: Array<{ rel: string; args: string[]; test: RegExp }>;
 }
 
+/* 桌面端 renderer 注入了 Node 全局，node 测试环境也有；显式 declare 让 no-undef 认识它们。 */
+declare const process: { platform?: string; arch?: string } | undefined;
+declare const Buffer: BufferCtor;
+
 function currentPlatform(): string {
-  return typeof process !== 'undefined' && process.platform ? process.platform : 'win32';
+  return process?.platform || 'win32';
 }
 
 function currentArch(): string {
-  return typeof process !== 'undefined' && process.arch ? process.arch : 'x64';
+  return process?.arch || 'x64';
 }
 
 /** 判定「这是真的 Python 3」的正则。
@@ -293,10 +331,11 @@ export interface DepState {
 }
 
 /** spawn 用子进程模块（桌面端才有） */
-function childProcess(): any {
-  if (typeof window === 'undefined') return null;
+function childProcess(): ChildProcessModule | null {
+  const w = nodeWindow();
+  if (!w) return null;
   try {
-    return (window as any).require?.('child_process') ?? null;
+    return (w.require?.('child_process') as ChildProcessModule | undefined) ?? null;
   } catch {
     return null;
   }
@@ -314,10 +353,11 @@ export function setDepFsProbe(fn: ((p: string) => boolean) | null): void {
 function existsOnDisk(p: string): boolean {
   if (!p) return false;
   if (fsProbe) return !!fsProbe(p);
-  if (typeof window === 'undefined') return false;
+  const w = nodeWindow();
+  if (!w) return false;
   try {
-    const fs = (window as any).require?.('fs');
-    return !!fs?.existsSync?.(p);
+    const fs = w.require?.('fs') as FsModule | undefined;
+    return !!fs?.existsSync(p);
   } catch {
     return false;
   }
@@ -406,7 +446,13 @@ export function probeDep(app: unknown, id: DepId, platform: string = currentPlat
   let version = '';
 
   for (const e of spec.entries) {
-    const r = resolveEntry(e.key, e.rel, String(settings[e.key] ?? ''), `${depDirAbs(app, id)}/${e.rel}`);
+    const configured = settings[e.key];
+    const r = resolveEntry(
+      e.key,
+      e.rel,
+      typeof configured === 'string' ? configured : '',
+      `${depDirAbs(app, id)}/${e.rel}`,
+    );
     entries.push({ key: e.key, name: e.rel.replace(/^.*[\\/]/, ''), path: r.path });
     if (r.stale && !stale) stale = r.stale;
     // 来源取「最弱的那一环」的：ffmpeg 一个走设置、一个走 PATH，整体算混合，别报「设置」
@@ -454,7 +500,8 @@ export async function ensureDepSettings(app: unknown, id: DepId, platform: strin
   for (const e of spec.entries) {
     const abs = `${depDirAbs(app, id)}/${e.rel}`;
     if (!existsOnDisk(abs)) continue; // 插件内没有 → 不碰这个键
-    const cur = String(s[e.key] ?? '').trim();
+    const raw = s[e.key];
+    const cur = (typeof raw === 'string' ? raw : '').trim();
     if (cur) {
       // 填的是绝对路径且还在 → 尊重；填的是裸命令名 → 也尊重（那是「走 PATH」的显式意图）
       const looksPath = /[\\/]/.test(cur) || /^[A-Za-z]:/.test(cur);
@@ -530,7 +577,7 @@ async function writeCached(app: unknown, file: string, bytes: Uint8Array): Promi
     await ensureDir(app, `${DEP_CACHE_REL}/${file}`);
     await a.writeBinary(
       downloadsVaultPath(app, `${DEP_CACHE_REL}/${file}`),
-      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+      toArrayBuffer(bytes),
     );
   } catch {
     /* 缓存是加速手段，不是正确性的一部分 */
@@ -538,10 +585,11 @@ async function writeCached(app: unknown, file: string, bytes: Uint8Array): Promi
 }
 
 function defaultGunzip(bytes: Uint8Array): Uint8Array {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
-  const zlib = w?.require?.('zlib');
+  const w = nodeWindow();
+  const zlib = w?.require?.('zlib') as ZlibModule | undefined;
   if (!zlib?.gunzipSync) throw new Error('当前环境不支持解压（本地运行时需要桌面端）');
-  const Buf: any = typeof Buffer !== 'undefined' ? Buffer : w?.require?.('buffer')?.Buffer;
+  const Buf: BufferCtor | undefined =
+    typeof Buffer !== 'undefined' ? Buffer : (w?.require?.('buffer') as { Buffer: BufferCtor } | undefined)?.Buffer;
   if (!Buf) throw new Error('当前环境不支持解压（缺少 Buffer）');
   const out = zlib.gunzipSync(Buf.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
   return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);
@@ -641,7 +689,7 @@ async function installFromArchive(
       await ensureDir(app, rel);
       await adapter.writeBinary(
         downloadsVaultPath(app, rel),
-        data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer,
+        toArrayBuffer(data),
       );
       bytes += data.byteLength;
       count += 1;
@@ -665,7 +713,7 @@ async function installFromArchive(
       }
       await adapter.writeBinary(
         downloadsVaultPath(app, rel),
-        f.data.buffer.slice(f.data.byteOffset, f.data.byteOffset + f.data.byteLength) as ArrayBuffer,
+        toArrayBuffer(f.data),
       );
       bytes += f.data.byteLength;
       count += 1;

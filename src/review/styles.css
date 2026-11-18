@@ -15,7 +15,7 @@
      一并覆盖。 */ min-height: min(72vh, 640px); animation: bzrvSlideUp var(--bzrv-dur-slow) ease-out; }
 @media (max-width: 768px) {
   /* 移动端全屏（issue 254 迭代）：钉满视口，不受内容高度收缩（原 max-height:100% 短内容时缩成悬浮卡） */
-  #bzrv-popup { animation: none !important; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+  #bzrv-popup { animation: none ; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
 }
 /* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动） */
 #bzrv-entries { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
@@ -25,7 +25,7 @@
    在标签页里再画一块悬浮圆角卡——直接撑满 view 内容区，像 Obsidian 自己的面板。
    .bzrv-panel-in-view 由 UIManager.mountInto 在壳节点上挂/摘。 */
 .bzrv-panel-host { position: relative; height: 100%; overflow: hidden; }
-#bzrv-mask.bzrv-panel-in-view { display: none !important; }
+#bzrv-mask.bzrv-panel-in-view { display: none ; }
 #bzrv-popup.bzrv-panel-in-view {
   position: absolute;
   inset: 0;
@@ -82,12 +82,12 @@
    强调档会糊；这里按页兜底为 --bzrv-on-accent，语义色按钮不受影响。 */
 .bzrv-page .bzrv-btn--primary,
 .bzrv-q-strip .bzrv-btn--primary {
-  background: var(--bzrv-accent) !important;
-  color: var(--bzrv-on-accent) !important;
+  background: var(--bzrv-accent) ;
+  color: var(--bzrv-on-accent) ;
 }
 .bzrv-page .bzrv-btn--primary:hover,
 .bzrv-q-strip .bzrv-btn--primary:hover {
-  background: var(--bzrv-accent) !important;
+  background: var(--bzrv-accent) ;
   filter: brightness(1.06);
 }
 
@@ -439,7 +439,7 @@
   display:flex;
   align-items:center;
   gap:8px;
-  box-shadow: none !important;
+  box-shadow: none ;
   /* 长文本修复：按钮可收缩不撑破弹窗；button 默认 white-space:pre 需改回 normal 才能换行 */
   min-width:0;
   width:100%;
@@ -455,8 +455,8 @@
 
 .quiz-option-btn:hover:not(.disabled) { background:var(--bzrv-surface-hover); }
 }
-.quiz-option-btn.correct { border-color:var(--bzrv-success) !important; background:color-mix(in srgb, var(--bzrv-success) 15%, transparent); }
-.quiz-option-btn.wrong { border-color:var(--bzrv-danger) !important; background:color-mix(in srgb, var(--bzrv-danger) 15%, transparent); }
+.quiz-option-btn.correct { border-color:var(--bzrv-success) ; background:color-mix(in srgb, var(--bzrv-success) 15%, transparent); }
+.quiz-option-btn.wrong { border-color:var(--bzrv-danger) ; background:color-mix(in srgb, var(--bzrv-danger) 15%, transparent); }
 .quiz-option-btn.selected { border-color:var(--bzrv-accent-line); background:var(--bzrv-accent-soft); }
 .quiz-option-btn .check-mark { opacity:0; transition:opacity 0.2s; flex-shrink:0; }
 .quiz-option-btn.selected .check-mark { opacity:1; }
@@ -473,7 +473,7 @@
   font-size:15px;
   cursor:pointer;
   align-self:center;
-  box-shadow: none !important;
+  box-shadow: none ;
 }@media (hover: hover) {
 
 .quiz-submit-btn:hover { opacity:0.9; }
@@ -489,7 +489,7 @@
   font-size:15px;
   cursor:pointer;
   align-self:center;
-  box-shadow: none !important;
+  box-shadow: none ;
 }@media (hover: hover) {
 
 .quiz-next-btn:hover { background:var(--bzrv-surface-hover); }
@@ -624,7 +624,7 @@
    滚动条由 core 界面级单源隐藏（ADR-0122，bz- id 前缀在册），域内不自造。 */
 #bzrv-quiz-practice-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 94%; max-width: 520px; max-height: 84vh; animation: bzrvSlideUp var(--bzrv-dur-slow) ease-out; }
 @media (max-width: 768px) {
-  #bzrv-quiz-practice-popup { animation: none !important; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
+  #bzrv-quiz-practice-popup { animation: none ; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
 }
 .bzrv-quiz-practice-container { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .bzrv-qp-view { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -861,7 +861,7 @@
 @media (max-width: 640px) {
   /* 手机上一列到底：三列并排在 375px 宽里每列只剩一百来像素，标题全被截断 */
   .bzrv-q-cols {
-    grid-template-columns: 1fr !important;
+    grid-template-columns: 1fr ;
   }
   .bzrv-q-col {
     max-height: none;
@@ -889,9 +889,9 @@
   /* 系统设了「减少动态效果」就别再播：动画对前庭敏感的人是真难受，不是审美问题 */
   .bzrv-q-view *,
   .bzrv-review-bar * {
-    animation-duration: 0.001ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms ;
+    animation-iteration-count: 1 ;
+    transition-duration: 0.001ms ;
   }
 }
 

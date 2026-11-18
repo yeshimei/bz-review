@@ -27,7 +27,7 @@ export function uiSetlist(opts: BzSetlistOpts): HTMLDivElement {
     item.className = 'bzrv-setlist-item';
     item.dataset.key = it.key;
     // 副文案（UID/URL 等）在 chips 变体不展示 → 视觉隐藏文本保信息可达（不用 title，免悬停气泡）
-    if (it.sub) item.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: it.sub }));
+    if (it.sub) item.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: it.sub }));
     if (it.imageUrl) {
       const img = createEl('img');
       img.className = 'bzrv-setlist-avatar';

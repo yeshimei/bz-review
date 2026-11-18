@@ -17,11 +17,11 @@ export interface BackupFile {
   schema: number;
   exportedAt: string;
   count: number;
-  items: any[];
+  items: ReviewItem[];
 }
 
 export function buildBackup(items: readonly ReviewItem[], now: Date = new Date()): BackupFile {
-  const clean = items.map((i) => stripRuntime(i as any));
+  const clean = items.map((i) => stripRuntime(i) as ReviewItem);
   return {
     plugin: 'bz-review',
     schema: REVIEW_SCHEMA_VERSION,
@@ -31,7 +31,7 @@ export function buildBackup(items: readonly ReviewItem[], now: Date = new Date()
   };
 }
 
-export type BackupParse = { ok: true; items: any[] } | { ok: false; error: string };
+export type BackupParse = { ok: true; items: ReviewItem[] } | { ok: false; error: string };
 
 /**
  * 读备份文件。
@@ -40,17 +40,20 @@ export type BackupParse = { ok: true; items: any[] } | { ok: false; error: strin
  * 不返回空数组：空数组恢复一次，用户的计划就真的空了。
  */
 export function parseBackup(raw: unknown): BackupParse {
-  if (Array.isArray(raw)) return { ok: true, items: raw as any[] };
+  if (Array.isArray(raw)) return { ok: true, items: raw as ReviewItem[] };
   if (raw && typeof raw === 'object') {
     const obj = raw as { items?: unknown; plugin?: unknown; schema?: unknown };
     if (obj.plugin && obj.plugin !== 'bz-review') return { ok: false, error: '这不是复习计划导出的备份' };
-    if (Array.isArray(obj.items)) return { ok: true, items: obj.items as any[] };
+    if (Array.isArray(obj.items)) return { ok: true, items: obj.items as ReviewItem[] };
   }
   return { ok: false, error: '文件里没有复习数据' };
 }
 
 function csvCell(v: unknown): string {
-  const s = v === null || v === undefined ? '' : String(v);
+  const s: string =
+    typeof v === 'string' ? v
+      : typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint' ? String(v)
+        : '';
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
@@ -81,7 +84,7 @@ export function toCsv(items: readonly ReviewItem[]): string {
     CSV_COLUMNS.map((c) => {
       if (c === 'kind') return csvCell(it.kind === 'card' ? 'card' : 'note');
       if (c === 'name') return csvCell(it.name || it.card?.text?.slice(0, 40) || '');
-      return csvCell((it as any)[c]);
+      return csvCell((it as unknown as Record<string, unknown>)[c]);
     }).join(',')
   );
   return '\uFEFF' + [head, ...rows].join('\r\n') + '\r\n';

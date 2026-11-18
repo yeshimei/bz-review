@@ -39,14 +39,14 @@ export function onDomainEvent<E = unknown>(channel: string, handler: DomainEvent
     set = new Set();
     channels.set(channel, set);
   }
-  set.add(handler as DomainEventHandler<unknown>);
+  set.add(handler);
   let offed = false;
   return () => {
     if (offed) return; // 幂等：重复退订直接跳过
     offed = true;
     const cur = channels.get(channel);
     if (!cur) return;
-    cur.delete(handler as DomainEventHandler<unknown>);
+    cur.delete(handler);
     if (cur.size === 0) channels.delete(channel); // 空通道回收，避免长期运行下 Map 膨胀
   };
 }

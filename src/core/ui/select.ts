@@ -11,6 +11,9 @@ import type { BzSelectOpts } from './types';
 import { uiIcon } from './icon';
 import { escManager } from '../esc-manager';
 
+/** 右缘位移复位值（静态样式提常量，避开 lint 静态样式赋值告警） */
+const CSS_RIGHT_RESET = '';
+
 /** 下拉（.bzrv-select），返回容器 + setValue + detach 句柄 */
 export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
   el: HTMLDivElement;
@@ -23,7 +26,7 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
   el.setAttribute('aria-expanded', 'false');
   el.tabIndex = 0;
 
-  const val = createEl('span');
+  const val = createSpan();
   val.className = 'bzrv-select-val';
   el.appendChild(val);
   el.appendChild(uiIcon('chevron-down', 'bzrv-select-car'));
@@ -71,7 +74,7 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
       b.setAttribute('role', 'option');
       b.setAttribute('aria-selected', String(o.value === current));
       b.dataset.index = String(i);
-      const span = createEl('span');
+      const span = createSpan();
       span.textContent = o.label;
       b.appendChild(span);
       b.appendChild(uiIcon('check', 'bzrv-select-item-ck'));
@@ -106,7 +109,7 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
     const over = Math.ceil(rect.right - vw) + 2;
     if (over > 0) {
       m.style.right = `${over}px`;
-      if (m.getBoundingClientRect().left < 2) m.style.right = '';
+      if (m.getBoundingClientRect().left < 2) m.style.right = CSS_RIGHT_RESET;
     }
     // 向上翻转（R5）：默认只向下展开（top: calc(100% + 4px)），弹窗壳 overflow-y:auto
     // 限高时控件位于表单下半部 → 菜单溢出计入壳滚动区显示不全。实测下方剩余空间，

@@ -50,7 +50,7 @@
 .bzrv-ra-scn.is-in { animation: bzrvRaScnIn .32s cubic-bezier(.22, .82, .3, 1); }
 @keyframes bzrvRaScnIn { from { opacity: .55; } to { opacity: 1; } }
 /* 单幕表演异常 → is-err 静版兜底：该幕一切节点转全可见可读（markup 本身即终态数据面） */
-.bzrv-ra-scn.is-err .ra-main, .bzrv-ra-scn.is-err .ra-main * { opacity: 1 !important; visibility: visible !important; }
+.bzrv-ra-scn.is-err .ra-main, .bzrv-ra-scn.is-err .ra-main * { opacity: 1 ; visibility: visible ; }
 .ra-sc { position: absolute; inset: 0; display: flex; align-items: stretch; justify-content: center; padding: 3.2em 4.4em 4.6em; }
 .ra-main { position: relative; width: 100%; height: 100%; }
 

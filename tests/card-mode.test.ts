@@ -28,8 +28,8 @@ describe('卡片自己的复习方式', () => {
   });
 
   it('全局值也是脏的：按抽认卡', () => {
-    expect(modeOfCard(card(), { reviewCardMode: 'nonsense' })).toBe('flashcard');
-    expect(cardModeOf({ reviewCardMode: 'nonsense' })).toBe('flashcard');
+    expect(modeOfCard(card(), { reviewCardMode: 'nonsense' as any })).toBe('flashcard');
+    expect(cardModeOf({ reviewCardMode: 'nonsense' as any })).toBe('flashcard');
   });
 
   it('卡上的脏值不认，照样回落', () => {
@@ -56,7 +56,7 @@ describe('新卡默认方式', () => {
   });
 
   it('脏值 → null，宁可多问一句也不要按错方式制卡', () => {
-    expect(defaultCardMethod({ reviewCardDefaultMethod: 'auto' })).toBeNull();
+    expect(defaultCardMethod({ reviewCardDefaultMethod: 'auto' as any })).toBeNull();
   });
 });
 

@@ -120,13 +120,20 @@ const RELEASE_TAG_TTL_MS = 24 * 3600 * 1000;
 /** 会话内记忆（省 localStorage 解析；模块级，测试可重置） */
 let releaseTagMemo = '';
 
+/** 只把基本类型转成文本；对象/数组不当 tag（避免 '[object Object]' 混进缓存） */
+function primitiveText(v: unknown): string {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 function readCachedReleaseTag(): string {
   if (releaseTagMemo) return releaseTagMemo;
   try {
-    const raw = localStorage.getItem(RELEASE_TAG_KEY);
+    const raw = window.localStorage.getItem(RELEASE_TAG_KEY);
     if (!raw) return '';
     const o = JSON.parse(raw) as { tag?: unknown; at?: unknown };
-    const tag = String(o?.tag || '');
+    const tag = primitiveText(o?.tag);
     const at = Number(o?.at || 0);
     if (!isValidTag(tag) || !at || Date.now() - at > RELEASE_TAG_TTL_MS) return '';
     releaseTagMemo = tag;
@@ -142,7 +149,7 @@ export function noteReleaseTag(tag: string): void {
   if (!isValidTag(t)) return;
   releaseTagMemo = t;
   try {
-    localStorage.setItem(RELEASE_TAG_KEY, JSON.stringify({ tag: t, at: Date.now() }));
+    window.localStorage.setItem(RELEASE_TAG_KEY, JSON.stringify({ tag: t, at: Date.now() }));
   } catch {
     /* 隐私模式/配额满：会话内记忆仍有效 */
   }
@@ -152,7 +159,7 @@ export function noteReleaseTag(tag: string): void {
 export function resetReleaseTagForTests(): void {
   releaseTagMemo = '';
   try {
-    localStorage.removeItem(RELEASE_TAG_KEY);
+    window.localStorage.removeItem(RELEASE_TAG_KEY);
   } catch {
     /* 同上 */
   }
@@ -215,9 +222,20 @@ async function requestText(url: string, timeoutMs: number = CHANNEL_TIMEOUT_MS):
   }
 }
 
+/** 异常文本：兼容真 Error 与带 message 的鸭子类型，其余基本类型直取，兜底不糊 '[object Object]' */
+function errorText(e: unknown): string {
+  if (e && typeof e === 'object' && 'message' in e) {
+    const m = (e as { message?: unknown }).message;
+    if (typeof m === 'string' && m) return m;
+  }
+  if (typeof e === 'string') return e;
+  if (typeof e === 'number' || typeof e === 'boolean' || typeof e === 'bigint') return String(e);
+  return '未知错误';
+}
+
 /** 一条通道的失败说明（主机 + 原因；原因里已经带了 HTTP 码的不重复糊 URL） */
 function describeChannelError(url: string, e: unknown): string {
-  return `${hostOf(url)} ${String((e as Error)?.message || e || '未知错误')}`;
+  return `${hostOf(url)} ${errorText(e)}`;
 }
 
 /**
@@ -292,7 +310,7 @@ export async function ensureDir(app: unknown, relPath: string): Promise<void> {
   if (!adapter?.mkdir) return;
   try {
     await adapter.mkdir(assetVaultPath(app, DOWNLOADS_DIR));
-  } catch (e) {
+  } catch {
     /* 已存在 / 不支持 mkdir → 继续建子级 */
   }
   const slash = relPath.lastIndexOf('/');
@@ -302,7 +320,7 @@ export async function ensureDir(app: unknown, relPath: string): Promise<void> {
     cur = cur ? `${cur}/${part}` : part;
     try {
       await adapter.mkdir(downloadsVaultPath(app, cur));
-    } catch (e) {
+    } catch {
       /* 已存在 / 不支持 mkdir → 继续下一级 */
     }
   }
@@ -433,7 +451,7 @@ export async function hasAsset(app: unknown, fileName: string): Promise<boolean>
   try {
     return await (app as { vault?: { adapter?: { exists?: (p: string) => Promise<boolean> } } })
       .vault!.adapter!.exists!(downloadsVaultPath(app, fileName));
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -460,7 +478,7 @@ export async function readAsset(app: unknown, fileName: string): Promise<string 
     if (!(await hasAsset(app, fileName))) return null;
     return await (app as { vault?: { adapter?: { read?: (p: string) => Promise<string> } } })
       .vault!.adapter!.read!(downloadsVaultPath(app, fileName));
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -523,7 +541,7 @@ export async function refreshAsset(
     if (local !== null && textSha256(text) === textSha256(local)) return null;
     await writeAssetText(app, fileName, text);
     return text;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

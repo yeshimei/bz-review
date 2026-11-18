@@ -9,13 +9,15 @@
  * 统一数据读写重构：实现迁移至 core/storage.ts 的 jsonFileStore（语义逐字保留），
  * 本模块保持薄封装与既有签名（JsonStore 契约 + 测试全绿），新域请直接用 storage.ts。
  */
-import { jsonFileStore, type JsonFileStore } from './storage';
+import { jsonFileStore } from './storage';
 
-export interface JsonStore {
-  read(): Promise<any[]>;
-  write(data: any): Promise<void>;
+/** 旧 JsonStore 契约的泛型化：元素类型由调用方给出（默认 unknown，不再用 any） */
+export interface JsonStore<T = unknown> {
+  read(): Promise<T[]>;
+  write(data: T[]): Promise<void>;
 }
 
-export function jsonStore(filePath: string): JsonStore {
-  return jsonFileStore<any[]>(filePath) as JsonFileStore<any[]> as JsonStore;
+export function jsonStore<T = unknown>(filePath: string): JsonStore<T> {
+  // JsonFileStore<T[]> 的 read/write 签名与 JsonStore<T> 结构一致，无需断言
+  return jsonFileStore<T[]>(filePath);
 }

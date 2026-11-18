@@ -16,8 +16,14 @@ export function escapeHtml(s: string): string {
 }
 
 /** 未知值 → 转义串（?? '' 兜底 null/undefined） */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function esc(s: unknown): string {
-  return escapeHtml(String(s ?? ''));
+  return escapeHtml(textOf(s));
 }
 
 /** pad2(n)：两位数补零（月/日/时/分/秒；与 core/utils pad2 同语义，零依赖单源落此——

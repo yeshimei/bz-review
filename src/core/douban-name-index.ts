@@ -76,6 +76,11 @@ function subscribeOnce(): void {
   });
 }
 
+/** 产物行形态：定长 5 列全字符串。Array.isArray 会把 unknown 窄成 any[]，这里自己守住类型 */
+function isDoubanRow(v: unknown): v is [string, string, string, string, string] {
+  return Array.isArray(v) && v.length === 5 && v.every((cell) => typeof cell === 'string');
+}
+
 /**
  * 结构校验：version/updatedAt/stats 形状与 total 一致、rows 定长数组行（5 列全字符串）、
  * 豆瓣 ID 全表唯一。不合法返回 null，绝不抛——调用方据此走「重新下载」。
@@ -98,13 +103,12 @@ export function validateDoubanNameIndex(raw: unknown): DoubanNameIndex | null {
   const rows: DoubanIndexRow[] = [];
   const ids = new Set<string>();
   for (const r of o.rows as unknown[]) {
-    if (!Array.isArray(r) || r.length !== 5) return null;
-    if (!r.every((cell) => typeof cell === 'string')) return null;
-    const id = r[4];
+    if (!isDoubanRow(r)) return null;
+    const [n, y, s, k, id] = r;
     if (!/^\d+$/.test(id)) return null;
     if (ids.has(id)) return null;
     ids.add(id);
-    rows.push({ n: r[0], y: r[1], s: r[2], k: r[3], id });
+    rows.push({ n, y, s, k, id });
   }
   if (rows.length !== stats.total) return null;
   return {
@@ -196,7 +200,7 @@ export function indexKindCounts(index: DoubanNameIndex): Array<{ k: string; coun
  * 「三体（2023）」「三体 2023」「三体」都归到同一前缀。
  */
 export function normName(s: string): string {
-  return s.toLowerCase().replace(/[\s:：·・（）()【】\[\]「」『』《》,_\-~～，。！？''"""']+/g, '');
+  return s.toLowerCase().replace(/[\s:：·・（）()【】[\]「」『』《》,_\-~～，。！？''"""']+/g, '');
 }
 
 /** 归一名称缓存（loadDoubanNameIndex 失效时同步清；避免每次击键对 8.5 万行做正则） */

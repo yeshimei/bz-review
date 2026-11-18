@@ -9,7 +9,7 @@ import { setIcon } from 'obsidian';
 
 /** 图标 span（span.bzrv-ic + setIcon 渲染 lucide；额外类做尺寸/语义色修饰） */
 export function uiIconSpan(name: string, extraClass = ''): HTMLSpanElement {
-  const i = createEl('span');
+  const i = createSpan();
   i.className = 'bzrv-ic' + (extraClass ? ' ' + extraClass : '');
   setIcon(i, name);
   return i;

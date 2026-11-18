@@ -48,10 +48,26 @@ export function offlineDownloadsFileOf(app: unknown, file: string): string {
   return offlineFileOf(app, `downloads/${String(file || '').replace(/^[\\/]+/, '')}`);
 }
 
-function nodeRequire(name: string): any {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
+/* 桌面端 renderer 通过 window.require 拿 Node 模块；只声明本文件真正用到的那几个方法，
+   避免整片 `as any` 把类型检查全部关掉。 */
+interface NodeBuffer {
+  readonly buffer: ArrayBufferLike;
+  readonly byteOffset: number;
+  readonly byteLength: number;
+}
+interface FsModule {
+  existsSync?: (p: string) => boolean;
+  readFileSync(p: string): NodeBuffer;
+}
+interface ElectronWindow extends Window {
+  require?: (id: string) => unknown;
+}
+const nodeWindow = (): ElectronWindow | null => (typeof window === 'undefined' ? null : window);
+
+function nodeFs(): FsModule | null {
+  const w = nodeWindow();
   try {
-    return w?.require?.(name) ?? null;
+    return (w?.require?.('fs') as FsModule | undefined) ?? null;
   } catch {
     return null;
   }
@@ -67,7 +83,7 @@ function nodeRequire(name: string): any {
 export async function readOfflineBytes(app: unknown, rel: string): Promise<Uint8Array | null> {
   const abs = offlineFileOf(app, rel);
   if (!abs) return null;
-  const fs = nodeRequire('fs');
+  const fs = nodeFs();
   if (!fs?.readFileSync) return null;
   try {
     if (fs.existsSync && !fs.existsSync(abs)) return null;
@@ -91,7 +107,7 @@ export async function readOfflineText(app: unknown, rel: string): Promise<string
 
 /** 离线包在不在（判定「要不要在提示里提一嘴」） */
 export function hasOfflinePack(app: unknown): boolean {
-  const fs = nodeRequire('fs');
+  const fs = nodeFs();
   const root = offlineRootOf(app);
   if (!fs?.existsSync || !root) return false;
   try {

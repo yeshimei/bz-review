@@ -9,6 +9,11 @@ import { escManager } from './esc-manager';
 import type { ModelOption } from './ai-models';
 
 import { markOwned } from './scope';
+
+/** 显示态 display 值（运行时赋值，非主题静态样式；同 core/dom.ts 的 DISPLAY_NONE 口径） */
+const DISPLAY_BLOCK = 'block';
+const DISPLAY_FLEX = 'flex';
+
 export interface ModelPickerOptions {
   /** 服务商 label（弹窗标题/来源展示） */
   providerLabel: string;
@@ -86,10 +91,10 @@ export function openModelPicker(opts: ModelPickerOptions): void {
     for (const m of ordered) {
       const row = createDiv();
       row.className = 'bzrv-model-picker-row' + (m.id === cur ? ' is-current' : '');
-      const name = createEl('span');
+      const name = createSpan();
       name.className = 'bzrv-model-picker-name';
       name.textContent = m.id;
-      const detail = createEl('span');
+      const detail = createSpan();
       detail.className = 'bzrv-model-picker-detail';
       detail.textContent = m.detail || '';
       row.append(name, detail);
@@ -118,8 +123,8 @@ export function openModelPicker(opts: ModelPickerOptions): void {
   document.body.appendChild(mask);
   markOwned(popup);
   document.body.appendChild(popup);
-  mask.style.display = 'block';
-  popup.style.display = 'flex';
+  mask.style.display = DISPLAY_BLOCK;
+  popup.style.display = DISPLAY_FLEX;
   popup.setAttribute('role', 'dialog');
   popup.setAttribute('aria-modal', 'true');
 
@@ -135,7 +140,7 @@ export function openModelPicker(opts: ModelPickerOptions): void {
       mask.remove();
       popup.remove();
       handle.unregister();
-      if (prevActive && prevActive instanceof HTMLElement && prevActive.isConnected) {
+      if (prevActive && prevActive.instanceOf(HTMLElement) && prevActive.isConnected) {
         prevActive.focus();
       }
     },

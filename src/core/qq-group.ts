@@ -25,6 +25,9 @@ import { openExternalUrl } from './utils';
 import { notice } from './notice';
 import { isMobileEnv } from './mobile';
 
+/** 剪贴板兜底 textarea 的一次性内联样式（静态值提常量，避开 lint 静态样式赋值告警） */
+const CLIPBOARD_TEXTAREA_CSS = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+
 /** 包仔用户群（用户 2026-11-02 给号，README / 关于 / 更新提示都用它） */
 export const QQ_GROUP_NUMBER = '1130883117';
 
@@ -49,19 +52,19 @@ async function writeClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
     return true;
-  } catch (e) {
+  } catch {
     /* 落兜底 */
   }
   try {
     const ta = createEl('textarea');
     ta.value = text;
-    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
+    ta.style.cssText = CLIPBOARD_TEXTAREA_CSS;
     document.body.appendChild(ta);
     ta.select();
     const ok = document.execCommand('copy');
     ta.remove();
     return ok;
-  } catch (e2) {
+  } catch {
     return false;
   }
 }

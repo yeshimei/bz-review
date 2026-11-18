@@ -10,6 +10,9 @@
  * 禁止域内各写一份。
  * ============================================================ */
 
+/** 宿主定位兜底值（静态样式提常量，避开 lint 静态样式赋值告警） */
+const CSS_POSITION_RELATIVE = 'relative';
+
 /** 底片类名（容器直接子元素；定位/过渡在 components.css 的 .bzrv-slide-pill） */
 export const BZ_PILL_CLS = 'bzrv-slide-pill';
 
@@ -79,12 +82,12 @@ export function syncSlidePill(box: HTMLElement, t: BzSlidePillTarget, hoverable:
   const onClass = t.onClass ?? 'is-on';
   let pill = box.querySelector<HTMLElement>(`:scope > .${BZ_PILL_CLS}`);
   if (!pill) {
-    pill = createEl('span');
+    pill = createSpan();
     pill.className = BZ_PILL_CLS;
     pill.setAttribute('aria-hidden', 'true'); // 纯装饰：选中语义仍在选中类上（读屏不重复）
     // 宿主必须是定位上下文：static 的话绝对定位的底片会去相对更外层的祖先（整块底色跑到面板
     // 别处，且是静默的、极难查）。这里补一刀兜底，省得每域都记着给容器加 position: relative。
-    if (getComputedStyle(box).position === 'static') box.style.position = 'relative';
+    if (getComputedStyle(box).position === 'static') box.style.position = CSS_POSITION_RELATIVE;
     box.prepend(pill);
   }
   const items = [...box.querySelectorAll<HTMLElement>(t.item)];

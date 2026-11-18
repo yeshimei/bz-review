@@ -68,13 +68,17 @@ export function ruleCloze(source: string, maxBlanks = 2): ClozeCard {
   // 一个候选都没有：挖最长的那一个分句
   if (!spans.length) {
     const pieces: Span[] = [];
-    let cursor = 0;
-    for (const part of text.split(/(?<=[，。；：、！？!?;:\n])/)) {
-      const start = cursor;
-      cursor += part.length;
-      const core = part.replace(/[，。；：、！？!?;:\n\s]+$/g, '');
-      if (core.length >= 2) pieces.push({ start, end: start + core.length });
+    let segStart = 0;
+    const splitAt = (from: number, to: number): void => {
+      const core = text.slice(from, to).replace(/[，。；：、！？!?;:\n\s]+$/g, '');
+      if (core.length >= 2) pieces.push({ start: from, end: from + core.length });
+    };
+    for (let i = 0; i < text.length; i++) {
+      if (!/[，。；：、！？!?;:\n]/.test(text[i])) continue;
+      splitAt(segStart, i + 1);
+      segStart = i + 1;
     }
+    splitAt(segStart, text.length);
     if (!pieces.length) return { text, blanks: [], at };
     pieces.sort((a, b) => b.end - b.start - (a.end - a.start));
     spans = [pieces[0]];
@@ -120,8 +124,14 @@ function resembles(visible: string, source: string): boolean {
 }
 
 /** 校验并归一一张填空卡；不合格返回 null */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function validateCloze(raw: { text?: unknown; blanks?: unknown }, source: string): ClozeCard | null {
-  const text = String(raw?.text ?? '').trim();
+  const text = textOf(raw?.text).trim();
   const blanks = Array.isArray(raw?.blanks) ? raw.blanks.map((b) => String(b ?? '').trim()) : [];
   if (!text || !blanks.length) return null;
   if (blanks.some((b) => !b)) return null;
@@ -149,7 +159,7 @@ export function parseCloze(reply: string, source: string): ClozeCard | null {
   const first = text.indexOf('{');
   const last = text.lastIndexOf('}');
   if (first < 0 || last <= first) return null;
-  const parsed: any = parseLooseJson(text.slice(first, last + 1));
+  const parsed: unknown = parseLooseJson(text.slice(first, last + 1));
   if (!parsed) return null;
   return validateCloze(parsed, source);
 }

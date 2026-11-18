@@ -88,10 +88,10 @@ export function unbindMobileViewport(): void {
 type EventTargetLike = { addEventListener?: (t: string, l: EventListenerOrEventListenerObject) => void } | null | undefined;
 
 function addEventListenerSafe(target: EventTargetLike, type: string, listener: () => void): void {
-  target?.addEventListener?.(type, listener as EventListener);
+  target?.addEventListener?.(type, listener);
 }
 
 function removeEventListenerSafe(target: EventTargetLike, type: string, listener: () => void): void {
   const removable = target as { removeEventListener?: (t: string, l: EventListenerOrEventListenerObject) => void } | null | undefined;
-  removable?.removeEventListener?.(type, listener as EventListener);
+  removable?.removeEventListener?.(type, listener);
 }

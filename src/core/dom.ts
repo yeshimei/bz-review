@@ -8,6 +8,11 @@ import { notifyFloatClosed } from './home-return';
 import { notice } from './notice';
 import { allocZ, topifyZ } from './z-order';
 
+/** 失败态/未显示态的隐藏 display（运行时赋值，非主题静态样式） */
+const DISPLAY_NONE = 'none';
+/** 长按手势可能收到的事件：mousedown/touchstart 及其配对事件共用同一套回调 */
+export type LongPressEvent = MouseEvent | TouchEvent;
+
 /** notice(msg, dur)：统一走自绘通知系统（自动语义归类，ticket 25 替代原生 Notice） */
 export { notice };
 
@@ -20,32 +25,34 @@ export { allocZ, topifyZ };
  *  未长按的短按由浏览器正常派发 click，不再自行补发。 */
 export function longPress(
   el: HTMLElement,
-  cb: (e: any) => void,
+  cb: (e: LongPressEvent) => void,
   dur?: number,
-  filter?: (e: any) => boolean
+  filter?: (e: LongPressEvent) => boolean
 ): void {
   if (!dur) dur = 500;
-  let timer: any = null, touching = false, fired = false, moved = false, sx = 0, sy = 0;
+  let timer: number | null = null, touching = false, fired = false, sx = 0, sy = 0;
   let suppressClick = false;
   const M = 10;
-  function start(e: any) {
+  function start(e: LongPressEvent) {
     if (filter && !filter(e)) return;
-    if (e.button !== undefined && e.button !== 0) return;
+    const button = 'button' in e ? e.button : undefined;
+    if (button !== undefined && button !== 0) return;
     fired = false;
-    moved = false;
-    if (e.touches && e.touches.length) {
-      const t = e.touches[0];
+    const touches = 'touches' in e ? e.touches : undefined;
+    if (touches && touches.length) {
+      const t = touches[0];
       sx = t.clientX;
       sy = t.clientY;
       touching = true;
     }
     timer = window.setTimeout(function () { timer = null; fired = true; cb(e); }, dur);
   }
-  function cancel() { if (timer) { window.clearTimeout(timer); timer = null; } }
-  function move(e: any) {
-    if (!timer || !touching || !e.touches || !e.touches.length) return;
-    const t = e.touches[0];
-    if (Math.abs(t.clientX - sx) > M || Math.abs(t.clientY - sy) > M) { moved = true; cancel(); }
+  function cancel() { if (timer !== null) { window.clearTimeout(timer); timer = null; } }
+  function move(e: LongPressEvent) {
+    const touches = 'touches' in e ? e.touches : undefined;
+    if (!timer || !touching || !touches || !touches.length) return;
+    const t = touches[0];
+    if (Math.abs(t.clientX - sx) > M || Math.abs(t.clientY - sy) > M) cancel();
   }
   function endFromTouch() {
     // 长按已触发 → 吞掉浏览器随后补发的合成 click（防穿透）；未长按不吞（短按 = 普通点击）
@@ -128,16 +135,16 @@ export function createSiteIcon(domain: string | null | undefined, size = 16): HT
   img.className = 'bzrv-site-icon';
   img.style.cssText = `width:${size}px; height:${size}px;`;
   img.alt = '';
-  (img as any).crossOrigin = 'anonymous';
+  img.crossOrigin = 'anonymous';
 
   // 1. 从 localStorage 读取缓存
   try {
-    const cached = localStorage.getItem(cacheKey);
+    const cached = window.localStorage.getItem(cacheKey);
     if (cached) {
       img.src = cached;
       return img;
     }
-  } catch (e) { /* 忽略 */ }
+  } catch { /* 忽略 */ }
 
   // 2. 使用网络地址（v2 接口 + size 参数：源图即目标尺寸，避免小图放大发糊）
   const networkUrl = `https://favicon.yandex.net/favicon/v2/${mappedDomain}?size=${size}`;
@@ -147,23 +154,23 @@ export function createSiteIcon(domain: string | null | undefined, size = 16): HT
   img.onload = function () {
     try {
       const canvas = createEl('canvas');
-      canvas.width = (img as any).naturalWidth;
-      canvas.height = (img as any).naturalHeight;
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
       const ctx = canvas.getContext('2d');
-      (ctx as any).drawImage(img, 0, 0);
+      (ctx as CanvasRenderingContext2D).drawImage(img, 0, 0);
       const dataUrl = canvas.toDataURL('image/png');
       try {
-        localStorage.setItem(cacheKey, dataUrl);
-      } catch (e) { /* 忽略 */ }
-    } catch (e) { /* 忽略 */ }
-    (img as any).onload = null;
+        window.localStorage.setItem(cacheKey, dataUrl);
+      } catch { /* 忽略 */ }
+    } catch { /* 忽略 */ }
+    img.onload = null;
   };
 
   // 4. 加载失败则隐藏并记 tombstone（会话内同「域名+尺寸」不再重试）
   img.onerror = function () {
-    img.style.display = 'none';
+    img.style.display = DISPLAY_NONE;
     faviconFailures.add(cacheKey);
-    (img as any).onerror = null;
+    img.onerror = null;
   };
 
   return img;
@@ -181,7 +188,7 @@ export function createIconBtn(
   /* Obsidian 会把 title / aria-label 变成悬停气泡；这里改用视觉隐藏文本，
      读屏仍读到名字，指针移上不再冒莫名其妙的小黑框。 */
   if (title) {
-    const sr = createEl('span');
+    const sr = createSpan();
     sr.className = 'bzrv-sr-only';
     sr.textContent = title;
     b.appendChild(sr);
@@ -227,14 +234,14 @@ export function createOverlay(opts: {
   const mask = createDiv();
   mask.id = opts.maskId;
   mask.className = 'bzrv-overlay-mask';
-  mask.style.display = 'none';
+  mask.style.display = DISPLAY_NONE;
   // 点遮罩关闭：手势配对判据（见 core/mask-dismiss.ts）——跨元素松手（弹窗内选字划到
   // 遮罩、遮罩上误按滑回弹窗）不算点击，只有明确的按下+抬起都在遮罩本体上才关
   if (typeof opts.onMaskClick === 'function') bindMaskDismiss(mask, opts.onMaskClick);
   const popup = createDiv();
   popup.id = opts.popupId;
   popup.className = 'bzrv-overlay-popup';
-  popup.style.display = 'none';
+  popup.style.display = DISPLAY_NONE;
   popup.style.width = opts.width || '90%';
   popup.style.maxWidth = (opts.maxWidth || 400) + 'px';
   topifyZ(mask, popup);
@@ -272,7 +279,7 @@ export function closeAllOverlays(): void {
   for (const entry of [...liveOverlays]) {
     try {
       entry.close();
-    } catch (e) {
+    } catch {
       // close 抛错不阻断其余浮层收口；DOM 兜底摘除防残留
       entry.mask.remove();
       entry.popup.remove();
