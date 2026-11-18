@@ -11,6 +11,34 @@
  */
 import type { ReviewCard } from './data';
 import type { ReviewCardInput } from './reader-api';
+import type { QuizQuestion } from './quiz-core/manager';
+
+const CARD_MODES: readonly string[] = ['flashcard', 'quiz', 'cloze', 'context', 'plain'];
+
+/**
+ * 阅读器交来的题目 → Review 题库格式。
+ * 只有题干和选项都齐的题才留；空题写进题库会让用户点开一张「没有题的做题卡」。
+ */
+export function normalizeQuestions(
+  raw: ReviewCardInput['questions'],
+): QuizQuestion[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((q) => q && String(q.q ?? '').trim() && Array.isArray(q.options) && q.options.length > 0)
+    .map((q) => {
+      const options = q.options.map((o) => String(o ?? ''));
+      const correctIndices = Array.isArray(q.correct)
+        ? q.correct.map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < options.length)
+        : [];
+      const out: QuizQuestion = {
+        question: String(q.q).trim(),
+        options,
+        correctIndices,
+      };
+      if (q.explain) out.explain = String(q.explain);
+      return out;
+    });
+}
 
 /**
  * 归一一条外部输入；收不了返回 null。
@@ -31,6 +59,11 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
   if (input.comment) card.comment = String(input.comment);
   if (input.backlink) card.backlink = String(input.backlink);
   if (input.context) card.context = input.context;
+  /* 方式由 Reader 在制卡那一刻定下；这里是唯一的落库入口，丢了就只能按全局
+     默认方式重盖——用户选的填空会变成抽认卡，选的做题会退化成看原文。 */
+  if (typeof input.mode === 'string' && CARD_MODES.includes(input.mode)) {
+    card.mode = input.mode as ReviewCard['mode'];
+  }
 
   const q = String(input?.qa?.q ?? '').trim();
   if (q) {

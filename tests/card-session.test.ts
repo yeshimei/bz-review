@@ -10,7 +10,7 @@
  * **只要问已经发起过，下一帧就必须有字，不能是空。**
  */
 import { describe, expect, it } from 'vitest';
-import { promptOf, promptViewFor } from '../src/review/card-prompt';
+import { clozeContentUsable, promptOf, promptViewFor } from '../src/review/card-prompt';
 import type { ReviewItem } from '../src/review/data';
 
 function makeCard(text: string): ReviewItem {
@@ -59,5 +59,27 @@ describe('提示面状态', () => {
   it('内置提示永远不是空：空提示会让会话变成一张白卡', () => {
     expect(promptOf(CARD).length).toBeGreaterThan(0);
     expect(promptOf(makeCard(''))).toBe('');
+  });
+});
+
+describe('填空内容可用性', () => {
+  const card = (text: string, cloze?: { text: string; blanks: string[] }): any => ({ text, cloze });
+
+  it('完整挖空句可用', () => {
+    expect(
+      clozeContentUsable(card('叶绿体里的色素吸收红光和蓝紫光', { text: '{{1}}里的色素吸收{{2}}', blanks: ['叶绿体', '红光和蓝紫光'] })),
+    ).toBe(true);
+  });
+
+  it('AI 只回半句时不可用，宁可降级看原文也不让用户背半截', () => {
+    expect(
+      clozeContentUsable(card('叶绿体里的色素主要吸收红光和蓝紫光，而类胡萝卜素主要吸收蓝紫光。', { text: '{{1}}，而类胡萝卜素主要吸收蓝紫光。', blanks: ['叶绿体里的色素主要吸收红光和蓝紫光'] })),
+    ).toBe(false);
+  });
+
+  it('没有占位、空答案都算没准备好', () => {
+    expect(clozeContentUsable(card('原文', { text: '没有空的句子', blanks: ['答案'] }))).toBe(false);
+    expect(clozeContentUsable(card('原文', { text: '{{1}}', blanks: [] }))).toBe(false);
+    expect(clozeContentUsable(card('原文'))).toBe(false);
   });
 });

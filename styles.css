@@ -6217,11 +6217,13 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
    切换时给一次淡入与一句提示，让「换形态」这件事被看见。
    所有选择器仍挂在 .bzrv-cs-* 之下，作用域由 build-css 统一收进 [data-bzrv]。 */
 .bzrv-cs:is([data-bzrv], [data-bzrv] *) { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-sm); box-sizing: border-box; }
-.bzrv-cs [data-tone="purple"] { --tone-color: #7160cf; }
-.bzrv-cs [data-tone="blue"] { --tone-color: #3c72c0; }
-.bzrv-cs [data-tone="orange"] { --tone-color: #c4552d; }
-.bzrv-cs [data-tone="green"] { --tone-color: #3f8d69; }
-.bzrv-cs [data-tone="gray"] { --tone-color: #8a8a92; }
+/* 根元素自己也可能带 data-tone（当前卡的色档），所以两种写法都要匹配；
+   少了根那半句，顶部类型 tab 就继承不到色档，永远显示默认的黑框。 */
+.bzrv-cs[data-tone="purple"], .bzrv-cs [data-tone="purple"] { --tone-color: #7160cf; }
+.bzrv-cs[data-tone="blue"], .bzrv-cs [data-tone="blue"] { --tone-color: #3c72c0; }
+.bzrv-cs[data-tone="orange"], .bzrv-cs [data-tone="orange"] { --tone-color: #c4552d; }
+.bzrv-cs[data-tone="green"], .bzrv-cs [data-tone="green"] { --tone-color: #3f8d69; }
+.bzrv-cs[data-tone="gray"], .bzrv-cs [data-tone="gray"] { --tone-color: #8a8a92; }
 
 .bzrv-cs-top:is([data-bzrv], [data-bzrv] *) { flex: none; height: 44px; display: flex; align-items: center; gap: var(--bzrv-space-sm); padding: 0 20px; border-bottom: 1px solid var(--bzrv-border); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-brand:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); font-weight: 700; color: var(--bzrv-text-1); }
@@ -6243,7 +6245,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-mode:is([data-bzrv], [data-bzrv] *) { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 9px; background: color-mix(in srgb, var(--tone-color) 12%, transparent); color: var(--tone-color); font-weight: 600; }
 .bzrv-cs-mode-ic:is([data-bzrv], [data-bzrv] *) { font-size: 10px; }
 .bzrv-cs-sp:is([data-bzrv], [data-bzrv] *) { flex: 1; }
-.bzrv-cs-pos:is([data-bzrv], [data-bzrv] *) { font-variant-numeric: tabular-nums; color: var(--bzrv-text-3); }
+.bzrv-cs-pos:is([data-bzrv], [data-bzrv] *) { margin-left: 6px; font-variant-numeric: tabular-nums; color: var(--bzrv-text-3); }
 .bzrv-cs-edit:is([data-bzrv], [data-bzrv] *), .bzrv-cs-regen:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
 .bzrv-cs-actions:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; }
 .bzrv-cs-foot:is([data-bzrv], [data-bzrv] *) { width: 100%; max-width: 720px; margin: 0 auto; flex: none; }
@@ -6283,6 +6285,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-cs-qlist:is([data-bzrv], [data-bzrv] *), .bzrv-cs-meta:is([data-bzrv], [data-bzrv] *) { display: none; }
 }
 @media (max-width: 768px) {
+  /* 手机宽 390px：顶部类型 tab 已经是类型入口，右栏再摆一行就会被挤成竖排文字、
+     还会压在 Obsidian 底部导航下面。整条收起，把空间全给卡片。 */
+  .bzrv-cs-side:is([data-bzrv], [data-bzrv] *) { display: none; }
   .bzrv-cs-rate .bzrv-btn:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
 }
 

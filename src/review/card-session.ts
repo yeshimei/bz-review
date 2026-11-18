@@ -24,7 +24,7 @@ import { QUIZ_RATIO, pickCardQuestions } from './card-quiz';
 import type { QuizQuestion } from './quiz-core/manager';
 import { checkBlanks, renderClozeHtmlParts } from './cloze';
 import { contextPromptOf } from './context';
-import { clozeSlotWidth, clozeViewOf, promptOf, promptViewFor, quizViewOf } from './card-prompt';
+import { clozeContentUsable, clozeSlotWidth, clozeViewOf, promptOf, promptViewFor, quizViewOf } from './card-prompt';
 import { stageNum } from './render';
 import { accuracyToRating } from './sprint';
 import { ratingForKey, ratingKeys } from './keys';
@@ -502,12 +502,9 @@ export class CardSession {
     this.render();
   }
 
-  /** 这张卡有没有可用的填空内容：空文本、空答案、没有占位都算没准备好 */
+  /** 这张卡有没有可用的填空内容（含 AI 只回半句的兜底） */
   private clozeReady(card: ReviewCard): boolean {
-    const text = String(card.cloze?.text ?? '');
-    const blanks = card.cloze?.blanks;
-    if (!text.trim() || !Array.isArray(blanks) || !blanks.length) return false;
-    return renderClozeHtmlParts(text).some((p) => p.kind === 'slot');
+    return clozeContentUsable(card);
   }
 
   /**

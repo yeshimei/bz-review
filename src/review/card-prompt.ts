@@ -9,7 +9,27 @@
  * 上不动了——整张卡复习不了，控制台还一句错都不报。状态机和副作用分开之后，
  * 「问过就必须有字」这件事才能在 node 里直接断言。
  * ============================================================ */
-import type { ReviewItem } from './data';
+import type { ReviewCard, ReviewItem } from './data';
+
+/**
+ * 填空内容能不能拿去考。
+ *
+ * 真机上见过 AI 只回半句的情况（原文 33 字，挖空句只剩「{{1}}，而类胡萝卜素…」
+ * 16 字），照原样渲染就是让用户背一段没有开头的残句。这里给一个下限：
+ * 挖空句去掉占位符后明显短于原文时判为没准备好，走降级看原文。
+ */
+export function clozeContentUsable(card: ReviewCard | null | undefined): boolean {
+  const text = String(card?.cloze?.text ?? '');
+  const blanks = card?.cloze?.blanks;
+  if (!text.trim() || !Array.isArray(blanks) || !blanks.length) return false;
+  if (!/\{\{\d+\}\}/.test(text)) return false;
+  const src = String(card?.text ?? '').replace(/\s+/g, '').length;
+  const plain = text.replace(/\{\{\d+\}\}/g, '').replace(/\s+/g, '').length;
+  /* 只挖一个空本来就是合法题型；但「一个空 + 句子只剩后半截」是 AI 截断的
+     典型形状——真机上就出过原文 33 字、挖空句只剩 14 字的残句。 */
+  if (blanks.length < 2 && src > 0 && plain < src * 0.75) return false;
+  return true;
+}
 
 /** 提示面：长划线给开头，短划线只给几个字（否则等于把答案念出来） */
 export function promptOf(item: ReviewItem): string {
