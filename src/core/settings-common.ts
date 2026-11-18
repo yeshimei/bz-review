@@ -22,13 +22,13 @@ const RELOAD_SETTINGS_NOTICE = '设置已保存，重载插件后生效';
 export function numStrBinding(key: string, def: number): { get: () => number; set: (v: number) => void; save: () => void } {
   return {
     get: () => {
-      const raw = (tryGetSettings() as any)[key];
+      const raw = (tryGetSettings())[key];
       if (raw === '' || raw === null || raw === undefined) return def;
       const n = Number(raw);
       return Number.isFinite(n) && n > 0 ? n : def;
     },
     set: (v: number) => {
-      (getSettings() as any)[key] = String(v);
+      (getSettings())[key] = String(v);
     },
     save: () => saveSettings(),
   };

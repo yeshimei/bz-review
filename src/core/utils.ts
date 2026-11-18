@@ -75,7 +75,7 @@ export { pad2 };
 
 /** 睡眠 */
 export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 // ==================== Q3 工具（window.__utils 逐字移植） ====================
@@ -278,24 +278,24 @@ export function hash31(str: string): number {
 
 /** debounce(fn, ms)：尾触防抖，返回带 cancel() 的防抖函数（新收敛能力；既有手写定时器形态各异，暂不批量替换） */
 export function debounce<T extends (...args: any[]) => void>(fn: T, ms: number): T & { cancel(): void } {
-  let t: ReturnType<typeof setTimeout> | undefined;
+  let t: number | undefined;
   const wrapped = (...args: Parameters<T>) => {
-    if (t !== undefined) clearTimeout(t);
-    t = setTimeout(() => {
+    if (t !== undefined) window.clearTimeout(t);
+    t = window.setTimeout(() => {
       t = undefined;
       fn(...args);
     }, ms);
   };
   (wrapped as T & { cancel(): void }).cancel = () => {
     if (t !== undefined) {
-      clearTimeout(t);
+      window.clearTimeout(t);
       t = undefined;
     }
   };
   return wrapped as T & { cancel(): void };
 }
 
-/** yieldToMainThread(timeoutMs)：让出主线程（requestIdleCallback 优先 + 超时兜底，退化 setTimeout(0)；蓝本 checkup/run.ts） */
+/** yieldToMainThread(timeoutMs)：让出主线程（requestIdleCallback 优先 + 超时兜底，退化 window.setTimeout(0)；蓝本 checkup/run.ts） */
 export function yieldToMainThread(timeoutMs = 200): Promise<void> {
   return new Promise((resolve) => {
     if (typeof window === 'undefined') {
@@ -329,20 +329,20 @@ export function secureRandomPassword(length: number, charset: string): string {
 
 /** 复制敏感内容 + 60s 自动清空剪贴板（模块级单定时器：双域并存共用一支，后复制重置前清空） */
 const CLIPBOARD_CLEAR_DELAY_MS = 60_000;
-let clipboardClearTimer: ReturnType<typeof setTimeout> | null = null;
+let clipboardClearTimer: number | null = null;
 
 /** 取消未触发的自动清空（卸载清理用，防插件禁用后定时器仍写剪贴板） */
 export function cancelClipboardClear(): void {
   if (clipboardClearTimer !== null) {
-    clearTimeout(clipboardClearTimer);
+    window.clearTimeout(clipboardClearTimer);
     clipboardClearTimer = null;
   }
 }
 
 /** 对已写入敏感内容的剪贴板布防 60s 自动清空 */
 export function armClipboardClear(): void {
-  if (clipboardClearTimer !== null) clearTimeout(clipboardClearTimer);
-  clipboardClearTimer = setTimeout(() => {
+  if (clipboardClearTimer !== null) window.clearTimeout(clipboardClearTimer);
+  clipboardClearTimer = window.setTimeout(() => {
     clipboardClearTimer = null;
     try {
       void navigator.clipboard.writeText('').catch(() => {});

@@ -98,7 +98,7 @@ export function createFileSync<D, R extends FileSyncRenameEvent = FileSyncRename
    *  队列任务按序回放——既削队列峰值，又保留 rename 链（A→B→C）等顺序语义。 */
   function createBatchFlusher<T>(run: (batch: T[]) => Promise<void>): ((ev: T) => void) & { cancel(): void } {
     let pending: T[] = [];
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let timer: number | null = null;
     const flush = () => {
       timer = null;
       if (_cancelled) {
@@ -112,13 +112,13 @@ export function createFileSync<D, R extends FileSyncRenameEvent = FileSyncRename
     const push = (ev: T): void => {
       if (_cancelled) return;
       pending.push(ev);
-      if (timer !== null) clearTimeout(timer);
-      timer = setTimeout(flush, debounceDelay());
+      if (timer !== null) window.clearTimeout(timer);
+      timer = window.setTimeout(flush, debounceDelay());
     };
     return Object.assign(push, {
       cancel(): void {
         if (timer !== null) {
-          clearTimeout(timer);
+          window.clearTimeout(timer);
           timer = null;
         }
         pending = [];

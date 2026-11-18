@@ -25,7 +25,7 @@ export function devAutoOpen(app: App, storageDir: string): void {
         const command = typeof raw.command === 'string' ? raw.command.trim() : '';
         if (!command) return;
         // 稍候一拍：直达的目标面板可能依赖布局/数据初始化
-        setTimeout(() => {
+        window.setTimeout(() => {
           try {
             (app as unknown as { commands: { executeCommandById: (id: string) => boolean } }).commands.executeCommandById(command);
           } catch (e) {

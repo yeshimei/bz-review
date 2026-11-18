@@ -40,8 +40,8 @@ let baseline: Set<HTMLElement> = new Set();
 let baselineTop: Set<Element> = new Set();
 
 let observer: MutationObserver | null = null;
-let checkTimer: ReturnType<typeof setTimeout> | null = null;
-let returnTimer: ReturnType<typeof setTimeout> | null = null;
+let checkTimer: number | null = null;
+let returnTimer: number | null = null;
 
 /** 闭合后的合并等待：同一拍（0ms 宏任务）内让「关一个、马上开下一个」的跳转先落地，
  *  用户感知为零延迟；不做几帧级等待——实测 150ms 会被肉眼读成「卡一下」 */
@@ -50,8 +50,8 @@ const RETURN_DELAY_MS = 0;
 const CHECK_DELAY_MS = 0;
 
 function clearTimers(): void {
-  if (checkTimer) { clearTimeout(checkTimer); checkTimer = null; }
-  if (returnTimer) { clearTimeout(returnTimer); returnTimer = null; }
+  if (checkTimer) { window.clearTimeout(checkTimer); checkTimer = null; }
+  if (returnTimer) { window.clearTimeout(returnTimer); returnTimer = null; }
 }
 
 function stop(): void {
@@ -94,7 +94,7 @@ function fire(): void {
 /** 回首页前的最后一道检查：主面板真没了才回（防「关一个开下一个」误回） */
 function scheduleReturn(): void {
   if (!armed || returnTimer) return;
-  returnTimer = setTimeout(() => {
+  returnTimer = window.setTimeout(() => {
     returnTimer = null;
     if (!armed) return;
     if (freshPanels().length) return; // 又开了新的主面板：继续等它关闭
@@ -133,7 +133,7 @@ function evaluate(): void {
 
 function scheduleCheck(): void {
   if (!armed || checkTimer) return;
-  checkTimer = setTimeout(() => {
+  checkTimer = window.setTimeout(() => {
     checkTimer = null;
     evaluate();
   }, CHECK_DELAY_MS);
@@ -169,7 +169,7 @@ export function disarmHomeReturn(): void {
  */
 export function notifyFloatClosed(): void {
   if (!armed) return;
-  setTimeout(() => {
+  window.setTimeout(() => {
     if (!armed) return;
     if (freshPanels().length) return;
     scheduleReturn();
@@ -183,7 +183,7 @@ export function notifyFloatClosed(): void {
  */
 export function notifyActionDone(): void {
   if (!armed) return;
-  setTimeout(() => {
+  window.setTimeout(() => {
     if (!armed) return;
     if (freshPanels().length || freshTopLayers().length) return;
     scheduleReturn();

@@ -60,7 +60,7 @@ export async function probeOllamaService(timeoutMs = 3000): Promise<{ up: boolea
   if (typeof fetch !== 'function') return { up: false, models: [] };
   const base = embeddingServiceUrl().replace(/\/+$/, '');
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
   try {
     const res = await fetch(`${base}/api/tags`, { signal: ctrl.signal });
     if (!res.ok) return { up: false, models: [] };
@@ -70,7 +70,7 @@ export async function probeOllamaService(timeoutMs = 3000): Promise<{ up: boolea
   } catch {
     return { up: false, models: [] };
   } finally {
-    clearTimeout(timer);
+    window.clearTimeout(timer);
   }
 }
 

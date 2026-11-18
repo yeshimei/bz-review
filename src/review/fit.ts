@@ -251,7 +251,7 @@ export async function fitFSRSParams(
     if (maxMs > 0 && Date.now() - t0 > maxMs) break;
     // 分片让出：本片耗时超阈值 → 让一拍给 UI（评级点击/渲染），再继续下一轮
     if (Date.now() - sliceStart >= FIT_SLICE_MS) {
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 0));
       sliceStart = Date.now();
     }
   }

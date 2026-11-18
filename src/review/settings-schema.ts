@@ -34,8 +34,8 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
   // enableAutoNotify 常驻轮询在 main.ts onload 注册、运行时按设置实时读值（app.ts checkOverdueAndNotify
   // 门控），设置弹窗 toggle 只需落盘，渲染器键直绑自动完成，无需额外副作用回调。
   /** 数据目录迁移：上一次已生效的目录（防抖窗口里连续输入只搬一次） */
-  let dirTimer: ReturnType<typeof setTimeout> | null = null;
-  let lastDir = String((getSettings() as any).storagePath || 'CONFIG/REVIEW');
+  let dirTimer: number | null = null;
+  let lastDir = String((getSettings()).storagePath || 'CONFIG/REVIEW');
   const ACCENT_NAME = '强调色';
   const ACCENT_DESC = '跟随 Obsidian / 铜金 / 黛蓝 / 苔青；换色后全插件交互色一起变';
   const ACCENT_HELP =
@@ -71,7 +71,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 cta: true,
                 onClick: async () => {
                   // 文本行的输入先写内存再防抖落盘，这里读内存值即可
-                  const code = String((getSettings() as any).licenseKey || '').trim();
+                  const code = String((getSettings()).licenseKey || '').trim();
                   const state = await refreshLicense(code);
                   await saveSettings();
                   notice(
@@ -101,11 +101,11 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                落盘有 800ms 防抖，这里等 900ms 再看最终值，避免逐字符搬目录。
                复制而不是移动：旧目录原样留着，搬错了改回去就自愈。 */
             onChange: () => {
-              if (dirTimer) clearTimeout(dirTimer);
-              dirTimer = setTimeout(() => {
+              if (dirTimer) window.clearTimeout(dirTimer);
+              dirTimer = window.setTimeout(() => {
                 dirTimer = null;
                 const prev = lastDir;
-                const next = String((getSettings() as any).storagePath || 'CONFIG/REVIEW').trim() || 'CONFIG/REVIEW';
+                const next = String((getSettings()).storagePath || 'CONFIG/REVIEW').trim() || 'CONFIG/REVIEW';
                 if (next === prev) return;
                 lastDir = next;
                 void (async () => {
@@ -219,7 +219,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               withSrText(seg, ACCENT_NAME);
               const btns: HTMLButtonElement[] = [];
               const current = (): string => {
-                const v = String((getSettings() as any).accent || 'auto');
+                const v = String((getSettings()).accent || 'auto');
                 return modes.some((m) => m.value === v) ? v : 'auto';
               };
               const paint = (): void => {
@@ -243,7 +243,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 btn.appendChild(dot);
                 btn.appendChild(document.createTextNode(m.label));
                 btn.addEventListener('click', () => {
-                  (getSettings() as any).accent = m.value;
+                  (getSettings()).accent = m.value;
                   applyAccent(m.value);
                   void saveSettings();
                   paint();
@@ -267,7 +267,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             binding: {
               get: () => panelModeOf(getSettings()),
               set: (v: string) => {
-                (getSettings() as any).reviewPanelMode = v === 'popup' ? 'popup' : 'native';
+                (getSettings()).reviewPanelMode = v === 'popup' ? 'popup' : 'native';
               },
               save: () => saveSettings(),
             },
@@ -314,9 +314,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               '选了具体方式：加卡不再打扰，直接按它制。\n' +
               '已经建好的老卡不受影响，换方式请在复习面板里右键那张卡点「重新生成」。',
             binding: {
-              get: () => String((getSettings() as any).reviewCardDefaultMethod || 'manual'),
+              get: () => String((getSettings()).reviewCardDefaultMethod || 'manual'),
               set: (v: string) => {
-                (getSettings() as any).reviewCardDefaultMethod =
+                (getSettings()).reviewCardDefaultMethod =
                   v === 'quiz' || v === 'plain' || v === 'cloze' || v === 'context' || v === 'flashcard'
                     ? v
                     : 'manual';
@@ -344,9 +344,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             desc: '题库固定，每轮只抽其中一部分',
             binding: {
               get: () =>
-                String(Math.min(4, Math.max(2, Math.round(Number((getSettings() as any).reviewCardQuizRatio) || 3)))),
+                String(Math.min(4, Math.max(2, Math.round(Number((getSettings()).reviewCardQuizRatio) || 3)))),
               set: (v: string) => {
-                (getSettings() as any).reviewCardQuizRatio = Math.min(
+                (getSettings()).reviewCardQuizRatio = Math.min(
                   4,
                   Math.max(2, Math.round(Number(v) || 3))
                 );
@@ -381,8 +381,8 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             name: '每篇笔记出题数量',
             desc: '固定每篇笔记出题的数量，0 为自动',
             binding: {
-              get: () => Number((getSettings() as any).questionsPerNote) || 0,
-              set: (v) => { (getSettings() as any).questionsPerNote = String(v); },
+              get: () => Number((getSettings()).questionsPerNote) || 0,
+              set: (v) => { (getSettings()).questionsPerNote = String(v); },
               save: () => saveSettings(),
             },
             min: 0,
@@ -514,7 +514,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                只记第一次，之后改结束日不会把开始时间往后挪。 */
             onChange: (v) => {
               const cut = String(v || '').trim();
-              const live = getSettings() as any;
+              const live = getSettings();
               if (cut && !live.reviewVacationFrom) {
                 live.reviewVacationFrom = new Date().toISOString();
                 void saveSettings();
@@ -524,7 +524,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               {
                 text: '取消休假',
                 onClick: () => {
-                  const live = getSettings() as any;
+                  const live = getSettings();
                   live.reviewVacationUntil = '';
                   live.reviewVacationFrom = '';
                   void saveSettings();
@@ -581,14 +581,14 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               '目录里的新笔记自动加入复习计划。库根目录不支持监听，会被拦下。' +
               '首次添加目录时会问是否把目录内已有笔记一并收编：取消 = 该目录不加入监听（新老笔记都不收），确认才加入。',
             binding: {
-              get: () => ((getSettings() as any).reviewWatchedFolders || []) as string[],
+              get: () => ((getSettings()).reviewWatchedFolders || []) as string[],
               set: () => {},
               save: () => {},
             },
             pickerTitle: '选择监听文件夹',
             pickerDesc: '文件夹里的新笔记自动加入复习计划，包括子文件夹',
             onChange: (list) => {
-              const prev = [...(((getSettings() as any).reviewWatchedFolders as string[]) || [])];
+              const prev = [...(((getSettings()).reviewWatchedFolders as string[]) || [])];
               return (async (): Promise<string[]> => {
                 const { ReviewWatcher } = await import('./watch');
                 const watcher = new ReviewWatcher(deps.app, deps.dataManager);
@@ -611,7 +611,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                   const cleared = await watcher.removeWatchedFolder(folder);
                   notice(cleared > 0 ? `已移除监听文件夹，并清理其下 ${cleared} 条排除记录` : '已移除监听文件夹', 'success');
                 }
-                (getSettings() as any).reviewWatchedFolders = kept;
+                (getSettings()).reviewWatchedFolders = kept;
                 await saveSettings();
                 return kept;
               })();
@@ -622,12 +622,12 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             type: 'list',
             name: '排除名单',
             desc: '自动加入的排除名单',
-            items: () => ((getSettings() as any).reviewExcludedNotes || []).map((path: string) => ({ key: path, label: path })),
+            items: () => ((getSettings()).reviewExcludedNotes || []).map((path: string) => ({ key: path, label: path })),
             emptyText: '暂无排除笔记',
             removeLabel: '解除',
             onChange: (keys) => {
               void (async () => {
-                const prev: string[] = (getSettings() as any).reviewExcludedNotes || [];
+                const prev: string[] = (getSettings()).reviewExcludedNotes || [];
                 const removed = prev.filter((p) => !keys.includes(p));
                 if (removed.length === 0) return;
                 const { ReviewWatcher } = await import('./watch');
@@ -752,7 +752,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             desc: '向朗读服务发一次最小请求，确认地址和音色可用。',
             buttonText: '测试',
             onClick: async () => {
-              const live = getSettings() as any;
+              const live = getSettings();
               const url = String(live.ttsUrl ?? '').trim();
               if (!url) {
                 notice('先填朗读服务地址再测试', 'warning');

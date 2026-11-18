@@ -39,9 +39,9 @@ export function longPress(
       sy = t.clientY;
       touching = true;
     }
-    timer = setTimeout(function () { timer = null; fired = true; cb(e); }, dur);
+    timer = window.setTimeout(function () { timer = null; fired = true; cb(e); }, dur);
   }
-  function cancel() { if (timer) { clearTimeout(timer); timer = null; } }
+  function cancel() { if (timer) { window.clearTimeout(timer); timer = null; } }
   function move(e: any) {
     if (!timer || !touching || !e.touches || !e.touches.length) return;
     const t = e.touches[0];

@@ -193,11 +193,11 @@ async function channelUrls(fileName: string, opts: { releasePath?: string } = {}
  * 误读成「网络不通」，排查方向整个跑偏。
  */
 async function requestText(url: string, timeoutMs: number = CHANNEL_TIMEOUT_MS): Promise<string> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer: number | null = null;
   try {
     const req = requestUrl({ url, method: 'GET', throw: false });
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`超时（${timeoutMs} ms 内没有响应）`)), timeoutMs);
+      timer = window.setTimeout(() => reject(new Error(`超时（${timeoutMs} ms 内没有响应）`)), timeoutMs);
     });
     const res = await Promise.race([req, timeout]);
     const text = String(res?.text || '');
@@ -211,7 +211,7 @@ async function requestText(url: string, timeoutMs: number = CHANNEL_TIMEOUT_MS):
     preferredBase = baseOfUrl(url);
     return text;
   } finally {
-    if (timer) clearTimeout(timer);
+    if (timer) window.clearTimeout(timer);
   }
 }
 

@@ -44,14 +44,14 @@ export function providerDescriptorOf(id: string): AIProviderDescriptor {
 function endpointFor(id: string): string {
   const desc = providerDescriptorOf(id);
   if (desc.id === 'custom') {
-    return String((tryGetSettings() as any).aiCustomEndpoint || '').trim().replace(/\/+$/, '');
+    return String((tryGetSettings()).aiCustomEndpoint || '').trim().replace(/\/+$/, '');
   }
   return desc.endpoint.replace(/\/+$/, '');
 }
 
 /** 当前服务商的 API key（Ollama 本地无鉴权返回空串） */
 function keyFor(id: string): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   const desc = providerDescriptorOf(id);
   if (desc.id === 'ollama') return '';
   return String(s[desc.apiKeyKey] || '');
@@ -115,7 +115,7 @@ async function fetchModelsJson(
     | { resp: { ok: boolean; status: number; json: () => Promise<any> }; via: 'fetch' | 'requestUrl' };
   {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
       attempt = await fetchAttempt(controller.signal);
     } catch (e) {
@@ -125,7 +125,7 @@ async function fetchModelsJson(
       // CORS/网络失败 → requestUrl 兜底（对齐 streamChatCompletions 的 fallback 口径）
       attempt = await requestUrlAttempt();
     } finally {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
     }
   }
 
@@ -153,7 +153,7 @@ export async function fetchProviderModels(
   providerId?: string,
   deps: ModelsFetchDeps = {}
 ): Promise<ModelOption[]> {
-  const id = providerId || String((tryGetSettings() as any).aiProvider || DEFAULT_AI_PROVIDER);
+  const id = providerId || String((tryGetSettings()).aiProvider || DEFAULT_AI_PROVIDER);
   const desc = providerDescriptorOf(id);
 
   // 端点来源：Ollama 用本地根地址（注册表 /v1 兼容面去掉后缀），自定义读设置里的地址，其余用注册表
@@ -236,7 +236,7 @@ export function isQwen3Embedding8b(model: unknown): boolean {
  * （规则镜像域侧实现：域侧 IS_MOBILE 另有 UA 兜底，此处按 obsidian Platform 判定。）
  */
 export function embeddingServiceUrl(): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   const local = String(s.secondBrainOllamaUrl || '').trim() || OLLAMA_BASE_URL;
   const remote = String(s.secondBrainRemoteOllamaUrl || '').trim();
   return isMobileEnv() && remote ? remote : local;

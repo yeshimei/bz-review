@@ -24,10 +24,10 @@ const GESTURE_GAP = 340;
 
 const rafFn = typeof requestAnimationFrame === 'function'
   ? (cb: () => void): number => requestAnimationFrame(cb)
-  : (cb: () => void): number => setTimeout(cb, 16) as unknown as number;
+  : (cb: () => void): number => window.setTimeout(cb, 16) as unknown as number;
 const rafStop = (id: number): void => {
   if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(id);
-  else clearTimeout(id);
+  else window.clearTimeout(id);
 };
 
 const clamp = (x: number, lo: number, hi: number): number => (x < lo ? lo : x > hi ? hi : x);
@@ -77,7 +77,7 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
   let px = 0, py = 0, cx = 0, cy = 0, pin = 0;
   const settled = new Set<number>();
   const broken = new Set<string>();
-  let cutTimers: ReturnType<typeof setTimeout>[] = [];
+  let cutTimers: number[] = [];
 
   /** 幕高 = 滚动口高（写在 film 的 --ra-h 上；resize 时引擎重锚） */
   const unit = (): number => Math.max(1, scEl.clientHeight);
@@ -133,7 +133,7 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
     autoAt = performance.now();
   }
 
-  const clearCut = (): void => { for (const id of cutTimers) clearTimeout(id); cutTimers = []; };
+  const clearCut = (): void => { for (const id of cutTimers) window.clearTimeout(id); cutTimers = []; };
   const cutTo = (target: number, replay: boolean): void => {
     navTarget = target;
     scEl.scrollTop = target * unit();
@@ -152,11 +152,11 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
     clearCut();
     shutter.classList.remove('is-open');
     shutter.classList.add('is-close');
-    cutTimers.push(setTimeout(() => {
+    cutTimers.push(window.setTimeout(() => {
       cutTo(target, opts?.replay ?? true); // 合上的这一帧换幕
       shutter.classList.remove('is-close');
       shutter.classList.add('is-open');
-      cutTimers.push(setTimeout(() => shutter.classList.remove('is-open'), 240));
+      cutTimers.push(window.setTimeout(() => shutter.classList.remove('is-open'), 240));
     }, 160));
   }
   handle.goTo = goTo;
@@ -196,10 +196,10 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
 
   function pump(): void {
     if (dead) return;
-    clearTimeout(fallback);
+    window.clearTimeout(fallback);
     tick(performance.now());
-    raf = rafFn(() => { clearTimeout(fallback); pump(); });
-    fallback = setTimeout(() => { rafStop(raf); pump(); }, 220) as unknown as number;
+    raf = rafFn(() => { window.clearTimeout(fallback); pump(); });
+    fallback = window.setTimeout(() => { rafStop(raf); pump(); }, 220) as unknown as number;
   }
 
   function tick(now: number): void {
@@ -290,7 +290,7 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
   handle.stop = (): void => {
     dead = true;
     rafStop(raf);
-    clearTimeout(fallback);
+    window.clearTimeout(fallback);
     mo?.disconnect();
     ro?.disconnect();
     clearCut();

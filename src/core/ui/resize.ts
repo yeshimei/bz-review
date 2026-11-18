@@ -104,7 +104,7 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
     return Math.floor(Math.min(isW ? maxW : maxH, view));
   };
 
-  let persistTimer: ReturnType<typeof setTimeout> | null = null;
+  let persistTimer: number | null = null;
   let wantW = 0;
   let wantH = 0;
 
@@ -178,8 +178,8 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
     // 尺寸记忆：trailing 防抖 300ms 落盘一次（拖一次 = 几十次回调，不逐帧写）；
     // 落盘口径 = 意图值（半屏挤压不污染存档）
     if (persist?.save) {
-      if (persistTimer !== null) clearTimeout(persistTimer);
-      persistTimer = setTimeout(() => {
+      if (persistTimer !== null) window.clearTimeout(persistTimer);
+      persistTimer = window.setTimeout(() => {
         persistTimer = null;
         persist.save?.(wantW, wantH);
       }, 300);
@@ -236,7 +236,7 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
   /** 立即落盘待存的防抖尾值（flush 句柄与 detach 收尾共用；无待存值 no-op） */
   const flush = () => {
     if (persistTimer === null) return;
-    clearTimeout(persistTimer);
+    window.clearTimeout(persistTimer);
     persistTimer = null;
     if (persist?.save && wantW > 0 && wantH > 0) persist.save(wantW, wantH);
   };

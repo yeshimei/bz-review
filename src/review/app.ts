@@ -86,7 +86,7 @@ export class ReviewGateRejected extends Error {
 }
 
 export const reviewApp = {
-  checkInterval: null as ReturnType<typeof setInterval> | null,
+  checkInterval: null as number | null,
   dataManager: null as ReviewDataManager | null,
   /** 测试注入：对齐源码 window.__quiz 语义 */
   _quizOverride: null as any | null,
@@ -107,7 +107,7 @@ export const reviewApp = {
   /** ADR-0077：拟合运行防重入 */
   _fitRunning: false,
   /** P3：reviewLoop 活动轮询句柄（卸载统一清理；插件禁用后不得继续读盘翻篇弹通知） */
-  _reviewLoops: new Set<ReturnType<typeof setInterval>>(),
+  _reviewLoops: new Set<number>(),
   /** item 4：普通复习悬浮迷你评级条句柄（reviewLoop 存续期间挂屏幕底部） */
   _reviewBar: null as { close: () => void } | null,
   /** item 5：本轮队列断点（中断/超时可恢复继续） */
@@ -122,7 +122,7 @@ export const reviewApp = {
 
   /** P3：终止全部 reviewLoop 轮询（unloadReview 调用；幂等） */
   stopReviewLoops(): void {
-    for (const t of this._reviewLoops) clearInterval(t);
+    for (const t of this._reviewLoops) window.clearInterval(t);
     this._reviewLoops.clear();
     this.hideReviewBar();
     this._pendingRound = null;
@@ -181,7 +181,7 @@ export const reviewApp = {
    * 样本不足/失败静默回退默认；防重入。
    */
   async maybeRunFit(app: App): Promise<void> {
-    const s = getSettings() as any;
+    const s = getSettings();
     if (s.reviewEnableFit === false) return;
     const n = Number(s.reviewFitEveryN) || 10;
     this._reviewCountSinceFit++;
@@ -226,7 +226,7 @@ export const reviewApp = {
    * 让它盖掉手填，用户会认为设置没生效。
    */
   currentW(): number[] {
-    return resolveWeights((getSettings() as any).reviewFsrsWeights, this._fittedW);
+    return resolveWeights((getSettings()).reviewFsrsWeights, this._fittedW);
   },
 
   /** ADR-0077：某条目当前记忆保留度 R（FSRS 相位且已复习过才可算；否则 null）——A7 单源 fsrs.currentR */
@@ -281,11 +281,11 @@ export const reviewApp = {
       this.currentW()
     );
     // ticket 100：复习间隔缩放（ADR-0046）——仅 FSRS 动态间隔乘系数；阶梯固定表（含进入点 120d）不受影响
-    const scaleRaw = Number((getSettings() as any).reviewIntervalScale);
+    const scaleRaw = Number((getSettings()).reviewIntervalScale);
     const scale = decision.phase === 'fsrs' && !decision.enteringFsrs && scaleRaw > 0 ? scaleRaw : 1;
     /* 最长间隔上限（批 3）：FSRS 动态间隔在稳定度很高时会算出几千天，
        实际等于「这条以后再也不会出现」。0 = 不限，其余按天截断。 */
-    const capDays = Number((getSettings() as any).reviewMaxIntervalDays) || 0;
+    const capDays = Number((getSettings()).reviewMaxIntervalDays) || 0;
     // 下限 = 阶梯表第一档（1 分钟）：以前写死 0.01 天，把「1m 后复习」悄悄拉成 14 分钟
     const scaledDays = clampIntervalDays(decision.intervalDays, scale, capDays);
     const nextDate = new Date(now.getTime() + scaledDays * 86400000);
@@ -301,7 +301,7 @@ export const reviewApp = {
       await dm.updateItem(filePath, (it) => {
         const nextReview = it.nextReviewDate ? new Date(it.nextReviewDate) : new Date(0);
         if (now < nextReview) {
-          const rThreshold = Number((getSettings() as any).reviewRThreshold) || DEFAULT_R_THRESHOLD;
+          const rThreshold = Number((getSettings()).reviewRThreshold) || DEFAULT_R_THRESHOLD;
           if (!isEarlyDue(it, rThreshold, this.currentW()) && !isDueToday(it)) {
             throw new ReviewGateRejected(Math.ceil((nextReview.getTime() - now.getTime()) / 60000));
           }
@@ -505,7 +505,7 @@ export const reviewApp = {
     const app = getApp();
     this.ensure(app);
     await this.syncVacation();
-    if (isOnVacation((getSettings() as any).reviewVacationUntil)) {
+    if (isOnVacation((getSettings()).reviewVacationUntil)) {
       notice('休假中，先取消休假或等到期再复习');
       return;
     }
@@ -531,7 +531,7 @@ export const reviewApp = {
 
     // item 6/9：开始本轮与三区列同口径（roundQueue 纯函数）——
     // 逾期 ∪ R 阈值提前 ∪ 今日到期（今日到期时刻未到 = 允许提前开始今天全部）
-    const rThreshold = Number((getSettings() as any).reviewRThreshold) || DEFAULT_R_THRESHOLD;
+    const rThreshold = Number((getSettings()).reviewRThreshold) || DEFAULT_R_THRESHOLD;
     const round = opts.force
       ? items.filter((i) => !i.isCompleted && !i.completed && !i.isMissing)
       : roundQueue(items, rThreshold, this.currentW());
@@ -547,7 +547,7 @@ export const reviewApp = {
     if (earlyToday.length) {
       notice(`今日到期 ${earlyToday.length} 条已提前纳入本轮`, 'info');
     }
-    const s = getSettings() as any;
+    const s = getSettings();
     const dailyLimit = Number(s.reviewDailyLimit) || 0;
     /* 先按 R 排序，再按「新卡 / 到期」两个额度分别截断（批 3）——
        合成一个上限时，新卡多的一天会被新卡吃光，复习效率反而低。 */
@@ -834,7 +834,7 @@ export const reviewApp = {
       }
       await this.reviewLoop(overdueNotes, index + 1);
     };
-    const interval = setInterval(async () => {
+    const interval = window.setInterval(async () => {
       checkCount++;
       const activeFile = app.workspace.getActiveFile();
       if (!activeFile || activeFile.path !== item.filePath) {
@@ -894,7 +894,7 @@ export const reviewApp = {
     // P3：句柄入账（stopReviewLoops 统一清理），防插件禁用后轮询残留
     this._reviewLoops.add(interval);
     const clearLoop = (): void => {
-      clearInterval(interval);
+      window.clearInterval(interval);
       this._reviewLoops.delete(interval);
     };
   },
@@ -925,7 +925,7 @@ export const reviewApp = {
     this.hideReviewBar();
     /* 只掐轮询、保留断点：stopReviewLoops 是卸载用的，它连 _pendingRound 一起清，
        用它暂停等于把「继续」的落点也删了（真机复现：暂停后提示「本轮已经结束了」）。 */
-    for (const t of this._reviewLoops) clearInterval(t);
+    for (const t of this._reviewLoops) window.clearInterval(t);
     this._reviewLoops.clear();
     /* 断点留在「当前这条」不动：暂停前没评的那篇，继续时应该回到它，
        而不是悄悄跳过（以前 index+1 会把手上这篇直接丢出本轮，只剩一句
@@ -957,7 +957,7 @@ export const reviewApp = {
    * 没有到期条目就不打扰。
    */
   syncDailyReminder(items: ReviewItem[]): void {
-    const s = getSettings() as any;
+    const s = getSettings();
     const now = new Date();
     if (!shouldRemindNow(now, s.reviewRemindAt, s.reviewRemindLast)) return;
     const round = roundQueue(items, Number(s.reviewRThreshold) || DEFAULT_R_THRESHOLD, this.currentW());
@@ -979,14 +979,14 @@ export const reviewApp = {
    * 因此直接放弃这个插件。顺延等于「这段时间不算数」，回来节奏还是走之前的样子。
    */
   async syncVacation(): Promise<void> {
-    const s = getSettings() as any;
+    const s = getSettings();
     const until = s.reviewVacationUntil ? new Date(s.reviewVacationUntil).getTime() : NaN;
     if (!Number.isFinite(until) || Date.now() < until) return;
     this.ensure(getApp());
     const from = s.reviewVacationFrom ? new Date(s.reviewVacationFrom).getTime() : NaN;
     const shift = Number.isFinite(from) ? Math.max(0, until - from) : 0;
     if (shift > 0) await this.dataManager!.shiftAllNextReview(shift);
-    const live = getSettings() as any;
+    const live = getSettings();
     live.reviewVacationUntil = '';
     live.reviewVacationFrom = '';
     void saveSettings();
@@ -1055,7 +1055,7 @@ export const reviewApp = {
    *   处理范围 = 复习条目路径 + 曾染色路径（移出计划后回退），树节点一次 querySelectorAll 建 Map 查找；
    *   可选 items 参数：checkOverdueAndNotify 传本轮已加载结果，避免每轮二次读盘。 */
   async applyReviewStyles(app: App, changedFile?: TFile, items?: ReviewItem[]): Promise<void> {
-    if ((getSettings() as any).reviewTreeBadge === false) return; // ticket 100：关=清爽文件树（不染色不挂徽章）
+    if ((getSettings()).reviewTreeBadge === false) return; // ticket 100：关=清爽文件树（不染色不挂徽章）
     this.ensure(app);
     const allItems = items || (await this.dataManager!.loadItems());
     this._lastItems = allItems; // F9：全量结果入快照，供 vault modify 单文件路径复用
@@ -1204,7 +1204,7 @@ export const reviewApp = {
       this.ensure(getApp());
       /* 休假中不提醒（批 3）：连染色与逾期通知一起停，否则「休假」只是不看而已，
          通知照样天天弹，用户会以为没设置成功。 */
-      if (isOnVacation((getSettings() as any).reviewVacationUntil)) return;
+      if (isOnVacation((getSettings()).reviewVacationUntil)) return;
       const dm = this.dataManager!;
       const items = await dm.loadItems();
       this._lastItems = items; // F9：轮询结果入快照（染色关闭时 applyReviewStyles 不读盘，快照在此保活）
@@ -1215,7 +1215,7 @@ export const reviewApp = {
       if (typeof document === 'undefined' || !document.hidden) {
         await this.applyReviewStyles(getApp(), undefined, items);
       }
-      if ((getSettings() as any).enableAutoNotify === false) return; // 通知开关关 → 不弹通知
+      if ((getSettings()).enableAutoNotify === false) return; // 通知开关关 → 不弹通知
       /* 面板正摆在眼前时不再挂常驻逾期通知：面板上就有逾期条数和「开始本轮」，
          多一条常驻通知只会压住面板右上角那三颗按钮（通知 z 更高，点击落在通知上，
          「设置」直接点不动——真机实测）。切回笔记后下一轮轮询会自然补上。 */

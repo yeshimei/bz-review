@@ -11,7 +11,7 @@ import { addToTrash, pruneTrash, takeFromTrash, type TrashEntry } from './trash'
 
 /** 回收站文件（与 review.json 同目录，跟着库走） */
 export function getTrashFilePath(): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   return storageFile('review-trash.json', (s && s.storagePath) || 'CONFIG/STORAGE');
 }
 

@@ -31,13 +31,13 @@ export const REVIEW_FILE_PATH = 'CONFIG/STORAGE/review.json';
 
 /** 复习数据文件路径（ADR-0009 共享数据路径；trim 收敛至 storageFile） */
 export function getReviewFilePath(): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   return storageFile('review.json', (s && s.storagePath) || 'CONFIG/STORAGE');
 }
 
 /** 旁挂元数据路径（版本号 + 最后写入时间；review.json 保持数组形态，旧版插件照读） */
 export function getReviewMetaPath(): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   return storageFile('review-meta.json', (s && s.storagePath) || 'CONFIG/STORAGE');
 }
 
@@ -619,7 +619,7 @@ export interface FittedParams {
 
 
 export function getReviewFitFilePath(): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   return storageFile('review-fit.json', (s && s.storagePath) || 'CONFIG/STORAGE');
 }
 
