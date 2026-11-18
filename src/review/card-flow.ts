@@ -21,6 +21,16 @@ import type { CardMode } from './card-ai';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { ReviewItem } from './data';
 
+/**
+ * 开卡前确认只对做题卡有意义：删题要在开始前做完。
+ *
+ * 抽认卡 2026-11-19 改回最朴素的形态——正面一句话，点「看答案」出背面原文。
+ * 「看一遍再开始」那道确认框整段撤掉，问句不满意请到卡片管理器里改或重新生成。
+ */
+export function needsCardConfirm(mode: CardMode): boolean {
+  return mode === 'quiz';
+}
+
 /** 制卡方式选择的结果：方式 + 是否要「以后别再问」 */
 export interface PickCardMethodResult {
   mode: CardMode;
@@ -115,6 +125,9 @@ export interface CardConfirmOpts {
 export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardConfirmResult> {
   const { item, mode } = opts;
   const card = item.card!;
+
+  /* 抽认卡 / 填空 / 上下文 / 全文回忆：直接开卡，不拦一道确认框。 */
+  if (!needsCardConfirm(mode)) return { go: true };
 
   if (mode === 'flashcard') {
     const body = createDiv();

@@ -42,7 +42,7 @@ import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
 import {
   queueViewHtml, reviewBarHtml, trashViewHtml,
-  booksViewHtml, managerViewHtml,
+  booksViewHtml, managerViewHtml, panelHeadHtml,
   isPlayable as isPlayableRender,
 } from './render';
 import { loadTrash } from './trash-store';
@@ -62,7 +62,8 @@ import type { SprintMode } from './sprint';
 import { CardSession } from './card-session';
 import { generateFlashcard } from './flashcard';
 import { cardModeOf, cardQuizRatioOf, modeOfCard } from './card-ai';
-import { confirmBeforeRound } from './card-flow';
+import { confirmBeforeRound, needsCardConfirm } from './card-flow';
+import { openCardEditor } from './card-edit';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { isCardItem } from './data';
 import type { ReviewCard } from './data';
@@ -534,17 +535,10 @@ export class UIManager {
             ? '卡片管理器'
             : '设置';
     setMarkup(container, `<div class="bzrv-q-view bzrv-page">
-      <div class="bzrv-panel-head">
-        <button class="bzrv-icon-btn" data-act="page-back"><span class="bzrv-sr-only">返回复习计划</span>←</button>
-        <div class="bzrv-panel-title">${title}</div>
-        <span class="bzrv-panel-head-sp"></span>
-      </div>
+      ${panelHeadHtml({ activePage: this.page ?? undefined, title })}
       <div class="bzrv-page-body" data-page-body></div>
     </div>`);
-    container.querySelector('[data-act="page-back"]')?.addEventListener('click', () => {
-      this.page = null;
-      void this.refreshPanel();
-    });
+    this.bindPanelHead(container);
     const body = container.querySelector<HTMLElement>('[data-page-body]');
     if (!body) return;
     void this.fillPage(body, items);
@@ -827,6 +821,32 @@ export class UIManager {
     root.querySelectorAll<HTMLElement>('.bzrv-mgr-row[data-path]').forEach((row) => {
       const it = items.find((x) => x.filePath === row.dataset.path || x.id === row.dataset.id);
       if (!it) return;
+      /* 编辑 / 重新生成从复习界面挪到这里（2026-11-19）：复习时只管回忆，
+         要改内容或换 AI 文本，来管理器这一行做。 */
+      row.querySelector<HTMLElement>('[data-act="mgr-edit"]')?.addEventListener('click', () => {
+        const card = it.card;
+        if (!card) return;
+        openCardEditor(this.app, it, (values) => {
+          void (async () => {
+            try {
+              await this.dataManager?.updateCard(card.key, { text: values.text, comment: values.comment, manual: true });
+              notice('已保存，之后不会被 AI 自动改写', 'success');
+              await this.refreshPanel();
+            } catch (e) {
+              notifySaveError(e, '保存卡片修改');
+            }
+          })();
+        });
+      });
+      row.querySelector<HTMLElement>('[data-act="mgr-regen"]')?.addEventListener('click', () => {
+        void (async () => {
+          const { regenerateCardContent } = await import('./index');
+          notice('正在重新生成…', 'info');
+          const ok = await regenerateCardContent(it.filePath);
+          notice(ok ? '已重新生成' : '这次没生成出来（看看 AI 配置）', ok ? 'success' : 'warning');
+          if (ok) await this.refreshPanel();
+        })();
+      });
       row.querySelector<HTMLElement>('[data-act="mgr-suspend"]')?.addEventListener('click', () => void applyHidden(it, 'suspend'));
       row.querySelector<HTMLElement>('[data-act="mgr-bury"]')?.addEventListener('click', () => void applyHidden(it, 'bury'));
       row.querySelector<HTMLElement>('[data-act="mgr-restore"]')?.addEventListener('click', () => void applyHidden(it, 'restore'));
@@ -1069,6 +1089,7 @@ export class UIManager {
       selected: this.selected,
       filterOpen: this.filterOpen && !this.showArchived,
       filter: this.filter,
+      activePage: this.page ?? undefined,
       decks,
     });
   }
@@ -1115,21 +1136,33 @@ export class UIManager {
     await this.refreshPanel();
   }
 
+  /**
+   * 头行四个图标的点击（2026-11-19 口径：点一下高亮进页，再点一下回主列表）。
+   * 主队列与内置页共用 panelHeadHtml，所以绑定也共用这一份，不再各写一套。
+   */
+  private bindPanelHead(container: HTMLElement): void {
+    const go = (page: 'settings' | 'stats' | 'arch'): void => {
+      this.page = this.page === page || this.page ? null : page;
+      void this.refreshPanel();
+    };
+    container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
+    container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
+    container.querySelector('[data-act="arch"]')?.addEventListener('click', () => go('arch'));
+    container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
+      if (this.page) {
+        this.page = null;
+      } else {
+        this.filterOpen = !this.filterOpen;
+        this.keepFilterFocus = this.filterOpen;
+      }
+      void this.refreshPanel();
+    });
+  }
+
   // ================= 队列事件 =================
 
   private bindQueueEvents(container: HTMLElement, items: ReviewItem[]): void {
-    container.querySelector('[data-act="close"]')?.addEventListener('click', () => this.hideMain());
-    /* ⚙️ 设置：issue 254 曾把这里退役、改指原生设置页；2026-11-13 用户拍板回到
-       主界面（与 bz Reader 同形制），原生设置页随之下线。 */
-    container.querySelector('[data-act="settings"]')?.addEventListener('click', () => {
-      this.page = 'settings';
-      void this.refreshPanel();
-    });
-    /* 数据页（批 8）：统计 + 未来负荷都收进来，不再各开一个浮层 */
-    container.querySelector('[data-act="data"]')?.addEventListener('click', () => {
-      this.page = 'stats';
-      void this.refreshPanel();
-    });
+    this.bindPanelHead(container);
     /* 「开始本轮」用 data-bound 防重绑：这个按钮在重绘时会被上一轮的节点顶回来
        （见 renderEntries 里的节点复用），若每次渲染都 addEventListener，同一个节点上
        会叠出两三份监听，一次点击跑两遍 beginRound。 */
@@ -1142,12 +1175,6 @@ export class UIManager {
         void this.beginRound();
       });
     }
-    /* 「已完成」（2026-11-15）：进内置页，不再把队列切成单列——那两种东西在用户
-       眼里是同一个词，行为却完全不同，是最容易被当成 bug 的一处。 */
-    container.querySelector('[data-act="arch"]')?.addEventListener('click', () => {
-      this.page = 'arch';
-      void this.refreshPanel();
-    });
     // 回收站入口（只在有内容时渲染）：与归档互斥，进回收站先把归档关掉
     container.querySelector('[data-act="trash"]')?.addEventListener('click', () => {
       this.showTrash = true;
@@ -1165,12 +1192,8 @@ export class UIManager {
     // item 10：空态两条路（把当前笔记加入复习 / 监听文件夹配置说明）
     container.querySelector('[data-act="add-current"]')?.addEventListener('click', () => void this.addCurrentNote());
     container.querySelector('[data-act="watch-help"]')?.addEventListener('click', () => void this.showWatchHelp());
-    // 筛选（批 8：就地展开，不再弹原生弹窗）/ 批量选择（批 4b）
-    container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
-      this.filterOpen = !this.filterOpen;
-      this.keepFilterFocus = this.filterOpen;
-      void this.refreshPanel();
-    });
+    // 筛选（批 8：就地展开，不再弹原生弹窗）的图标绑定已并入 bindPanelHead；
+    // 下面只管筛选区里的关键字与三个下拉。
     // 筛选区控件：关键字防抖 220ms，三个下拉即时生效（没有「应用」这一步）
     container.querySelectorAll<HTMLElement>('[data-fld]').forEach((el) => {
       const fld = el.dataset.fld || '';
@@ -1463,7 +1486,7 @@ export class UIManager {
     const card = item.card;
     if (!card) return true;
     const mode = modeOfCard(card);
-    if (mode !== 'flashcard' && mode !== 'quiz') return true;
+    if (!needsCardConfirm(mode)) return true;
 
     const questions = mode === 'quiz' ? ((await getCardQuiz(card.key)) ?? undefined) : undefined;
     /* 题库还没生成（没配 AI / 加入时生成失败）：没有可删的题，弹出来只会看到一个

@@ -36,4 +36,14 @@ describe('队列空态文案', () => {
     const html = queueViewHtml([]);
     expect(html).toContain('data-act="settings"');
   });
+
+  it('右上角不再有关闭按钮：手机点遮罩退出，桌面本来就没有', () => {
+    expect(queueViewHtml([])).not.toContain('data-act="close"');
+  });
+
+  it('当前页的图标高亮，再点一次可回主列表', () => {
+    const html = queueViewHtml([], { activePage: 'settings' });
+    expect(html).toMatch(/data-act="settings"[^>]*is-on/);
+    expect(html).not.toMatch(/data-act="data"[^>]*is-on/);
+  });
 });

@@ -121,6 +121,31 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 
 // ==================== 三区队列视图 ====================
 
+/**
+ * 面板头行（主列表与内置页共用）。
+ *
+ * 2026-11-19 起：右上角关闭按钮撤掉（手机点遮罩退出，桌面本来就没有）；
+ * 四个入口图标在高亮态再点一次回主列表，内置页也用这一行，所以不再画「← 返回」。
+ * data-act 写在 class 前面，高亮态直接跟在属性后面，读 DOM 一眼能看出当前在哪一页。
+ */
+export function panelHeadHtml(opts: { activePage?: string; title?: string; sub?: string } = {}): string {
+  const on = (page: string): string => (opts.activePage === page ? ' is-on' : '');
+  return `
+      <div class="bzrv-panel-head">
+        <div class="bzrv-panel-brand">${iconSpan('repeat-2', 'bzrv-ic--sm')}</div>
+        <div class="bzrv-panel-title">${opts.title ?? '复习计划'}</div>
+        <div class="bzrv-panel-head-pipe"></div>
+        <div class="bzrv-panel-head-sub">${opts.sub ?? ''}</div>
+        <span class="bzrv-panel-head-sp"></span>
+        <div class="bzrv-panel-head-btns">
+          <button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
+          <button data-act="arch" class="bzrv-icon-btn${on('arch')}"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
+          <button data-act="data" class="bzrv-icon-btn${on('stats')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
+          <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>
+        </div>
+      </div>`;
+}
+
 export interface QueueViewCtx {
   now?: number;
   showArchived?: boolean;
@@ -136,6 +161,8 @@ export interface QueueViewCtx {
   selectMode?: boolean;
   /** 已选条目（filePath 集合） */
   selected?: ReadonlySet<string>;
+  /** 当前内置页：对应图标高亮，再点一次回主列表 */
+  activePage?: string;
   /** 筛选区展开（批 8：不再弹窗，就地展开在头行下面） */
   filterOpen?: boolean;
   /** 当前筛选（展开时回填控件） */
@@ -226,23 +253,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   const full: QueueViewCtx = { ...ctx, now, w, rThreshold: rt };
   const col = partitionQueue(items, rt, w);
 
-  const head = `
-      <div class="bzrv-panel-head">
-        <div class="bzrv-panel-brand">${iconSpan('repeat-2', 'bzrv-ic--sm')}</div>
-        <div class="bzrv-panel-title">复习计划</div>
-        <div class="bzrv-panel-head-pipe"></div>
-        <div class="bzrv-panel-head-sub">${todayLabel(new Date(now))}</div>
-        <span class="bzrv-panel-head-sp"></span>
-        <div class="bzrv-panel-head-btns">
-          <!-- ⚙️ 设置：2026-11-13 用户拍板回到主界面（与 bz Reader 同形制），原生设置页已下线。
-               ✕ 桌面端隐藏（styles.css ≥769px 规则，浮层点遮罩/ESC 关），移动端保留。 -->
-          <button class="bzrv-icon-btn" data-act="filter"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="arch"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="data"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="settings"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="close"><span class="bzrv-sr-only">关闭</span>${iconSpan('x', 'bzrv-q-ic')}</button>
-      </div>
-      </div>`;
+  const head = panelHeadHtml({ activePage: ctx.activePage, sub: todayLabel(new Date(now)) });
 
   /* 筛选区（就地展开，替代原来那个 Obsidian 原生弹窗）：关键字一行、三个下拉一行。
      控件带 data-fld，事件在 ui.bindQueueEvents 里绑；改完即时生效，没有「应用」这一步。 */
@@ -506,6 +517,8 @@ export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCt
           <span class="bzrv-mgr-state ${stateCls}">${state}</span>
         </div>
         <div class="bzrv-mgr-ops">
+          ${it.card ? `<button class="bzrv-icon-btn" data-act="mgr-edit"><span class="bzrv-sr-only">编辑这张卡</span>${iconSpan('pencil', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="mgr-regen"><span class="bzrv-sr-only">重新生成 AI 内容</span>${iconSpan('refresh-cw', 'bzrv-q-ic')}</button>` : ''}
           <button class="bzrv-icon-btn" data-act="mgr-suspend"><span class="bzrv-sr-only">挂起</span>${iconSpan('pause', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-bury"><span class="bzrv-sr-only">埋藏一天</span>${iconSpan('hourglass', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-restore"><span class="bzrv-sr-only">恢复</span>${iconSpan('rotate-ccw', 'bzrv-q-ic')}</button>

@@ -631,7 +631,6 @@ export class CardSession {
     const meta = modeMetaOf(mode);
     const buckets = typeBucketsOf(this.opts.queue);
     const rows = queueRowsOf(this.opts.queue, item.filePath);
-    const canRegen = mode !== 'plain' && mode !== 'context' && !!this.opts.regenerate;
 
     /* 换卡判定：首次进入不提示；跨卡才提示，同一张重画（揭示/交卷）不提示。
        这样「看答案」不会把「已切换到…」又弹一遍。 */
@@ -687,22 +686,11 @@ export class CardSession {
               <div class="bzrv-cs-card-top">
                 <span class="bzrv-cs-mode"><span class="bzrv-cs-mode-ic">${meta.icon}</span>${esc(meta.label)}</span>
                 <span class="bzrv-cs-sp"></span>
-                ${
-                  this.opts.onEdit
-                    ? `<button type="button" class="bzrv-btn bzrv-cs-edit" data-act="edit"><span class="bzrv-sr-only">改原文或想法（改过之后不再自动生成）</span>编辑</button>`
-                    : ''
-                }
-                ${
-                  canRegen
-                    ? `<button type="button" class="bzrv-btn bzrv-cs-regen" data-act="regen"${
-                        this.regenBusy ? ' disabled' : ''
-                      }>${this.regenBusy ? '正在生成…' : '重新生成'}</button>`
-                    : ''
-                }
                 <span class="bzrv-cs-pos">${this.index + 1} / ${total}</span>
               </div>
               <div class="bzrv-cs-body">${this.bodyHtml(item)}</div>
-              <div class="bzrv-cs-actions">${this.actionHtml(item)}${this.speakHtml()}</div>
+              <div class="bzrv-cs-actions">${this.actionHtml(item)}</div>
+              ${this.footActionsHtml(item)}
             </div>
             <div class="bzrv-cs-foot">${
               this.showRating(item)
@@ -740,13 +728,11 @@ export class CardSession {
     this.ensureClozeContent(item);
   }
 
-  /** 正文：看答案那一段（全文 + 想法 + 回原文），三种方式共用 */
+  /** 正文：看答案那一段（全文 + 想法），三种方式共用。跳原文挪到底部一行。 */
   private answerHtml(card: ReviewCard): string {
     const idea = String(card.comment ?? '').trim();
-    const back = backlinkOfCard(card, readerJumpUrl);
     return `<blockquote class="bzrv-cs-text">${esc(card.text)}</blockquote>
-      ${idea ? `<p class="bzrv-cs-idea">${esc(idea)}</p>` : ''}
-      ${backButtonHtml(!!back, canUseCapability('sourceLink'))}`;
+      ${idea ? `<p class="bzrv-cs-idea">${esc(idea)}</p>` : ''}`;
   }
 
   private bodyHtml(item: ReviewItem): string {
@@ -981,6 +967,13 @@ export class CardSession {
 
   private speakHtml(): string {
     return speakButtonHtml(canUseCapability('speech'), this.speakState());
+  }
+
+  /** 「回到原文」「听这张」并成一行：复习区只留回忆本身，改卡去卡片管理器。 */
+  private footActionsHtml(item: ReviewItem): string {
+    const card = item.card;
+    const back = card ? backlinkOfCard(card, readerJumpUrl) : '';
+    return `<div class="bzrv-cs-foot-actions">${backButtonHtml(!!back, canUseCapability('sourceLink'))}${this.speakHtml()}</div>`;
   }
 
   private speakState(): SpeakState {
