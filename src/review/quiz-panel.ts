@@ -96,7 +96,7 @@ class QuizPracticePanel {
 
   constructor(app: App) {
     this.app = app;
-    this.mask = document.createElement('div');
+    this.mask = createDiv();
     this.mask.id = MASK_ID;
     this.mask.classList.add('bzrv-panel-overlay');
     this.mask.style.display = 'none';
@@ -104,13 +104,13 @@ class QuizPracticePanel {
     // 点遮罩关闭：手势配对判据（core/mask-dismiss）
     bindMaskDismiss(this.mask, () => this.hide());
 
-    this.popup = document.createElement('div');
+    this.popup = createDiv();
     this.popup.id = POPUP_ID;
     this.popup.classList.add('bzrv-panel-frame');
     // ≤768px 满宽真全屏（顶距避让移动端头，components.css 统一档）
     this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = 'none';
-    this.content = document.createElement('div');
+    this.content = createDiv();
     this.content.className = 'bzrv-quiz-practice-container';
     this.popup.appendChild(this.content);
 

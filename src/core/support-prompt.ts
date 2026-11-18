@@ -51,43 +51,43 @@ export function openSupportPrompt(): Promise<SupportChoice> {
       resolve(choice);
     };
 
-    const root = document.createElement('div');
+    const root = createDiv();
     root.className = 'bzrv-sup';
 
-    const kicker = document.createElement('div');
+    const kicker = createDiv();
     kicker.className = 'bzrv-sup-kicker';
     kicker.textContent = '支持作者';
     root.appendChild(kicker);
 
     // 两句话分两行：这句是「作者处境」+「没有别的收入」，中间断在逗号后最自然，
     // 交给浏览器按宽度切会把「完全免费」劈成两半（窄屏实测）。
-    const lead = document.createElement('p');
+    const lead = createEl('p');
     lead.className = 'bzrv-sup-lead';
     lead.append(
       document.createTextNode(SUPPORT_PITCH),
-      document.createElement('br'),
+      createEl('br'),
       document.createTextNode(SUPPORT_PITCH_REST),
     );
     root.appendChild(lead);
 
-    const note = document.createElement('p');
+    const note = createEl('p');
     note.className = 'bzrv-sup-note';
     note.textContent = SUPPORT_NOTE;
     root.appendChild(note);
 
-    const acts = document.createElement('div');
+    const acts = createDiv();
     acts.className = 'bzrv-sup-acts';
 
     // 次序（2026-11-09 用户拍板）：「以后再说」在左、「支持作者」在右——
     // 主按钮落在阅读动线的末端，也是 iOS 弹窗里确认键的位置。
-    const later = document.createElement('button');
+    const later = createEl('button');
     later.className = 'bzrv-sup-btn bzrv-sup-later';
     later.type = 'button';
     later.textContent = '以后再说';
     later.addEventListener('click', () => settle('dismiss'));
     acts.appendChild(later);
 
-    const go = document.createElement('button');
+    const go = createEl('button');
     go.className = 'bzrv-sup-btn bzrv-sup-go';
     go.type = 'button';
     go.textContent = '支持作者';

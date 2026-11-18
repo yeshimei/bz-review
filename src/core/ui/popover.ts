@@ -37,24 +37,24 @@ export function uiPopover(opts: BzPopoverOpts): {
 
   const open = () => {
     if (layer) return;
-    const m = document.createElement('div');
+    const m = createDiv();
     m.className = 'bzrv-popover';
     m.setAttribute('role', 'listbox');
     if (!items.length) {
-      const empty = document.createElement('div');
+      const empty = createDiv();
       empty.className = 'bzrv-popover-empty';
       empty.textContent = opts.emptyText || '无匹配项';
       m.appendChild(empty);
     } else {
       items.forEach((o) => {
-        const b = document.createElement('button');
+        const b = createEl('button');
         b.type = 'button';
         b.className = 'bzrv-popover-item' + (o.id === current ? ' is-on' : '');
         b.dataset.id = o.id;
         b.setAttribute('role', 'option');
         b.setAttribute('aria-selected', String(o.id === current));
         if (o.icon) b.appendChild(uiIcon(o.icon));
-        const span = document.createElement('span');
+        const span = createEl('span');
         span.textContent = o.label;
         b.appendChild(span);
         b.addEventListener('click', (ev) => {

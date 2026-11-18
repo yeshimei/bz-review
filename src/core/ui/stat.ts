@@ -8,25 +8,25 @@ import { uiIcon } from './icon';
 
 /** 统计卡（.bzrv-stat） */
 export function uiStat(opts: BzStatOpts): HTMLDivElement {
-  const el = document.createElement('div');
+  const el = createDiv();
   const cls = ['bzrv-stat'];
   if (opts.tone) cls.push(`bzrv-stat--${opts.tone}`);
   if (opts.click) cls.push('bzrv-stat--click');
   el.className = cls.join(' ');
 
-  const label = document.createElement('span');
+  const label = createEl('span');
   label.className = 'bzrv-stat-label';
   if (opts.icon) label.appendChild(uiIcon(opts.icon));
   label.appendChild(document.createTextNode(opts.label));
   el.appendChild(label);
 
-  const num = document.createElement('span');
+  const num = createEl('span');
   num.className = 'bzrv-stat-num';
   num.textContent = String(opts.num);
   el.appendChild(num);
 
   if (opts.hint) {
-    const hint = document.createElement('span');
+    const hint = createEl('span');
     hint.className = 'bzrv-stat-hint';
     hint.textContent = opts.hint;
     el.appendChild(hint);

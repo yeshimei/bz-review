@@ -6,13 +6,13 @@ import type { BzSegOpts } from './types';
 
 /** 分段（单选多段）。radiogroup + 方向键导航（L8） */
 export function uiSegmented<T extends string>(opts: BzSegOpts<T>): { el: HTMLDivElement; setValue: (v: T) => void } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-segmented' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
-  el.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
+  el.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
   const btns = new Map<T, HTMLButtonElement>();
   opts.options.forEach((o) => {
-    const b = document.createElement('button');
+    const b = createEl('button');
     b.type = 'button';
     b.className = 'bzrv-segmented-btn' + (o.value === opts.value ? ' is-on' : '');
     // data-value = 钮的稳定键：滑动底片（core/ui/slide-pill）按键解析当前项，

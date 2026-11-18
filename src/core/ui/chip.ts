@@ -8,7 +8,7 @@ import { srText, withSrText } from './sr-text';
 
 /** 胶囊 chip（筛选/标签），带选中/软选中/锁定/计数/可删 */
 export function uiChip(opts: BzChipOpts): HTMLButtonElement {
-  const c = document.createElement('button');
+  const c = createEl('button');
   c.type = 'button';
   const cls = ['bzrv-chip'];
   // 选中态必须显式声明（selected=实底 / selectedSoft=软底）；removable 不再自动暗示选中（L3）
@@ -27,18 +27,18 @@ export function uiChip(opts: BzChipOpts): HTMLButtonElement {
   withSrText(c, opts.title);
   if (opts.disabled) c.disabled = true;
   if (opts.icon) c.appendChild(uiIcon(opts.icon));
-  const label = document.createElement('span');
+  const label = createEl('span');
   label.textContent = opts.label;
   c.appendChild(label);
   if (typeof opts.count === 'number') {
-    const cnt = document.createElement('span');
+    const cnt = createEl('span');
     cnt.className = 'bzrv-chip-cnt';
     cnt.textContent = String(opts.count);
     c.appendChild(cnt);
   }
   if (opts.removable && !opts.locked) {
     // ✕ 用 span[role=button]（HTML 不允许 button 嵌套 button——L11）
-    const x = document.createElement('span');
+    const x = createEl('span');
     x.className = 'bzrv-chip-x';
     x.setAttribute('role', 'button');
     x.appendChild(srText(`移除 ${opts.label}`));

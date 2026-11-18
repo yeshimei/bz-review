@@ -86,7 +86,7 @@ function ensureRelative(el: HTMLElement): void {
 /** 朱批印章：落章（impact 过冲）→ 驻留 → 淡出自毁。big = 结算屏大章。 */
 function seal(host: HTMLElement, text: string, big = false): void {
   ensureRelative(host);
-  const s = document.createElement('span');
+  const s = createEl('span');
   s.className = 'bzrv-rv-seal' + (big ? ' bzrv-rv-seal--big' : '');
   s.setAttribute('aria-hidden', 'true');
   s.textContent = text;
@@ -107,7 +107,7 @@ function ringBurst(el: HTMLElement): void {
   if (!parent) return;
   const pr = parent.getBoundingClientRect();
   const r = el.getBoundingClientRect();
-  const ring = document.createElement('i');
+  const ring = createEl('i');
   ring.className = 'bzrv-rv-ring';
   ring.setAttribute('aria-hidden', 'true');
   ring.style.left = (r.left - pr.left + r.width / 2) + 'px';
@@ -127,10 +127,10 @@ function ringBurst(el: HTMLElement): void {
 /** 光泽一扫：容器内一道高光横扫（注入层演完自毁） */
 function sweep(host: HTMLElement): void {
   ensureRelative(host);
-  const layer = document.createElement('i');
+  const layer = createEl('i');
   layer.className = 'bzrv-rv-sweep';
   layer.setAttribute('aria-hidden', 'true');
-  const band = document.createElement('u');
+  const band = createEl('u');
   layer.appendChild(band);
   host.appendChild(layer);
   const a = waapi(band,
@@ -355,7 +355,7 @@ export function motionFailFlash(host: HTMLElement): void {
   if (reduced()) return;
   const target = host.closest<HTMLElement>('#bzrv-popup') || host;
   ensureRelative(target);
-  const v = document.createElement('i');
+  const v = createEl('i');
   v.className = 'bzrv-rv-failflash';
   v.setAttribute('aria-hidden', 'true');
   target.appendChild(v);

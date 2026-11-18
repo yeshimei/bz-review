@@ -12,19 +12,19 @@ export function uiMainHead(opts: BzMainHeadOpts): {
   setTitle: (t: string) => void;
   setCount: (c?: string) => void;
 } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-main-head';
 
-  const title = document.createElement('span');
+  const title = createEl('span');
   title.className = 'bzrv-main-title';
   title.textContent = opts.title;
   el.appendChild(title);
 
-  const count = document.createElement('span');
+  const count = createEl('span');
   count.className = 'bzrv-main-count';
   el.appendChild(count);
 
-  const sp = document.createElement('span');
+  const sp = createEl('span');
   sp.className = 'bzrv-main-spacer';
   el.appendChild(sp);
 

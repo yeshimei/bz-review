@@ -7,19 +7,19 @@ import { uiIcon } from './icon';
 
 /** 空态（图标 + 标题 + 描述 + CTA） */
 export function uiEmpty(opts: BzEmptyOpts): HTMLDivElement {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-empty';
   if (opts.icon) {
     const ic = uiIcon(opts.icon);
     ic.classList.add('bzrv-empty-ic');
     el.appendChild(ic);
   }
-  const t = document.createElement('div');
+  const t = createDiv();
   t.className = 'bzrv-empty-title';
   t.textContent = opts.title;
   el.appendChild(t);
   if (opts.desc) {
-    const d = document.createElement('div');
+    const d = createDiv();
     d.className = 'bzrv-empty-desc';
     d.textContent = opts.desc;
     el.appendChild(d);

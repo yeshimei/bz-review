@@ -45,34 +45,34 @@ export function openModelPicker(opts: ModelPickerOptions): void {
     onMaskClick: () => closeModelPicker(),
   });
 
-  const header = document.createElement('div');
+  const header = createDiv();
   header.className = 'bzrv-settings-header';
-  const title = document.createElement('h3');
+  const title = createEl('h3');
   title.className = 'bzrv-settings-title';
   title.textContent = `选择模型（${opts.providerLabel}）`;
   header.appendChild(title);
 
-  const content = document.createElement('div');
+  const content = createDiv();
   content.className = 'bzrv-settings-content';
 
   // 当前生效模型说明行（info 行语义：名称 + 描述，非可选）
-  const currentInfo = document.createElement('div');
+  const currentInfo = createDiv();
   currentInfo.className = 'setting-item';
-  const curName = document.createElement('div');
+  const curName = createDiv();
   curName.className = 'setting-item-name';
   curName.textContent = '当前模型';
-  const curDesc = document.createElement('div');
+  const curDesc = createDiv();
   curDesc.className = 'setting-item-description';
   curDesc.textContent = opts.current || '未设置（使用服务商默认）';
   currentInfo.append(curName, curDesc);
   content.appendChild(currentInfo);
 
   // 模型列表区：点击行即选中
-  const listWrap = document.createElement('div');
+  const listWrap = createDiv();
   listWrap.className = 'bzrv-model-picker-list';
   const cur = opts.current;
   if (opts.models.length === 0) {
-    const empty = document.createElement('div');
+    const empty = createDiv();
     empty.className = 'bzrv-settings-empty';
     empty.textContent = '该服务商未返回可用模型';
     listWrap.appendChild(empty);
@@ -84,12 +84,12 @@ export function openModelPicker(opts: ModelPickerOptions): void {
       return ac - bc;
     });
     for (const m of ordered) {
-      const row = document.createElement('div');
+      const row = createDiv();
       row.className = 'bzrv-model-picker-row' + (m.id === cur ? ' is-current' : '');
-      const name = document.createElement('span');
+      const name = createEl('span');
       name.className = 'bzrv-model-picker-name';
       name.textContent = m.id;
-      const detail = document.createElement('span');
+      const detail = createEl('span');
       detail.className = 'bzrv-model-picker-detail';
       detail.textContent = m.detail || '';
       row.append(name, detail);

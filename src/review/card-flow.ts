@@ -37,17 +37,17 @@ export interface PickCardMethodResult {
 export async function pickCardMethod(): Promise<PickCardMethodResult | null> {
   /* 勾选框放进富正文，动作按钮只留「先不建」+ 五种方式：取消必须是显式一个动作，
      否则用户点遮罩就走，事后不知道自己刚才做了什么。 */
-  const body = document.createElement('div');
+  const body = createDiv();
   body.className = 'bzrv-card-method';
 
-  const list = document.createElement('div');
+  const list = createDiv();
   list.className = 'bzrv-card-method-list';
   for (const m of CARD_MODE_LABELS) {
-    const row = document.createElement('div');
+    const row = createDiv();
     row.className = 'bzrv-card-method-row';
-    const name = document.createElement('b');
+    const name = createEl('b');
     name.textContent = m.label;
-    const hint = document.createElement('span');
+    const hint = createEl('span');
     hint.textContent = m.hint;
     row.appendChild(name);
     row.appendChild(hint);
@@ -55,11 +55,11 @@ export async function pickCardMethod(): Promise<PickCardMethodResult | null> {
   }
   body.appendChild(list);
 
-  const rememberWrap = document.createElement('label');
+  const rememberWrap = createEl('label');
   rememberWrap.className = 'bzrv-card-method-remember';
-  const rememberBox = document.createElement('input');
+  const rememberBox = createEl('input');
   rememberBox.type = 'checkbox';
-  const rememberText = document.createElement('span');
+  const rememberText = createEl('span');
   rememberText.textContent = '记住这个选择，以后加卡不再问';
   rememberWrap.appendChild(rememberBox);
   rememberWrap.appendChild(rememberText);
@@ -117,14 +117,14 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
   const card = item.card!;
 
   if (mode === 'flashcard') {
-    const body = document.createElement('div');
+    const body = createDiv();
     body.className = 'bzrv-card-confirm';
 
-    const qLabel = document.createElement('label');
+    const qLabel = createEl('label');
     qLabel.className = 'bzrv-card-confirm-field';
-    const qCap = document.createElement('span');
+    const qCap = createEl('span');
     qCap.textContent = '提示面（问句）';
-    const qInput = document.createElement('input');
+    const qInput = createEl('input');
     qInput.className = 'bzrv-input';
     qInput.type = 'text';
     qInput.value = String(card.qa?.q ?? '');
@@ -132,11 +132,11 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
     qLabel.appendChild(qCap);
     qLabel.appendChild(qInput);
 
-    const tLabel = document.createElement('label');
+    const tLabel = createEl('label');
     tLabel.className = 'bzrv-card-confirm-field';
-    const tCap = document.createElement('span');
+    const tCap = createEl('span');
     tCap.textContent = '原文（背面）';
-    const tArea = document.createElement('textarea');
+    const tArea = createEl('textarea');
     tArea.className = 'bzrv-input';
     tArea.rows = 4;
     tArea.value = String(card.text ?? '');
@@ -148,7 +148,7 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
 
     /* 「重新生成」：抽认卡的内容不满意就当场再要一句，不必退回队列再点一次右键。
        生成结果只填进输入框——用户点「取消」时卡上什么都不变。 */
-    const regenBtn = document.createElement('button');
+    const regenBtn = createEl('button');
     regenBtn.type = 'button';
     regenBtn.className = 'bzrv-btn bzrv-btn--ghost';
     regenBtn.textContent = '重新生成问句';
@@ -186,23 +186,23 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
     let list: QuizQuestion[] = (opts.questions ?? []).map((q) => ({ ...q }));
     const removed: Array<{ q: QuizQuestion; at: number }> = [];
 
-    const body = document.createElement('div');
+    const body = createDiv();
     body.className = 'bzrv-card-confirm';
 
-    const tip = document.createElement('p');
+    const tip = createEl('p');
     tip.className = 'bzrv-card-confirm-tip';
     tip.textContent = '删掉不想要的题；删掉的会收到下面一行，点一下就能放回去。';
     body.appendChild(tip);
 
-    const listWrap = document.createElement('div');
+    const listWrap = createDiv();
     listWrap.className = 'bzrv-card-confirm-list';
     body.appendChild(listWrap);
 
-    const removedWrap = document.createElement('div');
+    const removedWrap = createDiv();
     removedWrap.className = 'bzrv-card-confirm-removed';
     body.appendChild(removedWrap);
 
-    const regenBtn = document.createElement('button');
+    const regenBtn = createEl('button');
     regenBtn.type = 'button';
     regenBtn.className = 'bzrv-btn bzrv-btn--ghost';
     regenBtn.textContent = '重新生成整份题库';
@@ -211,19 +211,19 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
     const repaint = (): void => {
       listWrap.innerHTML = '';
       list.forEach((q, i) => {
-        const row = document.createElement('div');
+        const row = createDiv();
         row.className = 'bzrv-card-confirm-row';
-        const n = document.createElement('span');
+        const n = createEl('span');
         n.className = 'bzrv-card-confirm-i';
         n.textContent = `${i + 1}`;
-        const txt = document.createElement('span');
+        const txt = createEl('span');
         txt.className = 'bzrv-card-confirm-q';
         txt.textContent = q.question;
-        const del = document.createElement('button');
+        const del = createEl('button');
         del.type = 'button';
         del.className = 'bzrv-icon-btn';
         del.textContent = '✕';
-        del.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '删掉这道题' }));
+        del.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '删掉这道题' }));
         del.addEventListener('click', () => {
           removed.push({ q, at: Date.now() });
           list = list.filter((x) => x !== q);
@@ -235,22 +235,22 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
         listWrap.appendChild(row);
       });
       if (!list.length) {
-        const empty = document.createElement('p');
+        const empty = createEl('p');
         empty.className = 'bzrv-card-confirm-tip';
         empty.textContent = '题库空了：要么点下面的「重新生成」，要么把删掉的放回去。';
         listWrap.appendChild(empty);
       }
       removedWrap.innerHTML = '';
       if (!removed.length) return;
-      const cap = document.createElement('span');
+      const cap = createEl('span');
       cap.textContent = '已删：';
       removedWrap.appendChild(cap);
       removed.forEach((r, i) => {
-        const chip = document.createElement('button');
+        const chip = createEl('button');
         chip.type = 'button';
         chip.className = 'bzrv-btn bzrv-btn--ghost bzrv-card-confirm-chip';
         chip.textContent = '补回这题';
-        chip.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: r.q.question }));
+        chip.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: r.q.question }));
         chip.addEventListener('click', () => {
           list.splice(Math.min(i, list.length), 0, r.q);
           removed.splice(i, 1);

@@ -1145,7 +1145,7 @@ export const reviewApp = {
         } else badgeIcon = 'calendar'; // item 14：📅 → lucide calendar
       }
       if (badgeIcon || timeText) {
-        const badgeEl = document.createElement('span');
+        const badgeEl = createEl('span');
         badgeEl.className = 'bzrv-stage-badge';
         // 寄生在 Obsidian 自己的文件树/标签里，不在插件容器内：自己挂作用域锚点
         markOwned(badgeEl);

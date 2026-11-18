@@ -171,7 +171,7 @@ export function renderPathChips(
   container.classList.add('bzrv-path-picker-chips');
   if (selected.length === 0) {
     if (!emptyText) return;
-    const empty = document.createElement('span');
+    const empty = createEl('span');
     empty.className = 'bzrv-path-picker-chips-empty';
     empty.textContent = emptyText;
     container.appendChild(empty);
@@ -179,16 +179,16 @@ export function renderPathChips(
   }
   for (const path of selected) {
     const label = path === '' ? '（库根目录）' : path;
-    const chip = document.createElement('span');
+    const chip = createEl('span');
     chip.className = 'bzrv-path-picker-chip' + (onChipClick ? ' bzrv-path-picker-chip--click' : '');
-    const name = document.createElement('span');
+    const name = createEl('span');
     name.className = 'bzrv-path-picker-chip-name';
     name.textContent = label;
     if (onChipClick) name.onclick = () => onChipClick(path);
-    const x = document.createElement('button');
+    const x = createEl('button');
     x.className = 'bzrv-path-picker-chip-x';
     x.textContent = '✕';
-    x.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: `移除 ${label}` }));
+    x.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: `移除 ${label}` }));
     x.onclick = () => onChange(selected.filter((p) => p !== path));
     chip.appendChild(name);
     chip.appendChild(x);
@@ -242,7 +242,7 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
   if (opts.desc) setting.setDesc(opts.desc);
   // ticket 133 兜底：移动端路径行恒单行（CSS 层保证，不依赖控件区子元素计数——即使按钮未及时移出也不拆两行）
   setting.settingEl.classList.add('bzrv-path-picker-setting-row');
-  const chipsWrap = document.createElement('div');
+  const chipsWrap = createDiv();
   chipsWrap.className = 'bzrv-path-picker-chips--setting';
 
   /** 统一变更入口：onChange 返回 Promise 时异步解析改写清单后重渲染；同步返回（含 void）立即重渲染。
@@ -407,26 +407,26 @@ export function openPathPicker(opts: PathPickerOptions): void {
   popup.style.height = 'min(560px, 82vh)'; // 功能性几何（铁律 8：显隐/动态计算内联，视觉样式收敛 CSS）
 
   // 头部：标题 + （可选）说明；无关闭按钮
-  const head = document.createElement('div');
+  const head = createDiv();
   head.className = 'bzrv-path-picker-head';
-  const title = document.createElement('h3');
+  const title = createEl('h3');
   title.className = 'bzrv-path-picker-title';
   title.textContent = opts.title || '选择文件夹';
   head.appendChild(title);
   if (opts.desc) {
-    const desc = document.createElement('div');
+    const desc = createDiv();
     desc.className = 'bzrv-path-picker-desc';
     desc.textContent = opts.desc;
     head.appendChild(desc);
   }
 
   // 搜索框（聚焦不遮列表：弹窗定高 flex 布局，列表 flex:1 恒可见）
-  const search = document.createElement('input');
+  const search = createEl('input');
   search.type = 'text';
   search.className = 'bzrv-path-picker-search';
   search.placeholder = '搜索目录…';
   search.spellcheck = false;
-  const searchLabel = document.createElement('label');
+  const searchLabel = createEl('label');
   searchLabel.className = 'bzrv-sr-only';
   searchLabel.htmlFor = 'bzrv-path-picker-search';
   searchLabel.textContent = '搜索目录';
@@ -434,22 +434,22 @@ export function openPathPicker(opts: PathPickerOptions): void {
   search.setAttribute('aria-labelledby', searchLabel.id);
 
   // 目录列表（滚动）
-  const listEl = document.createElement('div');
+  const listEl = createDiv();
   listEl.className = 'bzrv-path-picker-list';
   const state: { folders: string[]; q: string } = { folders: [], q: '' };
 
   // 底部：已选信息 + 清空(多选) + 确定
-  const foot = document.createElement('div');
+  const foot = createDiv();
   foot.className = 'bzrv-path-picker-foot';
-  const selinfo = document.createElement('span');
+  const selinfo = createEl('span');
   selinfo.className = 'bzrv-path-picker-selinfo';
-  const btns = document.createElement('div');
+  const btns = createDiv();
   btns.className = 'bzrv-path-picker-foot-btns';
   foot.appendChild(selinfo);
   foot.appendChild(btns);
 
   const mkBtn = (label: string, primary: boolean, onclick: () => void): HTMLButtonElement => {
-    const b = document.createElement('button');
+    const b = createEl('button');
     b.textContent = label;
     b.className = 'bzrv-path-picker-btn' + (primary ? ' bzrv-path-picker-btn--primary' : '');
     b.onclick = onclick;
@@ -517,15 +517,15 @@ export function openPathPicker(opts: PathPickerOptions): void {
       if (n >= LIMIT) continue;
       n++;
       const on = selected.has(folder);
-      const row = document.createElement('div');
+      const row = createDiv();
       row.className = 'bzrv-path-picker-row' + (on ? ' bzrv-path-picker-row--sel' : '');
       row.dataset.path = folder;
       row.setAttribute('role', mode === 'multi' ? 'checkbox' : 'option');
       row.setAttribute('aria-checked', on ? 'true' : 'false');
-      const box = document.createElement('span');
+      const box = createEl('span');
       box.className = 'bzrv-path-picker-check';
       box.textContent = on ? '✓' : '';
-      const name = document.createElement('span');
+      const name = createEl('span');
       name.className = 'bzrv-path-picker-name';
       name.textContent = folder === '' ? '（库根目录）' : folder;
       row.appendChild(box);
@@ -560,12 +560,12 @@ export function openPathPicker(opts: PathPickerOptions): void {
       listEl.appendChild(row);
     }
     if (!total) {
-      const empty = document.createElement('div');
+      const empty = createDiv();
       empty.className = 'bzrv-path-picker-empty';
       empty.textContent = '没有匹配的目录';
       listEl.appendChild(empty);
     } else if (total > LIMIT) {
-      const more = document.createElement('div');
+      const more = createDiv();
       more.className = 'bzrv-path-picker-empty';
       more.textContent = `已显示前 ${LIMIT} 个（共 ${total} 个匹配目录），请输入关键词缩小范围`;
       listEl.appendChild(more);
@@ -707,7 +707,7 @@ export function fileDiskPath(f: File): string {
 /** 兜底链二：webkitdirectory 输入框（选中目录内任一文件，取其父目录） */
 function pickDirViaInput(): Promise<string | null> {
   return new Promise((resolve) => {
-    const input = document.createElement('input');
+    const input = createEl('input');
     input.type = 'file';
     input.setAttribute('webkitdirectory', '');
     input.setAttribute('directory', '');

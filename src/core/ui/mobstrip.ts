@@ -10,7 +10,7 @@ export function uiMobStrip(opts: BzMobStripOpts): {
   el: HTMLDivElement;
   setValue: (id: string) => void;
 } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-mobstrip';
 
   const chips = new Map<string, HTMLButtonElement>();
@@ -19,12 +19,12 @@ export function uiMobStrip(opts: BzMobStripOpts): {
   };
 
   opts.items.forEach((it) => {
-    const chip = document.createElement('button');
+    const chip = createEl('button');
     chip.type = 'button';
     chip.className = 'bzrv-mobstrip-chip';
     chip.dataset.id = it.id;
     if (it.dot) {
-      const dot = document.createElement('span');
+      const dot = createEl('span');
       dot.className = 'bzrv-mobstrip-dot';
       dot.style.setProperty('--bzrv-rail-tint', it.dot);
       chip.appendChild(dot);

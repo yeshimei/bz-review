@@ -155,14 +155,14 @@ export function openFlowDialog(opts: FlowDialogOptions): Promise<string | undefi
 
     const parts = buildFlowDialogParts(opts.title, opts.message, opts.actions);
 
-    const mask = document.createElement('div');
+    const mask = createDiv();
     mask.id = 'bzrv-confirm-mask';
     // 动态发号（ADR-0067）：每次打开新建 DOM，创建即显示，谁后开谁在上
     mask.style.zIndex = String(allocZ());
     // 手势配对判据（见 core/mask-dismiss.ts）：跨元素松手不算点击，防选字/误按误关
     bindMaskDismiss(mask, () => settle(undefined));
 
-    const popup = document.createElement('div');
+    const popup = createDiv();
     popup.id = 'bzrv-confirm-popup';
     // 统一弹窗壳（issue 291）：与 uiModal 同壳，域皮肤类经 `.bzrv-overlay-popup.bz-<域>-skin-*`
     // 复合选择器即可覆盖确认框；危险主动作加修饰类（按钮本身不加类，冻结契约不破）

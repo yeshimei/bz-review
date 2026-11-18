@@ -46,21 +46,21 @@ export interface SettingsModalOptions {
  *  项数徽标由 openSettingsModal 在 build 后统一回填（隐藏项不计）；
  *  动态显隐后可调 refreshSettingsGroupCounts 手动刷新。 */
 export function createSettingsGroup(container: HTMLElement, opts: { icon: string; name: string }): HTMLElement {
-  const group = document.createElement('div');
+  const group = createDiv();
   group.className = 'bzrv-settings-group';
-  const head = document.createElement('div');
+  const head = createDiv();
   head.className = 'bzrv-settings-group-head';
-  const icon = document.createElement('span');
+  const icon = createEl('span');
   icon.className = 'bzrv-settings-group-icon';
   setIcon(icon, opts.icon);
-  const name = document.createElement('span');
+  const name = createEl('span');
   name.className = 'bzrv-settings-group-name';
   name.textContent = opts.name;
-  const count = document.createElement('span');
+  const count = createEl('span');
   count.className = 'bzrv-settings-group-count';
   count.textContent = '0 项';
   head.append(icon, name, count);
-  const body = document.createElement('div');
+  const body = createDiv();
   body.className = 'bzrv-settings-group-body';
   group.append(head, body);
   container.appendChild(group);
@@ -146,15 +146,15 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
     onMaskClick: () => closeSettingsModal(),
   });
 
-  const header = document.createElement('div');
+  const header = createDiv();
   header.className = 'bzrv-settings-header';
-  const title = document.createElement('h3');
+  const title = createEl('h3');
   title.className = 'bzrv-settings-title';
   title.textContent = opts.title;
   // 不放右上角关闭按钮（用户拍板 2026-08：弹窗不放关闭按钮，靠遮罩 + ESC，与主窗口规范一致）
   header.appendChild(title);
 
-  const content = document.createElement('div');
+  const content = createDiv();
   content.className = 'bzrv-settings-content';
 
   // ADR-0064 声明式渲染路径：渲染器内部完成徽标回填/两行式标注/显隐求值
@@ -167,11 +167,11 @@ export function openSettingsModal(opts: SettingsModalOptions): void {
   );
   if (!hasVisibleItem) {
     content.innerHTML = '';
-    const empty = document.createElement('div');
+    const empty = createDiv();
     empty.className = 'bzrv-settings-empty';
     empty.textContent = opts.emptyText || '暂无设置项';
     if (opts.emptyDesc) {
-      const desc = document.createElement('div');
+      const desc = createDiv();
       desc.className = 'bzrv-settings-empty-desc';
       desc.textContent = opts.emptyDesc;
       empty.appendChild(desc);

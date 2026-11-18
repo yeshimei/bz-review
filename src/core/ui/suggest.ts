@@ -64,7 +64,7 @@ export function uiSuggest(opts: BzSuggestOpts): {
     if (!matched.length) { close(); return; } // 无匹配即收（不开空壳）
     layer.replaceChildren();
     matched.forEach((raw) => {
-      const b = document.createElement('button');
+      const b = createEl('button');
       b.type = 'button';
       b.className = 'bzrv-popover-item';
       b.dataset.value = raw;
@@ -73,18 +73,18 @@ export function uiSuggest(opts: BzSuggestOpts): {
       if (on) b.classList.add('is-on');
       const icon = opts.iconOf?.(raw);
       if (icon) {
-        const ic = document.createElement('span');
+        const ic = createEl('span');
         ic.className = 'bzrv-suggest-ic';
         if (typeof icon === 'string') ic.textContent = icon;
         else ic.appendChild(icon);
         b.appendChild(ic);
       }
-      const label = document.createElement('span');
+      const label = createEl('span');
       label.textContent = opts.labelOf ? opts.labelOf(raw) : raw;
       b.appendChild(label);
       const hint = opts.hintOf?.(raw);
       if (hint) {
-        const h = document.createElement('span');
+        const h = createEl('span');
         h.className = 'bzrv-suggest-hint';
         h.textContent = hint;
         b.appendChild(h);
@@ -97,7 +97,7 @@ export function uiSuggest(opts: BzSuggestOpts): {
   const open = () => {
     if (skipNextOpen) { skipNextOpen = false; return; }
     if (layer) { draw(); return; }
-    const m = document.createElement('div');
+    const m = createDiv();
     m.className = 'bzrv-popover';
     m.setAttribute('role', 'listbox');
     (anchor.parentElement || anchor).appendChild(m);

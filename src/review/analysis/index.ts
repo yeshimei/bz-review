@@ -78,7 +78,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
   }
 
   const panel = document.querySelector<HTMLElement>('#bzrv-popup');
-  const ovl = document.createElement('div');
+  const ovl = createDiv();
   ovl.className = 'bzrv-ra';
   ovl.innerHTML = `
     <div class="bzrv-ra-box">
@@ -89,12 +89,12 @@ export async function openReviewAnalysis(app: App): Promise<void> {
   // 挂到层框**外面**：跟着软横屏转 90° 的话会跑到右下角、压进底部手势区
   //（实测 rect 346,800，底边 834，手势区从 810 起）。
   if (isNarrow()) {
-    const close = document.createElement('button');
+    const close = createEl('button');
     close.type = 'button';
     close.className = 'bzrv-ra-close';
     close.setAttribute('data-ra-close', '');
     close.textContent = '✕';
-    close.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
+    close.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
     ovl.appendChild(close);
   }
   markOwned(ovl);
@@ -114,7 +114,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
         return;
       }
       if (!hint) {
-        hint = document.createElement('div');
+        hint = createDiv();
         hint.className = 'bzrv-ra-hint';
         hint.textContent = '记忆分析 · 往下滚看详情（横过来更清楚）';
         ovl.appendChild(hint);

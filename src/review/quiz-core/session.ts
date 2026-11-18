@@ -229,20 +229,20 @@ export class QuizMasterUI {
     this._teardownModal(); // 换题过渡：只拆 DOM，不触发 close 的复习结算语义
     this._pendingSubmitBtn = null;
 
-    const mask = document.createElement('div');
+    const mask = createDiv();
     mask.id = 'bzrv-quiz-mask';
     this.mask = mask;
     mask.style.zIndex = String(allocZ()); // ADR-0067：换题重建 DOM，创建即显示即发号（popup 为 mask 子节点随动）
-    const popup = document.createElement('div');
+    const popup = createDiv();
     popup.id = 'bzrv-quiz-popup';
     this.popup = popup;
 
-    const header = document.createElement('div');
+    const header = createDiv();
     header.className = 'bzrv-quiz-head';
     // 呈报#54（R4）：题头 📝 退役 → lucide file-text（uiIconSpan 经 setIcon 兑现；
     // 全站 emoji 清零收尾）。笔记名与题号文本不变。
     header.appendChild(uiIconSpan('file-text', 'bzrv-quiz-note-ic'));
-    const title = document.createElement('span');
+    const title = createEl('span');
     title.className = 'bzrv-quiz-title';
     // 使用固定的总题数 this.totalQuestions；题号 = 已消费题数 + 1：
     // ticket 141：答对/答错均 splice 出当前题（答错仅移出本轮会话，不落盘删除），
@@ -256,13 +256,13 @@ export class QuizMasterUI {
     popup.appendChild(header);
 
     // 题目
-    const questionDiv = document.createElement('div');
+    const questionDiv = createDiv();
     questionDiv.className = 'bzrv-quiz-question';
     questionDiv.textContent = q.question;
     popup.appendChild(questionDiv);
 
     // 选项容器
-    const optionsContainer = document.createElement('div');
+    const optionsContainer = createDiv();
     optionsContainer.className = 'bzrv-quiz-options';
     const selectedIndices = new Set<number>();
     const answeredRef = { value: false };
@@ -279,7 +279,7 @@ export class QuizMasterUI {
     /* 解析块：先建好挂着，答完再填内容并亮出来（answers 前不能泄题）。
        挂在选项容器里（选项之后、末尾），这样答错时补挂的「下一题」按钮排在它下面，
        阅读顺序是「选项 → 为什么 → 继续」。 */
-    const explainEl = document.createElement('div');
+    const explainEl = createDiv();
     explainEl.className = 'bzrv-quiz-explain';
     explainEl.hidden = true;
     optionsContainer.appendChild(explainEl);
@@ -357,7 +357,7 @@ export class QuizMasterUI {
     const app = getApp();
 
     const optionElements = q.options.map((opt, idx) => {
-      const btn = document.createElement('button');
+      const btn = createEl('button');
       btn.className = 'quiz-option-btn';
       // 清理选项文本，避免重复前缀
       const cleanText = cleanOptionText(opt);
@@ -413,7 +413,7 @@ export class QuizMasterUI {
     });
     // 多选时添加提交按钮
     if (!isSingle) {
-      const submitBtn = document.createElement('button');
+      const submitBtn = createEl('button');
       submitBtn.className = 'quiz-submit-btn';
       submitBtn.textContent = '提交答案';
       submitBtn.onclick = () => {
@@ -527,7 +527,7 @@ export class QuizMasterUI {
   addNextButton(popup: HTMLElement): void {
     const oldBtn = popup.querySelector('.quiz-next-btn');
     if (oldBtn) oldBtn.remove();
-    const nextBtn = document.createElement('button');
+    const nextBtn = createEl('button');
     nextBtn.className = 'quiz-next-btn';
     nextBtn.textContent = '下一题 →';
     nextBtn.onclick = () => {

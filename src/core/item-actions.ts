@@ -308,32 +308,32 @@ export function openItemMenu(
   menuHeadHtml?: string
 ): void {
   closeItemMenu();
-  const m = document.createElement('div');
+  const m = createDiv();
   m.className = 'bzrv-item-menu' + (menuClass ? ' ' + menuClass : '');
   m.style.visibility = 'hidden';
   // 盒头 + 分隔线（B 方案，2026-09-11）：只有传了 markup 的域才渲染。
   // 单行窄条，所以这里不做 mountIcons（内容里不放 data-lucide 占位，域色点走内联 style）。
   if (menuHeadHtml) {
-    const head = document.createElement('div');
+    const head = createDiv();
     head.className = 'bzrv-item-menu-head';
     head.innerHTML = menuHeadHtml;
     m.appendChild(head);
-    const sep = document.createElement('div');
+    const sep = createDiv();
     sep.className = 'bzrv-item-menu-sep';
     m.appendChild(sep);
   }
   for (const a of actions) {
-    const item = document.createElement('button');
+    const item = createEl('button');
     item.type = 'button';
     if (a.title) item.title = a.title;
     item.className =
       'bzrv-item-menu-item' +
       (a.kind === 'danger' ? ' bzrv-item-menu-item--danger' : '') +
       (a.tone === 'accent' ? ' bzrv-item-menu-item--accent' : '');
-    const itemIcon = document.createElement('span');
+    const itemIcon = createEl('span');
     itemIcon.className = 'bzrv-item-menu-icon';
     renderIcon(itemIcon, a.icon);
-    const itemLabel = document.createElement('span');
+    const itemLabel = createEl('span');
     itemLabel.className = 'bz-item-menu-label';
     itemLabel.textContent = a.label;
     item.appendChild(itemIcon);
@@ -362,23 +362,23 @@ export function openItemMenu(
 
 /** 构建抽屉功能项按钮（openItemSheet / refreshItemSheet 共用） */
 function buildSheetItem(a: ItemAction): HTMLElement {
-  const item = document.createElement('button');
+  const item = createEl('button');
   item.type = 'button';
   if (a.title) item.title = a.title;
   item.className =
     'bzrv-item-sheet-item' +
     (a.kind === 'danger' ? ' bzrv-item-sheet-item--danger' : '') +
     (a.tone === 'accent' ? ' bzrv-item-sheet-item--accent' : '');
-  const itemIcon = document.createElement('span');
+  const itemIcon = createEl('span');
   itemIcon.className = 'bzrv-item-sheet-icon';
   renderIcon(itemIcon, a.icon);
-  const itemLabel = document.createElement('span');
+  const itemLabel = createEl('span');
   itemLabel.className = 'bz-item-sheet-label';
   itemLabel.textContent = a.label;
   item.appendChild(itemIcon);
   item.appendChild(itemLabel);
   if (a.sub) {
-    const itemSub = document.createElement('span');
+    const itemSub = createEl('span');
     itemSub.className = 'bzrv-item-sheet-item-sub';
     itemSub.textContent = a.sub;
     item.appendChild(itemSub);
@@ -417,25 +417,25 @@ export function refreshItemSheet(actions: ItemAction[], head?: HTMLElement): voi
 /** 移动端底部抽屉（长按卡片弹出；遮罩 + 顶部信息 + 功能一行行列出） */
 export function openItemSheet(actions: ItemAction[], opts?: ItemActionsOptions, suppressResidualClick = false): void {
   closeItemMenu();
-  const mask = document.createElement('div');
+  const mask = createDiv();
   mask.className = 'bzrv-item-sheet-mask';
-  const sheet = document.createElement('div');
+  const sheet = createDiv();
   sheet.className = 'bzrv-item-sheet' + (opts?.sheetClass ? ' ' + opts.sheetClass : '');
   if (opts?.sheetHead) {
-    const head = document.createElement('div');
+    const head = createDiv();
     head.className = 'bzrv-item-sheet-head';
     head.appendChild(opts.sheetHead);
     sheet.appendChild(head);
     sheetHeadEl = head;
   } else if (opts?.sheetTitle) {
-    const head = document.createElement('div');
+    const head = createDiv();
     head.className = 'bzrv-item-sheet-head';
-    const titleEl = document.createElement('div');
+    const titleEl = createDiv();
     titleEl.className = 'bzrv-item-sheet-title';
     titleEl.textContent = opts.sheetTitle;
     head.appendChild(titleEl);
     if (opts.sheetSub) {
-      const subEl = document.createElement('div');
+      const subEl = createDiv();
       subEl.className = 'bzrv-item-sheet-sub';
       subEl.textContent = opts.sheetSub;
       head.appendChild(subEl);
@@ -444,7 +444,7 @@ export function openItemSheet(actions: ItemAction[], opts?: ItemActionsOptions, 
     sheetHeadEl = head;
   }
   // 功能项区：项多时内部滚动（最大 70vh，隐藏滚动条，styles.css）
-  const body = document.createElement('div');
+  const body = createDiv();
   body.className = 'bzrv-item-sheet-body';
   for (const a of actions) {
     body.appendChild(buildSheetItem(a));

@@ -17,13 +17,13 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
   setValue: (v: T) => void;
   detach: () => void;
 } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-select' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'listbox');
   el.setAttribute('aria-expanded', 'false');
   el.tabIndex = 0;
 
-  const val = document.createElement('span');
+  const val = createEl('span');
   val.className = 'bzrv-select-val';
   el.appendChild(val);
   el.appendChild(uiIcon('chevron-down', 'bzrv-select-car'));
@@ -60,18 +60,18 @@ export function uiSelect<T extends string>(opts: BzSelectOpts<T>): {
     el.classList.add('open');
     el.setAttribute('aria-expanded', 'true');
     opts.onOpenChange?.(true);
-    const m = document.createElement('div');
+    const m = createDiv();
     m.className = 'bzrv-select-menu';
     m.setAttribute('role', 'listbox');
     menu = m;
     opts.options.forEach((o, i) => {
-      const b = document.createElement('button');
+      const b = createEl('button');
       b.type = 'button';
       b.className = 'bzrv-select-item' + (o.value === current ? ' is-on' : '');
       b.setAttribute('role', 'option');
       b.setAttribute('aria-selected', String(o.value === current));
       b.dataset.index = String(i);
-      const span = document.createElement('span');
+      const span = createEl('span');
       span.textContent = o.label;
       b.appendChild(span);
       b.appendChild(uiIcon('check', 'bzrv-select-item-ck'));

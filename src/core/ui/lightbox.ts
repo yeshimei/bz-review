@@ -69,49 +69,49 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   const multi = items.length > 1;
   let idx = Math.max(0, Math.min(opts.index ?? 0, items.length - 1));
 
-  const mask = document.createElement('div');
+  const mask = createDiv();
   mask.className = 'bzrv-lightbox';
   // 动态发号（ADR-0067）：与 modal/overlay 共用分配器，避免固定 900 被弹窗压住的层级问题
   mask.style.zIndex = String(allocZ());
 
   // 头部（标题 + 关闭）
-  const head = document.createElement('div');
+  const head = createDiv();
   head.className = 'bzrv-lightbox-head';
-  const title = document.createElement('span');
+  const title = createEl('span');
   title.className = 'bzrv-lightbox-title';
-  const closeBtn = document.createElement('button');
+  const closeBtn = createEl('button');
   closeBtn.type = 'button';
   closeBtn.className = 'bzrv-lightbox-close';
-  closeBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
+  closeBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
   closeBtn.appendChild(uiIcon('x'));
   head.appendChild(title);
   head.appendChild(closeBtn);
 
   // 媒体主体容器（多图模式翻页只换这一块的子节点，遮罩/箭头不重建）
-  const mediaBox = document.createElement('div');
+  const mediaBox = createDiv();
   /** 组一帧媒体节点（类型判定剥掉查询串/锚点再看后缀（N7 潜在缺陷）：Obsidian
    *  vault.getResourcePath 产出 `app://…?path=…` 形态 URL，带着 ? 判后缀永远落不中 →
    *  视频被当图片塞进 <img>。无后缀兜底维持现状（显式 type 优先，audio 本就无后缀判定）。 */
   function mediaNode(item: BzLightboxItem): HTMLElement {
-    const media = document.createElement('div');
+    const media = createDiv();
     media.className = 'bzrv-lightbox-media';
     const src = item.srcOf ? item.srcOf() : item.src; // 惰性：翻到这张才算（show 每页重建走这里）
     const bareSrc = src.split('?')[0].split('#')[0];
     const type = item.type || (bareSrc.endsWith('.mp4') || bareSrc.endsWith('.webm') ? 'video' : 'image');
     if (type === 'video') {
-      const v = document.createElement('video');
+      const v = createEl('video');
       v.src = src;
       v.controls = true;
       v.autoplay = true;
       media.appendChild(v);
     } else if (type === 'audio') {
-      const a = document.createElement('audio');
+      const a = createEl('audio');
       a.src = src;
       a.controls = true;
       a.autoplay = true;
       media.appendChild(a);
     } else {
-      const img = document.createElement('img');
+      const img = createEl('img');
       img.src = src;
       img.alt = item.title || opts.title || '';
       media.appendChild(img);
@@ -120,7 +120,7 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   }
 
   // 底部说明
-  const foot = document.createElement('div');
+  const foot = createDiv();
   foot.className = 'bzrv-lightbox-foot';
 
   /** 摆出第 i 张：媒体 / 标题 / 底部说明原位换内容，首末位箭头禁用（不循环，边界一眼可见） */
@@ -138,15 +138,15 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   let prevBtn: HTMLButtonElement | null = null;
   let nextBtn: HTMLButtonElement | null = null;
   if (multi) {
-    prevBtn = document.createElement('button');
+    prevBtn = createEl('button');
     prevBtn.type = 'button';
     prevBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-prev';
-    prevBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '上一张' }));
+    prevBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '上一张' }));
     prevBtn.appendChild(uiIcon('chevron-left'));
-    nextBtn = document.createElement('button');
+    nextBtn = createEl('button');
     nextBtn.type = 'button';
     nextBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-next';
-    nextBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '下一张' }));
+    nextBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '下一张' }));
     nextBtn.appendChild(uiIcon('chevron-right'));
     prevBtn.addEventListener('click', () => show(idx - 1));
     nextBtn.addEventListener('click', () => show(idx + 1));

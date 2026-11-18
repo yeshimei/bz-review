@@ -213,7 +213,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 { value: 'indigo', label: '黛蓝' },
                 { value: 'moss', label: '苔青' },
               ] as const;
-              const seg = document.createElement('div');
+              const seg = createDiv();
               seg.className = 'bzrv-segmented bzrv-accent-seg';
               seg.setAttribute('role', 'radiogroup');
               withSrText(seg, ACCENT_NAME);
@@ -231,13 +231,13 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 }
               };
               for (const m of modes) {
-                const btn = document.createElement('button');
+                const btn = createEl('button');
                 btn.type = 'button';
                 btn.className = 'bzrv-segmented-btn';
                 btn.dataset.value = m.value;
                 btn.setAttribute('role', 'radio');
                 btn.setAttribute('aria-checked', 'false');
-                const dot = document.createElement('span');
+                const dot = createEl('span');
                 dot.className = 'bzrv-choice-dot bzrv-accent-dot';
                 dot.dataset.acc = m.value;
                 btn.appendChild(dot);

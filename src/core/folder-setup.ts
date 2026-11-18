@@ -239,13 +239,13 @@ export function folderSetupEmpty(domain: FolderDomainId, closeBefore?: () => voi
     .map((f) => (f.field.reco ? `${f.field.label}（推荐 ${f.field.reco}）` : f.field.label))
     .join('、');
   if (need) {
-    const n = document.createElement('div');
+    const n = createDiv();
     n.className = 'bzrv-empty-note';
     n.textContent = `要填：${need}`;
     el.insertBefore(n, acts);
   }
   if (plan.hint) {
-    const n = document.createElement('div');
+    const n = createDiv();
     n.className = 'bzrv-empty-note';
     n.textContent = plan.hint;
     el.insertBefore(n, acts);

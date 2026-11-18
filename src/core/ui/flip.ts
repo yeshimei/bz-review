@@ -113,7 +113,7 @@ export function playFlip(root: HTMLElement, before: Map<string, DOMRect> | null,
       // ⚠️ 旧矩形是**视口坐标**，而 absolute 相对的是容器的内容区（padding box）——
       // 容器带滚动时两者差一个 scrollTop/scrollLeft。不加的话，滚到列表中部再切场景/
       // 敲搜索，残影会整体偏上（偏的距离正好是 scrollTop），列表短、不滚动时看不出来。
-      const g = document.createElement('div');
+      const g = createDiv();
       g.className = 'bzrv-flip-ghost' + (opts.ghostClass ? ' ' + opts.ghostClass : '');
       g.style.cssText = `position:absolute;left:${Math.round(r.left - rr.left + root.scrollLeft)}px;`
         + `top:${Math.round(r.top - rr.top + root.scrollTop)}px;`

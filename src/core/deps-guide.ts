@@ -47,7 +47,7 @@ const TUTORIAL_URL = 'https://www.bilibili.com/video/BV1vNsZ6pE7i/?p=3';
 /* ---------- 最小 DOM 工具 ---------- */
 
 function el(tag: string, cls: string, text?: string): HTMLElement {
-  const node = document.createElement(tag);
+  const node = createEl(tag as keyof HTMLElementTagNameMap);
   node.className = cls;
   if (text !== undefined) node.textContent = text;
   return node;
@@ -85,7 +85,7 @@ export async function probeOllamaService(timeoutMs = 3000): Promise<{ up: boolea
  * 会被主题重写成不同的填充与勾形，同一个弹窗在别人的主题下就变样了。
  */
 function checkboxOf(item: PlanItem): HTMLInputElement {
-  const input = document.createElement('input');
+  const input = createEl('input');
   input.type = item.radio ? 'radio' : 'checkbox';
   if (item.radio) input.name = `bzrv-deps-${item.radio}`;
   input.className = item.radio ? 'bzrv-deps-ck bzrv-deps-ck--r' : 'bzrv-deps-ck';
@@ -99,7 +99,7 @@ function checkboxOf(item: PlanItem): HTMLInputElement {
 function nameNode(item: PlanItem): DocumentFragment {
   const frag = document.createDocumentFragment();
   if (item.url) {
-    const a = document.createElement('a');
+    const a = createEl('a');
     a.href = item.url;
     a.target = '_blank';
     a.rel = 'noreferrer';
@@ -150,15 +150,15 @@ function tableOf(
   const spec = RADIO_TABLES[kind];
   const table = el('table', 'bzrv-deps-tb');
 
-  const thead = document.createElement('thead');
-  const htr = document.createElement('tr');
+  const thead = createEl('thead');
+  const htr = createEl('tr');
   for (const h of spec.head) htr.appendChild(el('th', '', h));
   thead.appendChild(htr);
   table.appendChild(thead);
 
-  const tbody = document.createElement('tbody');
+  const tbody = createEl('tbody');
   for (const item of items) {
-    const tr = document.createElement('tr');
+    const tr = createEl('tr');
     if (item.pill && !item.pillDim) tr.className = 'is-hl';
 
     const nameTd = el('td', 'bzrv-deps-name');
@@ -201,11 +201,11 @@ export function openDepsGuide(app: unknown = getApp()): void {
 
   /* 头行：标题 + 关闭（uiModal 的头行只有标题，这里要原型那颗 ✕） */
   const head = el('div', 'bzrv-deps-h');
-  const closeBtn = document.createElement('button');
+  const closeBtn = createEl('button');
   closeBtn.type = 'button';
   closeBtn.className = 'bzrv-deps-x';
   closeBtn.textContent = '✕';
-  closeBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
+  closeBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
   head.append(el('span', 'bzrv-deps-t', 'bz 依赖什么'), closeBtn);
 
   const body = el('div', 'bzrv-deps-b');
@@ -274,7 +274,7 @@ export function openDepsGuide(app: unknown = getApp()): void {
   const pbox = el('div', 'bzrv-deps-pbox');
   const phead = el('div', 'bzrv-deps-pbox-h');
   phead.append(el('span', '', '复制给 AI 的提示词'), el('span', '', '路径按你本机自动填好'));
-  const pre = document.createElement('pre');
+  const pre = createEl('pre');
   pbox.append(phead, pre);
   body.appendChild(pbox);
 
@@ -286,13 +286,13 @@ export function openDepsGuide(app: unknown = getApp()): void {
   sum.append(document.createTextNode('已选 '), cntNode, document.createTextNode(' 项 · 约 '), sizeNode);
 
   const acts = el('div', 'bzrv-deps-acts');
-  const videoBtn = document.createElement('button');
+  const videoBtn = createEl('button');
   videoBtn.type = 'button';
   videoBtn.className = 'bzrv-btn';
   videoBtn.textContent = '看视频教程';
   // 界面上不堆分P（2026-11-01 用户口径：按钮、行名一律「视频教程」，不写「共几集」）
-  videoBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '在浏览器里打开（B 站）' }));
-  const copyBtn = document.createElement('button');
+  videoBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '在浏览器里打开（B 站）' }));
+  const copyBtn = createEl('button');
   copyBtn.type = 'button';
   copyBtn.className = 'bzrv-btn bzrv-btn--primary';
   copyBtn.textContent = '复制提示词';

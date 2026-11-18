@@ -55,7 +55,7 @@ function bodyNodes(text: string): Node[] {
     const line = raw.trim();
     if (!line) continue;
     const isItem = line.startsWith('- ');
-    const el = document.createElement('div');
+    const el = createDiv();
     el.className = isItem ? 'bzrv-help-li' : 'bzrv-help-p';
     el.textContent = isItem ? line.slice(2).trim() : line;
     out.push(el);
@@ -139,7 +139,7 @@ export function attachHelpTip(anchor: HTMLElement, opts: BzHelpTipOpts): void {
   function open(): void {
     if (layer || !anchor.isConnected) return;
     if (currentClose && currentClose !== close) currentClose(); // 全局只留一个浮窗
-    const pop = document.createElement('div');
+    const pop = createDiv();
     pop.className = 'bzrv-help-pop' + (opts.skinClassName ? ' ' + opts.skinClassName : '');
     pop.setAttribute('role', 'tooltip');
     for (const n of bodyNodes(opts.text)) pop.appendChild(n);

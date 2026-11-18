@@ -57,29 +57,29 @@ const WARN_TEXT = '密码<b>不会保存</b>，也无法找回。忘记它，加
 let SEQ = 0;
 
 export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-su' + (opts.inline ? ' bzrv-su--inline' : ' bzrv-su--mask');
   el.dataset.su = opts.inline ? 'box' : 'mask';
 
-  const box = document.createElement('div');
+  const box = createDiv();
   box.className = 'bzrv-su-box';
   box.dataset.su = 'box';
 
   // ── 头部：小徽 + 标题 + 覆盖范围 ────────────────────────────
-  const head = document.createElement('div');
+  const head = createDiv();
   head.className = 'bzrv-su-head';
-  const badge = document.createElement('div');
+  const badge = createDiv();
   badge.className = 'bzrv-su-badge';
   badge.dataset.su = 'badge';
   badge.appendChild(uiIcon(opts.icon || 'key-round', 'bzrv-su-badge-ic'));
   head.appendChild(badge);
 
-  const headText = document.createElement('div');
-  const title = document.createElement('h4');
+  const headText = createDiv();
+  const title = createEl('h4');
   title.className = 'bzrv-su-title';
   title.dataset.su = 'title';
   title.textContent = opts.title || '设置主密码';
-  const sub = document.createElement('p');
+  const sub = createEl('p');
   sub.className = 'bzrv-su-sub';
   sub.dataset.su = 'sub';
   if (opts.sub) sub.textContent = opts.sub;
@@ -93,7 +93,7 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   // 首设没有可对照的正确值：掩码下输错只能等提交才报「不一致」，故两遍都明文，
   // 并顺手关掉拼写纠正与首字母大写，免得输入法把密码改写掉。
   const makeInput = (id: string, placeholder: string): HTMLInputElement => {
-    const inp = document.createElement('input');
+    const inp = createEl('input');
     inp.type = 'text';
     inp.className = 'bzrv-su-input';
     inp.dataset.su = id;
@@ -105,9 +105,9 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
     return inp;
   };
 
-  const field1 = document.createElement('div');
+  const field1 = createDiv();
   field1.className = 'bzrv-su-field';
-  const label1 = document.createElement('label');
+  const label1 = createEl('label');
   label1.className = 'bzrv-su-label';
   label1.textContent = '主密码';
   // id 逐实例唯一：密码本桌面/移动两份内联屏同存时，重名会让 label 的 htmlFor 指到先建的那份
@@ -118,16 +118,16 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   field1.appendChild(input);
   box.appendChild(field1);
 
-  const field2 = document.createElement('div');
+  const field2 = createDiv();
   field2.className = 'bzrv-su-field';
-  const label2 = document.createElement('label');
+  const label2 = createEl('label');
   label2.className = 'bzrv-su-label';
   label2.textContent = '再输一遍';
-  const wrap2 = document.createElement('div');
+  const wrap2 = createDiv();
   wrap2.className = 'bzrv-su-control';
   const input2 = makeInput('p2', '重复输入，确认没有打错');
   label2.htmlFor = input2.id = uid + 'p2';
-  const mark = document.createElement('span');
+  const mark = createEl('span');
   mark.className = 'bzrv-su-mark';
   mark.dataset.su = 'mark';
   wrap2.appendChild(input2);
@@ -137,42 +137,42 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   box.appendChild(field2);
 
   // ── 风险告知（首次唯一一次，不重复念叨）──────────────────────
-  const warn = document.createElement('div');
+  const warn = createDiv();
   warn.className = 'bzrv-su-warn';
   warn.dataset.su = 'warn';
   warn.appendChild(uiIcon('triangle-alert', 'bzrv-su-warn-ic'));
-  const warnText = document.createElement('p');
+  const warnText = createEl('p');
   warnText.innerHTML = WARN_TEXT;
   warn.appendChild(warnText);
   box.appendChild(warn);
 
   // ── 勾选确认 ────────────────────────────────────────────────
-  const ack = document.createElement('label');
+  const ack = createEl('label');
   ack.className = 'bzrv-su-ack';
   ack.dataset.su = 'ack';
-  const ackBox = document.createElement('input');
+  const ackBox = createEl('input');
   ackBox.type = 'checkbox';
-  const ackText = document.createElement('span');
+  const ackText = createEl('span');
   ackText.textContent = '我已牢记这个密码';
   ack.appendChild(ackBox);
   ack.appendChild(ackText);
   box.appendChild(ack);
 
   // ── 错误行 ──────────────────────────────────────────────────
-  const err = document.createElement('div');
+  const err = createDiv();
   err.className = 'bzrv-su-err';
   err.dataset.su = 'err';
   box.appendChild(err);
 
   // ── 动作 ────────────────────────────────────────────────────
-  const actionBtn = document.createElement('button');
+  const actionBtn = createEl('button');
   actionBtn.className = 'bzrv-su-go';
   actionBtn.dataset.su = 'go';
   actionBtn.type = 'button';
   actionBtn.textContent = opts.action || '设置并解锁';
   box.appendChild(actionBtn);
 
-  const cancelBtn = document.createElement('button');
+  const cancelBtn = createEl('button');
   cancelBtn.className = 'bzrv-su-later';
   cancelBtn.dataset.su = 'cancel';
   cancelBtn.type = 'button';
@@ -196,7 +196,7 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
     wrap2.classList.remove('is-bad');
     if (state === 'none') return;
     mark.appendChild(uiIcon(state === 'ok' ? 'check' : 'x', 'bzrv-su-mark-ic'));
-    const t = document.createElement('span');
+    const t = createEl('span');
     t.textContent = state === 'ok' ? '一致' : '不一致';
     mark.appendChild(t);
     mark.classList.add('is-shown', state === 'ok' ? 'bzrv-su-mark--ok' : 'bzrv-su-mark--bad');

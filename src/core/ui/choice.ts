@@ -10,15 +10,15 @@ import type { BzChoiceOpts } from './types';
 
 /** 平铺单选组（可换行胶囊），返回容器 + setValue/detach 句柄。radiogroup + 方向键导航（L8） */
 export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDivElement; setValue: (v: T) => void; detach: () => void } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-choice' + (opts.float ? ' bzrv-choice--float' : '') + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
-  el.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
+  el.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
   const btns = new Map<T, HTMLButtonElement>();
   let cur: T = opts.value;
 
   // 浮岛滑动指示器（float 专属；非浮岛档无此节点，样式 display:none 兜底）
-  const seg = document.createElement('span');
+  const seg = createEl('span');
   seg.className = 'bzrv-choice-seg';
   let segRAF = 0;
   let segTries = 0;
@@ -58,14 +58,14 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
   }
 
   opts.options.forEach((o) => {
-    const b = document.createElement('button');
+    const b = createEl('button');
     b.type = 'button';
     b.className = 'bzrv-choice-btn' + (o.value === opts.value ? ' is-on' : '');
     b.dataset.value = String(o.value);
     b.setAttribute('role', 'radio');
     b.setAttribute('aria-checked', String(o.value === opts.value));
     if (o.dot) {
-      const d = document.createElement('span');
+      const d = createEl('span');
       d.className = 'bzrv-choice-dot';
       d.style.background = o.dot;
       b.appendChild(d);

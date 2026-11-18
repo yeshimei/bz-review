@@ -242,7 +242,7 @@ export class UIManager {
     if (this.mask && document.body.contains(this.mask)) return;
     // 面板壳接组件库（ADR-0094）：遮罩 = .bzrv-panel-overlay、面板 = .bzrv-panel-frame；
     // id 几何（居中定位/宽高/动画）仍由 #bzrv-mask/#bzrv-popup 域内规则接管
-    this.mask = document.createElement('div');
+    this.mask = createDiv();
     this.mask.id = 'bzrv-mask';
     this.mask.classList.add('bzrv-panel-overlay');
     this.mask.style.display = 'none';
@@ -253,14 +253,14 @@ export class UIManager {
       if (!this.sprint) this.hideMain();
     });
 
-    this.popup = document.createElement('div');
+    this.popup = createDiv();
     this.popup.id = 'bzrv-popup';
     this.popup.classList.add('bzrv-panel-frame');
     this.popup.classList.add('bzrv-main-panel');
     // ≤768px 弹窗满宽近全屏：挂顶距工具类（44px 避让 Obsidian 移动端头，components.css 统一档）
     this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = 'none';
-    const content = document.createElement('div');
+    const content = createDiv();
     content.id = 'bzrv-entries';
     this.popup.appendChild(content);
     this.entriesContainer = content;
@@ -429,13 +429,13 @@ export class UIManager {
       // item 10：空库两条路引导（组件库 uiEmpty 工厂）
       const host = container.querySelector('[data-empty-host]');
       if (host) {
-        const acts = document.createElement('div');
+        const acts = createDiv();
         acts.className = 'bzrv-btn-row';
-        const addBtn = document.createElement('button');
+        const addBtn = createEl('button');
         addBtn.className = 'bzrv-btn bzrv-btn--primary';
         addBtn.dataset.act = 'add-current';
         addBtn.textContent = '把当前笔记加入复习';
-        const helpBtn = document.createElement('button');
+        const helpBtn = createEl('button');
         helpBtn.className = 'bzrv-btn bzrv-btn--ghost';
         helpBtn.dataset.act = 'watch-help';
         helpBtn.textContent = '如何配置监听文件夹';
@@ -522,7 +522,7 @@ export class UIManager {
         import('../core/settings-schema'),
       ]);
       if (this.page !== 'settings' || !body.isConnected) return;
-      const wrap = document.createElement('div');
+      const wrap = createDiv();
       wrap.className = 'bzrv-settings-content';
       renderSettingsInto(wrap, reviewSettingsSchema({ app: this.app, dataManager: this.dataManager }));
       body.appendChild(wrap);
@@ -534,7 +534,7 @@ export class UIManager {
       import('./report'),
     ]);
     if (this.page !== 'stats' || !body.isConnected) return;
-    const holder = document.createElement('div');
+    const holder = createDiv();
     holder.className = 'bzrv-stats-body';
     body.appendChild(holder);
     let w: number[] | undefined;
@@ -548,18 +548,18 @@ export class UIManager {
     }
     paintStatsInto(holder, this.app, this.dataManager, items, w, fit);
     /* 未来负荷：以前是命令面板里的一个 Modal，这里直接排进数据页 */
-    const fc = document.createElement('div');
+    const fc = createDiv();
     fc.className = 'bzrv-page-forecast';
-    const pre = document.createElement('pre');
+    const pre = createEl('pre');
     pre.textContent = forecastToText(forecastLoad(items, 30), 21);
     fc.appendChild(pre);
-    const tip = document.createElement('p');
+    const tip = createEl('p');
     tip.textContent = '峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。';
     fc.appendChild(tip);
     holder.appendChild(fc);
-    const row = document.createElement('div');
+    const row = createDiv();
     row.className = 'bzrv-btn-row';
-    const btn = document.createElement('button');
+    const btn = createEl('button');
     btn.className = 'bzrv-btn';
     btn.textContent = '看记忆分析';
     btn.addEventListener('click', () => {
@@ -572,7 +572,7 @@ export class UIManager {
     /* 数据页顺带放两个高级档入口：可用就进页，不可用给解锁按钮并弹能力位文案。
        门控只锁入口与内容，基础版的统计 / 负荷 / 分析一切照旧。 */
     const bookCap = canUseCapability('bookReport');
-    const bookBtn = document.createElement('button');
+    const bookBtn = createEl('button');
     bookBtn.className = 'bzrv-btn';
     bookBtn.textContent = bookCap ? '按书档案' : '解锁按书报告';
     bookBtn.addEventListener('click', () => {
@@ -585,7 +585,7 @@ export class UIManager {
     });
     row.appendChild(bookBtn);
     const mgrCap = canUseCapability('cardManager');
-    const mgrBtn = document.createElement('button');
+    const mgrBtn = createEl('button');
     mgrBtn.className = 'bzrv-btn';
     mgrBtn.textContent = mgrCap ? '卡片管理器' : '解锁卡片管理器';
     mgrBtn.addEventListener('click', () => {
@@ -602,10 +602,10 @@ export class UIManager {
 
   /** 「按书档案」内置页（高级档 bookReport）：分组列表 + 一键导出 Markdown。 */
   private fillBooksPage(body: HTMLElement, items: ReviewItem[]): void {
-    const wrap = document.createElement('div');
+    const wrap = createDiv();
     wrap.className = 'bzrv-book-page';
     if (!canUseCapability('bookReport')) {
-      const btn = document.createElement('button');
+      const btn = createEl('button');
       btn.className = 'bzrv-btn bzrv-btn--primary';
       btn.textContent = '解锁按书报告';
       btn.addEventListener('click', () => notice(capabilityBlock('bookReport').message, 'warning'));
@@ -614,9 +614,9 @@ export class UIManager {
       return;
     }
     wrap.innerHTML = booksViewHtml(bookSummariesOf(items));
-    const row = document.createElement('div');
+    const row = createDiv();
     row.className = 'bzrv-btn-row';
-    const exp = document.createElement('button');
+    const exp = createEl('button');
     exp.className = 'bzrv-btn';
     exp.textContent = '导出按书报告（Markdown）';
     exp.addEventListener('click', () => void this.exportBookReport(items));
@@ -638,10 +638,10 @@ export class UIManager {
 
   /** 「卡片管理器」内置页（高级档 cardManager）：全部条目的挂起 / 埋藏 / 恢复 / 排期 / 移出。 */
   private fillManagerPage(body: HTMLElement, items: ReviewItem[]): void {
-    const wrap = document.createElement('div');
+    const wrap = createDiv();
     wrap.className = 'bzrv-mgr-page';
     if (!canUseCapability('cardManager')) {
-      const btn = document.createElement('button');
+      const btn = createEl('button');
       btn.className = 'bzrv-btn bzrv-btn--primary';
       btn.textContent = '解锁卡片管理器';
       btn.addEventListener('click', () => notice(capabilityBlock('cardManager').message, 'warning'));
@@ -792,7 +792,7 @@ export class UIManager {
    */
   private fillArchPage(body: HTMLElement, items: ReviewItem[]): void {
     const done = items.filter((i) => i.completed || i.isCompleted);
-    const wrap = document.createElement('div');
+    const wrap = createDiv();
     wrap.className = 'bzrv-arch-list';
 
     if (!done.length) {
@@ -809,22 +809,22 @@ export class UIManager {
     }
 
     for (const it of done) {
-      const row = document.createElement('div');
+      const row = createDiv();
       row.className = 'bzrv-arch-row';
 
-      const name = document.createElement('span');
+      const name = createEl('span');
       name.className = 'bzrv-arch-name';
       name.textContent = it.name || it.filePath;
       row.appendChild(name);
 
       if (it.card) {
-        const tag = document.createElement('span');
+        const tag = createEl('span');
         tag.className = 'bzrv-q-tag is-kind-card';
         tag.textContent = '划线卡';
         row.appendChild(tag);
       }
 
-      const btn = document.createElement('button');
+      const btn = createEl('button');
       btn.className = 'bzrv-btn bzrv-btn--ghost';
       btn.textContent = '移回计划';
       btn.addEventListener('click', () => {
@@ -1696,7 +1696,7 @@ export function mountFloatingRatingBar(opts: {
   /** 暂停本轮（评完当前这条停下，断点保留） */
   onPause?: () => void;
 }): { close: () => void } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-review-bar';
   el.style.zIndex = String(allocZ());
   const keys = (getSettings()).reviewRatingKeys;

@@ -17,7 +17,7 @@ export function uiSearch(opts: BzSearchOpts): {
   setValue: (v: string) => void;
   syncClear: () => void;
 } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-search';
   el.appendChild(uiIcon('search'));
   const input = uiInput({
@@ -30,10 +30,10 @@ export function uiSearch(opts: BzSearchOpts): {
   // 输入即显）；点击 = 清值 + 派发 input（消费方既有 onInput 过滤链自动刷新）+ 焦点回框
   let clearBtn: HTMLButtonElement | null = null;
   if (opts.clearable !== false) {
-    clearBtn = document.createElement('button');
+    clearBtn = createEl('button');
     clearBtn.type = 'button';
     clearBtn.className = 'bzrv-search-clear';
-    clearBtn.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '清除搜索' }));
+    clearBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '清除搜索' }));
     clearBtn.hidden = !input.value.trim();
     clearBtn.appendChild(uiIcon('x'));
     clearBtn.addEventListener('click', () => {
