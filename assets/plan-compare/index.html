@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Review · 基础版 / 高级版 功能对照</title>
+<style>
+  :root {
+    --paper: #f3ece0;
+    --card: #fcf9f2;
+    --ink: #241f18;
+    --ink2: #57503f;
+    --ink3: #8a8071;
+    --gold: #a2722b;
+    --gold-hi: #c9a463;
+    --line: rgba(84, 66, 38, .14);
+    --line-soft: rgba(84, 66, 38, .075);
+    --serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, serif;
+    --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-font-smoothing: antialiased; }
+  body {
+    width: 1080px;
+    color: var(--ink);
+    font: 400 25px/1.45 var(--sans);
+    background: #f7f2e6;
+  }
+  .sheet { padding: 56px 48px; }
+
+  /* ── 品牌 ── */
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 44px; }
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .mark { width: 58px; height: 58px; flex: 0 0 auto; }
+  .name { font: 600 30px/1 var(--serif); letter-spacing: .01em; }
+  .meta {
+    margin-top: 8px; font-size: 12px; letter-spacing: .22em;
+    color: var(--ink3); text-transform: uppercase;
+  }
+  .where {
+    font-size: 15px; letter-spacing: .04em; color: var(--ink3);
+    padding: 10px 20px; border: 1px solid var(--line);
+    border-radius: 999px; background: rgba(255, 252, 244, .55);
+  }
+
+  /* ── 标题 ── */
+  .hero { margin: 44px 0 34px; }
+  h1 { font: 500 66px/1.2 var(--serif); letter-spacing: .01em; }
+  h1 .amp {
+    font-size: 32px; color: #9c9280; margin: 0 12px;
+    vertical-align: .18em; font-weight: 400;
+  }
+  h1 .em { color: var(--gold); }
+  .lede { margin-top: 20px; font-size: 21px; line-height: 1.95; color: var(--ink2); }
+  .lede b { font-weight: 500; color: #332c22; }
+  .lede .hl { color: var(--gold); font-weight: 500; }
+
+  /* ── 表卡 ── */
+  .card {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  col.cf { width: 62%; }
+  col.cc { width: 19%; }
+  col.cp { width: 19%; }
+
+  thead th { padding: 20px 0 18px; text-align: center; }
+  thead th.f {
+    text-align: left; padding-left: 30px;
+    font: 400 15px/1 var(--sans); letter-spacing: .22em; color: var(--ink3);
+    border-bottom: 2px solid var(--line);
+  }
+  thead th.c {
+    font: 500 25px/1 var(--sans); color: var(--ink2);
+    border-bottom: 2px solid var(--line);
+  }
+  thead th.c small {
+    display: block; margin-top: 9px;
+    font: 400 13px/1 var(--sans); letter-spacing: .09em; color: var(--ink3);
+  }
+  thead th.pro {
+    color: #f2e6cb; background: #2b261e;
+    border-bottom: 2px solid #2b261e;
+  }
+  thead th.pro small { color: rgba(201, 164, 99, .85); }
+
+  tbody td { padding: 12px 0; }
+  tbody td.f {
+    padding-left: 30px;
+    font-size: 24px; line-height: 1.35; color: #2f2921;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  tbody td.c {
+    text-align: center;
+    border-bottom: 1px solid var(--line-soft);
+    background: rgba(198, 160, 96, .085);
+  }
+  tbody td.c.free { background: none; }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  /* 组标题 */
+  tr.grp td { padding: 0; border: 0; }
+  tr.grp td.f { padding: 26px 0 10px 30px; }
+  tr.grp td.f span {
+    font: 500 15px/1 var(--sans); letter-spacing: .19em; color: #96682a;
+  }
+  tr.grp td.c { padding: 0; }
+
+  /* 勾 / 横 */
+  .yes, .no { display: inline-flex; align-items: center; justify-content: center; }
+  .yes svg, .no svg { display: block; }
+  td.c.free .yes { color: #9c8f7c; }
+  td.c.pro .yes { color: var(--gold); }
+  td.c .no { color: rgba(84, 66, 38, .22); }
+
+  /* 合计 */
+  tfoot td {
+    padding: 20px 0 22px;
+    border-top: 2px solid var(--line);
+  }
+  tfoot td.f {
+    padding-left: 30px;
+    font: 400 15px/1 var(--sans); letter-spacing: .2em; color: var(--ink3);
+  }
+  tfoot td.c { text-align: center; background: rgba(198, 160, 96, .085); }
+  tfoot td.c.free { background: none; }
+  tfoot td.c b {
+    font: 500 36px/1.1 var(--serif); color: var(--ink);
+    margin-right: 5px;
+  }
+  tfoot td.c.pro b { color: var(--gold); }
+  tfoot td.c em {
+    font-style: normal; font-size: 14px; letter-spacing: .1em; color: var(--ink3);
+  }
+
+  /* ── 尾 ── */
+  .facts { display: flex; gap: 16px; margin-top: 34px; }
+  .fact {
+    flex: 1; padding: 22px 22px 24px;
+    background: rgba(255, 252, 244, .62);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+  }
+  .fact b {
+    display: block; font: 500 22px/1 var(--serif); letter-spacing: .03em;
+  }
+  .fact b.pro { color: var(--gold); }
+  .fact span {
+    display: block; margin-top: 12px;
+    font-size: 17px; line-height: 1.72; color: var(--ink2);
+  }
+  .activate {
+    margin-top: 32px;
+    display: flex; align-items: center; gap: 18px;
+    padding: 20px 24px;
+    background: rgba(162, 114, 43, .08);
+    border-left: 3px solid var(--gold-hi);
+  }
+  .activate .k {
+    font-size: 13px; letter-spacing: .2em; color: var(--gold); flex: 0 0 auto;
+  }
+  .activate .v { font: 500 20px/1.4 var(--sans); color: var(--ink); }
+  .activate .n {
+    margin-left: auto; font-size: 14px; line-height: 1; color: var(--ink3); flex: 0 0 auto;
+    letter-spacing: .03em;
+  }
+  .foot {
+    margin-top: 26px; display: flex; justify-content: space-between;
+    font-size: 14px; letter-spacing: .04em; color: rgba(84, 66, 38, .6);
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+
+  <div class="card">
+    <table id="plan">
+      <colgroup><col class="cf"><col class="cc"><col class="cp"></colgroup>
+      <thead>
+        <tr>
+          <th class="f">功能</th>
+          <th class="c">基础版<small>免费 · 不限时</small></th>
+          <th class="c pro">高级版<small>一次买断 · 永久</small></th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr>
+          <td class="f">合计</td>
+          <td class="c free"><b>13</b><em>项</em></td>
+          <td class="c pro"><b>19</b><em>项</em></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const GROUPS = [
+  ['复习容量', [
+    ['复习笔记 20 篇', 1, 1],
+    ['复习笔记不限篇数', 0, 1],
+    ['划线卡 50 条', 1, 1],
+    ['划线卡不限条数', 0, 1],
+  ]],
+  ['排期与记忆', [
+    ['FSRS 排期与十级阶梯', 1, 1],
+    ['每日上限与复习提醒', 1, 1],
+    ['记忆分析面板', 1, 1],
+    ['统计与负荷预测', 1, 1],
+    ['抽认卡 / 做题 / 填空', 1, 1],
+    ['上下文 / 展开全文', 1, 1],
+    ['卡片编辑与重新生成', 1, 1],
+  ]],
+  ['高级权益', [
+    ['听卡片：本地音色朗读', 0, 1],
+    ['回到原文：跳回那一句', 0, 1],
+    ['按书档案与报告导出', 0, 1],
+    ['卡片管理器：挂起与埋藏', 0, 1],
+  ]],
+  ['数据与使用', [
+    ['数据全存本地不联网', 1, 1],
+    ['激活码离线验签', 1, 1],
+    ['从 bz 导入复习计划', 1, 1],
+    ['导出 Markdown / CSV', 1, 1],
+  ]],
+];
+
+const TICK = '<svg viewBox="0 0 20 20" width="24" height="24" aria-hidden="true"><path d="M3.6 10.6 8 15 16.4 5.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const DASH = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M4 10h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+
+const cell = (v) => v
+  ? `<span class="yes">${TICK}</span>`
+  : `<span class="no">${DASH}</span>`;
+
+const rows = GROUPS.map(([name, list]) =>
+  `<tr class="grp"><td class="f"><span>${name}</span></td><td class="c free"></td><td class="c pro"></td></tr>` +
+  list.map(([label, free, pro]) =>
+    `<tr><td class="f">${label}</td>` +
+    `<td class="c free">${cell(free)}</td>` +
+    `<td class="c pro">${cell(pro)}</td></tr>`
+  ).join('')
+).join('');
+
+document.querySelector('#plan tbody').innerHTML = rows;
+</script>
+</body>
+</html>
+

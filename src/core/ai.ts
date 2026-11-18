@@ -478,10 +478,10 @@ async function streamChatCompletions(provider: AIProvider, body: any, signal?: A
       outerLinked = true;
     }
   }
-  let idleTimer: ReturnType<typeof setTimeout> | null = null;
+  let idleTimer: number | null = null;
   const armIdle = () => {
-    if (idleTimer !== null) clearTimeout(idleTimer);
-    idleTimer = setTimeout(() => controller.abort(), idleMs);
+    if (idleTimer !== null) window.clearTimeout(idleTimer);
+    idleTimer = window.setTimeout(() => controller.abort(), idleMs);
   };
   try {
     armIdle();
@@ -538,7 +538,7 @@ async function streamChatCompletions(provider: AIProvider, body: any, signal?: A
     if (controller.signal.aborted && !(signal && signal.aborted)) throw timeoutError(idleMs);
     throw e;
   } finally {
-    if (idleTimer !== null) clearTimeout(idleTimer);
+    if (idleTimer !== null) window.clearTimeout(idleTimer);
     if (outerLinked && signal) signal.removeEventListener('abort', onOuterAbort);
   }
 }
@@ -555,12 +555,12 @@ async function chatCompletionsNonStream(provider: AIProvider, body: any, signal?
     ...(provider.extraHeaders || {}),
   };
   const resp: any = await new Promise<any>((resolve, reject) => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let timer: number | null = null;
     const settle = (fn: () => void) => {
-      if (timer !== null) clearTimeout(timer);
+      if (timer !== null) window.clearTimeout(timer);
       fn();
     };
-    timer = setTimeout(() => settle(() => reject(timeoutError(idleMs))), idleMs);
+    timer = window.setTimeout(() => settle(() => reject(timeoutError(idleMs))), idleMs);
     requestUrl({
       url: `${provider.endpoint}/chat/completions`,
       method: 'POST',

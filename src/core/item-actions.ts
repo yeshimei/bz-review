@@ -123,7 +123,7 @@ let suppressNextClick = false;
 let residualClickArmed = false;
 /** 触屏路径：长按松手后浏览器补发的合成 click（touchstart 不再 preventDefault）——打开后短暂窗口吞一次，防浮层闪关 */
 let touchSettlePending = false;
-let touchSettleTimer: ReturnType<typeof setTimeout> | null = null;
+let touchSettleTimer: number | null = null;
 
 /** 点击是否落在当前抽屉的附属浮层内（是则不当作「外部点击」关闭抽屉） */
 function inSheetCompanion(target: Node): boolean {
@@ -188,7 +188,7 @@ export function closeItemMenu(): void {
     menuEsc = null;
   }
   if (touchSettleTimer) {
-    clearTimeout(touchSettleTimer);
+    window.clearTimeout(touchSettleTimer);
     touchSettleTimer = null;
   }
   document.removeEventListener('mousedown', onMouseDownCapture, true);
@@ -217,8 +217,8 @@ export function closeItemMenu(): void {
 /** 打开触屏合成 click 静置窗口（长按松手后的合成 click 吞一次） */
 function armTouchSettle(): void {
   touchSettlePending = true;
-  if (touchSettleTimer) clearTimeout(touchSettleTimer);
-  touchSettleTimer = setTimeout(() => {
+  if (touchSettleTimer) window.clearTimeout(touchSettleTimer);
+  touchSettleTimer = window.setTimeout(() => {
     touchSettlePending = false;
     touchSettleTimer = null;
   }, TOUCH_SETTLE_MS);
@@ -530,7 +530,7 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
       const s = sheet;
       s.style.transform = 'translateY(100%)';
       if (sheetMask) sheetMask.style.opacity = '0';
-      setTimeout(() => {
+      window.setTimeout(() => {
         if (popupEl === s) closeItemMenu();
       }, 180);
     } else {

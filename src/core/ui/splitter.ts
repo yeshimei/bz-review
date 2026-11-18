@@ -70,7 +70,7 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
   let startX = 0;
   let startW = 0;
 
-  let persistTimer: ReturnType<typeof setTimeout> | null = null;
+  let persistTimer: number | null = null;
   /** 意图宽（落盘口径）：只钳 minLeft 下限，不受容器可用宽污染——
    *  半屏下拖到容器上限也不把挤压值写进记忆 */
   let wantW = 0;
@@ -98,8 +98,8 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
 
   const debSave = (w: number): void => {
     if (!persist?.save) return;
-    if (persistTimer !== null) clearTimeout(persistTimer);
-    persistTimer = setTimeout(() => {
+    if (persistTimer !== null) window.clearTimeout(persistTimer);
+    persistTimer = window.setTimeout(() => {
       persistTimer = null;
       persist.save?.(w);
     }, 300);
@@ -172,7 +172,7 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
 
   const flush = (): void => {
     if (persistTimer === null) return;
-    clearTimeout(persistTimer);
+    window.clearTimeout(persistTimer);
     persistTimer = null;
     if (persist?.save && wantW > 0) persist.save(wantW);
   };

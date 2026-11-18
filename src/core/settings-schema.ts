@@ -600,7 +600,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
     // 三类行 onChange 的值参类型不同（string | number），行类型判别后统一签名调用
     const changeCb = row.onChange as ((value: string | number, ctx: SettingsRowContext) => void) | undefined;
     const initial = String(acc.read() ?? '');
-    let pending: ReturnType<typeof setTimeout> | null = null;
+    let pending: number | null = null;
     let last = initial;
     /** 用户是否实际编辑过（P2-2：refreshKey 程序化改写显示值不置脏，防 blur 假写覆盖换 provider 的值） */
     let dirty = false;
@@ -626,7 +626,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
     /** 有意的落盘点：防抖到期 / 失焦 / 回车（textarea 无回车提交）——统一落盘 */
     const commit = (): void => {
       if (pending !== null) {
-        clearTimeout(pending);
+        window.clearTimeout(pending);
         pending = null;
       }
       if (!dirty) return; // 未编辑（仅程序化刷新显示值）不落盘、不提示、不求值
@@ -701,8 +701,8 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
           console.error(e);
           notifySaveError(e, row.name);
         }
-        if (pending !== null) clearTimeout(pending);
-        pending = setTimeout(commit, TEXT_COMMIT_DELAY);
+        if (pending !== null) window.clearTimeout(pending);
+        pending = window.setTimeout(commit, TEXT_COMMIT_DELAY);
       });
       const inputEl = t.inputEl;
       if (inputEl) {

@@ -185,7 +185,7 @@ export class CardSession {
   private lastIndex = -1;
   /** 换卡时的一次性提示（同类型连做为空） */
   private notice = '';
-  private noticeTimer: ReturnType<typeof setTimeout> | null = null;
+  private noticeTimer: number | null = null;
   /** 这一轮已经为它补过内容的卡（补不到就降级，不再反复打模型） */
   private ensured = new Set<string>();
   /** 正在补内容的卡（渲染会被反复调用，在途期间不能重复发请求） */
@@ -226,7 +226,7 @@ export class CardSession {
         }
         return;
       }
-      const hit = ratingForKey(e.key, (getSettings() as any).reviewRatingKeys);
+      const hit = ratingForKey(e.key, (getSettings()).reviewRatingKeys);
       if (hit) {
         e.preventDefault();
         void this.rate(hit);
@@ -238,7 +238,7 @@ export class CardSession {
   destroy(): void {
     if (this.keyHandler) document.removeEventListener('keydown', this.keyHandler);
     this.keyHandler = null;
-    if (this.noticeTimer !== null) clearTimeout(this.noticeTimer);
+    if (this.noticeTimer !== null) window.clearTimeout(this.noticeTimer);
     this.noticeTimer = null;
     this.player.stop();
     this.opts.host.innerHTML = '';
@@ -504,7 +504,7 @@ export class CardSession {
   }
 
   private rateByKey(e: KeyboardEvent): void {
-    const hit = ratingForKey(e.key, (getSettings() as any).reviewRatingKeys);
+    const hit = ratingForKey(e.key, (getSettings()).reviewRatingKeys);
     if (!hit) return;
     e.preventDefault();
     void this.rate(hit);
@@ -723,8 +723,8 @@ export class CardSession {
 
     if (notice) {
       const key = item.filePath;
-      if (this.noticeTimer !== null) clearTimeout(this.noticeTimer);
-      this.noticeTimer = setTimeout(() => {
+      if (this.noticeTimer !== null) window.clearTimeout(this.noticeTimer);
+      this.noticeTimer = window.setTimeout(() => {
         if (this.current()?.filePath === key) this.render();
       }, 1800);
     }
@@ -923,7 +923,7 @@ export class CardSession {
   }
 
   private ratingHtml(): string {
-    return `<div class="bzrv-cs-rate">${ratingsWith((getSettings() as any).reviewRatingKeys).map(
+    return `<div class="bzrv-cs-rate">${ratingsWith((getSettings()).reviewRatingKeys).map(
       (r) => `<button type="button" class="bzrv-btn" data-r="${r.value}">${r.label}（${r.key}）</button>`,
     ).join('')}</div>`;
   }
@@ -990,7 +990,7 @@ export class CardSession {
 
   /** 朗读配置跟 AI 内容生成走同一个设置源 getSettings，不另造全局单例 */
   private ttsConfig(): TtsConfig {
-    const s = getSettings() as any;
+    const s = getSettings();
     return {
       url: String(s.ttsUrl ?? '').trim(),
       model: String(s.ttsModel ?? '').trim(),

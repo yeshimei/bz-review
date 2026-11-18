@@ -134,7 +134,7 @@ export class UIManager {
   /** 打字时重绘要把光标放回关键字框（否则每敲一个字就掉焦点） */
   private keepFilterFocus = false;
   /** 关键字输入的防抖句柄 */
-  private filterTimer: ReturnType<typeof setTimeout> | null = null;
+  private filterTimer: number | null = null;
   /** 面板内置页（批 8）：数据 / 设置；null = 队列主列表 */
   /* 内置页（批 8 起）：数据 / 设置 / 已完成。三页共用同一个内容区与「返回」头行，
      不再各开一套弹窗（用户 2026-11-15 口径：全部内置到面板，入口在右上角）。 */
@@ -677,8 +677,8 @@ export class UIManager {
     q?.addEventListener('input', () => {
       this.mgrFilter.query = q.value;
       this.mgrKeepFocus = true;
-      if (this.filterTimer) clearTimeout(this.filterTimer);
-      this.filterTimer = setTimeout(() => {
+      if (this.filterTimer) window.clearTimeout(this.filterTimer);
+      this.filterTimer = window.setTimeout(() => {
         this.filterTimer = null;
         rerender();
       }, 200);
@@ -1002,7 +1002,7 @@ export class UIManager {
 
   /** R 阈值提前复习判定（item 6：与开始本轮同口径；wSource=拟合权重） */
   private rThreshold(): number {
-    const s = tryGetSettings() as any;
+    const s = tryGetSettings();
     return Number(s?.reviewRThreshold) || DEFAULT_R_THRESHOLD;
   }
 
@@ -1126,8 +1126,8 @@ export class UIManager {
         el.addEventListener('input', () => {
           this.filter.query = el.value;
           this.keepFilterFocus = true;
-          if (this.filterTimer) clearTimeout(this.filterTimer);
-          this.filterTimer = setTimeout(() => void this.refreshPanel(), 220);
+          if (this.filterTimer) window.clearTimeout(this.filterTimer);
+          this.filterTimer = window.setTimeout(() => void this.refreshPanel(), 220);
         });
       } else if (el instanceof HTMLSelectElement) {
         el.addEventListener('change', () => {
@@ -1406,7 +1406,7 @@ export class UIManager {
    */
   private async confirmCardStart(queue: ReviewItem[]): Promise<boolean> {
     if (queue.length !== 1) return true;
-    if (!(getSettings() as any).reviewCardConfirm) return true;
+    if (!(getSettings()).reviewCardConfirm) return true;
     const item = queue[0];
     const card = item.card;
     if (!card) return true;
@@ -1491,7 +1491,7 @@ export class UIManager {
     /** item 8：连续复习天数（结算屏展示；由 app 层 computeStats 算好传入） */
     streakDays?: number;
     fetchQuestions: (item: ReviewItem) => Promise<QuizQuestion[] | null>;
-    onPassed: (item: ReviewItem, rating: string, entry: { acc: number; wrong: number }) => Promise<void>;
+    onPassed: (item: ReviewItem, rating: string, entry: { acc: number; wrong: number }) => Promise<string | void>;
     onFailed: (item: ReviewItem, rating: string, entry: { acc: number; wrong: number }) => Promise<void>;
   }): Promise<'done' | 'quit' | 'fail'> {
     const container = this.entriesContainer;
@@ -1699,7 +1699,7 @@ export function mountFloatingRatingBar(opts: {
   const el = document.createElement('div');
   el.className = 'bzrv-review-bar';
   el.style.zIndex = String(allocZ());
-  const keys = (getSettings() as any).reviewRatingKeys;
+  const keys = (getSettings()).reviewRatingKeys;
   el.innerHTML = reviewBarHtml({ ...opts, keys });
   el.tabIndex = -1; // 程序化 focus 落点（容器不进 Tab 序，键盘 Tab 仍直达各评级按钮）
   let closed = false;

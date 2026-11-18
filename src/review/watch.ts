@@ -36,13 +36,13 @@ export class ReviewWatcher {
 
   /** 删除确认防抖缓冲（多文件删除合并为一次确认） */
   private deleteQueue: string[] = [];
-  private deleteTimer: ReturnType<typeof setTimeout> | null = null;
+  private deleteTimer: number | null = null;
   /** ticket 100：新笔记自动加入提醒合并缓冲（3 秒窗口收集，多条合并一条通知） */
   private autoAddQueue: string[] = [];
-  private autoAddTimer: ReturnType<typeof setTimeout> | null = null;
+  private autoAddTimer: number | null = null;
   /** ticket n2：改名通知合并缓冲（3 秒窗口收集；列表/文件树更新仍即时） */
   private renameQueue: string[] = [];
-  private renameTimer: ReturnType<typeof setTimeout> | null = null;
+  private renameTimer: number | null = null;
 
   constructor(app: App, dataManager: ReviewDataManager) {
     this.app = app;
@@ -50,14 +50,14 @@ export class ReviewWatcher {
   }
 
   get watchedFolders(): string[] {
-    const s = tryGetSettings() as any;
+    const s = tryGetSettings();
     return Array.isArray(s?.reviewWatchedFolders)
       ? (s.reviewWatchedFolders as any[]).filter((x) => typeof x === 'string' && x.trim().length > 0)
       : [];
   }
 
   get excludedNotes(): string[] {
-    const s = tryGetSettings() as any;
+    const s = tryGetSettings();
     return Array.isArray(s?.reviewExcludedNotes) ? (s.reviewExcludedNotes as string[]) : [];
   }
 
@@ -71,7 +71,7 @@ export class ReviewWatcher {
 
   /** 追加排除名单（去重 + 落盘；手动/确认四类表态共用） */
   async excludePaths(paths: string[]): Promise<void> {
-    const s = tryGetSettings() as any;
+    const s = tryGetSettings();
     const cur = Array.isArray(s?.reviewExcludedNotes) ? [...(s.reviewExcludedNotes as string[])] : [];
     let changed = false;
     for (const p of paths) {
@@ -87,7 +87,7 @@ export class ReviewWatcher {
 
   /** ticket 57：单条解除排除记录（数据 reviewExcludedNotes 既有；仅补 UI 管理入口） */
   async removeExcludedNote(path: string): Promise<void> {
-    const s = tryGetSettings() as any;
+    const s = tryGetSettings();
     if (!s) return;
     const cur = Array.isArray(s.reviewExcludedNotes) ? [...(s.reviewExcludedNotes as string[])] : [];
     const kept = cur.filter((p) => p !== path);
@@ -114,11 +114,11 @@ export class ReviewWatcher {
     // U8：面板开着时列表即时补卡（对齐 rename 路径的「列表即时、通知合并」）
     void this.refresh();
     // 提醒开关（默认开）：3 秒窗口内多条合并成一条通知
-    const s = tryGetSettings() as any;
+    const s = tryGetSettings();
     if (s && s.reviewAutoAddNotice === false) return;
     this.autoAddQueue.push(file.basename);
     if (this.autoAddTimer) return;
-    this.autoAddTimer = setTimeout(() => {
+    this.autoAddTimer = window.setTimeout(() => {
       this.autoAddTimer = null;
       const batch = this.autoAddQueue;
       this.autoAddQueue = [];
@@ -136,7 +136,7 @@ export class ReviewWatcher {
       if (!items.some((i) => i.filePath === file.path)) return;
       this.deleteQueue.push(file.path);
       if (this.deleteTimer) return;
-      this.deleteTimer = setTimeout(async () => {
+      this.deleteTimer = window.setTimeout(async () => {
         this.deleteTimer = null;
         const batch = this.deleteQueue;
         this.deleteQueue = [];
@@ -202,7 +202,7 @@ export class ReviewWatcher {
       await this.refresh(); // 列表自动更新（即时）
       this.renameQueue.push(file.basename);
       if (this.renameTimer) return;
-      this.renameTimer = setTimeout(() => {
+      this.renameTimer = window.setTimeout(() => {
         this.renameTimer = null;
         const batch = this.renameQueue;
         this.renameQueue = [];
@@ -253,7 +253,7 @@ export class ReviewWatcher {
   /** 移除监听文件夹（ticket 099 追加）：同时清空该目录下全部排除记录——否则二次添加时存量被旧黑名单挡住。
    *  返回清理的排除条数（仅用于提示文案）。 */
   async removeWatchedFolder(folder: string): Promise<number> {
-    const s = tryGetSettings() as any;
+    const s = tryGetSettings();
     if (!s) return 0;
     const folders = Array.isArray(s.reviewWatchedFolders) ? [...(s.reviewWatchedFolders as string[])] : [];
     const idx = folders.indexOf(folder);
@@ -276,17 +276,17 @@ export class ReviewWatcher {
   /** 卸载清理（定时器/缓冲） */
   destroy(): void {
     if (this.deleteTimer) {
-      clearTimeout(this.deleteTimer);
+      window.clearTimeout(this.deleteTimer);
       this.deleteTimer = null;
     }
     this.deleteQueue = [];
     if (this.autoAddTimer) {
-      clearTimeout(this.autoAddTimer);
+      window.clearTimeout(this.autoAddTimer);
       this.autoAddTimer = null;
     }
     this.autoAddQueue = [];
     if (this.renameTimer) {
-      clearTimeout(this.renameTimer);
+      window.clearTimeout(this.renameTimer);
       this.renameTimer = null;
     }
     this.renameQueue = [];

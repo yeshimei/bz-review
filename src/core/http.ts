@@ -40,13 +40,13 @@ export interface HttpGetTextOptions {
  */
 export function withTimeout<T>(p: Promise<T>, ms: number, label?: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(
+    const timer = window.setTimeout(
       () => reject(new Error(`请求超时（${label || '未命名请求'}，${ms}ms）`)),
       ms,
     );
     p.then(
-      (v) => { clearTimeout(timer); resolve(v); },
-      (e) => { clearTimeout(timer); reject(e); },
+      (v) => { window.clearTimeout(timer); resolve(v); },
+      (e) => { window.clearTimeout(timer); reject(e); },
     );
   });
 }

@@ -25,12 +25,12 @@ export function shortFailReason(e: unknown): string {
 
 /** 复原定时器按元素分账（issue 434 review）：结果态 2 秒窗口内再点一轮，先清上一轮的复原柄，
  *  否则旧柄会把新一轮 busy 中途拍回 idle，造成对计费接口的重复请求。 */
-const resetTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
+const resetTimers = new WeakMap<HTMLElement, number>();
 
 function clearResetTimer(el: HTMLElement): void {
   const prev = resetTimers.get(el);
   if (prev !== undefined) {
-    clearTimeout(prev);
+    window.clearTimeout(prev);
     resetTimers.delete(el);
   }
 }
@@ -68,8 +68,8 @@ export function setRowBtnState(
 export function armRowBtnReset(el: HTMLElement | undefined, label: string): void {
   if (!el) return;
   const prev = resetTimers.get(el);
-  if (prev !== undefined) clearTimeout(prev);
-  const t = setTimeout(() => {
+  if (prev !== undefined) window.clearTimeout(prev);
+  const t = window.setTimeout(() => {
     resetTimers.delete(el);
     setRowBtnState(el, 'idle', label);
     (el as HTMLButtonElement).disabled = false;

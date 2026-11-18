@@ -124,6 +124,10 @@ export default interface BzSettings {
   aiModelOverrides: Record<string, string>;
   aiMaxTokensOverrides: Record<string, number>;
   aiThinkingOverrides: Record<string, string>;
+  /** 第二大脑的本地 Ollama 地址（向量化拉模型列表用） */
+  secondBrainOllamaUrl: string;
+  /** 第二大脑在移动端的远程 Ollama 地址 */
+  secondBrainRemoteOllamaUrl: string;
 
   // ===== 朗读（听卡片用的本地 TTS）=====
   /** 本地 TTS 服务地址（如 http://127.0.0.1:5000）；留空则不能朗读 */
@@ -193,6 +197,8 @@ export const DEFAULT_SETTINGS: BzSettings = {
   aiModelOverrides: {},
   aiMaxTokensOverrides: {},
   aiThinkingOverrides: {},
+  secondBrainOllamaUrl: '',
+  secondBrainRemoteOllamaUrl: '',
 
   ttsUrl: '',
   ttsVoice: '',

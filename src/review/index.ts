@@ -40,9 +40,9 @@ let initialized = false;
 export let dataManager: ReviewDataManager | null = null;
 export let uiManager: UIManager | null = null;
 export let reviewWatcher: ReviewWatcher | null = null;
-let checkInterval: ReturnType<typeof setInterval> | null = null;
+let checkInterval: number | null = null;
 /** P3：2s 首查句柄（卸载时取消，防卸载后仍触发逾期检查） */
-let firstCheckTimer: ReturnType<typeof setTimeout> | null = null;
+let firstCheckTimer: number | null = null;
 /** P2：ensureReview 注册的全部退订函数（unload 统一调用，防卸载后监听残留双触发） */
 let unsubscribers: (() => void)[] = [];
 
@@ -188,10 +188,10 @@ export function ensureReview(app: App): void {
   void reviewApp.loadFitParams(app).catch(() => {});
 
   // P3：首查句柄入账，卸载时取消（2s 内禁用插件不再触发逾期检查/周期注册）
-  firstCheckTimer = setTimeout(() => {
+  firstCheckTimer = window.setTimeout(() => {
     firstCheckTimer = null;
     reviewApp.checkOverdueAndNotify();
-    checkInterval = setInterval(() => reviewApp.checkOverdueAndNotify(), 60000);
+    checkInterval = window.setInterval(() => reviewApp.checkOverdueAndNotify(), 60000);
   }, 2000);
 
   // 事件监听（metadataCache resolved / vault modify / workspace quit 保持原生订阅；
@@ -239,7 +239,7 @@ export function ensureReview(app: App): void {
   });
   listen(app.workspace as any, 'quit', () => {
     if (checkInterval) {
-      clearInterval(checkInterval);
+      window.clearInterval(checkInterval);
       checkInterval = null;
     }
   });
@@ -323,7 +323,7 @@ export async function openReviewAnalysis(app: App): Promise<void> {
   /* 简化分析（批 5）：低配手机 / 远程桌面直接给文字报告，不跑 16 幕动效。
      走同一条命令、同一个入口，用户不用记两个功能名。 */
   const { getSettings } = await import('../core/settings-provider');
-  if ((getSettings() as any).reviewAnalysisPlain) {
+  if ((getSettings()).reviewAnalysisPlain) {
     await openReviewReport(app);
     return;
   }
@@ -368,7 +368,7 @@ async function resolveCardMethod(): Promise<CardMode | null> {
   if (!picked) return null;
   if (picked.remember) {
     const { getSettings, saveSettings } = await import('../core/settings-provider');
-    (getSettings() as any).reviewCardDefaultMethod = picked.mode;
+    (getSettings()).reviewCardDefaultMethod = picked.mode;
     await saveSettings();
   }
   return picked.mode;
@@ -525,11 +525,11 @@ export function unloadReview(): void {
      一个还攥着旧 app 的闭包 */
   setReviewPlanApi(null);
   if (firstCheckTimer) {
-    clearTimeout(firstCheckTimer);
+    window.clearTimeout(firstCheckTimer);
     firstCheckTimer = null;
   }
   if (checkInterval) {
-    clearInterval(checkInterval);
+    window.clearInterval(checkInterval);
     checkInterval = null;
   }
   // P3：终止 reviewLoop 1s 轮询 + 释放单例 dataManager（插件禁用后不得继续读盘/持旧 app 引用）

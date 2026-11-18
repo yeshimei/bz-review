@@ -578,16 +578,16 @@ async function downloadWithStallGuard(
     onProgress?.(got, total);
   });
   const guard = new Promise<never>((_, reject) => {
-    const timer = setInterval(() => {
+    const timer = window.setInterval(() => {
       if (Date.now() - lastAt >= STALL_MS) {
-        clearInterval(timer);
+        window.clearInterval(timer);
         reject(new Error(`${Math.round(STALL_MS / 1000)} 秒没有收到数据（这条通道卡住了）`));
       }
     }, 5000);
     // 下载结束后停表，否则定时器空转到进程结束
     void work.then(
-      () => clearInterval(timer),
-      () => clearInterval(timer),
+      () => window.clearInterval(timer),
+      () => window.clearInterval(timer),
     );
   });
   // race 之后 work 仍在跑（fetch 没法从外部中止），泄漏一次请求换「不卡死」是划算的：

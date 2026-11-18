@@ -95,17 +95,17 @@ function defaultGunzip(bytes: Uint8Array): Uint8Array {
 const BUNDLE_FETCH_TIMEOUT_MS = 180_000;
 
 async function defaultFetchBytes(url: string): Promise<Uint8Array> {
-  let timer: ReturnType<typeof setTimeout> | null = null;
+  let timer: number | null = null;
   try {
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new Error(`超时（${BUNDLE_FETCH_TIMEOUT_MS} ms 内没有下完）`)), BUNDLE_FETCH_TIMEOUT_MS);
+      timer = window.setTimeout(() => reject(new Error(`超时（${BUNDLE_FETCH_TIMEOUT_MS} ms 内没有下完）`)), BUNDLE_FETCH_TIMEOUT_MS);
     });
     const res = await Promise.race([requestUrl({ url, method: 'GET', throw: true }), timeout]);
     const ab = (res as { arrayBuffer?: ArrayBuffer }).arrayBuffer;
     if (!ab) throw new Error('响应没有二进制体');
     return new Uint8Array(ab);
   } finally {
-    if (timer) clearTimeout(timer);
+    if (timer) window.clearTimeout(timer);
   }
 }
 

@@ -19,7 +19,7 @@ export const CARD_QUIZ_FILE = 'review-quiz.json';
 
 /** 题库文件路径（与 review.json 同 storagePath 口径） */
 export function getCardQuizFilePath(): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   return storageFile(CARD_QUIZ_FILE, (s && s.storagePath) || 'CONFIG/STORAGE');
 }
 

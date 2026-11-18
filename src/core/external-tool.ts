@@ -332,7 +332,7 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
   let exitSeen = false;
   let exitCode: number | null = null;
   /** 强杀宽限定时器；终结（close / error / 强制结算）即摘，绝不悬挂（摘除收口在 settle） */
-  let forceTimer: ReturnType<typeof setTimeout> | null = null;
+  let forceTimer: number | null = null;
 
   let resolveDone!: (o: ExternalToolOutcome) => void;
   const done = new Promise<ExternalToolOutcome>((r) => {
@@ -343,7 +343,7 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
     settled = true;
     // 任何终结都意味着不再需要强杀（进程自然退干净，或已按 stopped 强制结算）
     if (forceTimer !== null) {
-      clearTimeout(forceTimer);
+      window.clearTimeout(forceTimer);
       forceTimer = null;
     }
     resolveDone(o);
@@ -519,7 +519,7 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
     }
     // 3 秒宽限：到点没退干净才升级。pid 拿不到（测试假件/异常形态）就没有可杀对象，不排程
     if (typeof pid === 'number' && pid > 0) {
-      forceTimer = setTimeout(escalateForceKill, FORCE_KILL_GRACE_MS);
+      forceTimer = window.setTimeout(escalateForceKill, FORCE_KILL_GRACE_MS);
     }
   };
 

@@ -88,7 +88,7 @@ export class QuizMasterUI {
   /** ticket 141：做题键盘快捷键句柄（1-4/A-D 选择、Enter 提交/下一题；ESC 走 escManager） */
   private _keyHandler: ((e: KeyboardEvent) => void) | null = null;
   /** ticket 156：答对自动跳题延时句柄（亮绿 0.8s 再进下一题） */
-  private _jumpTimer: ReturnType<typeof setTimeout> | null = null;
+  private _jumpTimer: number | null = null;
   /** U5/C7：题面 ESC 层句柄（renderModal 注册、_teardownModal 显式注销——消 N 题层累积） */
   private _escHandle: { unregister: () => void } | null = null;
   /** U1：放弃确认框在途旗标——打开置位、settle 复位；_keyHandler/finishQuiz 首行拦截，
@@ -345,7 +345,7 @@ export class QuizMasterUI {
   /** ticket 156：清除答对自动跳题延时（换题/结算/强制关闭时防迟到渲染） */
   private _clearJumpTimer(): void {
     if (this._jumpTimer) {
-      clearTimeout(this._jumpTimer);
+      window.clearTimeout(this._jumpTimer);
       this._jumpTimer = null;
     }
   }
@@ -482,7 +482,7 @@ export class QuizMasterUI {
           return;
         }
         this._clearJumpTimer();
-        this._jumpTimer = setTimeout(() => {
+        this._jumpTimer = window.setTimeout(() => {
           this._jumpTimer = null;
           if (!this._sessionActive) return;
           this.showQuestion();

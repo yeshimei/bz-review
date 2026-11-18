@@ -45,7 +45,7 @@ export { DEFAULT_STORAGE_DIR, initialStorageDir, normalizeStorageDir };
 
 /** 共享数据目录（settings.storagePath 经 normalizeStorageDir 归一，全域单一口径） */
 export function storageDir(): string {
-  const s = tryGetSettings() as any;
+  const s = tryGetSettings();
   return normalizeStorageDir(s && s.storagePath);
 }
 

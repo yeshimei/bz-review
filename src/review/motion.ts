@@ -62,9 +62,9 @@ function tween(dur: number, step: (v: number) => void, ease: (t: number) => numb
 }
 
 /** 延时调度（带面板级取消，防视图重建后旧编排迟到落点） */
-const timers = new Set<ReturnType<typeof setTimeout>>();
+const timers = new Set<number>();
 function after(ms: number, fn: () => void): void {
-  const id = setTimeout(() => { timers.delete(id); fn(); }, ms);
+  const id = window.setTimeout(() => { timers.delete(id); fn(); }, ms);
   timers.add(id);
 }
 function cancelPending(): void {

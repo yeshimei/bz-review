@@ -340,16 +340,16 @@ export async function askJev(
   // （与 core/http.ts 既有取舍一致：不假装能取消连接，只保证调用方不被阻塞）
   const resp: any = await new Promise<any>((resolve, reject) => {
     let settled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
+    let timer: number | null = null;
     const onAbort = () => settle(() => reject(abortError()));
     function settle(fn: () => void): void {
       if (settled) return;
       settled = true;
-      if (timer !== null) clearTimeout(timer);
+      if (timer !== null) window.clearTimeout(timer);
       signal?.removeEventListener('abort', onAbort);
       fn();
     }
-    timer = setTimeout(() => settle(() => reject(timeoutError(cfg.timeoutMs))), cfg.timeoutMs);
+    timer = window.setTimeout(() => settle(() => reject(timeoutError(cfg.timeoutMs))), cfg.timeoutMs);
     signal?.addEventListener('abort', onAbort);
     requestUrl({
       url: cfg.endpoint,

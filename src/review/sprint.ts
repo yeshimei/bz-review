@@ -107,7 +107,7 @@ export class SprintSession {
   private entries: SprintEntry[] = [];
   private cur = 0;
   private q: QuestionUi | null = null;
-  private jumpTimer: ReturnType<typeof setTimeout> | null = null;
+  private jumpTimer: number | null = null;
   private escHandle: { unregister: () => void } | null = null;
   /** item 2：document keydown 句柄（finish 注销） */
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
@@ -213,7 +213,7 @@ export class SprintSession {
 
   private clearJump(): void {
     if (this.jumpTimer) {
-      clearTimeout(this.jumpTimer);
+      window.clearTimeout(this.jumpTimer);
       this.jumpTimer = null;
     }
   }
@@ -463,7 +463,7 @@ export class SprintSession {
         if (this.finished) return;
         this.clearJump();
         if (hasExplain) return;
-        this.jumpTimer = setTimeout(() => {
+        this.jumpTimer = window.setTimeout(() => {
           this.jumpTimer = null;
           if (this.finished) return;
           this.advanceAfterAnswer();
