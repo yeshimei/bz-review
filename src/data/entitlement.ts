@@ -1,11 +1,14 @@
 /**
- * 授权状态与两类数量限制（src/data/entitlement.ts）
+ * 授权状态、数量限制与高级档能力位（src/data/entitlement.ts）
  *
  * 与 bz / bz Reader / 归物本同构：一个完整包，运行期由激活码决定「高级版」是否解锁。
- * 唯一的差别在门控口径——**只锁数量，不锁功能**：
- *   基础版：复习笔记 20 篇 + 划线卡 50 条（两类分别计数）
- *   高级版：两类都不限
- * 提醒、评级、统计、记忆分析、做题家、AI 抽认卡、划线卡三种复习方式——两边完全一致。
+ *
+ * 门控口径从 1.0 的「只锁数量」升级为**双门槛**：
+ *   数量：基础版复习笔记 20 篇 + 划线卡 50 条（两类分别计数），高级版都不限；
+ *   能力：听卡片、跳回原文高亮、按书报告导出、卡片管理器四项为高级档权益。
+ *
+ * 原来的提醒、评级、排期、统计、记忆分析、五种复习方式仍然两边完全一致——
+ * 能力位只锁新增的、有明确付费证据且零持续成本的入口，不碰基础体验。
  */
 import { parseLicense, verifyLicense } from './license';
 
@@ -123,18 +126,54 @@ export function quotaBlock(
   };
 }
 
+/**
+ * 高级档能力位。名字只用于运行期门控，界面文案走 CAPABILITY_LABELS，
+ * 不在这里塞中文句子，免得各入口写法不一致。
+ */
+export type ProCapability = 'speech' | 'sourceLink' | 'bookReport' | 'cardManager';
+
+/** 唯一权威：新增能力必须先登记在这里，否则 canUseCapability 一律不放行 */
+export const PRO_CAPABILITIES: readonly ProCapability[] = [
+  'speech',
+  'sourceLink',
+  'bookReport',
+  'cardManager',
+] as const;
+
+export const CAPABILITY_LABELS: Record<ProCapability, string> = {
+  speech: '听卡片',
+  sourceLink: '跳回原文',
+  bookReport: '按书报告',
+  cardManager: '卡片管理器',
+};
+
+/** 未登记的能力名一律视为不可用，防止调用方拼错字符串后误放行 */
+export function canUseCapability(cap: ProCapability): boolean {
+  return isPaid() && PRO_CAPABILITIES.includes(cap);
+}
+
+/** 入口拦截时给一句能直接弹给人的话；文案不谈删除，避免用户误以为超限没收数据 */
+export function capabilityBlock(cap: ProCapability): { ok: boolean; message: string } {
+  if (canUseCapability(cap)) return { ok: true, message: '' };
+  const label = CAPABILITY_LABELS[cap] ?? '该功能';
+  return {
+    ok: false,
+    message: `「${label}」是高级版权益，激活后即可使用。已有数据不会被删。`,
+  };
+}
+
 /** 设置页的授权状态行 */
 export function licenseSummary(): string {
   if (!state.paid) {
     const parsed = cachedCode ? parseLicense(cachedCode) : null;
     if (parsed?.payload?.exp && Date.now() > parsed.payload.exp) {
-      return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线。当前激活码已过期。`;
+      return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，四项高级功能未解锁。当前激活码已过期。`;
     }
-    return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线。填激活码解锁不限数量。`;
+    return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，四项高级功能未解锁。填激活码解锁。`;
   }
   const who = state.name ? `（${state.name}）` : '';
   const until = state.exp ? `有效期到 ${new Date(state.exp).toLocaleDateString()}` : '永久有效';
-  return `高级版已激活${who}：${until}，数量不限。`;
+  return `高级版已激活${who}：${until}，数量不限、四项高级功能可用。`;
 }
 
 /**

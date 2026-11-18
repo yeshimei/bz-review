@@ -10,7 +10,9 @@
  */
 import { emptyHtmlStr, esc, iconSpan, stripTitleMarks } from '../core/ui/str';
 import type { ReviewItem } from './data';
-import type { ItemFilter } from './deck';
+import { applyFilter, deckOf, type ItemFilter } from './deck';
+import { isBuried, isHiddenFromQueue } from './card-manager';
+import type { BookSummary } from './book-summary';
 import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
 import { partitionQueue, etaTextOf, isEarlyDue, isDueToday } from './queue';
 import { compareReviewLoad, computeStats, RATING_NAMES } from './stats';
@@ -152,6 +154,7 @@ const STATUS_OPTS: ReadonlyArray<readonly [string, string]> = [
   ['overdue', '只看逾期'],
   ['today', '只看今天'],
   ['future', '只看未来'],
+  ['hidden', '只看隐藏'],
 ];
 
 function optsHtml(opts: ReadonlyArray<readonly [string, string]>, cur: string): string {
@@ -383,6 +386,137 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
     : '';
 
   return `<div class="bzrv-q-view">${head}${filterPanel}${filterBar}${batchBar}${strip}${body}${footer}</div>`;
+}
+
+// ==================== 按书档案视图（高级档 bookReport） ====================
+
+/** 百分比：算不出给破折号，不拿 0 冒充 */
+function bookPct(v: number | null): string {
+  return v == null ? '—' : `${Math.round(v * 100)}%`;
+}
+
+export interface BooksViewCtx {
+  now?: number;
+}
+
+/**
+ * 按书 / 按章节档案。分组与指标全部来自 book-summary 的纯结果，这里只负责 markup。
+ * 中文书名排序统一走 Intl.Collator('zh-CN')；空库给一句人话，不渲染一张只有表头的空表。
+ */
+export function booksViewHtml(summaries: readonly BookSummary[], ctx: BooksViewCtx = {}): string {
+  const day = new Date(ctx.now ?? Date.now()).toISOString().slice(0, 10);
+  if (!summaries.length) {
+    return `<div class="bzrv-book-view"><div class="bzrv-book-empty">还没有复习数据：加一篇笔记或一条划线，这里就会按书汇总。</div></div>`;
+  }
+  const collator = new Intl.Collator('zh-CN');
+  const sorted = summaries.slice().sort(
+    (a, b) =>
+      (a.kind === b.kind ? 0 : a.kind === 'book' ? -1 : 1) ||
+      collator.compare(a.book, b.book) ||
+      b.active - a.active
+  );
+  const groups = sorted
+    .map((s) => {
+      const unit = s.kind === 'book' ? '张卡' : '篇笔记';
+      const weak = s.weak.length ? s.weak.map((e) => `${esc(e.name)}（${bookPct(e.r)}）`).join('、') : '—';
+      const strong = s.strong.length ? s.strong.map((e) => `${esc(e.name)}（${bookPct(e.r)}）`).join('、') : '—';
+      const chapter = s.kind === 'book' ? `<span class="bzrv-book-stat">章节 <b>${s.chapters}</b></span>` : '';
+      return `<div class="bzrv-book-group" data-book="${esc(s.book)}">
+        <div class="bzrv-book-title"><span class="bzrv-book-name">${esc(s.book)}</span><span class="bzrv-book-kind">${s.kind === 'book' ? '书' : '笔记'}</span></div>
+        <div class="bzrv-book-stats">
+          <span class="bzrv-book-stat"><b>${s.total}</b> ${unit}</span>
+          ${chapter}
+          <span class="bzrv-book-stat">在复习 <b>${s.active}</b></span>
+          <span class="bzrv-book-stat">已完成 <b>${s.done}</b></span>
+          <span class="bzrv-book-stat">平均留存率 <b>${bookPct(s.avgR)}</b></span>
+          <span class="bzrv-book-stat">忘了率 <b>${bookPct(s.againRate)}</b></span>
+          <span class="bzrv-book-stat">评级 <b>${s.reviews}</b> 次</span>
+          <span class="bzrv-book-stat">逾期 <b>${s.overdue}</b></span>
+        </div>
+        <div class="bzrv-book-mem">
+          <span class="bzrv-book-weak">最容易忘：${weak}</span>
+          <span class="bzrv-book-strong">记得最牢：${strong}</span>
+        </div>
+      </div>`;
+    })
+    .join('');
+  return `<div class="bzrv-book-view">
+    <div class="bzrv-book-head">共 ${sorted.length} 组 · 截至 ${day} · 划线卡按书名、笔记按文件夹整理</div>
+    <div class="bzrv-book-list">${groups}</div>
+  </div>`;
+}
+
+// ==================== 卡片管理器视图（高级档 cardManager） ====================
+
+export interface ManagerViewCtx {
+  now?: number;
+  filter?: ItemFilter;
+  /** 可选书 / 文件夹（由调用方 collectFacets 算好） */
+  decks?: readonly string[];
+}
+
+/**
+ * 卡片管理器：全部卡片与笔记 + 搜索框 + 按书/类型/状态筛选 + 每行五个动作。
+ * 图标按钮一律用 .bzrv-sr-only 藏可读名字，不挂 aria-label / title（禁止悬停气泡）。
+ * 状态变更的纯判定复用 card-manager，筛选复用 deck.applyFilter，避免口径分叉。
+ */
+export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCtx = {}): string {
+  const now = ctx.now ?? Date.now();
+  const f: ItemFilter = ctx.filter ?? {};
+  const shown = applyFilter(items, f);
+  const deckOpts = [
+    `<option value="">全部书 / 文件夹</option>`,
+    ...(ctx.decks ?? [])
+      .slice(0, 60)
+      .map((d) => `<option value="${esc(d)}"${f.deck === d ? ' selected' : ''}>${esc(d)}</option>`),
+  ].join('');
+  const bar = `<div class="bzrv-mgr-bar">
+      <input class="bzrv-input bzrv-mgr-q" data-fld="mgr-q" value="${esc(String(f.query ?? ''))}" placeholder="搜索：标题 / 书名 / 原文" />
+      <select class="bzrv-input" data-fld="mgr-kind">${optsHtml(KIND_OPTS, String(f.kind ?? 'all'))}</select>
+      <select class="bzrv-input" data-fld="mgr-deck">${deckOpts}</select>
+      <select class="bzrv-input" data-fld="mgr-status">${optsHtml(STATUS_OPTS, String(f.status ?? 'all'))}</select>
+    </div>`;
+  const hint = `<div class="bzrv-mgr-hint">挂起 / 埋藏只影响进不进本轮，排期不变；移出后进回收站，可以撤销。</div>`;
+  if (!items.length) {
+    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">还没有卡片或笔记，先加入复习条目再来管理。</div></div>`;
+  }
+  if (!shown.length) {
+    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">没有符合筛选的条目，换个条件试试。</div></div>`;
+  }
+  const rows = shown
+    .map((it) => {
+      const buried = isBuried(it, { now });
+      const hidden = isHiddenFromQueue(it, { now });
+      const state = it.suspended
+        ? '已挂起'
+        : buried
+          ? `埋藏至 ${new Date(String(it.buriedUntil)).toLocaleDateString('zh-CN')}`
+          : it.completed || it.isCompleted
+            ? '已完成'
+            : it.isMissing
+              ? '文件缺失'
+              : dueLabelOf(it, now).label;
+      const stateCls = it.suspended ? 'is-suspended' : buried ? 'is-buried' : hidden ? 'is-hidden' : '';
+      const name = esc(it.name || String(it.card?.text ?? '').slice(0, 24) || it.filePath);
+      const kind = it.kind === 'card' ? '划线' : '笔记';
+      return `<div class="bzrv-mgr-row" data-path="${esc(it.filePath)}" data-id="${esc(it.id)}">
+        <div class="bzrv-mgr-main">
+          <span class="bzrv-mgr-name">${name}</span>
+          <span class="bzrv-mgr-kind">${kind}</span>
+          <span class="bzrv-mgr-where">${esc(deckOf(it))}</span>
+          <span class="bzrv-mgr-state ${stateCls}">${state}</span>
+        </div>
+        <div class="bzrv-mgr-ops">
+          <button class="bzrv-icon-btn" data-act="mgr-suspend"><span class="bzrv-sr-only">挂起</span>${iconSpan('pause', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="mgr-bury"><span class="bzrv-sr-only">埋藏一天</span>${iconSpan('hourglass', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="mgr-restore"><span class="bzrv-sr-only">恢复</span>${iconSpan('rotate-ccw', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="mgr-schedule"><span class="bzrv-sr-only">手动排期</span>${iconSpan('calendar-days', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="mgr-delete"><span class="bzrv-sr-only">移出复习计划</span>${iconSpan('trash-2', 'bzrv-q-ic')}</button>
+        </div>
+      </div>`;
+    })
+    .join('');
+  return `<div class="bzrv-mgr-view">${bar}${hint}<div class="bzrv-mgr-list">${rows}</div></div>`;
 }
 
 // ==================== 回收站视图 ====================

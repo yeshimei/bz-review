@@ -8,6 +8,7 @@ import type { App } from 'obsidian';
 import type { ReviewItem } from './data';
 import { computeStats } from './stats';
 import { cardsToMarkdown, statsToCsv } from './report';
+import { bookReportMarkdown, bookSummariesOf } from './book-summary';
 import { exportDir } from './backup-io';
 import { reviewApp } from './app';
 
@@ -40,5 +41,24 @@ export async function exportCardsMarkdown(app: App, items: readonly ReviewItem[]
   await ensureDir(app, dir);
   const path = `${dir}/划线卡.md`;
   await app.vault.adapter.write(path, cardsToMarkdown(items));
+  return path;
+}
+
+/**
+ * 按书档案导出 Markdown（高级档 bookReport）。
+ * 内容直接取 bookReportMarkdown，落盘复用 exportDir/ensureDir；空库不写只有表头的文件，
+ * 返回空串让命令层给空态提示。
+ */
+export async function exportBookReportMarkdown(
+  app: App,
+  items: readonly ReviewItem[],
+  opts?: { now?: number | Date }
+): Promise<string> {
+  const summaries = bookSummariesOf(items, opts);
+  if (!summaries.length) return '';
+  const dir = exportDir();
+  await ensureDir(app, dir);
+  const path = `${dir}/review-book-report-${stamp(new Date())}.md`;
+  await app.vault.adapter.write(path, bookReportMarkdown(summaries, opts));
   return path;
 }

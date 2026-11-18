@@ -43,6 +43,7 @@ import { ReviewDataManager } from './data';
 import {
   queueViewHtml, sprintHeadHtml, sprintLoadingHtml, sprintQuestionHtml, sprintBodyHtml,
   sprintResultHtml, sprintSummaryHtml, reviewBarHtml, trashViewHtml,
+  booksViewHtml, managerViewHtml,
   isPlayable as isPlayableRender,
 } from './render';
 import { loadTrash } from './trash-store';
@@ -54,7 +55,10 @@ import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
 import { ratingForKey } from './keys';
 import { openCardEditor } from './card-edit';
 import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
-import { removeNote as planRemoveNote } from './plan-ops';
+import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './plan-ops';
+import { canUseCapability, capabilityBlock } from '../data/entitlement';
+import { bookSummariesOf } from './book-summary';
+import { setSuspended, buryItem, unsuspendAndUnbury, hiddenNotice } from './card-manager';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
 import { CardSession } from './card-session';
@@ -134,7 +138,11 @@ export class UIManager {
   /** 面板内置页（批 8）：数据 / 设置；null = 队列主列表 */
   /* 内置页（批 8 起）：数据 / 设置 / 已完成。三页共用同一个内容区与「返回」头行，
      不再各开一套弹窗（用户 2026-11-15 口径：全部内置到面板，入口在右上角）。 */
-  private page: 'stats' | 'settings' | 'arch' | null = null;
+  private page: 'stats' | 'settings' | 'arch' | 'books' | 'manager' | null = null;
+  /** 卡片管理器自己的筛选（与队列筛选互不干扰） */
+  private mgrFilter: ItemFilter = {};
+  /** 管理器搜索框重绘后要把光标放回去 */
+  private mgrKeepFocus = false;
   /** 批量选择模式 */
   private selectMode = false;
   /** 已选条目（filePath） */
@@ -468,7 +476,15 @@ export class UIManager {
   }
   /** 内置页（批 8）：数据 / 设置 / 已完成——同一个内容区，头行换成「返回 + 标题」 */
   private renderPage(container: HTMLElement, items: ReviewItem[]): void {
-    const title = this.page === 'stats' ? '数据' : this.page === 'arch' ? '已完成' : '设置';
+    const title = this.page === 'stats'
+      ? '数据'
+      : this.page === 'arch'
+        ? '已完成'
+        : this.page === 'books'
+          ? '按书档案'
+          : this.page === 'manager'
+            ? '卡片管理器'
+            : '设置';
     container.innerHTML = `<div class="bzrv-q-view bzrv-page">
       <div class="bzrv-panel-head">
         <button class="bzrv-icon-btn" data-act="page-back"><span class="bzrv-sr-only">返回复习计划</span>←</button>
@@ -490,6 +506,14 @@ export class UIManager {
   private async fillPage(body: HTMLElement, items: ReviewItem[]): Promise<void> {
     if (this.page === 'arch') {
       this.fillArchPage(body, items);
+      return;
+    }
+    if (this.page === 'books') {
+      this.fillBooksPage(body, items);
+      return;
+    }
+    if (this.page === 'manager') {
+      this.fillManagerPage(body, items);
       return;
     }
     if (this.page === 'settings') {
@@ -545,7 +569,218 @@ export class UIManager {
       })();
     });
     row.appendChild(btn);
+    /* 数据页顺带放两个高级档入口：可用就进页，不可用给解锁按钮并弹能力位文案。
+       门控只锁入口与内容，基础版的统计 / 负荷 / 分析一切照旧。 */
+    const bookCap = canUseCapability('bookReport');
+    const bookBtn = document.createElement('button');
+    bookBtn.className = 'bzrv-btn';
+    bookBtn.textContent = bookCap ? '按书档案' : '解锁按书报告';
+    bookBtn.addEventListener('click', () => {
+      if (!bookCap) {
+        notice(capabilityBlock('bookReport').message, 'warning');
+        return;
+      }
+      this.page = 'books';
+      void this.refreshPanel();
+    });
+    row.appendChild(bookBtn);
+    const mgrCap = canUseCapability('cardManager');
+    const mgrBtn = document.createElement('button');
+    mgrBtn.className = 'bzrv-btn';
+    mgrBtn.textContent = mgrCap ? '卡片管理器' : '解锁卡片管理器';
+    mgrBtn.addEventListener('click', () => {
+      if (!mgrCap) {
+        notice(capabilityBlock('cardManager').message, 'warning');
+        return;
+      }
+      this.page = 'manager';
+      void this.refreshPanel();
+    });
+    row.appendChild(mgrBtn);
     holder.appendChild(row);
+  }
+
+  /** 「按书档案」内置页（高级档 bookReport）：分组列表 + 一键导出 Markdown。 */
+  private fillBooksPage(body: HTMLElement, items: ReviewItem[]): void {
+    const wrap = document.createElement('div');
+    wrap.className = 'bzrv-book-page';
+    if (!canUseCapability('bookReport')) {
+      const btn = document.createElement('button');
+      btn.className = 'bzrv-btn bzrv-btn--primary';
+      btn.textContent = '解锁按书报告';
+      btn.addEventListener('click', () => notice(capabilityBlock('bookReport').message, 'warning'));
+      wrap.appendChild(btn);
+      body.appendChild(wrap);
+      return;
+    }
+    wrap.innerHTML = booksViewHtml(bookSummariesOf(items));
+    const row = document.createElement('div');
+    row.className = 'bzrv-btn-row';
+    const exp = document.createElement('button');
+    exp.className = 'bzrv-btn';
+    exp.textContent = '导出按书报告（Markdown）';
+    exp.addEventListener('click', () => void this.exportBookReport(items));
+    row.appendChild(exp);
+    wrap.appendChild(row);
+    body.appendChild(wrap);
+  }
+
+  /** 从面板里导出按书报告；空库给空态文案，不弹「导出成功」骗人。 */
+  private async exportBookReport(items: ReviewItem[]): Promise<void> {
+    try {
+      const { exportBookReportMarkdown } = await import('./export-actions');
+      const path = await exportBookReportMarkdown(this.app, items);
+      notice(path ? `按书报告已导出：${path}` : '还没有复习数据，没有可导出的按书报告。', path ? 'success' : 'warning');
+    } catch (e) {
+      notifySaveError(e, '导出按书报告');
+    }
+  }
+
+  /** 「卡片管理器」内置页（高级档 cardManager）：全部条目的挂起 / 埋藏 / 恢复 / 排期 / 移出。 */
+  private fillManagerPage(body: HTMLElement, items: ReviewItem[]): void {
+    const wrap = document.createElement('div');
+    wrap.className = 'bzrv-mgr-page';
+    if (!canUseCapability('cardManager')) {
+      const btn = document.createElement('button');
+      btn.className = 'bzrv-btn bzrv-btn--primary';
+      btn.textContent = '解锁卡片管理器';
+      btn.addEventListener('click', () => notice(capabilityBlock('cardManager').message, 'warning'));
+      wrap.appendChild(btn);
+      body.appendChild(wrap);
+      return;
+    }
+    wrap.innerHTML = managerViewHtml(items, {
+      filter: this.mgrFilter,
+      decks: collectFacets(items).decks,
+    });
+    body.appendChild(wrap);
+    /* 五颗操作按钮是 <i data-lucide> 占位，不 mountIcons 就是五个空白方框——
+       面板其它内置页都在渲染后兑现，这里漏了，真机第一眼看不到任何按钮。 */
+    mountIcons(wrap);
+    if (this.mgrKeepFocus) {
+      const q = wrap.querySelector<HTMLInputElement>('[data-fld="mgr-q"]');
+      if (q) {
+        q.focus();
+        q.setSelectionRange(q.value.length, q.value.length);
+      }
+      this.mgrKeepFocus = false;
+    }
+    this.bindManagerEvents(wrap, items);
+  }
+
+  /** 管理器事件：搜索防抖 + 三个筛选下拉 + 每行五个动作。 */
+  private bindManagerEvents(root: HTMLElement, items: ReviewItem[]): void {
+    const rerender = (): void => {
+      void this.refreshPanel();
+    };
+    const q = root.querySelector<HTMLInputElement>('[data-fld="mgr-q"]');
+    q?.addEventListener('input', () => {
+      this.mgrFilter.query = q.value;
+      this.mgrKeepFocus = true;
+      if (this.filterTimer) clearTimeout(this.filterTimer);
+      this.filterTimer = setTimeout(() => {
+        this.filterTimer = null;
+        rerender();
+      }, 200);
+    });
+    for (const [fld, key] of [
+      ['mgr-kind', 'kind'],
+      ['mgr-deck', 'deck'],
+      ['mgr-status', 'status'],
+    ] as const) {
+      root.querySelector<HTMLSelectElement>(`[data-fld="${fld}"]`)?.addEventListener('change', (e) => {
+        (this.mgrFilter as any)[key] = (e.target as HTMLSelectElement).value;
+        rerender();
+      });
+    }
+    const applyHidden = async (it: ReviewItem, kind: 'suspend' | 'bury' | 'restore'): Promise<void> => {
+      if (!this.dataManager) return;
+      const next =
+        kind === 'suspend'
+          ? setSuspended(it, true)
+          : kind === 'bury'
+            ? buryItem(it, 1)
+            : unsuspendAndUnbury(it);
+      try {
+        await this.dataManager.updateItem(it.filePath, (d) => {
+          /* 先清两个标记，再按纯函数结果写回；恢复时 next 没这两个字段，正好清干净 */
+          delete (d as any).suspended;
+          delete (d as any).buriedUntil;
+          if ((next as any).suspended) (d as any).suspended = true;
+          if ((next as any).buriedUntil) (d as any).buriedUntil = (next as any).buriedUntil;
+        });
+        notice(
+          kind === 'restore' ? '已恢复：这条回到本轮队列，排期没有变。' : hiddenNotice(kind === 'suspend' ? 'suspended' : 'buried'),
+          'success'
+        );
+        await this.refreshPanel();
+      } catch (e) {
+        notifySaveError(e, kind === 'restore' ? '恢复条目' : '更新条目状态');
+      }
+    };
+    const remove = async (it: ReviewItem): Promise<void> => {
+      if (!this.dataManager) return;
+      try {
+        /* 卡片走 plan-ops.removeCard（连题库一起清），笔记走 removeNote；两者都进回收站 */
+        if (it.kind === 'card') await planRemoveCard(this.dataManager, it.filePath);
+        else await planRemoveNote(this.dataManager, it.filePath);
+        await this.refreshPanel();
+        notifyUndo(`已移出「${it.name}」`, () => {
+          void (async () => {
+            try {
+              await this.dataManager!.restoreItem(it);
+              await this.refreshPanel();
+            } catch (e) {
+              notifySaveError(e, '恢复复习条目');
+            }
+          })();
+        });
+      } catch (e) {
+        notifySaveError(e, '移出复习条目');
+      }
+    };
+    const schedule = async (it: ReviewItem): Promise<void> => {
+      if (!this.dataManager) return;
+      try {
+        const { openFlowDialog } = await import('../core/flow-dialog');
+        const choice = await openFlowDialog({
+          title: '手动排期',
+          message: `给「${it.name}」安排下次复习：可以指定具体日期，或整体顺延 7 天。`,
+          actions: [
+            { label: '指定日期', value: 'date', cta: true },
+            { label: '顺延 7 天', value: 'postpone' },
+            { label: '取消', value: 'cancel' },
+          ],
+        });
+        if (choice === 'postpone') {
+          const n = await this.dataManager.postponeItems([it.filePath], 7);
+          notice(n ? '已顺延 7 天' : '没找到这条', n ? 'success' : 'warning');
+        } else if (choice === 'date') {
+          const fallback = it.nextReviewDate ? new Date(it.nextReviewDate).toISOString().slice(0, 10) : '';
+          const raw = window.prompt('下次复习日期（YYYY-MM-DD）：', fallback);
+          if (!raw) return;
+          const t = Date.parse(raw);
+          if (!Number.isFinite(t)) {
+            notice('日期看不懂，请用 YYYY-MM-DD 这种写法', 'warning');
+            return;
+          }
+          const ok = await this.dataManager.setNextReview(it.filePath, new Date(t).toISOString());
+          notice(ok ? '已改期' : '没找到这条', ok ? 'success' : 'warning');
+        }
+        if (choice === 'date' || choice === 'postpone') await this.refreshPanel();
+      } catch (e) {
+        notifySaveError(e, '手动排期');
+      }
+    };
+    root.querySelectorAll<HTMLElement>('.bzrv-mgr-row[data-path]').forEach((row) => {
+      const it = items.find((x) => x.filePath === row.dataset.path || x.id === row.dataset.id);
+      if (!it) return;
+      row.querySelector<HTMLElement>('[data-act="mgr-suspend"]')?.addEventListener('click', () => void applyHidden(it, 'suspend'));
+      row.querySelector<HTMLElement>('[data-act="mgr-bury"]')?.addEventListener('click', () => void applyHidden(it, 'bury'));
+      row.querySelector<HTMLElement>('[data-act="mgr-restore"]')?.addEventListener('click', () => void applyHidden(it, 'restore'));
+      row.querySelector<HTMLElement>('[data-act="mgr-schedule"]')?.addEventListener('click', () => void schedule(it));
+      row.querySelector<HTMLElement>('[data-act="mgr-delete"]')?.addEventListener('click', () => void remove(it));
+    });
   }
 
   /**
@@ -810,6 +1045,20 @@ export class UIManager {
   /** 打开「已完成」内置页 */
   async openArchive(): Promise<void> {
     this.page = 'arch';
+    this.showMain();
+    await this.refreshPanel();
+  }
+
+  /** 打开「按书档案」内置页（review-book-report 命令走这里） */
+  async openBooks(): Promise<void> {
+    this.page = 'books';
+    this.showMain();
+    await this.refreshPanel();
+  }
+
+  /** 打开「卡片管理器」内置页（review-card-manager 命令走这里） */
+  async openManager(): Promise<void> {
+    this.page = 'manager';
     this.showMain();
     await this.refreshPanel();
   }

@@ -175,3 +175,13 @@ describe('三路合并（带基准）', () => {
     expect(r.items).toHaveLength(2);
   });
 });
+
+describe('卡片管理器字段的持久化', () => {
+  it('suspended / buriedUntil 不在运行时字段表里，serializeReviewItems 原样写盘', () => {
+    const it = { ...A, suspended: true, buriedUntil: '2099-01-01T00:00:00.000Z', isOverdue: true };
+    const out = serializeReviewItems([it])[0];
+    expect(out.suspended).toBe(true);
+    expect(out.buriedUntil).toBe('2099-01-01T00:00:00.000Z');
+    expect(out.isOverdue).toBeUndefined();
+  });
+});

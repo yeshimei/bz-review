@@ -115,6 +115,10 @@ export interface ReviewItem {
   pendingRedo?: boolean;
   /** 置顶/星标（ADR-0077：先于逾期队列排序、仅列表置顶、与 R 优先级互斥） */
   pinned?: boolean;
+  /** 挂起：不进本轮复习队列，排期字段一律不动（卡片管理器，高级档） */
+  suspended?: boolean;
+  /** 埋藏到此刻（ISO）；到期自动回队列，坏日期当没埋（卡片管理器，高级档） */
+  buriedUntil?: string;
   /** 运行时：文件在 vault 中不存在（挂起记录，列表删除线展示）；卡片类永远 false */
   isMissing?: boolean;
   // 兼容旧字段（读取时映射）

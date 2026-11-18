@@ -2,7 +2,7 @@
  * 设置模型（src/settings.ts）
  *
  * 从 bz 拆出来时只留复习真正会读的字段：复习节奏 / 划线卡 / 做题家 / 提醒 /
- * 记忆拟合 / 面板尺寸，加上 AI 与激活码。
+ * 记忆拟合 / 面板尺寸，加上 AI、朗读（本地 TTS）与激活码。
  *
  * `core/settings-provider.ts` 的 `panelSizePersist` 会拿 `keyof BzSettings` 做
  * 编译期约束，所以字段名必须与 bz 那份逐字一致——改了会让面板尺寸记忆静默失效。
@@ -124,6 +124,18 @@ export default interface BzSettings {
   aiModelOverrides: Record<string, string>;
   aiMaxTokensOverrides: Record<string, number>;
   aiThinkingOverrides: Record<string, string>;
+
+  // ===== 朗读（听卡片用的本地 TTS）=====
+  /** 本地 TTS 服务地址（如 http://127.0.0.1:5000）；留空则不能朗读 */
+  ttsUrl: string;
+  /** 服务端音色名；留空用服务端默认 */
+  ttsVoice: string;
+  /** 音频格式 */
+  ttsFormat: string;
+  /** 服务端模型名；留空用服务端默认 */
+  ttsModel: string;
+  /** 可选的服务鉴权密钥 */
+  ttsApiKey: string;
 }
 
 export const DEFAULT_SETTINGS: BzSettings = {
@@ -181,4 +193,10 @@ export const DEFAULT_SETTINGS: BzSettings = {
   aiModelOverrides: {},
   aiMaxTokensOverrides: {},
   aiThinkingOverrides: {},
+
+  ttsUrl: '',
+  ttsVoice: '',
+  ttsFormat: 'mp3',
+  ttsModel: '',
+  ttsApiKey: '',
 };

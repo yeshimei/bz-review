@@ -20,6 +20,7 @@ import type { Rating } from './fsrs';
 import { setReviewPlanApi } from './reader-api';
 import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
 import { tryGetSettings } from '../core/settings-provider';
+import { canUseCapability, capabilityBlock } from '../data/entitlement';
 import { cardModeOf, defaultCardMethod, ensureCardContent, modeOfCard, queueCardPreparation, safeMakeAI, type CardMode, type CardPrepareContext } from './card-ai';
 import { pickCardMethod } from './card-flow';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
@@ -293,6 +294,26 @@ export async function openReviewReport(app: App): Promise<void> {
   ensureReview(app);
   const { showStatsModal } = await import('./stats-ui');
   await showStatsModal(app, dataManager!);
+}
+
+/** 按书档案（review-book-report）：高级档入口，未解锁弹能力位文案，不偷开页面。 */
+export async function openReviewBooks(app: App): Promise<void> {
+  ensureReview(app);
+  if (!canUseCapability('bookReport')) {
+    notice(capabilityBlock('bookReport').message, 'warning');
+    return;
+  }
+  await uiManager!.openBooks();
+}
+
+/** 卡片管理器（review-card-manager）：高级档入口，未解锁弹能力位文案。 */
+export async function openReviewCardManager(app: App): Promise<void> {
+  ensureReview(app);
+  if (!canUseCapability('cardManager')) {
+    notice(capabilityBlock('cardManager').message, 'warning');
+    return;
+  }
+  await uiManager!.openManager();
 }
 
 /** 记忆分析特刊（bz-review-analysis）：全屏逐幕分析层（analysis/）——

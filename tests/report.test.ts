@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { cardsToMarkdown, forecastToText, statsToCsv } from '../src/review/report';
+import { bookReportMarkdown, bookSummariesOf } from '../src/review/book-summary';
 
 const stats = {
   totalReviews: 12,
@@ -50,6 +51,29 @@ describe('划线卡导出 Markdown', () => {
     expect(md).toContain('- 想法：经典');
     expect(md).toContain('  - 问：围城的名句');
     expect(md).toContain('[回到原文]');
+  });
+});
+
+describe('按书报告导出文本', () => {
+  const NOW = new Date('2026-11-18T12:00:00.000Z');
+  const items = [
+    {
+      id: 'a', filePath: 'reader:b:1', name: 'a', kind: 'card',
+      card: { key: 'k1', bookTitle: '围城', chapterTitle: '第一章', text: '城外的人想进去' },
+      phase: 'fsrs', stability: 10, difficulty: 4,
+      lastReviewed: '2026-11-01T00:00:00.000Z',
+      reviewHistory: [{ rating: 'again' }, { rating: 'good' }],
+    },
+  ] as any[];
+
+  it('报告内容直接取 bookReportMarkdown：书名与关键指标齐全', () => {
+    const md = bookReportMarkdown(bookSummariesOf(items, { now: NOW }), { now: NOW });
+    expect(md).toContain('# 复习档案');
+    expect(md).toContain('## 围城');
+    expect(md).toContain('留存率');
+    expect(md).toContain('忘了率');
+    expect(md).toContain('1 张卡');
+    expect(md).not.toMatch(/undefined|NaN/);
   });
 });
 
