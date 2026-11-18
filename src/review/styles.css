@@ -660,36 +660,89 @@
 .bzrv-rv-sweep u { position: absolute; top: 0; bottom: 0; left: 0; width: 30%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.16), transparent); }
 .bzrv-rv-failflash { position: absolute; inset: 0; pointer-events: none; z-index: 6; background: radial-gradient(ellipse at center, transparent 40%, color-mix(in srgb, var(--bzrv-danger) 36%, transparent) 100%); }
 
-/* ==================== 划线卡复习会话（2026-11-11，src/review/card-session.ts） ====================
-   卡片内容全在排期表里，复习时不打开任何文件。三种方式（抽认卡 / 做题 / 展开全文）
-   共用这层壳；选项按钮直接复用做题家的 .quiz-option-btn（含 correct/wrong 配色），
-   所以此处只补布局与「问句 / 原文」的排版。 */
-/* flex:1 而不是 height:100%：父级 #bzrv-entries 的高度是 flex 拉伸出来的，
-   它自己的 height 属性仍是 auto，子元素的百分比高度会解析成 auto——卡片会话
-   于是只有内容那么高（实测 136px），面板再高也是下面一大片空白。 */
-.bzrv-cs { display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-md); padding: var(--bzrv-space-md) 20px calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); box-sizing: border-box; }
-.bzrv-cs-head { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
-/* 退出钮（触屏唯一出口）：矮一档、靠左，别跟「重新生成」抢注意力 */
-.bzrv-cs-exit { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
-.bzrv-cs-pos { font-variant-numeric: tabular-nums; flex: none; }
+/* ==================== 划线卡复习会话 · 双栏工作台（2026-11-18 改版） ====================
+   全屏松散的根因是内容没有宽度上限：原来 .bzrv-cs 直接 flex 撑满，题面跟着窗口
+   拉到一千多像素。现在改成「浅底舞台 + 720px 白卡 + 336px 工作栏」：窗口越宽，
+   多出来的空间越有去处，而不是把字拉长。卡片类型（五种）靠 [data-tone] 换色档，
+   切换时给一次淡入与一句提示，让「换形态」这件事被看见。
+   所有选择器仍挂在 .bzrv-cs-* 之下，作用域由 build-css 统一收进 [data-bzrv]。 */
+.bzrv-cs { position: relative; display: flex; flex-direction: column; flex: 1 1 auto; height: 100%; min-height: 0; gap: var(--bzrv-space-sm); box-sizing: border-box; }
+.bzrv-cs [data-tone="purple"] { --tone-color: #7160cf; }
+.bzrv-cs [data-tone="blue"] { --tone-color: #3c72c0; }
+.bzrv-cs [data-tone="orange"] { --tone-color: #c4552d; }
+.bzrv-cs [data-tone="green"] { --tone-color: #3f8d69; }
+.bzrv-cs [data-tone="gray"] { --tone-color: #8a8a92; }
+
+.bzrv-cs-top { flex: none; height: 44px; display: flex; align-items: center; gap: var(--bzrv-space-sm); padding: 0 20px; border-bottom: 1px solid var(--bzrv-border); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-cs-brand { font-size: var(--bzrv-font-label); font-weight: 700; color: var(--bzrv-text-1); }
 .bzrv-cs-src { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 阶段号：队列卡片有，会话里原来没有——复习到一半不知道这张在第几级 */
-.bzrv-cs-stage { flex: none; font-variant-numeric: tabular-nums; }
-.bzrv-cs-regen { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
-.bzrv-cs-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--bzrv-space-md); }
-/* 内容少时垂直居中，别把一整屏空白留在中间（移动端尤其明显）。
-   用 auto 外边距而不是 justify-content: center——后者在内容溢出时会把顶部裁掉。 */
-.bzrv-cs-body > :first-child { margin-top: auto; }
-.bzrv-cs-body > :last-child { margin-bottom: auto; }
+.bzrv-cs-stage-label { flex: none; font-variant-numeric: tabular-nums; }
+/* 退出钮（触屏唯一出口）：矮一档、靠右，别跟「重新生成」抢注意力 */
+.bzrv-cs-exit { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-tabs { flex: none; display: flex; gap: 6px; padding: 8px 20px 0; overflow-x: auto; }
+.bzrv-cs-tab { display: inline-flex; align-items: center; gap: 6px; flex: none; border: 1px solid var(--bzrv-border); background: var(--bzrv-surface-1); color: var(--bzrv-text-2); border-radius: 999px; padding: 5px 11px; font-family: inherit; font-size: var(--bzrv-font-caption); cursor: pointer; }
+.bzrv-cs-tab.is-on { border-color: var(--tone-color); color: var(--tone-color); background: color-mix(in srgb, var(--tone-color) 10%, transparent); font-weight: 600; }
+.bzrv-cs-tab b { font-variant-numeric: tabular-nums; opacity: .75; }
+
+.bzrv-cs-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 336px; }
+.bzrv-cs-stage { min-width: 0; overflow-y: auto; background: var(--bzrv-surface-1); padding: 22px 26px; display: flex; flex-direction: column; gap: 14px; }
+.bzrv-cs-card { width: 100%; max-width: 720px; margin: 0 auto; background: var(--bzrv-surface-2); border: 1px solid var(--bzrv-border); border-radius: 12px; box-shadow: var(--bzrv-shadow-lg, 0 4px 18px rgba(30, 30, 40, .06)); padding: 22px 26px; display: flex; flex-direction: column; gap: 16px; }
+.bzrv-cs-card.is-entering { animation: bzrvCsEnter .24s ease-out; }
+@keyframes bzrvCsEnter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.bzrv-cs-card-top { display: flex; align-items: center; gap: 8px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-mode { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 3px 9px; background: color-mix(in srgb, var(--tone-color) 12%, transparent); color: var(--tone-color); font-weight: 600; }
+.bzrv-cs-mode-ic { font-size: 10px; }
+.bzrv-cs-sp { flex: 1; }
+.bzrv-cs-pos { font-variant-numeric: tabular-nums; color: var(--bzrv-text-3); }
+.bzrv-cs-edit, .bzrv-cs-regen { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-cs-actions { display: flex; align-items: center; gap: 10px; }
+.bzrv-cs-foot { width: 100%; max-width: 720px; margin: 0 auto; flex: none; }
+.bzrv-cs-rate { display: flex; gap: var(--bzrv-space-sm); }
+.bzrv-cs-rate .bzrv-btn { flex: 1; min-width: 0; height: 40px; }
+.bzrv-cs-hint { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+
+.bzrv-cs-side { border-left: 1px solid var(--bzrv-border); background: var(--bzrv-surface-2); padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+.bzrv-cs-sec-t { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); letter-spacing: .04em; }
+.bzrv-cs-dist { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--bzrv-surface-3); }
+.bzrv-cs-dist i { display: block; height: 100%; background: var(--tone-color); }
+.bzrv-cs-legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); margin-bottom: 14px; }
+.bzrv-cs-legend .lg { display: inline-flex; align-items: center; gap: 4px; }
+.bzrv-cs-legend .lg i { width: 7px; height: 7px; border-radius: 2px; background: var(--tone-color); }
+.bzrv-cs-legend .lg b { color: var(--bzrv-text-1); font-variant-numeric: tabular-nums; }
+.bzrv-cs-qlist { display: flex; flex-direction: column; gap: 4px; }
+.bzrv-cs-qrow { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 1px solid var(--bzrv-border); border-radius: 7px; background: var(--bzrv-surface-1); color: var(--bzrv-text-2); padding: 7px 9px; font-family: inherit; font-size: var(--bzrv-font-caption); cursor: pointer; box-sizing: border-box; }
+.bzrv-cs-qrow.current { border-color: var(--tone-color); background: color-mix(in srgb, var(--tone-color) 10%, transparent); color: var(--bzrv-text-1); font-weight: 600; }
+.bzrv-cs-qrow.done { opacity: .5; }
+.bzrv-cs-qno { width: 17px; flex: none; color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; }
+.bzrv-cs-qic { width: 19px; height: 19px; flex: none; border-radius: 4px; background: color-mix(in srgb, var(--tone-color) 12%, transparent); color: var(--tone-color); display: flex; align-items: center; justify-content: center; font-size: 10px; }
+.bzrv-cs-qname { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-cs-qmode { flex: none; color: var(--bzrv-text-3); }
+.bzrv-cs-meta { margin-top: auto; border-top: 1px solid var(--bzrv-border); padding-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-cs-meta div { display: flex; justify-content: space-between; gap: 8px; }
+.bzrv-cs-meta b { color: var(--bzrv-text-2); font-weight: 600; text-align: right; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-cs-notice { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; background: var(--bzrv-text-1); color: var(--bzrv-surface-2); border-radius: 999px; padding: 6px 14px; font-size: var(--bzrv-font-caption); box-shadow: var(--bzrv-shadow-lg, 0 4px 18px rgba(30, 30, 40, .12)); animation: bzrvCsEnter .18s ease-out; white-space: nowrap; }
+
+/* 窄窗口（含 Obsidian 侧栏挤占后的窄标签页）：工作栏收成顶部一条，卡片占满舞台 */
+@media (max-width: 1100px) {
+  .bzrv-cs-grid { grid-template-columns: minmax(0, 1fr); }
+  .bzrv-cs-stage { padding: 18px 20px; }
+  .bzrv-cs-card { padding: 18px 20px; }
+  .bzrv-cs-side { border-left: none; border-top: 1px solid var(--bzrv-border); padding: 12px 20px; flex-direction: row; align-items: center; gap: 14px; overflow-x: auto; }
+  .bzrv-cs-dist { flex: 1; min-width: 120px; }
+  .bzrv-cs-legend { margin-bottom: 0; flex: none; }
+  .bzrv-cs-qlist, .bzrv-cs-meta { display: none; }
+}
+@media (max-width: 768px) {
+  .bzrv-cs-rate .bzrv-btn { min-width: 0; }
+}
+
+/* 正文排版（各卡型共用） */
+.bzrv-cs-body { display: flex; flex-direction: column; gap: var(--bzrv-space-md); }
 .bzrv-cs-prompt { margin: 0; font-size: var(--bzrv-font-emphasis); line-height: 1.75; color: var(--bzrv-text-1); }
 .bzrv-cs-prompt.is-loading { color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
-.bzrv-cs-text { margin: 0; padding: 10px 14px; border-left: 3px solid var(--bzrv-accent); background: var(--bzrv-surface-2); border-radius: 0 var(--bzrv-radius-sm) var(--bzrv-radius-sm) 0; font-size: var(--bzrv-font-label); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--bzrv-text-1); }
+.bzrv-cs-text { margin: 0; padding: 10px 14px; border-left: 3px solid var(--tone-color, var(--bzrv-accent)); background: var(--bzrv-surface-1); border-radius: 0 var(--bzrv-radius-sm) var(--bzrv-radius-sm) 0; font-size: var(--bzrv-font-label); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--bzrv-text-1); }
 .bzrv-cs-idea { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); line-height: 1.65; }
 .bzrv-cs-back { align-self: flex-start; font-size: var(--bzrv-font-caption); color: var(--bzrv-accent); text-decoration: none; }
-.bzrv-cs-foot { flex: none; display: flex; flex-direction: column; gap: var(--bzrv-space-sm); }
-.bzrv-cs-rate { display: flex; gap: var(--bzrv-space-sm); flex-wrap: wrap; }
-.bzrv-cs-rate .bzrv-btn { flex: 1; min-width: 92px; height: 40px; }
-.bzrv-cs-hint { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-quiz-head { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-question { margin: 0; font-size: var(--bzrv-font-label); font-weight: 500; line-height: 1.7; color: var(--bzrv-text-1); }
 .bzrv-cs-options { display: flex; flex-direction: column; gap: 6px; }
@@ -701,10 +754,6 @@
 .bzrv-cs-quiz-done { display: flex; flex-direction: column; gap: 6px; }
 .bzrv-cs-quiz-acc { margin: 0; font-size: var(--bzrv-font-emphasis); font-weight: 600; color: var(--bzrv-text-1); }
 .bzrv-cs-quiz-rating { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); }
-@media (max-width: 768px) {
-  .bzrv-cs { padding: var(--bzrv-space-md) var(--bzrv-space-md) calc(var(--bzrv-space-lg) + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px))); }
-  .bzrv-cs-rate .bzrv-btn { min-width: 0; }
-}
 
 /* ==================== 划线卡：填空 / 上下文（2026-11-13，src/review/card-session.ts） ====================
    填空把空位做成行内输入框（16px 防 iOS 聚焦缩放），上下文用前后文夹住中间的「洞」。

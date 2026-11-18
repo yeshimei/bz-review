@@ -30,6 +30,7 @@ import { accuracyToRating } from './sprint';
 import { ratingForKey, ratingKeys } from './keys';
 import { openCardEditor } from './card-edit';
 import { getSettings } from '../core/settings-provider';
+import { modeMetaOf, modeOfItem, queueRowsOf, switchNoticeOf, typeBucketsOf } from './review-flow';
 
 /* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
    能直接断言「问过之后必须有字」。此处转出，保持既有引用面不变。 */
@@ -134,6 +135,11 @@ export class CardSession {
   private regenBusy = false;
   /** 填空作答态；null = 还没交卷 */
   private clozeState: { answers: string[]; results: boolean[] } | null = null;
+  /** 工作台：上一次渲染的卡序号，用来判断「换卡了」而不是同一张重画 */
+  private lastIndex = -1;
+  /** 换卡时的一次性提示（同类型连做为空） */
+  private notice = '';
+  private noticeTimer: ReturnType<typeof setTimeout> | null = null;
   /** 这一轮已经为它补过内容的卡（补不到就降级，不再反复打模型） */
   private ensured = new Set<string>();
   /** 正在补内容的卡（渲染会被反复调用，在途期间不能重复发请求） */
@@ -184,7 +190,26 @@ export class CardSession {
   destroy(): void {
     if (this.keyHandler) document.removeEventListener('keydown', this.keyHandler);
     this.keyHandler = null;
+    if (this.noticeTimer !== null) clearTimeout(this.noticeTimer);
+    this.noticeTimer = null;
     this.opts.host.innerHTML = '';
+  }
+
+  /** 换卡时把上一张的作答痕迹清干净：填空题输入框、做题选中项、揭示状态都不能串味 */
+  private resetTransient(): void {
+    this.revealed = false;
+    this.quiz = null;
+    this.quizLoading = false;
+    this.quizFallback = false;
+    this.clozeState = null;
+  }
+
+  /** 点右侧队列或顶部类型 tab 直接跳到那张卡（未评级的卡也允许回看） */
+  private jumpTo(index: number): void {
+    if (index < 0 || index >= this.opts.queue.length || index === this.index) return;
+    this.index = index;
+    this.resetTransient();
+    this.render();
   }
 
   /**
@@ -238,11 +263,7 @@ export class CardSession {
       this.busy = false;
     }
     this.index += 1;
-    this.revealed = false;
-    this.quiz = null;
-    this.quizLoading = false;
-    this.quizFallback = false;
-    this.clozeState = null;
+    this.resetTransient();
     if (this.index >= this.opts.queue.length) {
       this.destroy();
       this.opts.onExit(true);
@@ -553,33 +574,111 @@ export class CardSession {
       return;
     }
     const total = this.opts.queue.length;
-    const pos = `${this.index + 1} / ${total}`;
-    const canRegen = this.mode() !== 'plain' && this.mode() !== 'context' && !!this.opts.regenerate;
+    const mode = this.mode();
+    const meta = modeMetaOf(mode);
+    const buckets = typeBucketsOf(this.opts.queue);
+    const rows = queueRowsOf(this.opts.queue, item.filePath);
+    const canRegen = mode !== 'plain' && mode !== 'context' && !!this.opts.regenerate;
+
+    /* 换卡判定：首次进入不提示；跨卡才提示，同一张重画（揭示/交卷）不提示。
+       这样「看答案」不会把「已切换到…」又弹一遍。 */
+    const isNew = this.lastIndex !== this.index;
+    let notice = this.notice;
+    this.notice = '';
+    if (isNew && this.lastIndex >= 0) {
+      const prev = this.opts.queue[this.lastIndex];
+      notice = switchNoticeOf(prev ? modeOfItem(prev) : mode, mode) || notice;
+    }
+    this.lastIndex = this.index;
+
+    const tabs = buckets
+      .map(
+        (b) =>
+          `<button type="button" class="bzrv-cs-tab${b.mode === mode ? ' is-on' : ''}" data-jump-mode="${b.mode}"><span>${esc(b.label)}</span><b>${b.count}</b></button>`,
+      )
+      .join('');
+    const bars = buckets
+      .map(
+        (b) =>
+          `<i data-tone="${b.tone}" style="width:${((b.count / total) * 100).toFixed(1)}%"></i>`,
+      )
+      .join('');
+    const legend = buckets
+      .map(
+        (b) =>
+          `<span class="lg" data-tone="${b.tone}"><i></i>${esc(b.label)} <b>${b.count}</b></span>`,
+      )
+      .join('');
+    const queueRows = rows
+      .map(
+        (r) => `<button type="button" class="bzrv-cs-qrow ${r.state}" data-jump-index="${r.no - 1}" data-tone="${r.tone}">
+          <span class="bzrv-cs-qno">${r.no}</span><span class="bzrv-cs-qic">${r.icon}</span>
+          <span class="bzrv-cs-qname">${esc(r.name)}</span><span class="bzrv-cs-qmode">${esc(r.label)}</span>
+        </button>`,
+      )
+      .join('');
 
     host.innerHTML = `
-      <div class="bzrv-cs" role="group"><span class="bzrv-sr-only">划线卡复习</span>
-        <div class="bzrv-cs-head">
-          <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit"><span class="bzrv-sr-only">退出本轮</span>退出</button>
-          <span class="bzrv-cs-pos">${esc(pos)}</span>
+      <div class="bzrv-cs" role="group" data-tone="${meta.tone}"><span class="bzrv-sr-only">划线卡复习</span>
+        <div class="bzrv-cs-top">
+          <span class="bzrv-cs-brand">复习</span>
           <span class="bzrv-cs-src">${esc(sourceOf(item))}</span>
-          <span class="bzrv-cs-stage">${esc(stageNum(item))}</span>
-          ${
-            this.opts.onEdit
-              ? `<button type="button" class="bzrv-btn bzrv-cs-edit" data-act="edit"><span class="bzrv-sr-only">改原文或想法（改过之后不再自动生成）</span>编辑</button>`
-              : ''
-          }
-          ${
-            canRegen
-              ? `<button type="button" class="bzrv-btn bzrv-cs-regen" data-act="regen"${
-                  this.regenBusy ? ' disabled' : ''
-                }>${this.regenBusy ? '正在生成…' : '重新生成'}</button>`
-              : ''
-          }
+          <span class="bzrv-cs-stage-label">${esc(stageNum(item))}</span>
+          <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit"><span class="bzrv-sr-only">退出本轮</span>退出</button>
         </div>
-        <div class="bzrv-cs-body">${this.bodyHtml(item)}</div>
-        <div class="bzrv-cs-foot">${this.footHtml(item)}</div>
+        <div class="bzrv-cs-tabs">${tabs}</div>
+        <div class="bzrv-cs-grid">
+          <div class="bzrv-cs-stage">
+            <div class="bzrv-cs-card${isNew ? ' is-entering' : ''}" data-tone="${meta.tone}">
+              <div class="bzrv-cs-card-top">
+                <span class="bzrv-cs-mode"><span class="bzrv-cs-mode-ic">${meta.icon}</span>${esc(meta.label)}</span>
+                <span class="bzrv-cs-sp"></span>
+                ${
+                  this.opts.onEdit
+                    ? `<button type="button" class="bzrv-btn bzrv-cs-edit" data-act="edit"><span class="bzrv-sr-only">改原文或想法（改过之后不再自动生成）</span>编辑</button>`
+                    : ''
+                }
+                ${
+                  canRegen
+                    ? `<button type="button" class="bzrv-btn bzrv-cs-regen" data-act="regen"${
+                        this.regenBusy ? ' disabled' : ''
+                      }>${this.regenBusy ? '正在生成…' : '重新生成'}</button>`
+                    : ''
+                }
+                <span class="bzrv-cs-pos">${this.index + 1} / ${total}</span>
+              </div>
+              <div class="bzrv-cs-body">${this.bodyHtml(item)}</div>
+              <div class="bzrv-cs-actions">${this.actionHtml(item)}</div>
+            </div>
+            <div class="bzrv-cs-foot">${
+              this.showRating(item)
+                ? this.ratingHtml()
+                : '<span class="bzrv-cs-hint">看完答案再评，别凭第一印象</span>'
+            }</div>
+          </div>
+          <aside class="bzrv-cs-side">
+            <div class="bzrv-cs-sec-t">本轮类型分布</div>
+            <div class="bzrv-cs-dist">${bars}</div>
+            <div class="bzrv-cs-legend">${legend}</div>
+            <div class="bzrv-cs-sec-t">本轮队列</div>
+            <div class="bzrv-cs-qlist">${queueRows}</div>
+            <div class="bzrv-cs-meta">
+              <div><span>当前方式</span><b>${esc(meta.label)}</b></div>
+              <div><span>阶段</span><b>${esc(stageNum(item))}</b></div>
+              <div><span>出处</span><b>${esc(sourceOf(item))}</b></div>
+            </div>
+          </aside>
+        </div>
+        ${notice ? `<div class="bzrv-cs-notice" role="status">${esc(notice)}</div>` : ''}
       </div>`;
 
+    if (notice) {
+      const key = item.filePath;
+      if (this.noticeTimer !== null) clearTimeout(this.noticeTimer);
+      this.noticeTimer = setTimeout(() => {
+        if (this.current()?.filePath === key) this.render();
+      }, 1800);
+    }
     this.bind(host);
     this.ensureQuiz(item);
     this.ensureClozeContent(item);
@@ -733,9 +832,9 @@ export class CardSession {
       </div>`;
   }
 
-  private footHtml(item: ReviewItem): string {
-    if (this.isPlainMode()) return this.ratingHtml();
-
+  /** 卡片内部的动作按钮（揭示 / 下一题 / 对答案）；评级单独摆在卡片下方 */
+  private actionHtml(item: ReviewItem): string {
+    if (this.isPlainMode()) return '';
     if (this.isQuizMode()) {
       const round = this.quiz;
       if (!round) return '';
@@ -747,21 +846,31 @@ export class CardSession {
         round.idx + 1 >= round.list.length ? '看结果' : '下一题'
       }（Enter）</button>`;
     }
-
     if (this.isClozeMode()) {
-      if (!this.clozeReady(item.card!)) return this.ratingHtml();
-      if (!this.clozeState) return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="check">对答案</button>`;
-      return this.ratingHtml();
+      if (!this.clozeReady(item.card!)) return '';
+      return this.clozeState
+        ? ''
+        : '<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="check">对答案</button>';
     }
-
     if (this.isContextMode()) {
       return this.revealed
-        ? this.ratingHtml()
-        : `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">想起来了，看答案</button>`;
+        ? ''
+        : '<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">想起来了，看答案</button>';
     }
+    return this.revealed
+      ? ''
+      : '<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">看答案</button>';
+  }
 
-    if (this.revealed) return this.ratingHtml();
-    return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">看答案</button>`;
+  /** 看完答案才给评级：全文卡没有揭示动作，直接可评；降级看原文也一样 */
+  private showRating(item: ReviewItem): boolean {
+    if (this.isPlainMode()) return true;
+    if (this.isQuizMode()) {
+      const round = this.quiz;
+      return !!round && round.idx >= round.list.length;
+    }
+    if (this.isClozeMode()) return this.clozeReady(item.card!) && !!this.clozeState;
+    return this.revealed;
   }
 
   private ratingHtml(): string {
@@ -788,6 +897,16 @@ export class CardSession {
     });
     host.querySelectorAll<HTMLElement>('[data-opt]').forEach((btn) => {
       btn.addEventListener('click', () => this.pickOption(Number(btn.dataset.opt)));
+    });
+    /* 顶部类型 tab / 右侧队列：按类型实时跳卡，跳过已评级或未评级的都允许 */
+    host.querySelectorAll<HTMLElement>('[data-jump-mode]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const target = this.opts.queue.findIndex((it) => modeOfItem(it) === btn.dataset.jumpMode);
+        if (target >= 0) this.jumpTo(target);
+      });
+    });
+    host.querySelectorAll<HTMLElement>('[data-jump-index]').forEach((btn) => {
+      btn.addEventListener('click', () => this.jumpTo(Number(btn.dataset.jumpIndex)));
     });
   }
 }
