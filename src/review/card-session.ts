@@ -74,7 +74,7 @@ export function speakTextOf(
 /** 喇叭按钮：未解锁只给一个点了会弹拦截文案的按钮，不给真播放入口 */
 export function speakButtonHtml(allowed: boolean, state: SpeakState = 'idle'): string {
   if (!allowed) {
-    return '<button type="button" class="bzrv-cs-speak is-locked" data-act="speak-locked">听这张（高级版）</button>';
+    return '<button type="button" class="bzrv-cs-speak is-locked" data-act="speak-locked">听这张</button>';
   }
   return `<button type="button" class="bzrv-cs-speak" data-act="speak">${speakLabelOf(state)}</button>`;
 }
@@ -84,7 +84,7 @@ export function backButtonHtml(hasLink: boolean, allowed: boolean): string {
   if (!hasLink) return '';
   return allowed
     ? '<button type="button" class="bzrv-cs-back" data-act="back">回到原文</button>'
-    : '<button type="button" class="bzrv-cs-back is-locked" data-act="back-locked">回到原文（高级版）</button>';
+    : '<button type="button" class="bzrv-cs-back is-locked" data-act="back-locked">回到原文</button>';
 }
 
 /** 出处那行：书名 · 章节 */

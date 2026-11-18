@@ -1,14 +1,14 @@
 /**
- * 授权状态、数量限制与高级档能力位（src/data/entitlement.ts）
+ * 授权状态、数量限制与能力登记（src/data/entitlement.ts）
  *
- * 与 bz / bz Reader / 归物本同构：一个完整包，运行期由激活码决定「高级版」是否解锁。
+ * 与 bz / bz Reader / 归物本同构：一个完整包，运行期由激活码决定数量上限。
  *
- * 门控口径从 1.0 的「只锁数量」升级为**双门槛**：
+ * 产品决策（2026-11-18）：基础版与高级版功能完全一致，只限数量——
  *   数量：基础版复习笔记 20 篇 + 划线卡 50 条（两类分别计数），高级版都不限；
- *   能力：听卡片、跳回原文高亮、按书报告导出、卡片管理器四项为高级档权益。
+ *   能力：全部放开。现有四项免费可用，未来新增功能同样不对基础版关闭。
  *
- * 原来的提醒、评级、排期、统计、记忆分析、五种复习方式仍然两边完全一致——
- * 能力位只锁新增的、有明确付费证据且零持续成本的入口，不碰基础体验。
+ * 能力位保留为登记清单（PRO_CAPABILITIES / CAPABILITY_LABELS），
+ * 供界面文案、用量口径与测试引用；门控本身恒放行，架构上不再有功能差异。
  */
 import { parseLicense, verifyLicense } from './license';
 
@@ -127,12 +127,12 @@ export function quotaBlock(
 }
 
 /**
- * 高级档能力位。名字只用于运行期门控，界面文案走 CAPABILITY_LABELS，
- * 不在这里塞中文句子，免得各入口写法不一致。
+ * 能力位登记表。仅用于界面文案与口径自查，不再是门控——所有能力恒放行。
+ * 名字不在这里塞中文句子，界面文案走 CAPABILITY_LABELS。
  */
 export type ProCapability = 'speech' | 'sourceLink' | 'bookReport' | 'cardManager';
 
-/** 唯一权威：新增能力必须先登记在这里，否则 canUseCapability 一律不放行 */
+/** 已知能力清单（只作登记，不参与放行判断） */
 export const PRO_CAPABILITIES: readonly ProCapability[] = [
   'speech',
   'sourceLink',
@@ -147,19 +147,17 @@ export const CAPABILITY_LABELS: Record<ProCapability, string> = {
   cardManager: '卡片管理器',
 };
 
-/** 未登记的能力名一律视为不可用，防止调用方拼错字符串后误放行 */
-export function canUseCapability(cap: ProCapability): boolean {
-  return isPaid() && PRO_CAPABILITIES.includes(cap);
+/**
+ * 能力恒放行（产品决策 2026-11-18）：基础版与高级版功能完全一致，只限数量。
+ * 连未知能力名也放行，这样未来新增功能不会被误锁成高级版专属。
+ */
+export function canUseCapability(_cap: ProCapability): boolean {
+  return true;
 }
 
-/** 入口拦截时给一句能直接弹给人的话；文案不谈删除，避免用户误以为超限没收数据 */
-export function capabilityBlock(cap: ProCapability): { ok: boolean; message: string } {
-  if (canUseCapability(cap)) return { ok: true, message: '' };
-  const label = CAPABILITY_LABELS[cap] ?? '该功能';
-  return {
-    ok: false,
-    message: `「${label}」是高级版权益，激活后即可使用。已有数据不会被删。`,
-  };
+/** 不再有功能拦截：任何入口都不弹升级提示，只保留数量上限的 quotaBlock */
+export function capabilityBlock(_cap: ProCapability): { ok: boolean; message: string } {
+  return { ok: true, message: '' };
 }
 
 /** 设置页的授权状态行 */
@@ -167,13 +165,13 @@ export function licenseSummary(): string {
   if (!state.paid) {
     const parsed = cachedCode ? parseLicense(cachedCode) : null;
     if (parsed?.payload?.exp && Date.now() > parsed.payload.exp) {
-      return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，四项高级功能未解锁。当前激活码已过期。`;
+      return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，所有功能可用。当前激活码已过期。`;
     }
-    return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，四项高级功能未解锁。填激活码解锁。`;
+    return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，所有功能可用；填激活码解锁不限数量。`;
   }
   const who = state.name ? `（${state.name}）` : '';
   const until = state.exp ? `有效期到 ${new Date(state.exp).toLocaleDateString()}` : '永久有效';
-  return `高级版已激活${who}：${until}，数量不限、四项高级功能可用。`;
+  return `高级版已激活${who}：${until}，数量不限、所有功能可用。`;
 }
 
 /**
