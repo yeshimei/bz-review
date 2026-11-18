@@ -18,10 +18,6 @@
 </div>
 
 
-<p align="center">
-  <img src="assets/plan-compare/shots/pro-compare.png" alt="基础版与高级版功能对照：基础版 13 项、高级版 19 项">
-</p>
-
 <p align="center"><b>一个插件包、一套功能，付费只解锁数量与四项高级权益</b></p>
 
 
@@ -37,14 +33,12 @@
 
 ## 功能
 
-下面这张表与商店详情里的功能对照图逐项一致。基础版免费、不限时，限 20 篇笔记与 50 条划线卡；高级版不限量，再加四项高级权益。
+基础版免费、不限时，限 20 篇笔记与 50 条划线卡；高级版不限量，再加四项高级权益。
 
 | 类别 | 功能 | 基础版 | 高级版 |
 |---|---|:---:|:---:|
-| **复习容量** | 复习笔记 20 篇 | ✓ | ✓ |
-|  | 复习笔记不限篇数 | — | ✓ |
-|  | 划线卡 50 条 | ✓ | ✓ |
-|  | 划线卡不限条数 | — | ✓ |
+| **复习容量** | 复习笔记 | 20 篇 | 不限 |
+|  | 划线卡 | 50 条 | 不限 |
 | **排期与记忆** | FSRS 排期与十级阶梯 | ✓ | ✓ |
 |  | 每日上限与复习提醒 | ✓ | ✓ |
 |  | 记忆分析面板 | ✓ | ✓ |
@@ -60,7 +54,6 @@
 |  | 激活码离线验签 | ✓ | ✓ |
 |  | 从 bz 导入复习计划 | ✓ | ✓ |
 |  | 导出 Markdown / CSV | ✓ | ✓ |
-| | **合计** | **13 项** | **19 项** |
 
 已有数据超过免费上限不会被删，只是不能再加新的；高级功能未解锁时入口会明确写「（高级版）」，点了给出升级说明，不会静默消失。
 
@@ -181,10 +174,6 @@
 **Review** turns your notes and book highlights into a spaced-repetition plan: due reminders, four-level ratings, a ten-step ladder followed by FSRS scheduling, a memory analysis panel, and five ways to test yourself. Desktop and mobile, all data stored locally in your vault.
 
 It was split out of [bz](https://github.com/yeshimei/bz) — the original copy there stays untouched. It pairs with [bz Reader](https://github.com/yeshimei/bz-reader), which pushes highlights into the queue, but Reader is not required.
-
-<p align="center">
-  <img src="assets/plan-compare/shots/pro-compare.png" alt="Free vs Pro: 13 items free, 19 items Pro">
-</p>
 
 ### Installation
 
