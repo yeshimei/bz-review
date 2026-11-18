@@ -61,10 +61,10 @@ export const CHANGELOG_RELEASES: readonly ChangelogRelease[] = [
     added: [
       { domain: '工作台', text: '双栏复习工作台，卡片形态随类型实时切换。' },
       { domain: '复习方式', text: '抽认卡、做题、填空、上下文、展开全文，五种方式按卡记忆。' },
-      { domain: '听卡片', text: '高级版：本地 TTS 朗读，离线可用，不按次收费。' },
-      { domain: '回到原文', text: '高级版：揭示答案后跳回书里那一句。' },
-      { domain: '按书档案', text: '高级版：分组统计与 Markdown 报告导出。' },
-      { domain: '卡片管理器', text: '高级版：挂起、埋藏、手动排期，不改 FSRS 排期。' },
+      { domain: '听卡片', text: '本地 TTS 朗读，离线可用，不按次收费。' },
+      { domain: '回到原文', text: '揭示答案后跳回书里那一句。' },
+      { domain: '按书档案', text: '分组统计与 Markdown 报告导出。' },
+      { domain: '卡片管理器', text: '挂起、埋藏、手动排期，不改 FSRS 排期。' },
     ],
     improved: [
       { domain: 'Reader 联动', text: '推卡时带上跳回原文的链接与前后文。' },

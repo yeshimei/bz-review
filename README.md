@@ -18,7 +18,7 @@
 </div>
 
 
-<p align="center"><b>一个插件包、一套功能，付费只解锁数量与四项高级权益</b></p>
+<p align="center"><b>一个插件包、一套功能，付费只解锁数量，功能完全一样</b></p>
 
 
 ## 安装
@@ -33,7 +33,7 @@
 
 ## 功能
 
-基础版免费、不限时，限 20 篇笔记与 50 条划线卡；高级版不限量，再加四项高级权益。
+基础版免费、不限时，限 20 篇笔记与 50 条划线卡；高级版不限量。两版功能完全一样，以后新增的功能也一样。
 
 | 类别 | 功能 | 基础版 | 高级版 |
 |---|---|:---:|:---:|
@@ -46,14 +46,14 @@
 |  | 抽认卡 / 做题 / 填空 | ✓ | ✓ |
 |  | 上下文 / 展开全文 | ✓ | ✓ |
 |  | 卡片编辑与重新生成 | ✓ | ✓ |
-| **高级权益** | 听卡片：本地音色朗读 | — | ✓ |
-|  | 回到原文：跳回书里那一句 | — | ✓ |
-|  | 按书档案与报告导出 | — | ✓ |
-|  | 卡片管理器：挂起与埋藏 | — | ✓ |
+| **进阶功能** | 听卡片：本地音色朗读 | ✓ | ✓ |
+|  | 回到原文：跳回书里那一句 | ✓ | ✓ |
+|  | 按书档案与报告导出 | ✓ | ✓ |
+|  | 卡片管理器：挂起与埋藏 | ✓ | ✓ |
 | **数据与使用** | 从 bz 导入复习计划 | ✓ | ✓ |
 |  | 导出 Markdown / CSV | ✓ | ✓ |
 
-已有数据超过免费上限不会被删，只是不能再加新的；高级功能未解锁时入口会明确写「（高级版）」，点了给出升级说明，不会静默消失。
+已有数据超过免费上限不会被删，只是不能再加新的。两版功能完全一致，以后新增的功能也一律两边都有。
 
 ## 付费说明
 
@@ -101,7 +101,7 @@
 
 统计弹窗另给总复习次数、连续天数、逾期率、平均 R 趋势与单条时间线，都能导成 CSV。
 
-## 高级版专属功能
+## 进阶功能（两版都有）
 
 - **听卡片**：复习时点一下喇叭，用你自己的本地 TTS 服务念卡片（服务地址、音色、格式在设置里填）。合成结果缓存，换卡或退出自动释放，长文本只念前 200 字；离线可用，不按次收费。
 - **回到原文**：揭示答案后出现按钮，跳回 bz Reader 里那一句。协议按原文片段定位，不能还原高亮色；老版本 Reader 推来的卡也能靠卡片钥匙兜底跳转。
@@ -185,7 +185,7 @@ While the review is pending, or if search doesn't find it, install with [BRAT](h
 
 ### Features and pricing
 
-The free edition is complete and unlimited in time: 20 review notes and 50 highlight cards, with all scheduling, analysis, statistics and five review modes. The purchased edition removes the counts and adds four capabilities: speak cards with your own local TTS, jump back to the passage in bz Reader, per-book reports, and a card manager for suspend / bury / manual scheduling. Existing data above the free limits is never deleted.
+The free edition is complete and unlimited in time: 20 review notes and 50 highlight cards, with every feature the plugin has. The purchased edition only removes the counts — both editions are identical in features, and every future feature will be too. Existing data above the free limits is never deleted.
 
 A single build covers desktop and mobile. License keys are verified locally, offline, and are not tied to a device count — re-enter yours on a new machine. Purchase at the [store page](https://wzyp.cn/shop/IFCEI5I3). bz-review does not accept bz Reader license keys.
 

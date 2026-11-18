@@ -159,10 +159,10 @@ describe('新字段持久化与高级档门控', () => {
     expect(out.isOverdue).toBeUndefined();
   });
 
-  it('bookReport / cardManager 属高级档，未解锁弹能力位文案', () => {
-    expect(canUseCapability('bookReport')).toBe(false);
-    expect(canUseCapability('cardManager')).toBe(false);
-    expect(capabilityBlock('bookReport').ok).toBe(false);
-    expect(capabilityBlock('cardManager').message).toContain('高级版');
+  it('bookReport / cardManager 全部放开，基础版也能用', () => {
+    expect(canUseCapability('bookReport')).toBe(true);
+    expect(canUseCapability('cardManager')).toBe(true);
+    expect(capabilityBlock('bookReport').ok).toBe(true);
+    expect(capabilityBlock('cardManager').ok).toBe(true);
   });
 });
