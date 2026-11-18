@@ -40,7 +40,7 @@ export interface TutorialModalHandle {
 export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle {
   const url = String(opts.url || '').trim();
 
-  const content = document.createElement('div');
+  const content = createDiv();
   content.className = 'bzrv-tut';
 
   /** 去 B 站；未发布只提示不关窗——用户还能点「先自己转转」 */
@@ -54,32 +54,32 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   };
 
   // 票根：整张可点（回车默认落在这里），有地址去 B 站、没地址给一句人话
-  const cover = document.createElement('button');
+  const cover = createEl('button');
   cover.type = 'button';
   cover.className = 'bzrv-tut-cover';
-  cover.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: url ? `去 B 站看${opts.title}` : '教程视频还没发布' }));
+  cover.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: url ? `去 B 站看${opts.title}` : '教程视频还没发布' }));
   cover.addEventListener('click', watch);
 
-  const play = document.createElement('span');
+  const play = createEl('span');
   play.className = 'bzrv-tut-play';
   play.setAttribute('aria-hidden', 'true');
 
-  const text = document.createElement('span');
+  const text = createEl('span');
   text.className = 'bzrv-tut-cover-text';
-  const kicker = document.createElement('span');
+  const kicker = createEl('span');
   kicker.className = 'bzrv-tut-kicker';
   kicker.textContent = url ? 'B 站 · 视频教程' : 'B 站 · 即将上线';
-  const name = document.createElement('span');
+  const name = createEl('span');
   name.className = 'bzrv-tut-name';
   name.textContent = opts.title;
   text.append(kicker, name);
   cover.append(play, text);
 
-  const desc = document.createElement('p');
+  const desc = createEl('p');
   desc.className = 'bzrv-tut-desc';
   desc.textContent = opts.desc;
 
-  const foot = document.createElement('div');
+  const foot = createDiv();
   foot.className = 'bzrv-tut-foot';
   const dismiss = uiBtn({
     label: opts.dismiss || '先自己转转',

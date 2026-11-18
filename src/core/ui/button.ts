@@ -8,7 +8,7 @@ import { withSrText } from './sr-text';
 
 /** 通用按钮（.bzrv-btn），样式库规格由 components.css 提供 */
 export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
-  const b = document.createElement('button');
+  const b = createEl('button');
   b.type = 'button';
   const cls = ['bzrv-btn'];
   if (opts.tone && opts.tone !== 'default') cls.push(`bzrv-btn--${opts.tone}`);
@@ -22,7 +22,7 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
   if (opts.icon) {
     if (opts.chip) {
       // 图标圆底档：图标包进 .bzrv-btn-chip 小圆底（issue 200 F 款入库）
-      const chip = document.createElement('span');
+      const chip = createEl('span');
       chip.className = 'bzrv-btn-chip';
       chip.appendChild(uiIcon(opts.icon));
       b.appendChild(chip);
@@ -31,7 +31,7 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
     }
   }
   if (opts.label) {
-    const span = document.createElement('span');
+    const span = createEl('span');
     span.textContent = opts.label;
     b.appendChild(span);
   }
@@ -41,7 +41,7 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
 
 /** 图标按钮（.bzrv-icon-btn，无文字小按钮） */
 export function uiIconBtn(opts: BzIconBtnOpts): HTMLButtonElement {
-  const b = document.createElement('button');
+  const b = createEl('button');
   b.type = 'button';
   const cls = ['bzrv-icon-btn'];
   if (opts.on) cls.push('bzrv-icon-btn--on');
@@ -60,7 +60,7 @@ export function uiIconBtn(opts: BzIconBtnOpts): HTMLButtonElement {
 
 /** 按钮行容器（.bzrv-btn-row，右对齐） */
 export function uiBtnRow(buttons: HTMLElement[], opts?: { center?: boolean; grow?: boolean }): HTMLDivElement {
-  const row = document.createElement('div');
+  const row = createDiv();
   const cls = ['bzrv-btn-row'];
   if (opts?.center) cls.push('bzrv-btn-row--center');
   if (opts?.grow) cls.push('bzrv-btn-row--grow');

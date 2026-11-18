@@ -379,7 +379,7 @@ export async function copySensitiveWithFallback(text: string): Promise<boolean> 
   } catch (e) {
     // 降级：textarea 选中法
     try {
-      const ta = document.createElement('textarea');
+      const ta = createEl('textarea');
       ta.value = text;
       ta.style.cssText = 'position:fixed;opacity:0';
       document.body.appendChild(ta);

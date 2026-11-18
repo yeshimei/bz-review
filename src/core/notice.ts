@@ -279,7 +279,7 @@ function ensureContainer(): HTMLElement | null {
   if (typeof document === 'undefined' || !document?.body) return null;
   let container = document.getElementById('bzrv-notice-container');
   if (!container) {
-    container = document.createElement('div');
+    container = createDiv();
     container.id = 'bzrv-notice-container';
     markOwned(container);
     document.body.appendChild(container);
@@ -434,7 +434,7 @@ export function cleanupNotices(): void {
 /** 空操作 handle：级别静默 / 去重窗口抑制时返回（调用方安全调用 setMessage/setType/hide） */
 function noopHandle(): NoticeHandle {
   return {
-    el: document.createElement('div'),
+    el: createDiv(),
     setMessage(): void {},
     setProgress(): void {},
     setType(): void {},
@@ -448,7 +448,7 @@ function noopHandle(): NoticeHandle {
  *  键盘可达（R6）：tabIndex=0 + Enter/Space 触发同回调（对齐 chip.ts 键盘口径）；
  *  action 点击自带 stopPropagation，不会误触发「点本体关闭」 */
 function appendActionBtn(n: InternalNotice, action: NoticeAction): void {
-  const btn = document.createElement('span');
+  const btn = createEl('span');
   btn.className = 'bzrv-notice-action';
   btn.setAttribute('role', 'button');
   btn.tabIndex = 0;
@@ -555,13 +555,13 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
 
   evictOldest();
 
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-notice bzrv-notice--' + (isProgress ? 'progress' : type) + ' bzrv-notice--in-' + variant;
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
 
   // 图标（emoji 类型图标；progress 转圈）
-  const icon = document.createElement('div');
+  const icon = createDiv();
   icon.className = 'bzrv-notice-icon';
   if (isProgress) {
     icon.innerHTML = SPINNER_SVG;
@@ -570,15 +570,15 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
   }
   el.appendChild(icon);
   // 正文（title 可选）
-  const body = document.createElement('div');
+  const body = createDiv();
   body.className = 'bzrv-notice-body';
   if (opts && opts.title) {
-    const titleEl = document.createElement('div');
+    const titleEl = createDiv();
     titleEl.className = 'bzrv-notice-title';
     titleEl.textContent = opts.title;
     body.appendChild(titleEl);
   }
-  const msgEl = document.createElement('div');
+  const msgEl = createDiv();
   msgEl.className = 'bzrv-notice-msg';
   msgEl.textContent = msg;
   body.appendChild(msgEl);
@@ -587,7 +587,7 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
   // 进度条（progress 类型）
   let progressEl: HTMLElement | null = null;
   if (isProgress) {
-    progressEl = document.createElement('div');
+    progressEl = createDiv();
     progressEl.className = 'bzrv-notice-progress';
     el.appendChild(progressEl);
   }

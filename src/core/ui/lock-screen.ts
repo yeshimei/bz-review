@@ -78,47 +78,47 @@ export interface LockScreenHandle {
 
 /** 生成解锁屏（结构同源，四域各自注入内容与风格） */
 export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = `bzrv-lockscreen bzrv-lockscreen--${opts.kind}` + (opts.inline ? ' bzrv-lockscreen--inline' : ' bzrv-lockscreen--mask');
   el.dataset.ls = opts.inline ? 'box' : 'mask';
 
-  const box = document.createElement('div');
+  const box = createDiv();
   box.className = 'bzrv-lockscreen-box';
   box.dataset.ls = 'box';
 
   // 印章徽
-  const seal = document.createElement('div');
+  const seal = createDiv();
   seal.className = 'bzrv-lockscreen-seal';
   seal.dataset.ls = 'seal';
   seal.appendChild(uiIcon(opts.icon || 'lock', 'bzrv-lockscreen-seal-ic'));
   box.appendChild(seal);
 
   // 标题 / 副题
-  const title = document.createElement('h4');
+  const title = createEl('h4');
   title.className = 'bzrv-lockscreen-title';
   title.dataset.ls = 'title';
   title.textContent = opts.title;
   box.appendChild(title);
 
-  const sub = document.createElement('p');
+  const sub = createEl('p');
   sub.className = 'bzrv-lockscreen-sub';
   sub.dataset.ls = 'sub';
   sub.textContent = opts.sub || '';
   box.appendChild(sub);
 
   // 统计卡（三张横排；各域口径不同）
-  const statsWrap = document.createElement('div');
+  const statsWrap = createDiv();
   statsWrap.className = 'bzrv-lockscreen-stats';
   statsWrap.dataset.ls = 'stats';
   const setStats = (list: LockScreenStat[]) => {
     statsWrap.innerHTML = '';
     (list || []).forEach((s) => {
-      const card = document.createElement('div');
+      const card = createDiv();
       card.className = 'bzrv-lockscreen-stat';
-      const num = document.createElement('b');
+      const num = createEl('b');
       num.className = 'bzrv-lockscreen-num';
       num.textContent = s.num;
-      const lab = document.createElement('span');
+      const lab = createEl('span');
       lab.className = 'bzrv-lockscreen-label';
       lab.textContent = s.label;
       card.appendChild(num);
@@ -133,7 +133,7 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
   const firstSetup = !!opts.firstSetup;
 
   // 首设风险告知（仅首设显示）
-  const warning = document.createElement('div');
+  const warning = createDiv();
   warning.className = 'bzrv-lockscreen-warning';
   warning.dataset.ls = 'warning';
   warning.innerHTML = opts.warningHtml || '';
@@ -141,10 +141,10 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
   box.appendChild(warning);
 
   // 首设勾选确认
-  const ack = document.createElement('label');
+  const ack = createEl('label');
   ack.className = 'bzrv-lockscreen-ack';
   ack.dataset.ls = 'ack';
-  const ackBox = document.createElement('input');
+  const ackBox = createEl('input');
   ackBox.type = 'checkbox';
   ack.appendChild(ackBox);
   ack.appendChild(document.createTextNode(opts.ackText || '我已了解：主密码无法找回，遗忘将导致密文永久无法恢复'));
@@ -152,15 +152,15 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
   box.appendChild(ack);
 
   // 输入 + 主按钮
-  const row = document.createElement('div');
+  const row = createDiv();
   // 首设两遍输入上下排（并排各占半行，明文也看不全），排法见 components.css 的 --stack
   row.className = 'bzrv-lockscreen-row' + (firstSetup ? ' bzrv-lockscreen-row--stack' : '');
-  const input = document.createElement('input');
+  const input = createEl('input');
   input.type = firstSetup ? 'text' : 'password';
   input.className = 'bzrv-lockscreen-input';
   input.dataset.ls = 'p1';
   input.placeholder = opts.placeholder || '主密码';
-  const input2 = document.createElement('input');
+  const input2 = createEl('input');
   input2.type = firstSetup ? 'text' : 'password';
   input2.className = 'bzrv-lockscreen-input';
   input2.dataset.ls = 'p2';
@@ -175,14 +175,14 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
     inp.setAttribute('autocapitalize', 'off');
     inp.setAttribute('autocorrect', 'off');
   }
-  const actionBtn = document.createElement('button');
+  const actionBtn = createEl('button');
   actionBtn.className = 'bzrv-lockscreen-action';
   actionBtn.dataset.ls = 'go';
   actionBtn.textContent = opts.action;
   // 次按钮（可选）：只出钮，语义留给调用域（见 LockScreenOpts.cancel 注释）
   let cancelBtn: HTMLButtonElement | null = null;
   if (opts.cancel) {
-    cancelBtn = document.createElement('button');
+    cancelBtn = createEl('button');
     cancelBtn.className = 'bzrv-lockscreen-cancel';
     cancelBtn.dataset.ls = 'cancel';
     cancelBtn.textContent = opts.cancel;
@@ -203,26 +203,26 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
   }
 
   // 错误行
-  const err = document.createElement('div');
+  const err = createDiv();
   err.className = 'bzrv-lockscreen-err';
   err.dataset.ls = 'err';
   box.appendChild(err);
 
   // 安全提示行（体检/完整性）
-  const sec = document.createElement('div');
+  const sec = createDiv();
   sec.className = 'bzrv-lockscreen-sec';
   sec.dataset.ls = 'sec';
-  const dot = document.createElement('span');
+  const dot = createEl('span');
   dot.className = 'bzrv-lockscreen-dot';
   sec.appendChild(dot);
-  const secText = document.createElement('span');
+  const secText = createEl('span');
   secText.textContent = opts.secText || '';
   sec.appendChild(secText);
   if (opts.secTone) sec.classList.add(`bzrv-lockscreen-sec--${opts.secTone}`);
   sec.style.display = opts.secText ? '' : 'none';
   box.appendChild(sec);
 
-  const hint = document.createElement('div');
+  const hint = createDiv();
   hint.className = 'bzrv-lockscreen-hint';
   hint.dataset.ls = 'hint';
   hint.textContent = opts.hint || '';

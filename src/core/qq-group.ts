@@ -53,7 +53,7 @@ async function writeClipboard(text: string): Promise<boolean> {
     /* 落兜底 */
   }
   try {
-    const ta = document.createElement('textarea');
+    const ta = createEl('textarea');
     ta.value = text;
     ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none';
     document.body.appendChild(ta);

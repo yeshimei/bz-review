@@ -277,18 +277,18 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   }
   const history = historyOf(item);
 
-  histMask = document.createElement('div');
+  histMask = createDiv();
   histMask.id = 'bzrv-history-mask';
   histMask.className = 'bzrv-overlay-mask'; // issue 365：遮罩底/blur 收编 core 单源
   histMask.style.display = 'block';
   bindMaskDismiss(histMask, closeTimeline); // 手势配对判据（core/mask-dismiss）
 
-  histPopup = document.createElement('div');
+  histPopup = createDiv();
   histPopup.id = 'bzrv-history-popup';
   histPopup.style.display = 'flex';
   topifyZ(histMask, histPopup); // ADR-0067：显示时发号单形制（构造期不再 allocZ 占号）
 
-  const body = document.createElement('div');
+  const body = createDiv();
   body.id = 'bzrv-history-body';
   body.className = 'bz-bzrv-history-body';
   histPopup.appendChild(body);
@@ -300,7 +300,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
 
   // 无标题栏：内容直接顶到卡片；关闭 = 点遮罩（issue 271 统一）
   // 当前状态（替代标题栏：笔记名 + 阶段/当前 R 小字，紧凑一行）
-  const status = document.createElement('div');
+  const status = createDiv();
   status.className = 'bzrv-review-history-status';
   const stageText = item.phase === 'fsrs'
     ? `FSRS Lv.${(item.stage || 0) - 9 + 1}`
@@ -315,7 +315,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   body.appendChild(status);
 
   if (!history.length) {
-    const empty = document.createElement('div');
+    const empty = createDiv();
     empty.className = 'bzrv-review-history-empty';
     empty.textContent = '暂无复习记录';
     body.appendChild(empty);
@@ -325,7 +325,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
 
   // 时间轴竖线式（变体 D）：圆点 + 竖线连接 + 时间/评级/元数据（issue 270：静态样式收编
   // src/review/styles.css .bzrv-review-history-*，圆点/评级字色为 RATING_COLORS 动态内联）
-  const tl = document.createElement('div');
+  const tl = createDiv();
   tl.className = 'bzrv-review-history-tl';
   const itemsHTML = history.map((h, i) => {
     const isLast = i === history.length - 1;

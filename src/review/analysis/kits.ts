@@ -137,7 +137,7 @@ export function canvas(host: HTMLElement, key: string): Cv | null {
 
 /** 文字取样：把 glyph 画到离屏画布，按 gap 像素采出点阵（开卷粒子汇聚的靶点） */
 export function sampleText(text: string, fontPx: number, weight = 800, gap = 5): { x: number; y: number }[] {
-  const c = document.createElement('canvas');
+  const c = createEl('canvas');
   const pad = Math.round(fontPx * .3);
   const ctx = c.getContext('2d');
   if (!ctx) return [];
@@ -219,7 +219,7 @@ export function tip(root: HTMLElement, html: string, cx = 0, cy = 0): void {
   let el = tipNode.get(root);
   if (!el) {
     if (typeof document === 'undefined') return;
-    el = document.createElement('span');
+    el = createEl('span');
     el.className = 'ra-tip';
     el.setAttribute('aria-hidden', 'true');
     root.appendChild(el);

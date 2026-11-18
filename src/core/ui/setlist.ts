@@ -11,11 +11,11 @@ import type { BzSetlistOpts } from './types';
 /** 可移除列表（.bzrv-setlist）：头像/主文案/副文案/移除钮；缺省 chips 流式胶囊（2026-09-12 拍板） */
 export function uiSetlist(opts: BzSetlistOpts): HTMLDivElement {
   const variant = opts.variant ?? 'chips';
-  const box = document.createElement('div');
+  const box = createDiv();
   box.className = `bzrv-setlist bzrv-setlist--${variant}${opts.className ? ` ${opts.className}` : ''}`;
   if (opts.items.length === 0) {
     if (opts.emptyText) {
-      const empty = document.createElement('div');
+      const empty = createDiv();
       empty.className = 'bzrv-setlist-empty';
       empty.textContent = opts.emptyText;
       box.appendChild(empty);
@@ -23,13 +23,13 @@ export function uiSetlist(opts: BzSetlistOpts): HTMLDivElement {
     return box;
   }
   for (const it of opts.items) {
-    const item = document.createElement('div');
+    const item = createDiv();
     item.className = 'bzrv-setlist-item';
     item.dataset.key = it.key;
     // 副文案（UID/URL 等）在 chips 变体不展示 → 视觉隐藏文本保信息可达（不用 title，免悬停气泡）
-    if (it.sub) item.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: it.sub }));
+    if (it.sub) item.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: it.sub }));
     if (it.imageUrl) {
-      const img = document.createElement('img');
+      const img = createEl('img');
       img.className = 'bzrv-setlist-avatar';
       // 防盗链：B 站图床（i0/i1.hdslb.com）对任何带 Referer 的取图请求回 403；移动端 WebView 的
       // origin 是 capacitor://localhost（iOS）/ http://localhost（Android），跨源取图必带 Referer
@@ -44,20 +44,20 @@ export function uiSetlist(opts: BzSetlistOpts): HTMLDivElement {
       img.onerror = () => img.remove(); // 头像加载失败不占位
       item.appendChild(img);
     }
-    const text = document.createElement('div');
+    const text = createDiv();
     text.className = 'bzrv-setlist-text';
-    const name = document.createElement('div');
+    const name = createDiv();
     name.className = 'bzrv-setlist-name';
     name.textContent = it.label;
     text.appendChild(name);
     if (it.sub) {
-      const sub = document.createElement('div');
+      const sub = createDiv();
       sub.className = 'bzrv-setlist-sub';
       sub.textContent = it.sub;
       text.appendChild(sub);
     }
     item.appendChild(text);
-    const remove = document.createElement('button');
+    const remove = createEl('button');
     remove.type = 'button';
     remove.className = 'bzrv-setlist-remove bzrv-touch-target--xl';
     remove.textContent = opts.removeLabel || '移除';

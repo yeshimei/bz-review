@@ -10,13 +10,13 @@ export function uiProgress(opts: BzProgressOpts = {}): {
   el: HTMLDivElement;
   setValue: (n: number) => void;
 } {
-  const el = document.createElement('div');
+  const el = createDiv();
   const cls = ['bzrv-progress'];
   if (opts.thin) cls.push('bzrv-progress--thin');
   if (opts.tone) cls.push(`bzrv-progress--${opts.tone}`);
   el.className = cls.join(' ');
 
-  const fill = document.createElement('i');
+  const fill = createEl('i');
   el.appendChild(fill);
 
   const setValue = (n: number) => {

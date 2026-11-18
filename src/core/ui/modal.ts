@@ -85,29 +85,29 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
   const prevActive = document.activeElement;
   const focusEnabled = opts.autofocus !== false;
 
-  const mask = document.createElement('div');
+  const mask = createDiv();
   mask.className = 'bzrv-overlay-mask';
   mask.style.zIndex = String(allocZ());
 
-  const popup = document.createElement('div');
+  const popup = createDiv();
   popup.className = 'bzrv-overlay-popup' + (opts.className ? ' ' + opts.className : '');
   if (opts.maxWidth) popup.style.maxWidth = `min(${opts.maxWidth}px, calc(100vw - 32px))`;
   // 读屏语义（对齐 flow-dialog 契约）：弹窗容器为模态 dialog，标题随 head 透出
   popup.setAttribute('role', 'dialog');
   popup.setAttribute('aria-modal', 'true');
-  if (opts.title) popup.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: opts.title }));
+  if (opts.title) popup.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: opts.title }));
 
   if (opts.head) {
-    const head = document.createElement('div');
+    const head = createDiv();
     head.className = 'bzrv-dialog-head';
-    const title = document.createElement('span');
+    const title = createEl('span');
     title.className = 'bzrv-dialog-title';
     title.textContent = opts.title || '';
     head.appendChild(title);
     popup.appendChild(head);
   }
 
-  const body = document.createElement('div');
+  const body = createDiv();
   body.className = 'bzrv-dialog-body';
   if (typeof opts.content === 'string') body.innerHTML = opts.content;
   else body.appendChild(opts.content);

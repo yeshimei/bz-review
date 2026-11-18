@@ -55,7 +55,7 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
   const minRight = opts.minRight ?? 320;
   const persist = opts.persist;
 
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-vsplit';
   el.setAttribute('role', 'separator');
   el.setAttribute('aria-orientation', 'vertical');

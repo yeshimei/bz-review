@@ -124,7 +124,7 @@ export function createSiteIcon(domain: string | null | undefined, size = 16): HT
   // 取过失败的「域名+尺寸」（按归一映射后键）直接短路，不再发网请求
   if (faviconFailures.has(cacheKey)) return null;
 
-  const img = document.createElement('img');
+  const img = createEl('img');
   img.className = 'bzrv-site-icon';
   img.style.cssText = `width:${size}px; height:${size}px;`;
   img.alt = '';
@@ -146,7 +146,7 @@ export function createSiteIcon(domain: string | null | undefined, size = 16): HT
   // 3. 加载完成后缓存为 Base64
   img.onload = function () {
     try {
-      const canvas = document.createElement('canvas');
+      const canvas = createEl('canvas');
       canvas.width = (img as any).naturalWidth;
       canvas.height = (img as any).naturalHeight;
       const ctx = canvas.getContext('2d');
@@ -176,12 +176,12 @@ export function createIconBtn(
   onClick: (() => void) | null,
   extra?: string
 ): HTMLButtonElement {
-  const b = document.createElement('button');
+  const b = createEl('button');
   b.textContent = text;
   /* Obsidian 会把 title / aria-label 变成悬停气泡；这里改用视觉隐藏文本，
      读屏仍读到名字，指针移上不再冒莫名其妙的小黑框。 */
   if (title) {
-    const sr = document.createElement('span');
+    const sr = createEl('span');
     sr.className = 'bzrv-sr-only';
     sr.textContent = title;
     b.appendChild(sr);
@@ -224,14 +224,14 @@ export function createOverlay(opts: {
   maxWidth?: number;
 }): { mask: HTMLDivElement; popup: HTMLDivElement; topify: () => void; registerClose: (close: () => void) => void } {
   pruneDetachedOverlays();
-  const mask = document.createElement('div');
+  const mask = createDiv();
   mask.id = opts.maskId;
   mask.className = 'bzrv-overlay-mask';
   mask.style.display = 'none';
   // 点遮罩关闭：手势配对判据（见 core/mask-dismiss.ts）——跨元素松手（弹窗内选字划到
   // 遮罩、遮罩上误按滑回弹窗）不算点击，只有明确的按下+抬起都在遮罩本体上才关
   if (typeof opts.onMaskClick === 'function') bindMaskDismiss(mask, opts.onMaskClick);
-  const popup = document.createElement('div');
+  const popup = createDiv();
   popup.id = opts.popupId;
   popup.className = 'bzrv-overlay-popup';
   popup.style.display = 'none';

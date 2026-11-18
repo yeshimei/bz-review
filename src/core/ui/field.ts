@@ -6,7 +6,7 @@ import type { BzFieldOpts, BzInputOpts } from './types';
 
 /** 文本输入（.bzrv-input） */
 export function uiInput(opts: BzInputOpts): HTMLInputElement {
-  const inp = document.createElement('input');
+  const inp = createEl('input');
   inp.className = 'bzrv-input' + (opts.error ? ' bzrv-input--error' : '');
   inp.type = opts.type || 'text';
   if (opts.placeholder) inp.placeholder = opts.placeholder;
@@ -44,11 +44,11 @@ function isLabelable(ctrl: HTMLElement): boolean {
  */
 export function uiField(opts: BzFieldOpts): HTMLElement {
   const wrap = isLabelable(opts.control)
-    ? document.createElement('label')
-    : document.createElement('div');
+    ? createEl('label')
+    : createDiv();
   wrap.className = 'bzrv-field';
   if (opts.label) {
-    const l = document.createElement('span');
+    const l = createEl('span');
     l.className = 'bzrv-field-label';
     l.textContent = opts.label;
     wrap.appendChild(l);
@@ -58,12 +58,12 @@ export function uiField(opts: BzFieldOpts): HTMLElement {
     // error 边框样式仅对 .bzrv-input 定义（L4）：select/range 等非 input 控件不上无效类，
     // 错误文案仍由 .bzrv-field-error 呈现
     if (opts.control.classList.contains('bzrv-input')) opts.control.classList.add('bzrv-input--error');
-    const e = document.createElement('span');
+    const e = createEl('span');
     e.className = 'bzrv-field-error';
     e.textContent = opts.error;
     wrap.appendChild(e);
   } else if (opts.desc) {
-    const d = document.createElement('span');
+    const d = createEl('span');
     d.className = 'bzrv-field-desc';
     d.textContent = opts.desc;
     wrap.appendChild(d);

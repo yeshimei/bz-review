@@ -11,51 +11,51 @@ import { uiIcon } from './icon';
 
 /** 单行（叶子/父项通用）：前缀槽 + 名称 + 计数 + 未读 +（父项）caret */
 function buildRow(item: BzRailItem): HTMLButtonElement {
-  const b = document.createElement('button');
+  const b = createEl('button');
   b.type = 'button';
   b.className = 'bzrv-rail-item';
   b.dataset.id = item.id;
 
   // 前缀槽五选一：图标底座 > 图标 > emoji > 字母徽标 > 状态色点
   if (item.boxedIcon) {
-    const box = document.createElement('span');
+    const box = createEl('span');
     box.className = 'bzrv-rail-ic';
     box.appendChild(uiIcon(item.boxedIcon));
     b.appendChild(box);
   } else if (item.icon) {
     b.appendChild(uiIcon(item.icon));
   } else if (item.emoji) {
-    const emo = document.createElement('span');
+    const emo = createEl('span');
     emo.className = 'bzrv-rail-emoji';
     emo.textContent = item.emoji;
     b.appendChild(emo);
   } else if (item.badge) {
-    const badge = document.createElement('span');
+    const badge = createEl('span');
     badge.className = 'bzrv-rail-badge';
     badge.textContent = item.badge.t;
-    badge.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: item.badge.label }));
+    badge.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: item.badge.label }));
     if (item.badge.tint) badge.style.setProperty('--bzrv-rail-tint', item.badge.tint);
     b.appendChild(badge);
   } else if (item.dot) {
-    const dot = document.createElement('span');
+    const dot = createEl('span');
     dot.className = 'bzrv-rail-dot';
     dot.style.setProperty('--bzrv-rail-tint', item.dot);
     b.appendChild(dot);
   }
 
-  const name = document.createElement('span');
+  const name = createEl('span');
   name.className = 'bzrv-rail-name';
   name.textContent = item.name;
   b.appendChild(name);
 
   if (item.count !== undefined && item.count !== null && item.count !== '') {
-    const cnt = document.createElement('span');
+    const cnt = createEl('span');
     cnt.className = 'bzrv-rail-count' + (item.pill ? ' bzrv-rail-count--pill' : '');
     cnt.textContent = String(item.count);
     b.appendChild(cnt);
   }
   if (item.unread) {
-    const u = document.createElement('span');
+    const u = createEl('span');
     u.className = 'bzrv-rail-unread';
     u.textContent = String(item.unread);
     b.appendChild(u);
@@ -63,7 +63,7 @@ function buildRow(item: BzRailItem): HTMLButtonElement {
   if (item.children && item.children.length) {
     b.classList.add('has-sub');
     // caret 独立类（不吃 .bzrv-rail-item .bzrv-ic 的 14px 档，走 12px 旋转档）
-    const caret = document.createElement('span');
+    const caret = createEl('span');
     caret.className = 'bzrv-rail-caret';
     setIcon(caret, 'chevron-right');
     b.appendChild(caret);
@@ -76,9 +76,9 @@ export function uiRail(opts: BzRailOpts): {
   el: HTMLDivElement;
   setActive: (id: string) => void;
 } {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-rail';
-  const scroll = document.createElement('div');
+  const scroll = createDiv();
   scroll.className = 'bzrv-rail-scroll';
   el.appendChild(scroll);
 
@@ -91,7 +91,7 @@ export function uiRail(opts: BzRailOpts): {
 
   opts.groups.forEach((g) => {
     if (g.label) {
-      const lb = document.createElement('div');
+      const lb = createDiv();
       lb.className = 'bzrv-rail-label';
       lb.textContent = g.label;
       scroll.appendChild(lb);
@@ -101,7 +101,7 @@ export function uiRail(opts: BzRailOpts): {
       rows.set(item.id, row);
       scroll.appendChild(row);
       if (item.children && item.children.length) {
-        const sub = document.createElement('div');
+        const sub = createDiv();
         sub.className = 'bzrv-rail-sub';
         item.children.forEach((child) => {
           const cr = buildRow(child);
@@ -129,7 +129,7 @@ export function uiRail(opts: BzRailOpts): {
   });
 
   if (opts.foot) {
-    const foot = document.createElement('div');
+    const foot = createDiv();
     foot.className = 'bzrv-rail-foot';
     foot.appendChild(opts.foot);
     el.appendChild(foot);

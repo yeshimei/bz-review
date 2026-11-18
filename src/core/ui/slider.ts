@@ -8,7 +8,7 @@ import type { BzRangeOpts } from './types';
 
 /** 滑条（.bzrv-range；范围/评分调节） */
 export function uiRange(opts: BzRangeOpts): HTMLInputElement {
-  const el = document.createElement('input');
+  const el = createEl('input');
   el.type = 'range';
   el.className = 'bzrv-range' + (opts.className ? ' ' + opts.className : '');
   if (opts.min !== undefined) el.min = String(opts.min);

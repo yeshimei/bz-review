@@ -79,7 +79,7 @@ export function syncSlidePill(box: HTMLElement, t: BzSlidePillTarget, hoverable:
   const onClass = t.onClass ?? 'is-on';
   let pill = box.querySelector<HTMLElement>(`:scope > .${BZ_PILL_CLS}`);
   if (!pill) {
-    pill = document.createElement('span');
+    pill = createEl('span');
     pill.className = BZ_PILL_CLS;
     pill.setAttribute('aria-hidden', 'true'); // 纯装饰：选中语义仍在选中类上（读屏不重复）
     // 宿主必须是定位上下文：static 的话绝对定位的底片会去相对更外层的祖先（整块底色跑到面板

@@ -49,7 +49,7 @@ export type { RewardName };
 
 /** 名单列表（序号倒排：最新一位是最大号） */
 export function renderRewardList(names: readonly RewardName[]): HTMLOListElement {
-  const ol = document.createElement('ol');
+  const ol = createEl('ol');
   ol.className = 'bzrv-rw-names';
   const total = names.length;
   ol.innerHTML = names
@@ -82,7 +82,7 @@ export function renderRewardList(names: readonly RewardName[]): HTMLOListElement
 
 /** 空态：一张还没写过字的信笺（横线 + 金菱形 + 一行小字） */
 export function renderRewardEmpty(): HTMLDivElement {
-  const el = document.createElement('div');
+  const el = createDiv();
   el.className = 'bzrv-rw-empty';
   el.innerHTML = '<div class="bzrv-rw-mark"></div><p>还没有人打赏。</p>';
   return el;
@@ -91,7 +91,7 @@ export function renderRewardEmpty(): HTMLDivElement {
 /** 一个出口（码下面那行里的一段）：长得像链接，点起来走 openExternalUrl——
  *  裸 `<a>` 在 Obsidian 里会被阅读视图接管、移动端常常点了没反应。 */
 function exitLink(text: string, url: string): HTMLAnchorElement {
-  const a = document.createElement('a');
+  const a = createEl('a');
   a.className = 'bzrv-rw-sponsor-link';
   a.href = url;
   a.rel = 'noopener noreferrer';
@@ -112,36 +112,36 @@ const FOOT_ARC =
 
 /** 弹窗正文（整块纸）。`onClose` 由关闭钮调用——移动端全屏时遮罩被纸盖满，没有这枚钮就只能靠 ESC */
 export function buildRewardBody(names: readonly RewardName[], onClose: () => void = () => undefined): HTMLElement {
-  const root = document.createElement('div');
+  const root = createDiv();
   root.className = 'bzrv-rw';
 
-  const close = document.createElement('button');
+  const close = createEl('button');
   close.className = 'bzrv-rw-close';
   close.type = 'button';
-  close.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
+  close.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
   close.innerHTML =
     '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" ' +
     'stroke-width="1.3" stroke-linecap="round"><path d="M1 1l11 11M12 1L1 12"/></svg>';
   close.addEventListener('click', () => onClose());
   root.appendChild(close);
 
-  const head = document.createElement('div');
+  const head = createDiv();
   head.className = 'bzrv-rw-head';
   head.innerHTML =
     '<div class="bzrv-rw-kicker">题赠</div>' +
     `<p class="bzrv-rw-lead">${SUPPORT_PITCH}<br>${SUPPORT_PITCH_REST}</p>`;
   root.appendChild(head);
 
-  const code = document.createElement('div');
+  const code = createDiv();
   code.className = 'bzrv-rw-code';
-  const box = document.createElement('div');
+  const box = createDiv();
   box.className = 'bzrv-rw-code-box';
-  const img = document.createElement('img');
+  const img = createEl('img');
   img.src = rewardCodeUrl;
   img.alt = '微信赞赏码';
   box.appendChild(img);
   code.appendChild(box);
-  const ways = document.createElement('p');
+  const ways = createEl('p');
   ways.className = 'bzrv-rw-ways';
   ways.textContent = '微信扫码';
   code.appendChild(ways);
@@ -153,9 +153,9 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   // 中点只是分隔符，不可点——两个入口各自可点、各去各的地址。
   // 长得像链接，点起来不走 `<a>` 的默认跳转——Obsidian 里裸链会被阅读视图接管、
   // 移动端常常点了没反应，统一交给 core 的 openExternalUrl 兜底链（失败有人说人话）。
-  const exits = document.createElement('p');
+  const exits = createEl('p');
   exits.className = 'bzrv-rw-exits';
-  const sep = document.createElement('span');
+  const sep = createEl('span');
   sep.className = 'bzrv-rw-exit-sep';
   sep.setAttribute('aria-hidden', 'true');
   sep.textContent = '·';
@@ -166,12 +166,12 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
 
   root.appendChild(code);
 
-  const list = document.createElement('div');
+  const list = createDiv();
   list.className = 'bzrv-rw-list';
   list.appendChild(names.length ? renderRewardList(names) : renderRewardEmpty());
   root.appendChild(list);
 
-  const foot = document.createElement('div');
+  const foot = createDiv();
   foot.className = 'bzrv-rw-foot';
   foot.innerHTML = FOOT_ARC;
   root.appendChild(foot);

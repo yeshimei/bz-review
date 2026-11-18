@@ -500,14 +500,14 @@ function wireSecretEye(setting: Setting, el: MaskableEl): void {
   let revealed = false;
   setting.addExtraButton((b) => {
     b.setIcon('eye');
-    b.extraSettingsEl.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: '显示密钥' }));
+    b.extraSettingsEl.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '显示密钥' }));
     b.extraSettingsEl.setAttribute('aria-pressed', 'false');
     b.onClick(() => {
       revealed = !revealed;
       el.type = revealed ? 'text' : 'password';
       b.setIcon(revealed ? 'eye-off' : 'eye');
       b.extraSettingsEl.setAttribute('aria-pressed', String(revealed));
-      b.extraSettingsEl.appendChild(Object.assign(document.createElement('span'), { className: 'bzrv-sr-only', textContent: revealed ? '隐藏密钥' : '显示密钥' }));
+      b.extraSettingsEl.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: revealed ? '隐藏密钥' : '显示密钥' }));
     });
   });
 }
@@ -570,7 +570,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
       const addon = row.nameAddon;
       const nameEl = (setting as unknown as { nameEl?: HTMLElement }).nameEl;
       if (nameEl) {
-        const btn = document.createElement('button');
+        const btn = createEl('button');
         btn.type = 'button';
         btn.className = 'bz-row-addon';
         btn.textContent = addon.text;
@@ -830,7 +830,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
     switch (row.type) {
       case 'custom': {
         // 非常规内容唯一出口：渲染进独立包装容器（visibleWhen 显隐作用对象）
-        const wrap = document.createElement('div');
+        const wrap = createDiv();
         body.appendChild(wrap);
         if (row.visibleWhen) entries.push({ el: wrap, visibleWhen: row.visibleWhen });
         row.render(wrap, { rowEl: wrap, refreshVisibility: reevaluate });
@@ -850,7 +850,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
             : []
           : String(initialRaw ?? '');
         // 行 DOM 由 renderPathSettingRow 自建（Setting + chips + 按钮）；包装容器作 visibleWhen 宿主
-        const wrap = document.createElement('div');
+        const wrap = createDiv();
         body.appendChild(wrap);
         if (row.visibleWhen) entries.push({ el: wrap, visibleWhen: row.visibleWhen });
         renderPathSettingRow({
@@ -1066,7 +1066,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
       case 'list': {
         // 通用列表行：条目 markup/行为 = 组件库 uiSetlist（唯一源，与面板渲染器同调）；
         // 包装容器作 visibleWhen 宿主；items 函数形式在每次移除后重读重建（域侧以磁盘为基底）
-        const wrap = document.createElement('div');
+        const wrap = createDiv();
         wrap.className = 'bz-setlist-wrap';
         body.appendChild(wrap);
         const setting = new Setting(wrap).setName(row.name);
@@ -1129,7 +1129,7 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
       renderGroupRows(body, group.rows);
     } else {
       // 区块标题平铺形态（主设置页）：.bzrv-setting-section-title 契约保持
-      const title = document.createElement('div');
+      const title = createDiv();
       title.className = 'bzrv-setting-section-title';
       title.textContent = group.name;
       container.appendChild(title);
