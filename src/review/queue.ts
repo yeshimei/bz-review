@@ -15,6 +15,7 @@
 import type { ReviewItem } from './data';
 import { DEFAULT_W, currentR } from './fsrs';
 import { dateKey } from './stats';
+import { isHiddenFromQueue } from './card-manager';
 
 /** R 阈值缺省值（设置 reviewRThreshold 未配置/非法时的回退；markReview 放行、开始本轮、三区列共用） */
 export const DEFAULT_R_THRESHOLD = 0.9;
@@ -45,9 +46,10 @@ export function isEarlyDue(item: ReviewItem, rThreshold: number, w: number[]): b
   return r !== null && r < rThreshold;
 }
 
-/** 队列条目可用性：非完成非挂起（分区前置过滤） */
+/** 队列条目可用性：非完成、非文件缺失、非挂起/埋藏（分区前置过滤）。
+ *  卡片管理器的两个标记只在这一处拦——三区列、本轮队列、负荷预测自动同口径。 */
 function active(i: ReviewItem): boolean {
-  return !i.isCompleted && !i.completed && !i.isMissing;
+  return !i.isCompleted && !i.completed && !i.isMissing && !isHiddenFromQueue(i);
 }
 
 /** 三区列分区（互斥）：逾期 → 今天（日历日 ∪ R 阈值提前卡，拍板：提前卡落「今天」列）→ 未来；done 独立 */

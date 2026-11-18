@@ -28,6 +28,7 @@ import { panelModeOf } from './panel-mode';
 import { DEFAULT_W } from './fsrs';
 import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
 import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
+import type { TtsConfig } from '../core/tts-client';
 
 export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataManager }): SettingsSchema {
   // enableAutoNotify 常驻轮询在 main.ts onload 注册、运行时按设置实时读值（app.ts checkOverdueAndNotify
@@ -696,6 +697,96 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 notice(`连接正常：${res.label} · ${res.model}（${res.ms}ms）`, 'success');
               } catch (e: any) {
                 notice(`连接失败：${e?.message ?? e}`, 'error');
+              }
+            },
+          },
+        ],
+      },
+      {
+        /* 朗读（听卡片）：自建 OpenAI 兼容本地 TTS 客户端，与 AI 服务商分开配。
+           只在本组暴露地址/音色/格式/模型/可选密钥，处处给人话，不写死英文。 */
+        icon: 'volume-2',
+        name: '朗读',
+        rows: [
+          {
+            type: 'text',
+            name: '服务地址',
+            desc: '本地朗读服务的地址（如 http://127.0.0.1:5000）。留空就不能听卡片。',
+            placeholder: 'http://127.0.0.1:5000',
+            binding: { key: 'ttsUrl' },
+          },
+          {
+            type: 'text',
+            name: '音色',
+            desc: '服务端音色名，留空用服务端默认。',
+            placeholder: '可留空',
+            binding: { key: 'ttsVoice' },
+          },
+          {
+            type: 'select',
+            name: '格式',
+            desc: 'mp3 体积小、适合手机上听；wav 不用解码但大得多。',
+            binding: { key: 'ttsFormat' },
+            options: [
+              { value: 'mp3', label: 'mp3（默认）' },
+              { value: 'wav', label: 'wav' },
+            ],
+          },
+          {
+            type: 'text',
+            name: '模型',
+            desc: '服务端模型名，留空用服务端默认。',
+            placeholder: '可留空',
+            binding: { key: 'ttsModel' },
+          },
+          {
+            type: 'text',
+            name: 'API Key',
+            desc: '可选：服务需要鉴权时才填，不需要就留空。',
+            placeholder: '可留空',
+            binding: { key: 'ttsApiKey' },
+          },
+          {
+            type: 'button',
+            name: '测试朗读连接',
+            desc: '向朗读服务发一次最小请求，确认地址和音色可用。',
+            buttonText: '测试',
+            onClick: async () => {
+              const live = getSettings() as any;
+              const url = String(live.ttsUrl ?? '').trim();
+              if (!url) {
+                notice('先填朗读服务地址再测试', 'warning');
+                return;
+              }
+              const cfg: TtsConfig = {
+                url,
+                model: String(live.ttsModel ?? '').trim(),
+                voice: String(live.ttsVoice ?? '').trim(),
+                format: live.ttsFormat === 'wav' ? 'wav' : 'mp3',
+                apiKey: String(live.ttsApiKey ?? '').trim(),
+              };
+              try {
+                const { voicesEndpoint, synthesizeSpeech } = await import('../core/tts-client');
+                const { requestUrl } = await import('obsidian');
+                const headers: Record<string, string> = {};
+                if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
+                // 先问音色列表：拿到 2xx 就够，不必真合成，省一次模型开销。
+                const resp = await requestUrl({
+                  url: voicesEndpoint(cfg.url, cfg.model),
+                  method: 'GET',
+                  headers,
+                  throw: false,
+                });
+                const status = Number((resp as any)?.status ?? 0);
+                if (status >= 200 && status < 300) {
+                  notice('朗读连接正常', 'success');
+                  return;
+                }
+                // 有的服务只开了 speech、没开 voices；再试一句最短合成兜底。
+                await synthesizeSpeech('测试', cfg);
+                notice('朗读连接正常（音色列表接口不可用，但合成接口可用）', 'success');
+              } catch (e: any) {
+                notice(`朗读连接失败：${e?.message ?? e}`, 'error');
               }
             },
           },

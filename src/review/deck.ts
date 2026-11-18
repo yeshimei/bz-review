@@ -10,6 +10,7 @@
 import type { ReviewItem } from './data';
 import { DEFAULT_W } from './fsrs';
 import { DEFAULT_R_THRESHOLD, partitionQueue } from './queue';
+import { isHiddenFromQueue } from './card-manager';
 
 export type GroupBy = 'folder' | 'book';
 
@@ -64,7 +65,7 @@ export function collectFacets(items: readonly ReviewItem[], tagsByPath?: Map<str
   return { decks: byCount(counts), tags: byCount(tagCounts), counts };
 }
 
-export type StatusFilter = 'all' | 'overdue' | 'today' | 'future';
+export type StatusFilter = 'all' | 'overdue' | 'today' | 'future' | 'hidden';
 
 export interface ItemFilter {
   /** 关键字：匹配标题、文件名、卡片原文 */
@@ -76,7 +77,8 @@ export interface ItemFilter {
   status?: StatusFilter;
 }
 
-function matchesQuery(item: ReviewItem, q: string): boolean {
+/** 关键字匹配：标题 / 路径 / 卡片原文 / 书名 / 章节（卡片管理器搜索框复用） */
+export function matchesQuery(item: ReviewItem, q: string): boolean {
   if (!q) return true;
   const hay = [item.name, item.filePath, item.card?.text, item.card?.comment, item.card?.bookTitle, item.card?.chapterTitle]
     .filter(Boolean)
@@ -110,9 +112,14 @@ export function applyFilter(items: readonly ReviewItem[], filter: ItemFilter = {
   });
   const status = filter.status ?? 'all';
   if (status === 'all') return kept;
+  /* 隐藏筛：挂起/埋藏的条目被 queue.active() 挡在三区列外（全部落 done 桶），
+     不能直接借分区结果，否则「只看隐藏」永远为空。这里按同一套纯函数判一遍。 */
+  if (status === 'hidden') return kept.filter((it) => isHiddenFromQueue(it));
   /* 状态筛：借三区列的分区结果（口径单源），但两边都有坑——partitionQueue 看的是
      loadItems 预置的 isOverdue/isCompleted 运行期字段，脱离读盘路径（单测、外部调用）
-     时这些字段不存在，一条都分不出来。所以先按持久化字段补一遍，再交给 partitionQueue。 */
+     时这些字段不存在，一条都分不出来。所以先按持久化字段补一遍，再交给 partitionQueue。
+     suspended / buriedUntil 一并写进 staged：active() 会读它们，漏了就会造出
+     「三区列不看挂起、单测却看」的口径分叉。 */
   const now = Date.now();
   const staged = kept.map((it) => ({
     ...it,
@@ -121,6 +128,8 @@ export function applyFilter(items: readonly ReviewItem[], filter: ItemFilter = {
       typeof (it as any).isOverdue === 'boolean'
         ? (it as any).isOverdue
         : !!it.nextReviewDate && new Date(it.nextReviewDate).getTime() <= now,
+    suspended: !!(it as any).suspended,
+    buriedUntil: (it as any).buriedUntil,
   })) as ReviewItem[];
   const cols = partitionQueue(staged, DEFAULT_R_THRESHOLD, DEFAULT_W);
   const bucket = status === 'overdue' ? cols.overdue : status === 'today' ? cols.today : cols.future;
@@ -140,7 +149,7 @@ export function describeFilter(filter: ItemFilter = {}): string {
   if (filter.kind === 'note') bits.push('只看笔记');
   if (filter.kind === 'card') bits.push('只看划线');
   if (filter.status && filter.status !== 'all') {
-    bits.push(filter.status === 'overdue' ? '只看逾期' : filter.status === 'today' ? '只看今天' : '只看未来');
+    bits.push(filter.status === 'overdue' ? '只看逾期' : filter.status === 'today' ? '只看今天' : filter.status === 'hidden' ? '只看隐藏' : '只看未来');
   }
   const q = String(filter.query ?? '').trim();
   if (q) bits.push(`含「${q}」`);

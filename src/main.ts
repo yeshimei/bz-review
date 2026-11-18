@@ -19,6 +19,8 @@ import {
   unloadReview,
   openReviewPanel,
   openReviewReport,
+  openReviewBooks,
+  openReviewCardManager,
   openReviewAnalysis,
   openQuizPractice,
   reviewAddCurrent,
@@ -277,6 +279,39 @@ export default class ReviewPlugin extends Plugin {
       id: 'review-report',
       name: t('复习分析报告', 'Review report'),
       callback: withReview((app) => openReviewReport(app)),
+    });
+    this.addCommand({
+      id: 'review-book-report',
+      name: t('按书档案', 'Book report'),
+      callback: withReview((app) => openReviewBooks(app)),
+    });
+    this.addCommand({
+      id: 'review-card-manager',
+      name: t('卡片管理器', 'Card manager'),
+      callback: withReview((app) => openReviewCardManager(app)),
+    });
+    this.addCommand({
+      id: 'review-export-book-report',
+      name: t('导出按书报告（Markdown）', 'Export book report (Markdown)'),
+      callback: withReview(async (app) => {
+        const { canUseCapability, capabilityBlock } = await import('./data/entitlement');
+        const { notice } = await import('./core/notice');
+        if (!canUseCapability('bookReport')) {
+          notice(capabilityBlock('bookReport').message, 'warning');
+          return;
+        }
+        try {
+          const { reviewApp } = await import('./review/app');
+          const { exportBookReportMarkdown } = await import('./review/export-actions');
+          reviewApp.ensure(app);
+          const items = await reviewApp.dataManager!.loadItems();
+          const path = await exportBookReportMarkdown(app, items);
+          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，没有可导出的按书报告。', path ? 'success' : 'warning');
+        } catch (e) {
+          const { notifyActionError } = await import('./core/notice');
+          notifyActionError(e, '导出按书报告');
+        }
+      }),
     });
     this.addCommand({
       id: 'review-analysis',

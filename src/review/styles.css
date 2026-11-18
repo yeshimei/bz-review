@@ -747,7 +747,15 @@
 .bzrv-cs-prompt.is-loading { color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
 .bzrv-cs-text { margin: 0; padding: 10px 14px; border-left: 3px solid var(--tone-color, var(--bzrv-accent)); background: var(--bzrv-surface-1); border-radius: 0 var(--bzrv-radius-sm) var(--bzrv-radius-sm) 0; font-size: var(--bzrv-font-label); line-height: 1.85; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--bzrv-text-1); }
 .bzrv-cs-idea { margin: 0; font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); line-height: 1.65; }
-.bzrv-cs-back { align-self: flex-start; font-size: var(--bzrv-font-caption); color: var(--bzrv-accent); text-decoration: none; }
+/* 回到原文：从 <a> 换成 <button>（移动端自定义协议走 openExternalUrl 更可靠），
+   但外观仍是一行轻链接，不抢「重新生成」的注意力。 */
+.bzrv-cs-back { align-self: flex-start; display: inline-flex; align-items: center; min-height: 26px; padding: 2px 9px; border: 1px solid var(--bzrv-border); border-radius: 6px; background: var(--bzrv-surface-2); color: var(--bzrv-accent); font-family: inherit; font-size: var(--bzrv-font-caption); text-decoration: none; cursor: pointer; }
+.bzrv-cs-back:hover { border-color: var(--bzrv-accent); }
+.bzrv-cs-speak { flex: none; height: 28px; padding: 0 10px; border: 1px solid var(--bzrv-border); border-radius: 6px; background: var(--bzrv-surface-2); color: var(--bzrv-text-2); font-family: inherit; font-size: var(--bzrv-font-caption); cursor: pointer; }
+.bzrv-cs-speak:hover { border-color: var(--bzrv-accent); color: var(--bzrv-accent); }
+.bzrv-cs-speak.is-playing { border-color: var(--bzrv-accent); color: var(--bzrv-accent); background: color-mix(in srgb, var(--bzrv-accent) 10%, transparent); }
+.bzrv-cs-speak:disabled { opacity: .55; cursor: default; }
+.bzrv-cs-speak.is-locked, .bzrv-cs-back.is-locked { opacity: .55; }
 .bzrv-cs-quiz-head { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-question { margin: 0; font-size: var(--bzrv-font-label); font-weight: 500; line-height: 1.7; color: var(--bzrv-text-1); }
 .bzrv-cs-options { display: flex; flex-direction: column; gap: 6px; }
@@ -959,3 +967,38 @@
   border: 1px solid var(--bzrv-border);
 }
 .bzrv-arch-name { flex: 1; min-width: 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ==================== 按书档案 / 卡片管理器（高级档，2026-11-18） ====================
+   两个新的内置页，样式只消费 --bzrv-* token，构建时统一挂 [data-bzrv] 作用域。 */
+.bzrv-book-view, .bzrv-mgr-view { display: flex; flex-direction: column; gap: 12px; padding: var(--bzrv-space-md) var(--bzrv-space-lg); }
+.bzrv-book-head { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-book-list { display: grid; gap: 10px; }
+.bzrv-book-group { border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm); background: var(--bzrv-surface-2); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.bzrv-book-title { display: flex; align-items: center; gap: 8px; }
+.bzrv-book-name { font-size: var(--bzrv-font-emphasis); font-weight: 600; color: var(--bzrv-text-1); }
+.bzrv-book-kind { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); border: 1px solid var(--bzrv-border); border-radius: 999px; padding: 1px 7px; }
+.bzrv-book-stats { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-book-stat b { color: var(--bzrv-text-1); font-variant-numeric: tabular-nums; }
+.bzrv-book-mem { border-top: 1px solid var(--bzrv-border); padding-top: 7px; display: flex; flex-direction: column; gap: 3px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
+.bzrv-book-weak { color: var(--bzrv-accent); }
+.bzrv-book-empty, .bzrv-mgr-empty { padding: 24px 12px; text-align: center; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+
+.bzrv-mgr-bar { display: flex; flex-wrap: wrap; gap: 8px; }
+.bzrv-mgr-q { flex: 1; min-width: 180px; }
+/* 三个下拉不参与压缩：否则窄窗口里「不限状态」会被挤成半截字。放不下就换行。 */
+.bzrv-mgr-bar select.bzrv-input { flex: none; max-width: 150px; }
+.bzrv-mgr-hint { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-mgr-list { display: flex; flex-direction: column; gap: 6px; }
+.bzrv-mgr-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm); background: var(--bzrv-surface-2); }
+.bzrv-mgr-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+.bzrv-mgr-name { font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-mgr-kind, .bzrv-mgr-where { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-mgr-state { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
+.bzrv-mgr-state.is-suspended, .bzrv-mgr-state.is-buried, .bzrv-mgr-state.is-hidden { color: var(--bzrv-accent); }
+.bzrv-mgr-ops { flex: none; display: flex; gap: 2px; }
+.bzrv-mgr-ops .bzrv-icon-btn { width: 30px; height: 30px; }
+@media (max-width: 768px) {
+  .bzrv-mgr-where { display: none; }
+  .bzrv-mgr-row { flex-wrap: wrap; }
+  .bzrv-mgr-ops { width: 100%; justify-content: flex-end; }
+}

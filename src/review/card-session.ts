@@ -31,10 +31,56 @@ import { ratingForKey, ratingKeys } from './keys';
 import { openCardEditor } from './card-edit';
 import { getSettings } from '../core/settings-provider';
 import { modeMetaOf, modeOfItem, queueRowsOf, switchNoticeOf, typeBucketsOf } from './review-flow';
+import { CardAudio } from './card-audio';
+import type { TtsConfig } from '../core/tts-client';
+import { backlinkOfCard } from './reader-jump';
+import { readerJumpUrl } from '../core/reader-link';
+import { openExternalUrl } from '../core/utils';
+import { canUseCapability, capabilityBlock } from '../data/entitlement';
 
 /* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
    能直接断言「问过之后必须有字」。此处转出，保持既有引用面不变。 */
 export { promptOf, promptViewFor } from './card-prompt';
+
+/* ==================== 听卡片 / 跳回原文：可单测的纯逻辑 ====================
+   这两块的 UI 都走 innerHTML 整段替换，真机点击在 node 里不好测；把「文案 / 朗读文本 /
+   按钮要不要出现」抽成纯函数，测试盯住它们，渲染函数只做转义与拼接。 */
+export const SPEAK_CHAR_LIMIT = 200;
+
+export type SpeakState = 'idle' | 'loading' | 'playing';
+
+/** 朗读按钮三态文案：准备中 / 停止 / 听这张 */
+export function speakLabelOf(state: SpeakState): string {
+  return state === 'loading' ? '准备中…' : state === 'playing' ? '停止' : '听这张';
+}
+
+/** 朗读文本：优先 AI 问答，其次划线原文；超过上限截断并标记，由调用方给一句人话 */
+export function speakTextOf(
+  card: { text?: string; qa?: { q?: string; a?: string } } | null | undefined,
+  limit = SPEAK_CHAR_LIMIT,
+): { text: string; truncated: boolean } {
+  const q = String(card?.qa?.q ?? '').trim();
+  const a = String(card?.qa?.a ?? '').trim();
+  const full = q || a ? [q, a].filter(Boolean).join(' ') : String(card?.text ?? '').trim();
+  const truncated = full.length > limit;
+  return { text: truncated ? full.slice(0, limit) : full, truncated };
+}
+
+/** 喇叭按钮：未解锁只给一个点了会弹拦截文案的按钮，不给真播放入口 */
+export function speakButtonHtml(allowed: boolean, state: SpeakState = 'idle'): string {
+  if (!allowed) {
+    return '<button type="button" class="bzrv-cs-speak is-locked" data-act="speak-locked">听这张（高级版）</button>';
+  }
+  return `<button type="button" class="bzrv-cs-speak" data-act="speak">${speakLabelOf(state)}</button>`;
+}
+
+/** 回到原文按钮：没有链接就不渲染；未解锁只给拦截入口 */
+export function backButtonHtml(hasLink: boolean, allowed: boolean): string {
+  if (!hasLink) return '';
+  return allowed
+    ? '<button type="button" class="bzrv-cs-back" data-act="back">回到原文</button>'
+    : '<button type="button" class="bzrv-cs-back is-locked" data-act="back-locked">回到原文（高级版）</button>';
+}
 
 /** 出处那行：书名 · 章节 */
 export function sourceOf(item: ReviewItem): string {
@@ -144,6 +190,8 @@ export class CardSession {
   private ensured = new Set<string>();
   /** 正在补内容的卡（渲染会被反复调用，在途期间不能重复发请求） */
   private ensuring = new Set<string>();
+  /** 听卡片的播放器：render 用 innerHTML 整段替换，实例必须留在字段里 */
+  private player = new CardAudio();
 
   constructor(opts: CardSessionOpts) {
     this.opts = opts;
@@ -192,6 +240,7 @@ export class CardSession {
     this.keyHandler = null;
     if (this.noticeTimer !== null) clearTimeout(this.noticeTimer);
     this.noticeTimer = null;
+    this.player.stop();
     this.opts.host.innerHTML = '';
   }
 
@@ -207,6 +256,7 @@ export class CardSession {
   /** 点右侧队列或顶部类型 tab 直接跳到那张卡（未评级的卡也允许回看） */
   private jumpTo(index: number): void {
     if (index < 0 || index >= this.opts.queue.length || index === this.index) return;
+    this.player.stop();
     this.index = index;
     this.resetTransient();
     this.render();
@@ -263,6 +313,7 @@ export class CardSession {
       this.busy = false;
     }
     this.index += 1;
+    this.player.stop();
     this.resetTransient();
     if (this.index >= this.opts.queue.length) {
       this.destroy();
@@ -580,6 +631,7 @@ export class CardSession {
     /* 换卡判定：首次进入不提示；跨卡才提示，同一张重画（揭示/交卷）不提示。
        这样「看答案」不会把「已切换到…」又弹一遍。 */
     const isNew = this.lastIndex !== this.index;
+    if (isNew) this.player.stop();
     let notice = this.notice;
     this.notice = '';
     if (isNew && this.lastIndex >= 0) {
@@ -645,7 +697,7 @@ export class CardSession {
                 <span class="bzrv-cs-pos">${this.index + 1} / ${total}</span>
               </div>
               <div class="bzrv-cs-body">${this.bodyHtml(item)}</div>
-              <div class="bzrv-cs-actions">${this.actionHtml(item)}</div>
+              <div class="bzrv-cs-actions">${this.actionHtml(item)}${this.speakHtml()}</div>
             </div>
             <div class="bzrv-cs-foot">${
               this.showRating(item)
@@ -684,10 +736,10 @@ export class CardSession {
   /** 正文：看答案那一段（全文 + 想法 + 回原文），三种方式共用 */
   private answerHtml(card: ReviewCard): string {
     const idea = String(card.comment ?? '').trim();
-    const back = String(card.backlink ?? '').trim();
+    const back = backlinkOfCard(card, readerJumpUrl);
     return `<blockquote class="bzrv-cs-text">${esc(card.text)}</blockquote>
       ${idea ? `<p class="bzrv-cs-idea">${esc(idea)}</p>` : ''}
-      ${back ? `<a class="bzrv-cs-back" href="${esc(back)}">回到原文</a>` : ''}`;
+      ${backButtonHtml(!!back, canUseCapability('sourceLink'))}`;
   }
 
   private bodyHtml(item: ReviewItem): string {
@@ -905,5 +957,84 @@ export class CardSession {
     host.querySelectorAll<HTMLElement>('[data-jump-index]').forEach((btn) => {
       btn.addEventListener('click', () => this.jumpTo(Number(btn.dataset.jumpIndex)));
     });
+    /* 听卡片 / 跳回原文：判定与文案见文件头的纯函数，这里只接线。 */
+    host.querySelector('[data-act="speak"]')?.addEventListener('click', () => this.speak());
+    host.querySelector('[data-act="speak-locked"]')?.addEventListener('click', () => {
+      this.notice = capabilityBlock('speech').message;
+      this.render();
+    });
+    host.querySelector('[data-act="back"]')?.addEventListener('click', () => this.back());
+    host.querySelector('[data-act="back-locked"]')?.addEventListener('click', () => {
+      this.notice = capabilityBlock('sourceLink').message;
+      this.render();
+    });
+  }
+
+  // ==================== 听卡片 / 跳回原文 ====================
+
+  private speakHtml(): string {
+    return speakButtonHtml(canUseCapability('speech'), this.speakState());
+  }
+
+  private speakState(): SpeakState {
+    if (this.player.isLoading()) return 'loading';
+    if (this.player.isPlaying()) return 'playing';
+    return 'idle';
+  }
+
+  /** 播放态只改这一个按钮的文字，不整页重画——整段 render 会闪 */
+  private paintSpeak(host: HTMLElement): void {
+    const btn = host.querySelector<HTMLElement>('[data-act="speak"]');
+    if (btn) btn.textContent = speakLabelOf(this.speakState());
+  }
+
+  /** 朗读配置跟 AI 内容生成走同一个设置源 getSettings，不另造全局单例 */
+  private ttsConfig(): TtsConfig {
+    const s = getSettings() as any;
+    return {
+      url: String(s.ttsUrl ?? '').trim(),
+      model: String(s.ttsModel ?? '').trim(),
+      voice: String(s.ttsVoice ?? '').trim(),
+      format: s.ttsFormat === 'wav' ? 'wav' : 'mp3',
+      apiKey: String(s.ttsApiKey ?? '').trim(),
+    };
+  }
+
+  private speak(): void {
+    const item = this.current();
+    const card = item?.card;
+    if (!card) return;
+    const { text, truncated } = speakTextOf(card);
+    if (!text) {
+      this.notice = '这张卡没有可朗读的文字';
+      this.render();
+      return;
+    }
+    const host = this.opts.host;
+    const key = card.key || item!.filePath;
+    if (truncated) this.notice = '这段文字比较长，只念了前 200 字';
+    void this.player.toggle(key, text, this.ttsConfig()).then(
+      () => this.paintSpeak(host),
+      (e: unknown) => {
+        this.paintSpeak(host);
+        this.notice = `朗读失败：${e instanceof Error ? e.message : String(e)}`;
+        this.render();
+      },
+    );
+    this.render();
+  }
+
+  private back(): void {
+    const card = this.current()?.card;
+    if (!card) return;
+    const url = backlinkOfCard(card, readerJumpUrl);
+    if (!url) return;
+    const plugins = (this.opts.app as any)?.plugins?.plugins;
+    if (!plugins?.['bz-reader']) {
+      this.notice = '还没装 bz Reader';
+      this.render();
+      return;
+    }
+    openExternalUrl(this.opts.app, url);
   }
 }
