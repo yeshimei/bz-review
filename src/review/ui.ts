@@ -538,6 +538,9 @@ export class UIManager {
       ${panelHeadHtml({ activePage: this.page ?? undefined, title })}
       <div class="bzrv-page-body" data-page-body></div>
     </div>`);
+    /* 头行图标是 <i data-lucide> 占位：不 mount 就是四个空壳，真机上只剩高亮那枚
+       有底色的方块看得见（主队列渲染有 mountIcons，内置页这条路径漏了）。 */
+    mountIcons(container);
     this.bindPanelHead(container);
     const body = container.querySelector<HTMLElement>('[data-page-body]');
     if (!body) return;
