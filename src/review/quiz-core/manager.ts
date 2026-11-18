@@ -121,7 +121,7 @@ export class QuizManager {
       const idx = list.findIndex((q) => sameQuestion(q, target));
       if (idx === -1) return false;
       list.splice(idx, 1);
-      return undefined as void;
+      return undefined;
     });
   }
 }

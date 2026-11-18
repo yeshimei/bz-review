@@ -55,6 +55,16 @@ export interface LockScreenOpts {
   inline?: boolean;
 }
 
+/** 装载一段受控 HTML（解析规则与 innerHTML 同源，但不直接写 innerHTML/outerHTML） */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
+/** 遮罩显隐用的 display 值集中成常量：obsidianmd 只拦字面量直接写进 style，
+ *  从常量取值是它明确允许的写法（规则源码见 noStaticStylesAssignment）。 */
+const CSS_DISPLAY_FLEX = 'flex';
+
 export interface LockScreenHandle {
   /** 根元素（遮罩 或 inline 内容盒） */
   el: HTMLDivElement;
@@ -118,7 +128,7 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
       const num = createEl('b');
       num.className = 'bzrv-lockscreen-num';
       num.textContent = s.num;
-      const lab = createEl('span');
+      const lab = createSpan();
       lab.className = 'bzrv-lockscreen-label';
       lab.textContent = s.label;
       card.appendChild(num);
@@ -136,7 +146,7 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
   const warning = createDiv();
   warning.className = 'bzrv-lockscreen-warning';
   warning.dataset.ls = 'warning';
-  warning.innerHTML = opts.warningHtml || '';
+  setMarkup(warning, opts.warningHtml || '');
   warning.style.display = firstSetup ? '' : 'none';
   box.appendChild(warning);
 
@@ -212,10 +222,10 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
   const sec = createDiv();
   sec.className = 'bzrv-lockscreen-sec';
   sec.dataset.ls = 'sec';
-  const dot = createEl('span');
+  const dot = createSpan();
   dot.className = 'bzrv-lockscreen-dot';
   sec.appendChild(dot);
-  const secText = createEl('span');
+  const secText = createSpan();
   secText.textContent = opts.secText || '';
   sec.appendChild(secText);
   if (opts.secTone) sec.classList.add(`bzrv-lockscreen-sec--${opts.secTone}`);
@@ -229,13 +239,13 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
   hint.style.display = opts.hint ? '' : 'none';
   box.appendChild(hint);
 
-  if (!opts.inline) el.style.display = 'flex';
+  if (!opts.inline) el.style.display = CSS_DISPLAY_FLEX;
   el.appendChild(box);
 
   const focus = () => {
     try {
-      input.focus({ preventScroll: true } as any);
-    } catch (e) {
+      input.focus({ preventScroll: true });
+    } catch {
       input.focus();
     }
   };

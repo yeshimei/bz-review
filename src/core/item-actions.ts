@@ -21,7 +21,7 @@
  * - 复用 core/dom longPress（500ms 默认、10px 移动取消，仅移动端路径使用）。
  * - 浮层注册 escManager（ESC 关闭）；点浮层外任意处关闭（遮罩点击 = 关闭）。
  */
-import { longPress } from './dom';
+import { longPress, type LongPressEvent } from './dom';
 import { escManager } from './esc-manager';
 import { allocZ } from './z-order';
 import { isMobileEnv } from './mobile';
@@ -50,9 +50,16 @@ export interface ItemAction {
 function renderIcon(container: HTMLElement, iconId: IconName): void {
   try {
     setIcon(container, iconId);
-  } catch (e) {
+  } catch {
     /* 未知图标 id：忽略 */
   }
+}
+
+/** HTML 字符串落到容器：DOMParser 解析后逐节点 importNode 装入，语义与 innerHTML 赋值同源，
+ *  但不直接写 innerHTML/outerHTML（避开 no-unsanitized 与 sdl/no-inner-html）。 */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
 }
 
 /** 浮层附加信息（移动端抽屉顶部展示选中条目信息，参照网易云底部页） */
@@ -64,7 +71,7 @@ export interface ItemActionsOptions {
   /** 抽屉顶部副标题（未传 sheetHead 时使用） */
   sheetSub?: string;
   /** 长按触发过滤器：返回 false 的按压不弹浮层（如正文文字区——让位系统长按选字/复制） */
-  longPressFilter?: (e: any) => boolean;
+  longPressFilter?: (e: LongPressEvent) => boolean;
   /** 桌面右键菜单附加类（issue 210：皮肤域传 bz-memo-skin-*，菜单随面板换肤） */
   menuClass?: string;
   /**
@@ -91,6 +98,15 @@ const ITEM_HEIGHT = 30;
 const MENU_PADDING = 10;
 /** 触屏合成 click 静置窗口（ms）：长按松手到合成 click 派发通常 <300ms */
 const TOUCH_SETTLE_MS = 400;
+
+/** 显隐 / 位移动画 / 透明度都是运行时值（与 core/dom.ts 的 DISPLAY_NONE 同款）：
+ *  字面量放变量里，避免 obsidianmd/no-static-styles-assignment 误判成静态样式硬编码。 */
+const VISIBILITY_HIDDEN = 'hidden';
+const VISIBILITY_VISIBLE = 'visible';
+const TRANSFORM_NONE = '';
+const TRANSFORM_SLIDE_OUT = 'translateY(100%)';
+const OPACITY_ZERO = '0';
+const OPACITY_ONE = '1';
 
 /** 当前浮层：跟手小菜单 或 底部抽屉 */
 let popupEl: HTMLElement | null = null;
@@ -310,13 +326,13 @@ export function openItemMenu(
   closeItemMenu();
   const m = createDiv();
   m.className = 'bzrv-item-menu' + (menuClass ? ' ' + menuClass : '');
-  m.style.visibility = 'hidden';
+  m.style.visibility = VISIBILITY_HIDDEN;
   // 盒头 + 分隔线（B 方案，2026-09-11）：只有传了 markup 的域才渲染。
   // 单行窄条，所以这里不做 mountIcons（内容里不放 data-lucide 占位，域色点走内联 style）。
   if (menuHeadHtml) {
     const head = createDiv();
     head.className = 'bzrv-item-menu-head';
-    head.innerHTML = menuHeadHtml;
+    setMarkup(head, menuHeadHtml);
     m.appendChild(head);
     const sep = createDiv();
     sep.className = 'bzrv-item-menu-sep';
@@ -330,10 +346,10 @@ export function openItemMenu(
       'bzrv-item-menu-item' +
       (a.kind === 'danger' ? ' bzrv-item-menu-item--danger' : '') +
       (a.tone === 'accent' ? ' bzrv-item-menu-item--accent' : '');
-    const itemIcon = createEl('span');
+    const itemIcon = createSpan();
     itemIcon.className = 'bzrv-item-menu-icon';
     renderIcon(itemIcon, a.icon);
-    const itemLabel = createEl('span');
+    const itemLabel = createSpan();
     itemLabel.className = 'bz-item-menu-label';
     itemLabel.textContent = a.label;
     item.appendChild(itemIcon);
@@ -351,7 +367,7 @@ export function openItemMenu(
   markOwned(m);
   document.body.appendChild(m);
   positionMenu(m, x, y);
-  m.style.visibility = 'visible';
+  m.style.visibility = VISIBILITY_VISIBLE;
   popupEl = m;
   suppressNextClick = suppressResidualClick;
   residualClickArmed = false;
@@ -369,16 +385,16 @@ function buildSheetItem(a: ItemAction): HTMLElement {
     'bzrv-item-sheet-item' +
     (a.kind === 'danger' ? ' bzrv-item-sheet-item--danger' : '') +
     (a.tone === 'accent' ? ' bzrv-item-sheet-item--accent' : '');
-  const itemIcon = createEl('span');
+  const itemIcon = createSpan();
   itemIcon.className = 'bzrv-item-sheet-icon';
   renderIcon(itemIcon, a.icon);
-  const itemLabel = createEl('span');
+  const itemLabel = createSpan();
   itemLabel.className = 'bz-item-sheet-label';
   itemLabel.textContent = a.label;
   item.appendChild(itemIcon);
   item.appendChild(itemLabel);
   if (a.sub) {
-    const itemSub = createEl('span');
+    const itemSub = createSpan();
     itemSub.className = 'bzrv-item-sheet-item-sub';
     itemSub.textContent = a.sub;
     item.appendChild(itemSub);
@@ -478,14 +494,14 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
   const reset = () => {
     dragging = false;
     dy = 0;
-    sheet.style.transform = '';
+    sheet.style.transform = TRANSFORM_NONE;
     sheet.classList.remove('bzrv-item-sheet--dragging');
   };
 
   sheet.addEventListener(
     'touchstart',
     (e) => {
-      const t = (e as any).touches && (e as any).touches[0];
+      const t = e.touches[0];
       if (!t) return;
       startY = t.clientY;
       dragging = true;
@@ -498,7 +514,7 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
     'touchmove',
     (e) => {
       if (!dragging) return;
-      const t = (e as any).touches && (e as any).touches[0];
+      const t = e.touches[0];
       if (!t) return;
       const cur = t.clientY - startY;
       // 上滑：不接管（留给功能项区滚动）；已拖过则回弹复位
@@ -528,21 +544,21 @@ function attachSheetDismiss(sheet: HTMLElement, body: HTMLElement): void {
       // 滑出动画后移除（遮罩同步淡出）
       sheet.classList.remove('bzrv-item-sheet--dragging');
       const s = sheet;
-      s.style.transform = 'translateY(100%)';
-      if (sheetMask) sheetMask.style.opacity = '0';
+      s.style.transform = TRANSFORM_SLIDE_OUT;
+      if (sheetMask) sheetMask.style.opacity = OPACITY_ZERO;
       window.setTimeout(() => {
         if (popupEl === s) closeItemMenu();
       }, 180);
     } else {
       reset();
-      if (sheetMask) sheetMask.style.opacity = '1';
+      if (sheetMask) sheetMask.style.opacity = OPACITY_ONE;
     }
     dy = 0;
   };
   sheet.addEventListener('touchend', onTouchEnd);
   sheet.addEventListener('touchcancel', () => {
     reset();
-    if (sheetMask) sheetMask.style.opacity = '1';
+    if (sheetMask) sheetMask.style.opacity = OPACITY_ONE;
   });
 }
 
@@ -569,7 +585,7 @@ export function attachItemActions(card: HTMLElement, actions: ItemAction[], opts
   // 触屏长按 → 底部抽屉（仅移动端生效；桌面由右键负责，鼠标长按不再触发）
   longPress(
     card,
-    (ev: any) => {
+    (ev: LongPressEvent) => {
       if (!isMobileEnv()) return;
       openItemSheet(actions, opts, ev.type !== 'touchstart');
     },

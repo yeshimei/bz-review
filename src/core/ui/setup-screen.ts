@@ -56,6 +56,21 @@ const DEFAULT_SUB = '只设这一次。<b>保险库</b>、<b>加密日记</b>、
 const WARN_TEXT = '密码<b>不会保存</b>，也无法找回。忘记它，加密的笔记、日记、口令与脸谱将永久打不开。';
 let SEQ = 0;
 
+/** 装载一段受控 HTML（解析规则与 innerHTML 同源，但不直接写 innerHTML/outerHTML） */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
+/** 抛错值里能安全取用的部分：异常通常只有 message 有用，且类型未知 */
+interface ErrorLike {
+  message: string;
+}
+
+function isErrorLike(v: unknown): v is ErrorLike {
+  return typeof v === 'object' && v !== null && 'message' in v && typeof v.message === 'string';
+}
+
 export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   const el = createDiv();
   el.className = 'bzrv-su' + (opts.inline ? ' bzrv-su--inline' : ' bzrv-su--mask');
@@ -83,7 +98,7 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   sub.className = 'bzrv-su-sub';
   sub.dataset.su = 'sub';
   if (opts.sub) sub.textContent = opts.sub;
-  else sub.innerHTML = DEFAULT_SUB;
+  else setMarkup(sub, DEFAULT_SUB);
   headText.appendChild(title);
   headText.appendChild(sub);
   head.appendChild(headText);
@@ -127,7 +142,7 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   wrap2.className = 'bzrv-su-control';
   const input2 = makeInput('p2', '重复输入，确认没有打错');
   label2.htmlFor = input2.id = uid + 'p2';
-  const mark = createEl('span');
+  const mark = createSpan();
   mark.className = 'bzrv-su-mark';
   mark.dataset.su = 'mark';
   wrap2.appendChild(input2);
@@ -142,7 +157,7 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   warn.dataset.su = 'warn';
   warn.appendChild(uiIcon('triangle-alert', 'bzrv-su-warn-ic'));
   const warnText = createEl('p');
-  warnText.innerHTML = WARN_TEXT;
+  setMarkup(warnText, WARN_TEXT);
   warn.appendChild(warnText);
   box.appendChild(warn);
 
@@ -152,7 +167,7 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
   ack.dataset.su = 'ack';
   const ackBox = createEl('input');
   ackBox.type = 'checkbox';
-  const ackText = createEl('span');
+  const ackText = createSpan();
   ackText.textContent = '我已牢记这个密码';
   ack.appendChild(ackBox);
   ack.appendChild(ackText);
@@ -196,7 +211,7 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
     wrap2.classList.remove('is-bad');
     if (state === 'none') return;
     mark.appendChild(uiIcon(state === 'ok' ? 'check' : 'x', 'bzrv-su-mark-ic'));
-    const t = createEl('span');
+    const t = createSpan();
     t.textContent = state === 'ok' ? '一致' : '不一致';
     mark.appendChild(t);
     mark.classList.add('is-shown', state === 'ok' ? 'bzrv-su-mark--ok' : 'bzrv-su-mark--bad');
@@ -224,8 +239,8 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
 
   const focus = () => {
     try {
-      input.focus({ preventScroll: true } as any);
-    } catch (e) {
+      input.focus({ preventScroll: true });
+    } catch {
       input.focus();
     }
   };
@@ -259,9 +274,9 @@ export function uiSetupScreen(opts: SetupScreenOpts): SetupScreenHandle {
       await opts.onSubmit(v1);
       // 成功路径由域收场（关屏 + 通知）——这里不复位 busy：
       // 域在 await 之后才关屏时，按钮若提前活过来，用户能再点一次重复设密。
-    } catch (e: any) {
+    } catch (e: unknown) {
       setBusy(false);
-      setErr(e?.message || '设置失败');
+      setErr(isErrorLike(e) && e.message ? e.message : '设置失败');
     }
   };
 

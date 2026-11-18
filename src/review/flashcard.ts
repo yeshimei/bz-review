@@ -51,6 +51,26 @@ export function buildFlashcardPrompt(card: ReviewCard): string {
   ].join('\n');
 }
 
+/** 模型回复的 JSON 形状：字段先当 unknown，取值时再逐个收窄 */
+interface FlashcardReply {
+  q?: unknown;
+  question?: unknown;
+  a?: unknown;
+  answer?: unknown;
+}
+
+/** parseLooseJson 返回 any，这里立刻收进 unknown 再用守卫取字段，不让 any 往下漫延 */
+function replyOf(v: unknown): FlashcardReply | null {
+  if (!v || typeof v !== 'object') return null;
+  const o = v as Record<string, unknown>;
+  return { q: o.q, question: o.question, a: o.a, answer: o.answer };
+}
+
+/** 字段转文本：模型偶尔吐数字/布尔，按 String 语义收；其它类型当空 */
+function fieldText(v: unknown): string {
+  return typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' ? String(v) : '';
+}
+
 /**
  * 从模型回复里取问答对。
  *
@@ -63,11 +83,11 @@ export function parseFlashcard(reply: string, card: ReviewCard): { q: string; a:
   const last = text.lastIndexOf('}');
   if (first < 0 || last <= first) return null;
 
-  const parsed: any = parseLooseJson(text.slice(first, last + 1));
+  const parsed = replyOf(parseLooseJson(text.slice(first, last + 1)));
   if (!parsed) return null;
-  const q = String(parsed?.q ?? parsed?.question ?? '').trim();
+  const q = (fieldText(parsed.q) || fieldText(parsed.question)).trim();
   if (!q) return null;
-  const a = String(parsed?.a ?? parsed?.answer ?? card.text ?? '').trim() || card.text;
+  const a = (fieldText(parsed.a) || fieldText(parsed.answer) || fieldText(card.text)).trim() || card.text;
   return checkQuestion(q, card) ? { q, a } : null;
 }
 

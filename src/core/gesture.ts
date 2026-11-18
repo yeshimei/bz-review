@@ -50,7 +50,7 @@ export function bindSwipeTurn(el: HTMLElement, go: (dir: 1 | -1) => void): () =>
  */
 function scrollHostOf(node: EventTarget | null): HTMLElement | null {
   for (let n: Element | null = node instanceof Element ? node : null; n && n !== document.body; n = n.parentElement) {
-    if (!(n instanceof HTMLElement)) continue;
+    if (!(n.instanceOf(HTMLElement))) continue;
     const oy = getComputedStyle(n).overflowY;
     if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight + 1) return n;
   }

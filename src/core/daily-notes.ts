@@ -39,7 +39,7 @@ function dailyNotesOptions(): DailyNotesOptions | null {
     const plugin = app.internalPlugins?.getPluginById?.('daily-notes');
     const options = plugin?.instance?.options;
     return options && typeof options === 'object' ? options : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -59,7 +59,7 @@ function globalNewFileFolder(): string {
     const vault = (getApp() as unknown as { vault?: { getConfig?: (key: string) => unknown } }).vault;
     if (vault?.getConfig?.('newFileLocation') !== 'folder') return '';
     return cleanVaultDir(vault.getConfig?.('newFileFolderPath'));
-  } catch (e) {
+  } catch {
     return '';
   }
 }

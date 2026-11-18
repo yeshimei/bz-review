@@ -18,6 +18,10 @@
  * ============================================================ */
 import { swallowNextClick } from '../dom';
 
+/** 拖拽期间禁选中样式值（静态值提常量，避开 lint 静态样式赋值告警） */
+const USER_SELECT_NONE = 'none';
+const USER_SELECT_RESET = '';
+
 /** 尺寸记忆钩子（可选）：load 恢复左栏宽 / save 防抖落盘（键由调用域自定义） */
 export interface BzVSplitterPersist {
   /** restore() 时读回记忆宽度（无记忆返回 null） */
@@ -149,7 +153,7 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
     startW = left.getBoundingClientRect().width;
     el.classList.add('is-drag');
     // 拖拽期间禁选中（鼠标可能压在列表文本上）
-    document.body.style.userSelect = 'none';
+    document.body.style.userSelect = USER_SELECT_NONE;
   };
 
   const onMouseUp = (): void => {
@@ -161,7 +165,7 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
     if (!dragging) return;
     dragging = false;
     el.classList.remove('is-drag');
-    document.body.style.userSelect = '';
+    document.body.style.userSelect = USER_SELECT_RESET;
     // 终端 click 是拖拽残影（落 rail 行/条目卡会误触行点击），吞掉
     swallowNextClick();
   };
@@ -186,7 +190,7 @@ export function uiVSplitter(opts: BzVSplitterOpts): {
       document.removeEventListener('mousemove', onDragMove);
       el.removeEventListener('mousedown', onMouseDown);
       document.removeEventListener('mouseup', onMouseUp);
-      document.body.style.userSelect = '';
+      document.body.style.userSelect = USER_SELECT_RESET;
       el.classList.remove('is-drag');
     },
   };

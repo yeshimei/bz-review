@@ -42,12 +42,15 @@ let currentEscHandle: ReturnType<typeof escManager.register> | null = null;
 /** 当前灯箱的 ←→ 翻图键监听退订（多图模式才有；关灯箱一并摘） */
 let offNavKeys: (() => void) | null = null;
 
+/** 静态样式字面量提成常量，避免 no-static-styles-assignment（值不变） */
+const CSS_OVERFLOW_HIDDEN = 'hidden';
+
 /** 灯箱打开期间锁定 body 滚动（背景内容随滚轮/触摸穿透防护）；关闭时还原 */
 function lockBodyScroll(lock: boolean): void {
   const body = document.body;
   if (lock) {
     body.dataset.bzLightboxScroll = body.style.overflow || '';
-    body.style.overflow = 'hidden';
+    body.style.overflow = CSS_OVERFLOW_HIDDEN;
   } else if (body.dataset.bzLightboxScroll !== undefined) {
     body.style.overflow = body.dataset.bzLightboxScroll === '' ? '' : body.dataset.bzLightboxScroll;
     delete body.dataset.bzLightboxScroll;
@@ -77,12 +80,12 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
   // 头部（标题 + 关闭）
   const head = createDiv();
   head.className = 'bzrv-lightbox-head';
-  const title = createEl('span');
+  const title = createSpan();
   title.className = 'bzrv-lightbox-title';
   const closeBtn = createEl('button');
   closeBtn.type = 'button';
   closeBtn.className = 'bzrv-lightbox-close';
-  closeBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
+  closeBtn.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
   closeBtn.appendChild(uiIcon('x'));
   head.appendChild(title);
   head.appendChild(closeBtn);
@@ -141,12 +144,12 @@ export function openLightbox(opts: BzLightboxOpts): { close: () => void } {
     prevBtn = createEl('button');
     prevBtn.type = 'button';
     prevBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-prev';
-    prevBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '上一张' }));
+    prevBtn.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '上一张' }));
     prevBtn.appendChild(uiIcon('chevron-left'));
     nextBtn = createEl('button');
     nextBtn.type = 'button';
     nextBtn.className = 'bzrv-lightbox-nav bzrv-lightbox-next';
-    nextBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '下一张' }));
+    nextBtn.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '下一张' }));
     nextBtn.appendChild(uiIcon('chevron-right'));
     prevBtn.addEventListener('click', () => show(idx - 1));
     nextBtn.addEventListener('click', () => show(idx + 1));

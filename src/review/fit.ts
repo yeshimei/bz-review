@@ -153,7 +153,7 @@ export interface FitResult {
 
 /** 数值梯度（中心差分，对前 fitLen 维求导；模型未用参数梯度恒零，Adam 更新量为零自动保持初值） */
 export function numericGradient(w: number[], series: ReplaySeries[], fitLen = 8, eps = 1e-5): number[] {
-  const grad = new Array(w.length).fill(0);
+  const grad: number[] = new Array<number>(w.length).fill(0);
   const wp = [...w];
   const wm = [...w];
   for (let i = 0; i < Math.min(fitLen, w.length); i++) {

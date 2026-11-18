@@ -27,6 +27,12 @@ export interface QuizQuestionOut {
 }
 
 /** 阅读器的题 → Review 题库格式。过滤缺字段/下标越界/重复题。 */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function toQuizQuestions(items: readonly QuizInput[]): QuizQuestionOut[] {
   const out: QuizQuestionOut[] = [];
   const seen = new Set<string>();
@@ -34,7 +40,7 @@ export function toQuizQuestions(items: readonly QuizInput[]): QuizQuestionOut[] 
   for (const raw of list) {
     const q = String(raw?.q ?? '').trim();
     const options = Array.isArray(raw?.options)
-      ? raw.options.map((o: unknown) => String(o ?? '').trim()).filter(Boolean)
+      ? raw.options.map((o: unknown) => textOf(o).trim()).filter(Boolean)
       : [];
     const correct: number[] = Array.isArray(raw?.correct)
       ? raw.correct.map((c: number) => Number(c)).filter((n: number) => Number.isInteger(n))
@@ -75,8 +81,9 @@ export function quizOf(
 ): Record<string, QuizQuestionOut[]> {
   const ok = new Set((Array.isArray(addedKeys) ? addedKeys : []).map((k) => String(k ?? '').trim()));
   const out: Record<string, QuizQuestionOut[]> = {};
-  for (const c of Array.isArray(cards) ? cards : []) {
-    const key = String(c?.key ?? '').trim();
+  const list: readonly InputCardLike[] = Array.isArray(cards) ? cards : [];
+  for (const c of list) {
+    const key = textOf(c?.key).trim();
     if (!ok.has(key)) continue;
     const qs = (c as { questions?: unknown })?.questions;
     if (!Array.isArray(qs) || !qs.length) continue;
@@ -92,8 +99,9 @@ export function withoutPrepared(
   cards: readonly InputCardLike[],
 ): string[] {
   const prepared = new Set<string>();
-  for (const c of Array.isArray(cards) ? cards : []) {
-    const key = String(c?.key ?? '').trim();
+  const list: readonly InputCardLike[] = Array.isArray(cards) ? cards : [];
+  for (const c of list) {
+    const key = textOf(c?.key).trim();
     if (!key) continue;
     const hasQa = !!(c as { qa?: unknown })?.qa && typeof (c as { qa: { q?: unknown } }).qa.q === 'string'
       && String((c as { qa: { q?: unknown } }).qa.q).trim();

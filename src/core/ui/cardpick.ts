@@ -6,12 +6,15 @@
  * ============================================================ */
 import type { BzCardPickOpts } from './types';
 
+/** 预览区内联高度（静态值提常量，避开 lint 静态样式赋值告警） */
+const CARD_PREV_HEIGHT = '62px';
+
 /** 卡片视觉单选组，返回容器 + setValue 句柄。radiogroup + 左右方向键导航（对齐 uiChoice L8） */
 export function uiCardChoice<T extends string>(opts: BzCardPickOpts<T>): { el: HTMLDivElement; setValue: (v: T) => void } {
   const el = createDiv();
   el.className = 'bzrv-cardpick' + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
-  if (opts.label) el.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: opts.label }));
+  if (opts.label) el.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: opts.label }));
   const btns = new Map<T, HTMLButtonElement>();
   let cur = opts.value;
 
@@ -36,8 +39,8 @@ export function uiCardChoice<T extends string>(opts: BzCardPickOpts<T>): { el: H
     const prev = createDiv();
     prev.className = 'bzrv-cardpick-prev' + (o.prevClass ? ` ${o.prevClass}` : '');
     prev.setAttribute('aria-hidden', 'true');
-    prev.style.height = '62px';
-    const name = createEl('span');
+    prev.style.height = CARD_PREV_HEIGHT;
+    const name = createSpan();
     name.className = 'bzrv-cardpick-name';
     name.textContent = o.label;
     card.append(prev, name);

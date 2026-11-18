@@ -24,6 +24,32 @@
 import { requestUrl } from 'obsidian';
 import { tryGetSettings } from './settings-provider';
 
+/* 服务端报文与设置值都是外部输入：先收成 unknown，再用类型守卫逐字段收窄，
+   不用 any 直接访问属性（既过不了 lint，也会把 tsc 的类型检查整个关掉）。 */
+interface JevHttpResponse {
+  status: number;
+  text: string;
+}
+interface JevResponsePayload {
+  model?: unknown;
+  answers?: unknown;
+  usage?: JevUsage;
+  detail?: unknown;
+}
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+function isUnknownArray(v: unknown): v is unknown[] {
+  return Array.isArray(v);
+}
+/** 与原来的 `String(v ?? '')` 同一运行期语义；用最小接口断言替代 any，既过
+ *  no-base-to-string，又不把对象/数组这类异常值的表现改掉。 */
+function stringOf(v: unknown, fallback = ''): string {
+  if (v === undefined || v === null || v === '') return fallback;
+  if (typeof v === 'string') return v;
+  return (v as { toString(): string }).toString();
+}
+
 // ---------------- 报文类型（2026-09-21 实测确认，勿凭记忆改） ----------------
 
 /** Noul：判是或否，返回 0–1 概率 */
@@ -162,16 +188,11 @@ export function resolveJevConfig(override?: Partial<JevConfig>): JevConfig {
   const models = (s?.jevModels ?? {}) as Record<string, unknown>;
   return {
     endpoint: String(override?.endpoint ?? desc.endpoint),
-    apiKey: String(override?.apiKey ?? pickFrom(keys[desc.id], '')),
+    apiKey: String(override?.apiKey ?? stringOf(keys[desc.id], '')),
     // 模型槽位留空 → 该服务商缺省（issue 430 起：typesafe → jev-latest，博查 → bocha-jev-v1）
-    model: String(override?.model ?? pickFrom(models[desc.id], desc.defaultModel)),
+    model: String(override?.model ?? stringOf(models[desc.id], desc.defaultModel)),
     timeoutMs: override?.timeoutMs ?? JEV_DEFAULT_TIMEOUT_MS,
   };
-}
-
-/** map 槽位取值：undefined/null/'' 一律回落 fallback（与 pick 同口径，作用于分存 map） */
-function pickFrom(v: unknown, fallback: string): string {
-  return v === undefined || v === null || v === '' ? fallback : String(v);
 }
 
 /**
@@ -204,16 +225,17 @@ export interface JevModelsFetchDeps {
 
 /** `/v1/models` 响应 → 选项列表（自家格式 `{models:[{name, description?, release_date?}]}`；
  *  畸形项跳过。说明取描述 + 发布日；都缺回落服务商名） */
-export function parseJevModels(data: any, label = 'Typesafe'): JevModelOption[] {
-  const list = data?.models;
-  if (!Array.isArray(list)) return [];
+export function parseJevModels(data: unknown, label = 'Typesafe'): JevModelOption[] {
+  const list = isRecord(data) ? data.models : undefined;
+  if (!isUnknownArray(list)) return [];
   const out: JevModelOption[] = [];
-  for (const m of list) {
-    const id = m && typeof m.name === 'string' ? m.name : '';
+  for (const raw of list) {
+    if (!isRecord(raw)) continue;
+    const id = typeof raw.name === 'string' ? raw.name : '';
     if (!id) continue;
     const bits: string[] = [];
-    if (typeof m.description === 'string' && m.description) bits.push(m.description);
-    if (typeof m.release_date === 'string' && m.release_date) bits.push(m.release_date);
+    if (typeof raw.description === 'string' && raw.description) bits.push(raw.description);
+    if (typeof raw.release_date === 'string' && raw.release_date) bits.push(raw.release_date);
     out.push({ id, detail: bits.join('，') || label });
   }
   return out;
@@ -227,11 +249,11 @@ export function parseJevModels(data: any, label = 'Typesafe'): JevModelOption[] 
 export async function fetchJevModels(deps: JevModelsFetchDeps = {}): Promise<JevModelOption[]> {
   const s = tryGetSettings() as Record<string, unknown>;
   const cfg = resolveJevConfig();
-  const desc = getJevProviderDescriptor(String(s?.jevProvider ?? '') || DEFAULT_JEV_PROVIDER);
+  const desc = getJevProviderDescriptor(stringOf(s?.jevProvider) || DEFAULT_JEV_PROVIDER);
   if (!cfg.apiKey) throw new Error(`未配置 ${desc.label} 密钥（插件设置 → AI → JEV）`);
 
-  const requestUrlFn = deps.requestUrlFn || requestUrl;
-  const resp: any = await requestUrlFn({
+  const requestUrlFn: NonNullable<JevModelsFetchDeps['requestUrlFn']> = deps.requestUrlFn || requestUrl;
+  const resp = await requestUrlFn({
     url: desc.modelsUrl,
     method: 'GET',
     headers: { Authorization: `Bearer ${cfg.apiKey}` },
@@ -243,7 +265,7 @@ export async function fetchJevModels(deps: JevModelsFetchDeps = {}): Promise<Jev
     const brief = text.length > 300 ? `${text.slice(0, 300)}…` : text;
     throw new Error(`${desc.label} 模型列表请求失败（${status}）：${brief || '无响应正文'}`);
   }
-  let data: any;
+  let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
@@ -290,20 +312,20 @@ export function buildJevBody(
 
 /** 响应体 → JevResult；`answers` 缺失/非对象时抛错（见下） */
 function parseJevResponse(text: string, status: number): JevResult {
-  let data: any;
+  let data: JevResponsePayload;
   try {
-    data = JSON.parse(text);
+    data = JSON.parse(text) as JevResponsePayload;
   } catch {
     throw new Error(`Jev 响应不是合法 JSON（HTTP ${status}）`);
   }
   const answers = data?.answers;
-  if (!answers || typeof answers !== 'object' || Array.isArray(answers)) {
+  if (!isRecord(answers)) {
     // 不静默当成「零命中」——那会让一次故障伪装成「这批笔记确实没有关联」（issue 392 §决策 9）
     const detail = data?.detail ? `: ${JSON.stringify(data.detail)}` : '';
     throw new Error(`Jev 响应缺少 answers 字段（HTTP ${status}）${detail}`);
   }
   return {
-    model: String(data.model ?? ''),
+    model: stringOf(data.model),
     answers: answers as Record<string, JevAnswer>,
     usage: data.usage,
   };
@@ -338,7 +360,7 @@ export async function askJev(
 
   // requestUrl 无中止能力：以 race 兜底——到点/被取消即立刻 settle，底层请求结果弃用
   // （与 core/http.ts 既有取舍一致：不假装能取消连接，只保证调用方不被阻塞）
-  const resp: any = await new Promise<any>((resolve, reject) => {
+  const resp = await new Promise<JevHttpResponse>((resolve, reject) => {
     let settled = false;
     let timer: number | null = null;
     const onAbort = () => settle(() => reject(abortError()));
@@ -358,8 +380,8 @@ export async function askJev(
       body: JSON.stringify(body),
       throw: false,
     }).then(
-      (r: any) => settle(() => resolve(r)),
-      (e: any) => settle(() => reject(e))
+      (r) => settle(() => resolve(r)),
+      (e: Error) => settle(() => reject(e))
     );
   });
 
@@ -395,7 +417,7 @@ export interface JevTestResult {
  */
 export async function testJevConnectivity(opts: JevAskOptions = {}): Promise<JevTestResult> {
   const s = tryGetSettings() as Record<string, unknown>;
-  const desc = getJevProviderDescriptor(String(s?.jevProvider ?? '') || DEFAULT_JEV_PROVIDER);
+  const desc = getJevProviderDescriptor(stringOf(s?.jevProvider) || DEFAULT_JEV_PROVIDER);
   const t0 = Date.now();
   const result = await askJev(
     '这是一条连通性测试消息。',

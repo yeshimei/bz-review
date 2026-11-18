@@ -19,20 +19,20 @@
   stroke-width: 2;
 }
 /* 通用图标颜色修饰符（任何 .bzrv-ic 可加） */
-.bzrv-ic--brand { color: var(--bzrv-brand) !important; }
-.bzrv-ic--success { color: var(--bzrv-success) !important; }
-.bzrv-ic--warning { color: var(--bzrv-warning) !important; }
-.bzrv-ic--danger { color: var(--bzrv-danger) !important; }
-.bzrv-ic--info { color: var(--bzrv-info) !important; }
-.bzrv-ic--muted { color: var(--bzrv-text-3) !important; }
-.bzrv-ic--star { color: var(--bzrv-star) !important; }
-.bzrv-ic--on-brand { color: var(--bzrv-on-brand) !important; }
+.bzrv-ic--brand { color: var(--bzrv-brand) ; }
+.bzrv-ic--success { color: var(--bzrv-success) ; }
+.bzrv-ic--warning { color: var(--bzrv-warning) ; }
+.bzrv-ic--danger { color: var(--bzrv-danger) ; }
+.bzrv-ic--info { color: var(--bzrv-info) ; }
+.bzrv-ic--muted { color: var(--bzrv-text-3) ; }
+.bzrv-ic--star { color: var(--bzrv-star) ; }
+.bzrv-ic--on-brand { color: var(--bzrv-on-brand) ; }
 /* 通用图标尺寸修饰 */
-.bzrv-ic--xs { width: 12px !important; height: 12px !important; }
-.bzrv-ic--sm { width: 14px !important; height: 14px !important; }
-.bzrv-ic--md { width: 18px !important; height: 18px !important; }
-.bzrv-ic--lg { width: 24px !important; height: 24px !important; }
-.bzrv-ic--xl { width: 32px !important; height: 32px !important; }
+.bzrv-ic--xs { width: 12px ; height: 12px ; }
+.bzrv-ic--sm { width: 14px ; height: 14px ; }
+.bzrv-ic--md { width: 18px ; height: 18px ; }
+.bzrv-ic--lg { width: 24px ; height: 24px ; }
+.bzrv-ic--xl { width: 32px ; height: 32px ; }
 
 /* ═══════════ 按钮 .bzrv-btn ═══════════ */
 .bzrv-btn {
@@ -40,8 +40,8 @@
   /* 边框用 --bzrv-border 而不是 transparent：亮色主题下 surface-2 和面板底色同为
      白色，按钮会整块融进背景、只剩文字浮着（真机 2026-11-13 抓到）。 */
   border: 1px solid var(--bzrv-border);
-  background: var(--bzrv-surface-1) !important;
-  color: var(--bzrv-text-1) !important;
+  background: var(--bzrv-surface-1) ;
+  color: var(--bzrv-text-1) ;
   height: var(--bzrv-control-h);
   padding: 0 16px;
   border-radius: var(--bzrv-radius-sm);
@@ -58,9 +58,9 @@
   transition: background-color var(--bzrv-dur-fast) ease, border-color var(--bzrv-dur-fast) ease, color var(--bzrv-dur-fast) ease, opacity var(--bzrv-dur-fast) ease;
 }@media (hover: hover) {
 
-.bzrv-btn:hover { background: var(--bzrv-surface-hover) !important; }
+.bzrv-btn:hover { background: var(--bzrv-surface-hover) ; }
 }
-.bzrv-btn:active { background: var(--bzrv-surface-active) !important; }
+.bzrv-btn:active { background: var(--bzrv-surface-active) ; }
 .bzrv-btn:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 .bzrv-btn:focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 2px; }
 /* 通栏按钮：结算屏那种「竖排一列、每颗同宽」的位置用。原来挂的是 bz 的 .bz-btn--block，
@@ -68,34 +68,34 @@
 .bzrv-btn--block { display: flex; width: 100%; }
 .bzrv-btn .bzrv-ic { width: 14px; height: 14px; }
 
-.bzrv-btn--primary { background: var(--bzrv-brand) !important; color: var(--bzrv-on-brand) !important; border-color: transparent; }@media (hover: hover) {
+.bzrv-btn--primary { background: var(--bzrv-brand) ; color: var(--bzrv-on-brand) ; border-color: transparent; }@media (hover: hover) {
 
-.bzrv-btn--primary:hover { background: var(--bzrv-brand-hover) !important; }
+.bzrv-btn--primary:hover { background: var(--bzrv-brand-hover) ; }
 }
-.bzrv-btn--primary:active { background: var(--bzrv-brand-hover) !important; opacity: 0.9; }
+.bzrv-btn--primary:active { background: var(--bzrv-brand-hover) ; opacity: 0.9; }
 
-.bzrv-btn--danger { background: var(--bzrv-danger) !important; color: var(--bzrv-on-danger) !important; }@media (hover: hover) {
+.bzrv-btn--danger { background: var(--bzrv-danger) ; color: var(--bzrv-on-danger) ; }@media (hover: hover) {
 
-.bzrv-btn--danger:hover { background: var(--bzrv-danger) !important; opacity: 0.9; }
+.bzrv-btn--danger:hover { background: var(--bzrv-danger) ; opacity: 0.9; }
 }
 
 /* 描边 danger 档（ghost 形制 + danger 色；与实底 --danger 互补）：常态透底 danger 描边字，
    hover 转实底 on-danger（先例：书架墙详情删除钮） */
-.bzrv-btn--danger-ghost { background: transparent !important; border-color: var(--bzrv-danger) !important; color: var(--bzrv-danger) !important; }@media (hover: hover) {
+.bzrv-btn--danger-ghost { background: transparent ; border-color: var(--bzrv-danger) ; color: var(--bzrv-danger) ; }@media (hover: hover) {
 
-.bzrv-btn--danger-ghost:hover { background: var(--bzrv-danger) !important; border-color: var(--bzrv-danger) !important; color: var(--bzrv-on-danger) !important; }
+.bzrv-btn--danger-ghost:hover { background: var(--bzrv-danger) ; border-color: var(--bzrv-danger) ; color: var(--bzrv-on-danger) ; }
 }
 
-.bzrv-btn--ghost { background: transparent !important; border-color: var(--bzrv-border-strong) !important; color: var(--bzrv-text-1) !important; }@media (hover: hover) {
+.bzrv-btn--ghost { background: transparent ; border-color: var(--bzrv-border-strong) ; color: var(--bzrv-text-1) ; }@media (hover: hover) {
 
-.bzrv-btn--ghost:hover { background: var(--bzrv-surface-hover) !important; }
+.bzrv-btn--ghost:hover { background: var(--bzrv-surface-hover) ; }
 
 /* hover 品牌档（悬停才显品牌色的静态变体）：常态走基线，hover 转品牌软底 + 品牌前景描边
    （先例：书架墙详情「N 划线 · N 批注」可点 chip） */
 .bzrv-btn--hover-accent:hover {
-  background: var(--bzrv-brand-soft) !important;
-  border-color: var(--bzrv-brand) !important;
-  color: var(--bzrv-brand) !important;
+  background: var(--bzrv-brand-soft) ;
+  border-color: var(--bzrv-brand) ;
+  color: var(--bzrv-brand) ;
 }
 }
 
@@ -107,12 +107,12 @@
    图标坐 22px 小圆底 + 文字素排，透底灰字；hover 圆底转品牌软底，.is-on 整钮品牌色 */
 .bzrv-btn.bzrv-btn--chip {
   padding: 0 12px 0 6px;
-  background: transparent !important;
-  border-color: transparent !important;
-  color: var(--bzrv-text-2) !important;
+  background: transparent ;
+  border-color: transparent ;
+  color: var(--bzrv-text-2) ;
 }@media (hover: hover) {
 
-.bzrv-btn.bzrv-btn--chip:hover { color: var(--bzrv-text-1) !important; }
+.bzrv-btn.bzrv-btn--chip:hover { color: var(--bzrv-text-1) ; }
 }
 .bzrv-btn-chip {
   width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
@@ -123,7 +123,7 @@
 
 .bzrv-btn--chip:hover .bzrv-btn-chip { background: var(--bzrv-brand-soft); color: var(--bzrv-brand); }
 }
-.bzrv-btn--chip.is-on { color: var(--bzrv-brand) !important; font-weight: var(--bzrv-weight-medium); }
+.bzrv-btn--chip.is-on { color: var(--bzrv-brand) ; font-weight: var(--bzrv-weight-medium); }
 .bzrv-btn--chip.is-on .bzrv-btn-chip { background: var(--bzrv-brand-soft); color: var(--bzrv-brand); }
 
 /* ═══════════ 按钮行 .bzrv-btn-row ═══════════ */
@@ -135,8 +135,8 @@
 .bzrv-icon-btn {
   appearance: none;
   border: none;
-  background: transparent !important;
-  color: var(--bzrv-text-2) !important;
+  background: transparent ;
+  color: var(--bzrv-text-2) ;
   width: var(--bzrv-icon-btn-w);
   height: var(--bzrv-icon-btn-h);
   border-radius: var(--bzrv-radius-xs);
@@ -150,30 +150,30 @@
   transition: background-color var(--bzrv-dur-fast) ease, color var(--bzrv-dur-fast) ease;
 }@media (hover: hover) {
 
-.bzrv-icon-btn:hover { background: var(--bzrv-surface-hover) !important; color: var(--bzrv-text-1) !important; }
+.bzrv-icon-btn:hover { background: var(--bzrv-surface-hover) ; color: var(--bzrv-text-1) ; }
 }
-.bzrv-icon-btn:active { background: var(--bzrv-surface-active) !important; }
+.bzrv-icon-btn:active { background: var(--bzrv-surface-active) ; }
 .bzrv-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
 .bzrv-icon-btn:focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 2px; }
 .bzrv-icon-btn .bzrv-ic { width: 14px; height: 14px; }
 
-.bzrv-icon-btn--on { color: var(--bzrv-brand) !important; }@media (hover: hover) {
+.bzrv-icon-btn--on { color: var(--bzrv-brand) ; }@media (hover: hover) {
 
-.bzrv-icon-btn--on:hover { color: var(--bzrv-brand) !important; background: var(--bzrv-brand-soft) !important; }
+.bzrv-icon-btn--on:hover { color: var(--bzrv-brand) ; background: var(--bzrv-brand-soft) ; }
 }
 .bzrv-icon-btn--lg { width: var(--bzrv-icon-btn-lg); height: var(--bzrv-icon-btn-lg); border-radius: var(--bzrv-radius-sm); font-size: 16px; }
 .bzrv-icon-btn--lg .bzrv-ic { width: 16px; height: 16px; }
 .bzrv-icon-btn--xs { width: 18px; height: 18px; border-radius: 50%; }
 .bzrv-icon-btn--xs .bzrv-ic { width: 12px; height: 12px; }
 .bzrv-icon-btn--close { width: 20px; height: 24px; font-size: 12px; }
-.bzrv-icon-btn[data-danger] { color: var(--bzrv-danger) !important; }@media (hover: hover) {
+.bzrv-icon-btn[data-danger] { color: var(--bzrv-danger) ; }@media (hover: hover) {
 
-.bzrv-icon-btn[data-danger]:hover { background: color-mix(in srgb, var(--bzrv-danger) 12%, transparent) !important; }
+.bzrv-icon-btn[data-danger]:hover { background: color-mix(in srgb, var(--bzrv-danger) 12%, transparent) ; }
 }
 /* 盒装变体：浮在面板底色上的头行钮（先例 home hero 编辑/关闭）——surface 底 + 描边，
-   取代域内对基线 transparent 底的 !important 对抗 */
+   取代域内对基线 transparent 底的  对抗 */
 .bzrv-icon-btn--boxed {
-  background: var(--bzrv-surface-2) !important;
+  background: var(--bzrv-surface-2) ;
   border: 1px solid var(--bzrv-border);
 }@media (hover: hover) {
 
@@ -182,28 +182,28 @@
    声明在 --boxed 之后——同钮叠加两修饰时激活底覆盖盒装底 */
 .bzrv-icon-btn--active,
 .bzrv-icon-btn--active:hover {
-  background: var(--bzrv-brand) !important;
-  color: var(--bzrv-on-brand) !important;
+  background: var(--bzrv-brand) ;
+  color: var(--bzrv-on-brand) ;
   border-color: transparent;
 }
-.bzrv-icon-btn--active:hover { background: var(--bzrv-brand-hover) !important; }
+.bzrv-icon-btn--active:hover { background: var(--bzrv-brand-hover) ; }
 }
 /* 强调图标钮（品牌色图标 + 卡片底描边）：列表卡内行动钮等需要从灰调里跳出来的单图标钮 */
 .bzrv-icon-btn--accent {
-  color: var(--bzrv-brand) !important;
-  background: var(--bzrv-surface-2) !important;
+  color: var(--bzrv-brand) ;
+  background: var(--bzrv-surface-2) ;
   border: 1px solid var(--bzrv-border);
 }@media (hover: hover) {
 
-.bzrv-icon-btn--accent:hover { background: var(--bzrv-brand-soft) !important; color: var(--bzrv-brand) !important; }
+.bzrv-icon-btn--accent:hover { background: var(--bzrv-brand-soft) ; color: var(--bzrv-brand) ; }
 }
 
 /* ═══════════ Chip .bzrv-chip ═══════════ */
 .bzrv-chip {
   appearance: none;
   border: 1px solid transparent;
-  background: var(--bzrv-surface-2) !important;
-  color: var(--bzrv-text-2) !important;
+  background: var(--bzrv-surface-2) ;
+  color: var(--bzrv-text-2) ;
   height: 24px;
   padding: 0 12px;
   border-radius: var(--bzrv-radius-full);
@@ -219,41 +219,41 @@
   transition: background-color var(--bzrv-dur-fast) ease, color var(--bzrv-dur-fast) ease;
 }@media (hover: hover) {
 
-.bzrv-chip:hover { background: var(--bzrv-surface-hover) !important; color: var(--bzrv-text-1) !important; }
+.bzrv-chip:hover { background: var(--bzrv-surface-hover) ; color: var(--bzrv-text-1) ; }
 }
 .bzrv-chip:disabled { opacity: 0.5; cursor: not-allowed; pointer-events: none; }
 .bzrv-chip .bzrv-ic, .bzrv-chip-ic { width: 12px; height: 12px; flex-shrink: 0; }
 
-.bzrv-chip--on { background: var(--bzrv-brand) !important; color: var(--bzrv-on-brand) !important; }@media (hover: hover) {
+.bzrv-chip--on { background: var(--bzrv-brand) ; color: var(--bzrv-on-brand) ; }@media (hover: hover) {
 
-.bzrv-chip--on:hover { background: var(--bzrv-brand-hover) !important; color: var(--bzrv-on-brand) !important; }
+.bzrv-chip--on:hover { background: var(--bzrv-brand-hover) ; color: var(--bzrv-on-brand) ; }
 }
-.bzrv-chip--sel { background: var(--bzrv-brand-soft) !important; color: var(--bzrv-brand) !important; }@media (hover: hover) {
+.bzrv-chip--sel { background: var(--bzrv-brand-soft) ; color: var(--bzrv-brand) ; }@media (hover: hover) {
 
-.bzrv-chip--sel:hover { background: var(--bzrv-brand-soft) !important; color: var(--bzrv-brand) !important; }
+.bzrv-chip--sel:hover { background: var(--bzrv-brand-soft) ; color: var(--bzrv-brand) ; }
 }
-.bzrv-chip--locked { border: 1px dashed var(--bzrv-border-strong); opacity: 0.55; cursor: not-allowed; background: var(--bzrv-surface-1) !important; color: var(--bzrv-text-2) !important; }@media (hover: hover) {
+.bzrv-chip--locked { border: 1px dashed var(--bzrv-border-strong); opacity: 0.55; cursor: not-allowed; background: var(--bzrv-surface-1) ; color: var(--bzrv-text-2) ; }@media (hover: hover) {
 
-.bzrv-chip--locked:hover { background: var(--bzrv-surface-1) !important; color: var(--bzrv-text-2) !important; }
+.bzrv-chip--locked:hover { background: var(--bzrv-surface-1) ; color: var(--bzrv-text-2) ; }
 }
 /* 数据语义色徽标（域经内联 --bzrv-chip-tint / --bzrv-chip-tint-fg 注入底色/前景，如影院类型/状态徽标）；
-   底色仍走 !important 链路（压过基线 .bzrv-chip），域内不再自写覆盖规则 */
+   底色仍走  链路（压过基线 .bzrv-chip），域内不再自写覆盖规则 */
 .bzrv-chip--tint {
-  background: var(--bzrv-chip-tint, var(--bzrv-surface-2)) !important;
-  color: var(--bzrv-chip-tint-fg, var(--bzrv-text-1)) !important;
-  border-color: transparent !important;
+  background: var(--bzrv-chip-tint, var(--bzrv-surface-2)) ;
+  color: var(--bzrv-chip-tint-fg, var(--bzrv-text-1)) ;
+  border-color: transparent ;
   cursor: default;
 }@media (hover: hover) {
 
 .bzrv-chip--tint:hover {
-  background: var(--bzrv-chip-tint, var(--bzrv-surface-2)) !important;
-  color: var(--bzrv-chip-tint-fg, var(--bzrv-text-1)) !important;
+  background: var(--bzrv-chip-tint, var(--bzrv-surface-2)) ;
+  color: var(--bzrv-chip-tint-fg, var(--bzrv-text-1)) ;
 }
 /* hover 品牌档（悬停才显品牌色的静态变体；与 .bzrv-btn--hover-accent 同语义） */
 .bzrv-chip--hover-accent:hover {
-  background: var(--bzrv-brand-soft) !important;
-  border-color: var(--bzrv-brand) !important;
-  color: var(--bzrv-brand) !important;
+  background: var(--bzrv-brand-soft) ;
+  border-color: var(--bzrv-brand) ;
+  color: var(--bzrv-brand) ;
 }
 }
 .bzrv-chip-cnt { margin-left: 2px; font-size: 11px; font-weight: 600; opacity: 0.75; }
@@ -261,8 +261,8 @@
 .bzrv-chip-x {
   appearance: none;
   border: none;
-  background: transparent !important;
-  color: inherit !important;
+  background: transparent ;
+  color: inherit ;
   width: 16px;
   height: 16px;
   border-radius: 50%;
@@ -273,7 +273,7 @@
   padding: 0;
 }@media (hover: hover) {
 
-.bzrv-chip-x:hover { background: rgba(0, 0, 0, 0.15) !important; }
+.bzrv-chip-x:hover { background: rgba(0, 0, 0, 0.15) ; }
 }
 .bzrv-chip-x .bzrv-ic { width: 10px; height: 10px; }
 
@@ -377,8 +377,8 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 .bzrv-segmented-btn {
   appearance: none;
   border: none;
-  background: transparent !important;
-  color: var(--bzrv-text-2) !important;
+  background: transparent ;
+  color: var(--bzrv-text-2) ;
   height: 26px;
   padding: 0 14px;
   border-radius: 6px;
@@ -392,9 +392,9 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
   transition: background-color var(--bzrv-dur-fast) ease, color var(--bzrv-dur-fast) ease;
 }@media (hover: hover) {
 
-.bzrv-segmented-btn:hover { color: var(--bzrv-text-1) !important; }
+.bzrv-segmented-btn:hover { color: var(--bzrv-text-1) ; }
 }
-.bzrv-segmented-btn.is-on { background: var(--bzrv-surface-2) !important; color: var(--bzrv-text-1) !important; font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important; }
+.bzrv-segmented-btn.is-on { background: var(--bzrv-surface-2) ; color: var(--bzrv-text-1) ; font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) ; }
 
 /* ═══════════ 平铺单选组 .bzrv-choice（choice.ts） ═══════════
    表单里替代下拉的胶囊选项组：可换行、单选（.is-on 实心品牌）。
@@ -407,8 +407,8 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 .bzrv-choice-btn {
   appearance: none;
   border: 1px solid transparent;
-  background: var(--bzrv-surface-2) !important;
-  color: var(--bzrv-text-1) !important;
+  background: var(--bzrv-surface-2) ;
+  color: var(--bzrv-text-1) ;
   height: var(--bzrv-control-h);
   padding: 0 14px;
   border-radius: var(--bzrv-radius-full);
@@ -423,12 +423,12 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
   transition: background-color var(--bzrv-dur-fast) ease, color var(--bzrv-dur-fast) ease, border-color var(--bzrv-dur-fast) ease;
 }@media (hover: hover) {
 
-.bzrv-choice-btn:hover { background: var(--bzrv-surface-hover) !important; }
+.bzrv-choice-btn:hover { background: var(--bzrv-surface-hover) ; }
 }
 .bzrv-choice-btn:focus-visible { outline: 2px solid var(--bzrv-brand); outline-offset: 2px; }
-.bzrv-choice-btn.is-on { background: var(--bzrv-brand) !important; color: var(--bzrv-on-brand) !important; }@media (hover: hover) {
+.bzrv-choice-btn.is-on { background: var(--bzrv-brand) ; color: var(--bzrv-on-brand) ; }@media (hover: hover) {
 
-.bzrv-choice-btn.is-on:hover { background: var(--bzrv-brand-hover) !important; }
+.bzrv-choice-btn.is-on:hover { background: var(--bzrv-brand-hover) ; }
 }
 .bzrv-choice-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 /* 浮岛 segmented（float: true，issue 199 组件化；issue 200 拍板：视觉 = .bzrv-segmented
@@ -461,16 +461,16 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
   padding: 0 14px;
   border-radius: 6px;
   font-size: var(--bzrv-font-meta);
-  background: transparent !important;
-  color: var(--bzrv-text-2) !important;
+  background: transparent ;
+  color: var(--bzrv-text-2) ;
   transition: color var(--bzrv-dur-fast) ease;
 }@media (hover: hover) {
 
-.bzrv-choice--float .bzrv-choice-btn:hover { background: transparent !important; color: var(--bzrv-text-1) !important; }
+.bzrv-choice--float .bzrv-choice-btn:hover { background: transparent ; color: var(--bzrv-text-1) ; }
 }
-.bzrv-choice--float .bzrv-choice-btn.is-on { background: transparent !important; color: var(--bzrv-text-1) !important; font-weight: 600; }@media (hover: hover) {
+.bzrv-choice--float .bzrv-choice-btn.is-on { background: transparent ; color: var(--bzrv-text-1) ; font-weight: 600; }@media (hover: hover) {
 
-.bzrv-choice--float .bzrv-choice-btn.is-on:hover { background: transparent !important; }
+.bzrv-choice--float .bzrv-choice-btn.is-on:hover { background: transparent ; }
 }
 
 /* ═══════════ 开关 .bzrv-sw（switch.ts） ═══════════
@@ -769,15 +769,15 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
    挂在面板根节点（panel/frame）上，同时归零首子元素顶距——域内头行自带的
    safe-area 垫顶由本类统一接管，接入域不得再在头行重复写避让（防双份顶距）。 */
 @media (max-width: 768px) {
-  .bzrv-panel-mtop { padding-top: max(44px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) !important; }
-  .bzrv-panel-mtop > div:first-child { padding-top: 0 !important; }
+  .bzrv-panel-mtop { padding-top: max(44px, var(--safe-area-inset-top, env(safe-area-inset-top, 0px))) ; }
+  .bzrv-panel-mtop > div:first-child { padding-top: 0 ; }
 }
 
 /* ═══════════ 移动端可视视口高度 --bzrv-vvh（issue 266） ═══════════
    背景：`100vh` = 布局视口高度，**不随软键盘收缩**；键盘弹出时面板底部固定的
    输入条（备忘录录入条 / 第二大脑问答框 / 小橘聊天框…）被顶到键盘底下。
    本段**只提供变量资源**，不直接改任何面板的高度——面板几何归各域自己。
-   （核心层若用 `!important` 强行统改高度，会打坏两类锚定式面板：
+   （核心层若用 `` 强行统改高度，会打坏两类锚定式面板：
      knowledge 的 `.bzrv-kb-window` 是 `top/bottom: 安全区 + height: auto`，
      clipbook 的 `.bzrv-clip-mob-detail` 是父级 `inset: 0` 的嵌套层——
      两者都会被固定高度打断，故不做全域强改。）
@@ -910,17 +910,17 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 .bzrv-main-panel.bzrv-global-full {
   /* 定位统一钉到视口四边：遮罩内居中的面板、独立 body 子元素的弹窗式面板都一套口径；
      高度因此自动等于窗口高（移动端 --bzrv-vvh 由 core/viewport 写，桌面不动作也不会走到这里） */
-  position: fixed !important;
-  inset: 0 !important;
-  width: auto !important;
-  height: auto !important;
-  max-width: none !important;
-  max-height: none !important;
-  margin: 0 !important;
-  transform: none !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  position: fixed ;
+  inset: 0 ;
+  width: auto ;
+  height: auto ;
+  max-width: none ;
+  max-height: none ;
+  margin: 0 ;
+  transform: none ;
+  border: none ;
+  border-radius: 0 ;
+  box-shadow: none ;
 }
 
 /* 呈报#13（F3+H3）：大面板「打开即入焦 + Tab 圈闭」——焦点壳（trapPanelFocus 落焦的

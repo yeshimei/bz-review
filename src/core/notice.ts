@@ -24,9 +24,18 @@
  * - 点击通知本体即关闭（含常驻帧；2026-09-19 拍板：常驻帧 ✕ 关闭钮退役，点本体即关）
  * - z-index 动态发号（ADR-0067）：每次弹出抬顶容器——toast 永远盖过最新打开的 overlay
  */
-import { allocZ } from './z-order';import { tryGetSettings } from './settings-provider';
+import { tryGetSettings } from './settings-provider';
 
 import { markOwned } from './scope';
+
+/** SVG 字符串落 DOM：DOMParser 解析后逐节点 importNode 装入（不写 innerHTML） */
+function setIconMarkup(host: HTMLElement, markup: string): void {
+  const doc = new DOMParser().parseFromString(markup, 'text/html');
+  host.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
+/** toast 容器固定层级（ADR-0067：toast 永远压在所有弹层之上） */
+const NOTICE_CONTAINER_Z = '2147483000';
 export type NoticeType =
   | 'info'
   | 'success'
@@ -348,11 +357,11 @@ function applyTypeToEl(n: InternalNotice, kind: NoticeKind): void {
   );
   n.el.classList.add('bzrv-notice--' + (isProgressNow ? 'progress' : kind));
   // 图标（emoji；progress 转圈）
-  n.iconEl.innerHTML = '';
+  n.iconEl.replaceChildren();
   if (isProgressNow) {
-    n.iconEl.innerHTML = SPINNER_SVG;
+    setIconMarkup(n.iconEl, SPINNER_SVG);
   } else {
-    n.iconEl.textContent = ICONS[kind as NoticeType];
+    n.iconEl.textContent = ICONS[kind];
   }
   n.isProgress = isProgressNow;
 }
@@ -448,7 +457,7 @@ function noopHandle(): NoticeHandle {
  *  键盘可达（R6）：tabIndex=0 + Enter/Space 触发同回调（对齐 chip.ts 键盘口径）；
  *  action 点击自带 stopPropagation，不会误触发「点本体关闭」 */
 function appendActionBtn(n: InternalNotice, action: NoticeAction): void {
-  const btn = createEl('span');
+  const btn = createSpan();
   btn.className = 'bzrv-notice-action';
   btn.setAttribute('role', 'button');
   btn.tabIndex = 0;
@@ -564,7 +573,7 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
   const icon = createDiv();
   icon.className = 'bzrv-notice-icon';
   if (isProgress) {
-    icon.innerHTML = SPINNER_SVG;
+    setIconMarkup(icon, SPINNER_SVG);
   } else {
     icon.textContent = ICONS[type];
   }
@@ -613,7 +622,7 @@ export function notify(msg: string, opts?: NoticeOptions): NoticeHandle {
      于是被面板整个盖住（DOM 在、opacity 1，视觉上那块却是空白）；反过来，打开
      过一次弹窗之后 toast 的号又比面板大，就压住面板头行的按钮。同一屏里两种错法，
      取决于你在这之前开过哪些弹层。toast 本来就该永远在最上面，直接钉死。 */
-  container.style.zIndex = '2147483000';
+  container.style.zIndex = NOTICE_CONTAINER_Z;
   container.appendChild(el);
 
   live.push(n);

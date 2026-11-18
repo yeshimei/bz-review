@@ -18,44 +18,44 @@ function buildRow(item: BzRailItem): HTMLButtonElement {
 
   // 前缀槽五选一：图标底座 > 图标 > emoji > 字母徽标 > 状态色点
   if (item.boxedIcon) {
-    const box = createEl('span');
+    const box = createSpan();
     box.className = 'bzrv-rail-ic';
     box.appendChild(uiIcon(item.boxedIcon));
     b.appendChild(box);
   } else if (item.icon) {
     b.appendChild(uiIcon(item.icon));
   } else if (item.emoji) {
-    const emo = createEl('span');
+    const emo = createSpan();
     emo.className = 'bzrv-rail-emoji';
     emo.textContent = item.emoji;
     b.appendChild(emo);
   } else if (item.badge) {
-    const badge = createEl('span');
+    const badge = createSpan();
     badge.className = 'bzrv-rail-badge';
     badge.textContent = item.badge.t;
-    badge.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: item.badge.label }));
+    badge.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: item.badge.label }));
     if (item.badge.tint) badge.style.setProperty('--bzrv-rail-tint', item.badge.tint);
     b.appendChild(badge);
   } else if (item.dot) {
-    const dot = createEl('span');
+    const dot = createSpan();
     dot.className = 'bzrv-rail-dot';
     dot.style.setProperty('--bzrv-rail-tint', item.dot);
     b.appendChild(dot);
   }
 
-  const name = createEl('span');
+  const name = createSpan();
   name.className = 'bzrv-rail-name';
   name.textContent = item.name;
   b.appendChild(name);
 
   if (item.count !== undefined && item.count !== null && item.count !== '') {
-    const cnt = createEl('span');
+    const cnt = createSpan();
     cnt.className = 'bzrv-rail-count' + (item.pill ? ' bzrv-rail-count--pill' : '');
     cnt.textContent = String(item.count);
     b.appendChild(cnt);
   }
   if (item.unread) {
-    const u = createEl('span');
+    const u = createSpan();
     u.className = 'bzrv-rail-unread';
     u.textContent = String(item.unread);
     b.appendChild(u);
@@ -63,7 +63,7 @@ function buildRow(item: BzRailItem): HTMLButtonElement {
   if (item.children && item.children.length) {
     b.classList.add('has-sub');
     // caret 独立类（不吃 .bzrv-rail-item .bzrv-ic 的 14px 档，走 12px 旋转档）
-    const caret = createEl('span');
+    const caret = createSpan();
     caret.className = 'bzrv-rail-caret';
     setIcon(caret, 'chevron-right');
     b.appendChild(caret);

@@ -46,6 +46,13 @@ const TUTORIAL_URL = 'https://www.bilibili.com/video/BV1vNsZ6pE7i/?p=3';
 
 /* ---------- 最小 DOM 工具 ---------- */
 
+/** 只把基本类型转成文本；对象/数组不当模型名（避免 '[object Object]' 混进列表） */
+function primitiveText(v: unknown): string {
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 function el(tag: string, cls: string, text?: string): HTMLElement {
   const node = createEl(tag as keyof HTMLElementTagNameMap);
   node.className = cls;
@@ -57,15 +64,15 @@ function el(tag: string, cls: string, text?: string): HTMLElement {
 
 /** Ollama 服务探活（超时 → 当没起；服务没起不是错误，只是这一项还没配） */
 export async function probeOllamaService(timeoutMs = 3000): Promise<{ up: boolean; models: string[] }> {
-  if (typeof fetch !== 'function') return { up: false, models: [] };
+  if (typeof window.fetch !== 'function') return { up: false, models: [] };
   const base = embeddingServiceUrl().replace(/\/+$/, '');
   const ctrl = new AbortController();
   const timer = window.setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`${base}/api/tags`, { signal: ctrl.signal });
+    const res = await window.fetch(`${base}/api/tags`, { signal: ctrl.signal });
     if (!res.ok) return { up: false, models: [] };
     const data = (await res.json().catch(() => null)) as { models?: Array<{ name?: unknown }> } | null;
-    const models = Array.isArray(data?.models) ? data.models.map((m) => String(m?.name || '')) : [];
+    const models = Array.isArray(data?.models) ? data.models.map((m) => primitiveText(m?.name)) : [];
     return { up: true, models };
   } catch {
     return { up: false, models: [] };
@@ -97,7 +104,7 @@ function checkboxOf(item: PlanItem): HTMLInputElement {
 
 /** 名称（可链到下载页 / Ollama 库页）+ 徽章 */
 function nameNode(item: PlanItem): DocumentFragment {
-  const frag = document.createDocumentFragment();
+  const frag = createFragment();
   if (item.url) {
     const a = createEl('a');
     a.href = item.url;
@@ -205,7 +212,7 @@ export function openDepsGuide(app: unknown = getApp()): void {
   closeBtn.type = 'button';
   closeBtn.className = 'bzrv-deps-x';
   closeBtn.textContent = '✕';
-  closeBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
+  closeBtn.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
   head.append(el('span', 'bzrv-deps-t', 'bz 依赖什么'), closeBtn);
 
   const body = el('div', 'bzrv-deps-b');
@@ -291,7 +298,7 @@ export function openDepsGuide(app: unknown = getApp()): void {
   videoBtn.className = 'bzrv-btn';
   videoBtn.textContent = '看视频教程';
   // 界面上不堆分P（2026-11-01 用户口径：按钮、行名一律「视频教程」，不写「共几集」）
-  videoBtn.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '在浏览器里打开（B 站）' }));
+  videoBtn.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '在浏览器里打开（B 站）' }));
   const copyBtn = createEl('button');
   copyBtn.type = 'button';
   copyBtn.className = 'bzrv-btn bzrv-btn--primary';

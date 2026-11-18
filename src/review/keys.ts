@@ -18,15 +18,21 @@ export const RATING_ORDER: Rating[] = ['again', 'hard', 'good', 'easy'];
  * 规整用户填的键位：必须是 4 个互不相同的非空白字符。
  * 不合格一律退回默认，并在设置里由调用方提示（这里只做判定，不碰界面）。
  */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function normalizeRatingKeys(raw: unknown): string {
-  const s = String(raw ?? '').replace(/\s+/g, '');
+  const s = textOf(raw).replace(/\s+/g, '');
   if (s.length !== 4) return DEFAULT_RATING_KEYS;
   if (new Set(s).size !== 4) return DEFAULT_RATING_KEYS;
   return s;
 }
 
 export function isValidRatingKeys(raw: unknown): boolean {
-  const s = String(raw ?? '').replace(/\s+/g, '');
+  const s = textOf(raw).replace(/\s+/g, '');
   return s.length === 4 && new Set(s).size === 4;
 }
 

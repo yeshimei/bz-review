@@ -16,9 +16,15 @@ export const WEIGHTS_LENGTH = DEFAULT_W.length;
  * 不合格一律返回 null（调用方回退拟合值），不做「尽量猜」——
  * 猜错一个数，整条记忆曲线的间隔就全歪了，而且用户看不出是哪里错。
  */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function parseWeights(input: unknown): number[] | null {
   if (input === null || input === undefined) return null;
-  const text = String(input).trim();
+  const text = textOf(input).trim();
   if (!text) return null;
   const parts = text.split(/[\s,，;；]+/).filter(Boolean);
   if (parts.length !== WEIGHTS_LENGTH) return null;

@@ -81,6 +81,26 @@ export interface ResolvedToolCommand {
   via: 'bundle' | 'none';
 }
 
+/* 桌面端 renderer 通过 window.require 拿 Node 模块；只声明本文件真正用到的那几个方法，
+   避免整片 `as any` 把类型检查全部关掉。process 显式 declare 让 no-undef 认识它们。 */
+interface SpawnResult {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  error?: Error | string;
+}
+interface ChildProcessModule {
+  spawnSync(cmd: string, args: string[], opts?: Record<string, unknown>): SpawnResult;
+}
+interface FsModule {
+  existsSync?: (p: string) => boolean;
+}
+interface ElectronWindow extends Window {
+  require?: (id: string) => unknown;
+}
+declare const process: { platform?: string; arch?: string } | undefined;
+const nodeWindow = (): ElectronWindow | null => (typeof window === 'undefined' ? null : window);
+
 function isWindows(): boolean {
   return typeof process !== 'undefined' && process.platform === 'win32';
 }
@@ -105,12 +125,11 @@ function fsPath(app: unknown, rel: string): string {
 }
 
 /** spawn 用子进程模块（桌面端才有；移动端 → null） */
-function childProcess(): any {
-  if (typeof window === 'undefined') return null;
-  const w = window as any;
+function childProcess(): ChildProcessModule | null {
+  const w = nodeWindow();
   if (!w?.require) return null;
   try {
-    return w.require('child_process');
+    return (w.require('child_process') as ChildProcessModule | undefined) ?? null;
   } catch {
     return null;
   }
@@ -129,9 +148,9 @@ export function setFsProbe(fn: ((p: string) => boolean) | null): void {
 function existsOnDisk(p: string): boolean {
   if (!p) return false;
   if (fsProbe) return fsProbe(p);
-  const w = typeof window !== 'undefined' ? (window as any) : null;
+  const w = nodeWindow();
   try {
-    const fs = w?.require?.('fs');
+    const fs = w?.require?.('fs') as FsModule | undefined;
     if (fs?.existsSync) return !!fs.existsSync(p);
   } catch {
     /* 移动端 / 无 node integration */
@@ -187,7 +206,7 @@ function nodeVersionOf(nodePath: string): string {
 
 /** PATH 上找一个可执行（`where` / `which`）；找不到 → 空串。
  *  **只用来找 node**：外部工具本身只认插件目录里的包，不再回落到 PATH（见文件头）。 */
-function findOnPath(cp: any, name: string): string {
+function findOnPath(cp: ChildProcessModule | null, name: string): string {
   if (!cp?.spawnSync) return '';
   const cmd = isWindows() ? 'where' : 'which';
   try {

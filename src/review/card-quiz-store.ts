@@ -67,10 +67,18 @@ export async function getCardQuizzes(keys: readonly string[]): Promise<Record<st
   return out;
 }
 
+/** 题库条目形状守卫（题库来自磁盘 JSON，运行时可能缺字段/畸形） */
+function isQuizQuestions(v: unknown): v is QuizQuestion[] {
+  return Array.isArray(v) && v.every((q: unknown) =>
+    !!q && typeof q === 'object'
+    && typeof (q as QuizQuestion).question === 'string'
+    && Array.isArray((q as QuizQuestion).options));
+}
+
 /** 覆盖写一张卡的题库（重新生成就是覆盖，不是追加） */
 export async function saveCardQuiz(key: string, questions: readonly QuizQuestion[]): Promise<void> {
   const k = cleanKey(key);
-  const list = Array.isArray(questions) ? questions.filter((q) => q && q.question && Array.isArray(q.options)) : [];
+  const list = isQuizQuestions(questions) ? questions.filter((q) => q && q.question && Array.isArray(q.options)) : [];
   if (!k || !list.length) return;
   await enqueueFileTask(getCardQuizFilePath(), async () => {
     const bank = await readBank();

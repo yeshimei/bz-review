@@ -4,6 +4,26 @@
 import type { AIService } from '../../core/ai';
 import type { QuizQuestion } from './manager';
 
+/** 把 unknown 收窄成普通对象（非 null、非数组）——访问其属性前必须过这道守卫 */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+/** 把 unknown 收窄成数组（避免 Array.isArray 直接把 unknown 收成 any[]） */
+function isUnknownArray(v: unknown): v is unknown[] {
+  return Array.isArray(v);
+}
+
+/** 批量返回单题的「够格再校验」形状守卫：字段齐全即可，correctIndices 的越界项
+ *  交由调用方 filter 剔除（与原逻辑一致，不因个别坏索引整道丢题）。 */
+function isBatchQuestionShape(v: unknown): v is QuizQuestion {
+  if (!isRecord(v)) return false;
+  if (typeof v.question !== 'string' || !v.question) return false;
+  if (!Array.isArray(v.options) || v.options.length !== 4) return false;
+  if (!Array.isArray(v.correctIndices)) return false;
+  return true;
+}
+
 export class QuestionGenerator {
   /** 构建提示词（源码 L92-128 逐字；item 3 增 explain 字段：一句话解析+原文依据） */
   buildPrompt(content: string, enableMultipleChoice: boolean, questionsPerNote: number, difficulty: string): string {
@@ -47,17 +67,19 @@ ${truncated}`;
   }
 
   /** 提取 JSON（源码 L129-138 逐字） */
-  extractJSON(text: string): any {
+  extractJSON(text: string): unknown {
     const code = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (code) {
       try {
-        return JSON.parse(code[1].trim());
+        const parsed: unknown = JSON.parse(code[1].trim());
+        return parsed;
       } catch {
         /* 继续尝试 */
       }
     }
     try {
-      return JSON.parse(text.trim());
+      const parsed: unknown = JSON.parse(text.trim());
+      return parsed;
     } catch {
       /* 继续尝试 */
     }
@@ -65,7 +87,8 @@ ${truncated}`;
     const last = text.lastIndexOf('}');
     if (first !== -1 && last !== -1 && last > first) {
       try {
-        return JSON.parse(text.substring(first, last + 1));
+        const parsed: unknown = JSON.parse(text.substring(first, last + 1));
+        return parsed;
       } catch {
         /* 继续尝试 */
       }
@@ -77,31 +100,33 @@ ${truncated}`;
   async generate(noteContent: string, aiService: AIService, enableMultipleChoice: boolean, questionsPerNote: number, difficulty: string): Promise<QuizQuestion[]> {
     const prompt = this.buildPrompt(noteContent, enableMultipleChoice, questionsPerNote, difficulty);
     const result = await aiService.json(prompt);
-    const parsed = this.extractJSON(result);
-    if (!parsed.questions?.length) throw new Error('AI 未返回有效题目数组。');
-    for (const q of parsed.questions) {
-      if (!q.question || !Array.isArray(q.options) || q.options.length !== 4) {
+    const parsed: unknown = this.extractJSON(result);
+    if (!isRecord(parsed)) throw new Error('AI 未返回有效题目数组。');
+    const questions = parsed.questions;
+    if (!isUnknownArray(questions) || questions.length === 0) throw new Error('AI 未返回有效题目数组。');
+    for (const raw of questions) {
+      if (!isRecord(raw)) throw new Error('题目格式不正确：缺少 question 或 options 不是长度为4的数组');
+      if (!raw.question || !Array.isArray(raw.options) || raw.options.length !== 4) {
         throw new Error('题目格式不正确：缺少 question 或 options 不是长度为4的数组');
       }
-      if (!Array.isArray(q.correctIndices) || q.correctIndices.length === 0) {
+      const indices = raw.correctIndices;
+      if (!Array.isArray(indices) || indices.length === 0) {
         throw new Error('题目格式不正确：correctIndices 必须是非空数组');
       }
-      for (const idx of q.correctIndices) {
+      for (const idx of indices) {
         if (typeof idx !== 'number' || idx < 0 || idx > 3) {
           throw new Error('correctIndices 元素必须在 0~3 之间');
         }
       }
     }
-    return parsed.questions;
+    return questions as QuizQuestion[];
   }
 
   /** 批量提示词（源码 L162-191 逐字；item 3 增 explain 规则） */
   buildBatchPrompt(notes: { id: string; content: string }[], enableMultipleChoice: boolean, questionsPerNote: number, difficulty: string): string {
     let typeHint = '单选题（四选一）';
-    let structure = `{ "question": "题目文本", "options": ["A选项","B选项","C选项","D选项"], "correctIndices": [0], "explain": "一句话解析+原文依据" }`;
     if (enableMultipleChoice) {
       typeHint = '可以是单选题或多选题';
-      structure = `{ "question": "题目文本", "options": ["A选项","B选项","C选项","D选项"], "correctIndices": [0, 2], "explain": "一句话解析+原文依据" }`;
     }
     const countHint = questionsPerNote > 0 ? `每篇生成恰好 ${questionsPerNote} 道。` : '每篇生成 3~6 道。';
     let difficultyHint = '';
@@ -138,18 +163,16 @@ ${truncated}`;
     const exact = new Set(knownIds);
     const out: Record<string, QuizQuestion[]> = {};
     for (const [rawKey, qs] of Object.entries(parsed)) {
-      if (!Array.isArray(qs)) continue;
+      if (!isUnknownArray(qs)) continue;
       let key = rawKey.trim();
       if (key.startsWith('笔记ID:')) key = key.slice('笔记ID:'.length).trim();
       if (!exact.has(key)) continue; // 无法映射真实笔记 → 丢弃（防垃圾键 + 假成功）
       const valid: QuizQuestion[] = [];
-      for (const q of qs as any[]) {
-        if (!q.question || !Array.isArray(q.options) || q.options.length !== 4 || !Array.isArray(q.correctIndices)) {
-          continue;
-        }
+      for (const q of qs) {
+        if (!isBatchQuestionShape(q)) continue;
         // P2：与单篇 generate 对齐——correctIndices 越界项剔除（须为 0~3 的数字），
         // 剔除后无有效索引则丢弃该题
-        const indices = q.correctIndices.filter((i: any) => typeof i === 'number' && i >= 0 && i <= 3);
+        const indices = q.correctIndices.filter((i: unknown): i is number => typeof i === 'number' && i >= 0 && i <= 3);
         if (!indices.length) continue;
         valid.push({ ...q, correctIndices: indices });
       }
@@ -162,7 +185,7 @@ ${truncated}`;
   async generateBatch(notes: { id: string; content: string }[], aiService: AIService, enableMultipleChoice: boolean, questionsPerNote: number, difficulty: string): Promise<Record<string, QuizQuestion[]>> {
     const prompt = this.buildBatchPrompt(notes, enableMultipleChoice, questionsPerNote, difficulty);
     const result = await aiService.json(prompt);
-    const parsed = this.extractJSON(result);
+    const parsed = this.extractJSON(result) as Record<string, unknown>;
     // 返回 { noteId: questions[] } 的映射（键归一：无法映射已知笔记的键丢弃）
     return this.normalizeBatchKeys(parsed, notes.map((n) => n.id));
   }

@@ -12,8 +12,14 @@
 const KEY_PREFIX = 'reader:';
 const SNIPPET = 20;
 
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function bookIdOfCardKey(key: unknown): string | null {
-  const raw = String(key ?? '').trim();
+  const raw = textOf(key).trim();
   if (!raw.startsWith(KEY_PREFIX)) return null;
   const rest = raw.slice(KEY_PREFIX.length);
   const cut = rest.indexOf(':');

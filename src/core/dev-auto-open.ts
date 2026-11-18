@@ -10,18 +10,26 @@
  */
 import type { App } from 'obsidian';
 
+/** vault.adapter 的最小形状（只读这两个方法，老宿主可能没有） */
+interface DebugOpenAdapter {
+  exists?: (p: string) => Promise<boolean>;
+  read?: (p: string) => Promise<string>;
+}
+
 /** 读 debug-open.json 并执行其中的命令；任何一步走不通都静默。 */
 export function devAutoOpen(app: App, storageDir: string): void {
   try {
-    const adapter = (app.vault as { adapter?: { exists?: (p: string) => Promise<boolean>; read?: (p: string) => Promise<string> } }).adapter;
-    const read = adapter?.read?.bind(adapter);
+    const adapter = (app.vault as { adapter?: DebugOpenAdapter }).adapter;
+    // 不提取 .bind()：bind 在可选链上会把返回类型退成 any，改为 call 保留方法签名与 this
+    const read = adapter?.read;
     if (!read) return;
-    const exists = adapter?.exists?.bind(adapter);
+    const exists = adapter?.exists;
     const file = `${storageDir.replace(/\/+$/, '')}/debug-open.json`;
     void (async () => {
       try {
-        if (exists && !(await exists(file))) return;
-        const raw = JSON.parse(await read(file)) as { command?: unknown };
+        if (exists && !(await exists.call(adapter, file))) return;
+        const content: unknown = await read.call(adapter, file);
+        const raw = JSON.parse(typeof content === 'string' ? content : '') as { command?: unknown };
         const command = typeof raw.command === 'string' ? raw.command.trim() : '';
         if (!command) return;
         // 稍候一拍：直达的目标面板可能依赖布局/数据初始化

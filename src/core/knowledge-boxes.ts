@@ -33,8 +33,14 @@ export interface KnowledgeBoxes {
 }
 
 /** 目录归一：反斜杠转正斜杠、去首尾斜杠、去空白；空值回落缺省名（fallback 传 '' 则返回 ''） */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function normalizeBoxDir(raw: unknown, fallback: string): string {
-  const s = String(raw ?? '')
+  const s = textOf(raw)
     .replace(/\\/g, '/')
     .trim()
     .replace(/^\/+|\/+$/g, '');
@@ -49,7 +55,7 @@ export function normalizeBoxDir(raw: unknown, fallback: string): string {
  */
 export function parseDirList(raw: unknown): string[] {
   const out: string[] = [];
-  for (const part of String(raw ?? '').split(',')) {
+  for (const part of textOf(raw).split(',')) {
     const d = normalizeBoxDir(part, '');
     if (d && !out.includes(d)) out.push(d);
   }
@@ -61,7 +67,7 @@ export function parseDirList(raw: unknown): string[] {
  * @param s 可显式传入设置对象（settings.ts 的 onload 迁移要在合并默认值之前解析，见 migrateAutoLinkSettings）
  */
 export function getKnowledgeBoxes(s?: unknown): KnowledgeBoxes {
-  const st = (s ?? (tryGetSettings() as unknown) ?? {}) as Record<string, unknown>;
+  const st = (s ?? (tryGetSettings()) ?? {}) as Record<string, unknown>;
   return {
     lit: normalizeBoxDir(st.knowledgeDirectory, DEFAULT_LIT_DIR),
     cardbox: normalizeBoxDir(st.knowledgeCardboxDirectory, DEFAULT_CARDBOX_DIR),

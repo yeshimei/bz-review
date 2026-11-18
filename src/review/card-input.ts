@@ -62,7 +62,7 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
   /* 方式由 Reader 在制卡那一刻定下；这里是唯一的落库入口，丢了就只能按全局
      默认方式重盖——用户选的填空会变成抽认卡，选的做题会退化成看原文。 */
   if (typeof input.mode === 'string' && CARD_MODES.includes(input.mode)) {
-    card.mode = input.mode as ReviewCard['mode'];
+    card.mode = input.mode;
   }
 
   const q = String(input?.qa?.q ?? '').trim();

@@ -19,7 +19,6 @@ import { diskReadText, jsonFileStore } from '../core/storage';
 import { openFlowDialog } from '../core/flow-dialog';
 import { getSettings, saveSettings } from '../core/settings-provider';
 import type { SettingsSchema } from '../core/settings-schema';
-import type { ReviewItem } from './data';
 import type { ReviewDataManager } from './data';
 import { getReviewFilePath, getReviewMetaPath } from './data';
 import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
@@ -128,9 +127,11 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             name: '从 bz 导入',
             desc: '把 bz 里已有的复习计划搬过来。只导一次，目标已有数据就不覆盖，bz 那边不动。',
             buttonText: '导入',
-            onClick: async () => {
-              const res = await migrateFromBz(deps.app, getSettings());
-              notice(res.message, res.ok ? 'success' : 'warning');
+            onClick: () => {
+              void (async () => {
+                const res = await migrateFromBz(deps.app, getSettings());
+                notice(res.message, res.ok ? 'success' : 'warning');
+              })();
             },
           },
           {
@@ -178,10 +179,10 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                       return;
                     }
                     const parsed = parseReviewFile(JSON.parse(snap));
-                    await jsonFileStore<any>(getReviewFilePath(), { app: deps.app }).write(
+                    await jsonFileStore<unknown>(getReviewFilePath(), { app: deps.app }).write(
                       serializeReviewItems(parsed.items)
                     );
-                    await jsonFileStore<any>(getReviewMetaPath(), { app: deps.app }).write(reviewMeta(new Date()));
+                    await jsonFileStore<unknown>(getReviewMetaPath(), { app: deps.app }).write(reviewMeta(new Date()));
                     notice('已回滚，重新打开面板就能看到', 'success');
                   } catch (e) {
                     notice('回滚失败：' + (e instanceof Error ? e.message : String(e)), 'warning');
@@ -237,7 +238,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 btn.dataset.value = m.value;
                 btn.setAttribute('role', 'radio');
                 btn.setAttribute('aria-checked', 'false');
-                const dot = createEl('span');
+                const dot = createSpan();
                 dot.className = 'bzrv-choice-dot bzrv-accent-dot';
                 dot.dataset.acc = m.value;
                 btn.appendChild(dot);
@@ -358,7 +359,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               { value: '3', label: '三分之一' },
               { value: '4', label: '四分之一' },
             ],
-            visibleWhen: (s) => (s as any).reviewCardDefaultMethod === 'quiz',
+            visibleWhen: (s) => s.reviewCardDefaultMethod === 'quiz',
             isChild: true,
           },
         ],
@@ -551,7 +552,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             desc: '累计 N 次评级后自动重拟合一次',
             binding: { key: 'reviewFitEveryN' },
             min: 1,
-            visibleWhen: (s) => (s as any).reviewEnableFit === true,
+            visibleWhen: (s) => s.reviewEnableFit === true,
             isChild: true,
           },
           {
@@ -581,14 +582,14 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               '目录里的新笔记自动加入复习计划。库根目录不支持监听，会被拦下。' +
               '首次添加目录时会问是否把目录内已有笔记一并收编：取消 = 该目录不加入监听（新老笔记都不收），确认才加入。',
             binding: {
-              get: () => ((getSettings()).reviewWatchedFolders || []) as string[],
+              get: () => (getSettings()).reviewWatchedFolders || [],
               set: () => {},
               save: () => {},
             },
             pickerTitle: '选择监听文件夹',
             pickerDesc: '文件夹里的新笔记自动加入复习计划，包括子文件夹',
             onChange: (list) => {
-              const prev = [...(((getSettings()).reviewWatchedFolders as string[]) || [])];
+              const prev = [...((getSettings()).reviewWatchedFolders || [])];
               return (async (): Promise<string[]> => {
                 const { ReviewWatcher } = await import('./watch');
                 const watcher = new ReviewWatcher(deps.app, deps.dataManager);
@@ -690,14 +691,16 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             desc: '发一次最小的真实请求，确认密钥和服务商可用。',
             buttonText: '测试',
             visibleWhen: (s) => !!s.aiProvider,
-            onClick: async () => {
-              try {
-                const { testAIConnectivity } = await import('../core/ai');
-                const res = await testAIConnectivity();
-                notice(`连接正常：${res.label} · ${res.model}（${res.ms}ms）`, 'success');
-              } catch (e: any) {
-                notice(`连接失败：${e?.message ?? e}`, 'error');
-              }
+            onClick: () => {
+              void (async () => {
+                try {
+                  const { testAIConnectivity } = await import('../core/ai');
+                  const res = await testAIConnectivity();
+                  notice(`连接正常：${res.label} · ${res.model}（${res.ms}ms）`, 'success');
+                } catch (e) {
+                  notice(`连接失败：${e instanceof Error ? e.message : String(e)}`, 'error');
+                }
+              })();
             },
           },
         ],
@@ -751,43 +754,45 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             name: '测试朗读连接',
             desc: '向朗读服务发一次最小请求，确认地址和音色可用。',
             buttonText: '测试',
-            onClick: async () => {
-              const live = getSettings();
-              const url = String(live.ttsUrl ?? '').trim();
-              if (!url) {
-                notice('先填朗读服务地址再测试', 'warning');
-                return;
-              }
-              const cfg: TtsConfig = {
-                url,
-                model: String(live.ttsModel ?? '').trim(),
-                voice: String(live.ttsVoice ?? '').trim(),
-                format: live.ttsFormat === 'wav' ? 'wav' : 'mp3',
-                apiKey: String(live.ttsApiKey ?? '').trim(),
-              };
-              try {
-                const { voicesEndpoint, synthesizeSpeech } = await import('../core/tts-client');
-                const { requestUrl } = await import('obsidian');
-                const headers: Record<string, string> = {};
-                if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
-                // 先问音色列表：拿到 2xx 就够，不必真合成，省一次模型开销。
-                const resp = await requestUrl({
-                  url: voicesEndpoint(cfg.url, cfg.model),
-                  method: 'GET',
-                  headers,
-                  throw: false,
-                });
-                const status = Number((resp as any)?.status ?? 0);
-                if (status >= 200 && status < 300) {
-                  notice('朗读连接正常', 'success');
+            onClick: () => {
+              void (async () => {
+                const live = getSettings();
+                const url = String(live.ttsUrl ?? '').trim();
+                if (!url) {
+                  notice('先填朗读服务地址再测试', 'warning');
                   return;
                 }
-                // 有的服务只开了 speech、没开 voices；再试一句最短合成兜底。
-                await synthesizeSpeech('测试', cfg);
-                notice('朗读连接正常（音色列表接口不可用，但合成接口可用）', 'success');
-              } catch (e: any) {
-                notice(`朗读连接失败：${e?.message ?? e}`, 'error');
-              }
+                const cfg: TtsConfig = {
+                  url,
+                  model: String(live.ttsModel ?? '').trim(),
+                  voice: String(live.ttsVoice ?? '').trim(),
+                  format: live.ttsFormat === 'wav' ? 'wav' : 'mp3',
+                  apiKey: String(live.ttsApiKey ?? '').trim(),
+                };
+                try {
+                  const { voicesEndpoint, synthesizeSpeech } = await import('../core/tts-client');
+                  const { requestUrl } = await import('obsidian');
+                  const headers: Record<string, string> = {};
+                  if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
+                  // 先问音色列表：拿到 2xx 就够，不必真合成，省一次模型开销。
+                  const resp = await requestUrl({
+                    url: voicesEndpoint(cfg.url, cfg.model),
+                    method: 'GET',
+                    headers,
+                    throw: false,
+                  });
+                  const status = resp.status;
+                  if (status >= 200 && status < 300) {
+                    notice('朗读连接正常', 'success');
+                    return;
+                  }
+                  // 有的服务只开了 speech、没开 voices；再试一句最短合成兜底。
+                  await synthesizeSpeech('测试', cfg);
+                  notice('朗读连接正常（音色列表接口不可用，但合成接口可用）', 'success');
+                } catch (e) {
+                  notice(`朗读连接失败：${e instanceof Error ? e.message : String(e)}`, 'error');
+                }
+              })();
             },
           },
         ],

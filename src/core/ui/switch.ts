@@ -7,7 +7,7 @@ import type { BzSwitchOpts } from './types';
 
 /** 开关（role=switch），返回容器 + setChecked 句柄。disabled 支持：置灰并屏蔽交互 */
 export function uiSwitch(opts: BzSwitchOpts): { el: HTMLSpanElement; setChecked: (v: boolean) => void; setDisabled: (v: boolean) => void } {
-  const el = createEl('span');
+  const el = createSpan();
   el.className = 'bzrv-sw' + (opts.checked ? ' on' : '') + (opts.disabled ? ' is-disabled' : '');
   el.setAttribute('role', 'switch');
   el.setAttribute('aria-checked', String(!!opts.checked));

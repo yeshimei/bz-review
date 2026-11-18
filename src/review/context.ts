@@ -20,8 +20,14 @@ export interface ContextSides {
 }
 
 /** 把一段文本压到上限内，按字数（不是 UTF-16 长度）截 */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 function clampSide(text: unknown, fromEnd = false): string {
-  const chars = Array.from(String(text ?? '').replace(/\s+/g, ' ').trim());
+  const chars = Array.from(textOf(text).replace(/\s+/g, ' ').trim());
   if (chars.length <= MAX_SIDE) return chars.join('');
   return fromEnd ? `…${chars.slice(-MAX_SIDE).join('')}` : `${chars.slice(0, MAX_SIDE).join('')}…`;
 }

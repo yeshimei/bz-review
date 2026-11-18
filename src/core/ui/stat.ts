@@ -14,19 +14,19 @@ export function uiStat(opts: BzStatOpts): HTMLDivElement {
   if (opts.click) cls.push('bzrv-stat--click');
   el.className = cls.join(' ');
 
-  const label = createEl('span');
+  const label = createSpan();
   label.className = 'bzrv-stat-label';
   if (opts.icon) label.appendChild(uiIcon(opts.icon));
   label.appendChild(document.createTextNode(opts.label));
   el.appendChild(label);
 
-  const num = createEl('span');
+  const num = createSpan();
   num.className = 'bzrv-stat-num';
   num.textContent = String(opts.num);
   el.appendChild(num);
 
   if (opts.hint) {
-    const hint = createEl('span');
+    const hint = createSpan();
     hint.className = 'bzrv-stat-hint';
     hint.textContent = opts.hint;
     el.appendChild(hint);

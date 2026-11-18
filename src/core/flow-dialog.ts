@@ -27,6 +27,12 @@
  * - ESC 通道沿用 `'q3-confirm'`（escManager）。
  * - danger/cta 标记在标准双动作下只影响焦点（cta），不改动冻结的 DOM 结构。
  */
+/** HTML 字符串落容器：DOMParser 解析后逐节点 importNode 装入，语义同 innerHTML 赋值 */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
 import { escManager } from './esc-manager';
 import { bindMaskDismiss } from './mask-dismiss';
 import { escapeHtml } from './utils';
@@ -176,7 +182,7 @@ export function openFlowDialog(opts: FlowDialogOptions): Promise<string | undefi
     popup.setAttribute('aria-modal', 'true');
     // P0-8：文案全部经 escapeHtml 再拼 HTML（title/message/label 均为纯文本语义），
     // DOM 结构/id/类名不变
-    popup.innerHTML = parts.html;
+    setMarkup(popup, parts.html);
     // 富正文：只在调用方显式给出时替换默认 <p>；没给就保持逐字节同构的旧结构
     if (opts.body) {
       const p = popup.querySelector('p');
@@ -196,7 +202,7 @@ export function openFlowDialog(opts: FlowDialogOptions): Promise<string | undefi
     // 焦点圈闭（效率整改 6）：Tab 循环钳制在弹窗内，不再跑到被遮罩盖住的背景上
     const releaseFocusTrap = trapFocus(popup);
     function restoreFocus(): void {
-      if (prevActive && prevActive instanceof HTMLElement && prevActive.isConnected) {
+      if (prevActive && prevActive.instanceOf(HTMLElement) && prevActive.isConnected) {
         prevActive.focus();
       }
     }

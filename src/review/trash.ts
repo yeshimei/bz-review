@@ -8,6 +8,7 @@
  * 否则另一台设备的旧副本会把它复活（社区里那种删了又自己回来的怪事）。
  */
 import { stripRuntime } from './store-format';
+import type { ReviewItem } from './data';
 
 /** 回收站上限：只保最近这么多条，防无限增长 */
 export const TRASH_LIMIT = 200;
@@ -25,11 +26,11 @@ export interface TrashEntry {
   /** 列表里那一行字（恢复时不必再读条目内容） */
   title: string;
   /** 原条目快照（已剥运行时字段，恢复即原样放回） */
-  item: any;
+  item: Partial<ReviewItem>;
 }
 
 /** 把条目放进回收站：同键去重（新删的覆盖旧的）、超上限丢掉最旧的 */
-export function addToTrash(list: readonly TrashEntry[], items: readonly any[], now: Date): TrashEntry[] {
+export function addToTrash(list: readonly TrashEntry[], items: readonly ReviewItem[], now: Date): TrashEntry[] {
   const at = now.getTime();
   const incoming: TrashEntry[] = items.map((item) => {
     const key = String(item?.filePath ?? item?.id ?? '');

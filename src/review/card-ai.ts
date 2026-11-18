@@ -26,8 +26,12 @@ export type { CardMode } from './card-mode';
 export { CARD_MODES, cardModeOf, defaultCardMethod, isCardMode, modeOfCard } from './card-mode';
 
 /** 每轮抽题比例（分母）：2=一半、3=三分之一、4=四分之一 */
-export function cardQuizRatioOf(settings?: any): number {
-  const n = Math.round(Number((settings ?? tryGetSettings())?.reviewCardQuizRatio) || 3);
+export function cardQuizRatioOf(settings?: unknown): number {
+  const s: unknown = settings ?? tryGetSettings();
+  const ratio = s && typeof s === 'object' && 'reviewCardQuizRatio' in s
+    ? (s as { reviewCardQuizRatio?: unknown }).reviewCardQuizRatio
+    : undefined;
+  const n = Math.round(Number(ratio) || 3);
   return Math.min(4, Math.max(2, n));
 }
 

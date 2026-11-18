@@ -17,7 +17,6 @@
  * ============================================================ */
 import { downloadsVaultPath, ensureAssetReady, refreshAsset } from './remote-asset';
 import { cachedSha256For } from './download-manifest';
-import { normalizeVersion } from './version';
 
 /** 更新日志文件名（写入插件目录时用；ASCII，避免转义麻烦） */
 export const CHANGELOG_FILENAME = 'bz-changelog.html';

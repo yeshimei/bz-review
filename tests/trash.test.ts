@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ReviewItem } from '../src/review/data';
 import {
   TRASH_LIMIT,
   TRASH_TTL_DAYS,
@@ -8,13 +9,14 @@ import {
   tombstonesOf,
 } from '../src/review/trash';
 
+/* 测试桩只造回收站真正读到的那几个字段，不补齐 ReviewItem 的全部排期字段。 */
 const item = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
   filePath: `笔记/${id}.md`,
   name: id,
   stage: 1,
   ...extra,
-});
+}) as unknown as ReviewItem;
 
 const at = (iso: string) => new Date(iso);
 
@@ -28,7 +30,7 @@ describe('回收站', () => {
   });
 
   it('划线卡按 kind=card 记，恢复时不用再猜', () => {
-    const card = { id: 'c1', filePath: 'reader:book:1', name: '书 · 章', kind: 'card', card: { key: 'reader:book:1', text: 't' } };
+    const card = { id: 'c1', filePath: 'reader:book:1', name: '书 · 章', kind: 'card', card: { key: 'reader:book:1', text: 't' } } as unknown as ReviewItem;
     const list = addToTrash([], [card], at('2026-11-15T10:00:00.000Z'));
     expect(list[0].kind).toBe('card');
     expect(list[0].title).toContain('书');

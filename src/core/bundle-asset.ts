@@ -29,6 +29,36 @@ import { readOfflineBytes } from './offline-source';
 import { vaultBasePathOf } from './plugin-path';
 import type { DocStatus, ManifestDocEntry } from './download-manifest';
 
+/* 桌面端 renderer 通过 window.require 拿 Node 模块；只声明本文件真正用到的那几个方法，
+   避免整片 any 断言把类型检查全部关掉。Buffer 显式 declare 让 no-undef 认识它们。 */
+interface ZlibModule {
+  gunzipSync(input: Uint8Array): Uint8Array;
+}
+interface BufferCtor {
+  from(data: ArrayBufferLike, byteOffset: number, length: number): Uint8Array;
+}
+interface FsStat {
+  isFile?(): boolean;
+  size?: number;
+}
+interface FsModule {
+  statSync(p: string): FsStat | undefined;
+}
+interface ElectronWindow extends Window {
+  require?: (id: string) => unknown;
+}
+declare const Buffer: BufferCtor;
+
+const nodeWindow = (): ElectronWindow | null => (typeof window === 'undefined' ? null : window);
+
+/** Uint8Array 的 .buffer 是 ArrayBufferLike（可能是 SharedArrayBuffer），
+ *  writeBinary 只要 ArrayBuffer；显式复制一份，不用两头都不讨好的 as 断言。 */
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const ab = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(ab).set(bytes);
+  return ab;
+}
+
 /** 就绪标记文件名（住在解包目录根部；点前缀避开「工具自己会读到什么」这类意外） */
 export const BUNDLE_MARKER = '.bz-bundle.json';
 
@@ -64,20 +94,20 @@ export interface BundleDeps {
 
 /** 缺省 gunzip：桌面端 `window.require('zlib')`；非桌面端没有 zlib，直接给一句人话 */
 function defaultGunzip(bytes: Uint8Array): Uint8Array {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
-  let zlib: any = null;
+  const w = nodeWindow();
+  let zlib: ZlibModule | undefined;
   try {
-    zlib = w?.require?.('zlib');
+    zlib = w?.require?.('zlib') as ZlibModule | undefined;
   } catch {
-    zlib = null;
+    zlib = undefined;
   }
   if (!zlib?.gunzipSync) throw new Error('当前环境不支持解压（目录包需要桌面端）');
-  let Buf: any = typeof Buffer !== 'undefined' ? Buffer : null;
+  let Buf: BufferCtor | undefined = typeof Buffer !== 'undefined' ? Buffer : undefined;
   if (!Buf) {
     try {
-      Buf = w?.require?.('buffer')?.Buffer;
+      Buf = (w?.require?.('buffer') as { Buffer: BufferCtor } | undefined)?.Buffer;
     } catch {
-      Buf = null;
+      Buf = undefined;
     }
   }
   if (!Buf) throw new Error('当前环境不支持解压（缺少 Buffer）');
@@ -157,7 +187,7 @@ export async function bundleStatus(
 async function filesIntact(app: unknown, dir: string, marker: BundleMarker): Promise<boolean> {
   const sizes = marker.sizes;
   if (!Array.isArray(sizes) || !sizes.length) return true;
-  const fs = typeof window !== 'undefined' ? (window as any)?.require?.('fs') : null;
+  const fs = typeof window !== 'undefined' ? (nodeWindow()?.require?.('fs') as FsModule | undefined) : undefined;
   if (!fs?.statSync) return true; // 拿不到 fs（非桌面端）：不做判断，不制造假红
   const base = vaultBasePathOf(app);
   if (!base) return true;
@@ -167,7 +197,7 @@ async function filesIntact(app: unknown, dir: string, marker: BundleMarker): Pro
       // 所以拼的是 vault 根，不是插件目录——拼错会每次都判「文件不在」，等于所有人无脑重下
       const abs = `${base}/${downloadsVaultPath(app, `${dir}/${rel}`)}`;
       const st = fs.statSync(abs);
-      if (!st?.isFile?.() || Number(st.size) !== Number(size)) return false;
+      if (!st || !st.isFile?.() || Number(st.size) !== Number(size)) return false;
     }
     return true;
   } catch {
@@ -239,7 +269,7 @@ async function fetchArchive(
         await (app as { vault?: { adapter?: { writeBinary?: (p: string, d: ArrayBuffer) => Promise<void> } } })
           .vault?.adapter?.writeBinary?.(
             downloadsVaultPath(app, entry.file),
-            bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
+            toArrayBuffer(bytes),
           );
       } catch {
         /* 缓存失败不影响安装 */
@@ -337,7 +367,7 @@ async function installBundleOnce(
   for (const f of files) {
     const rel = `${dir}/${f.path}`;
     await ensureDir(app, rel);
-    const copy = f.data.buffer.slice(f.data.byteOffset, f.data.byteOffset + f.data.byteLength) as ArrayBuffer;
+    const copy = toArrayBuffer(f.data);
     await adapter.writeBinary(downloadsVaultPath(app, rel), copy);
     bytes += f.data.byteLength;
   }
@@ -360,7 +390,7 @@ async function installBundleOnce(
   } else {
     // 极端实现（只有 writeBinary）：编码成字节写下去。标记本身是纯 ASCII，不会因编码坏掉。
     const bytes = new TextEncoder().encode(markerText);
-    await adapter.writeBinary(markerPath, bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+    await adapter.writeBinary(markerPath, toArrayBuffer(bytes));
   }
 
   // 与单文件资源同一条事件：在线资源组的行态同步、各域面板的「工具已就绪」都靠它

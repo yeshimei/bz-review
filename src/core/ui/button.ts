@@ -22,7 +22,7 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
   if (opts.icon) {
     if (opts.chip) {
       // 图标圆底档：图标包进 .bzrv-btn-chip 小圆底（issue 200 F 款入库）
-      const chip = createEl('span');
+      const chip = createSpan();
       chip.className = 'bzrv-btn-chip';
       chip.appendChild(uiIcon(opts.icon));
       b.appendChild(chip);
@@ -31,7 +31,7 @@ export function uiBtn(opts: BzButtonOpts): HTMLButtonElement {
     }
   }
   if (opts.label) {
-    const span = createEl('span');
+    const span = createSpan();
     span.textContent = opts.label;
     b.appendChild(span);
   }

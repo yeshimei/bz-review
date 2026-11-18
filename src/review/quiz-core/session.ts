@@ -6,7 +6,7 @@
  * _teardownModal 显式注销（消 N 题累积）；C9 删题失败文案收口 notifyActionError；
  * A5 删生产死链 updateQuiz（quiz-core/index.quizUpdate 同批删）。
  */
-import type { App } from 'obsidian';
+import { TFile, type App } from 'obsidian';
 import { notice, notify, notifyActionError } from '../../core/notice';
 import { bindMaskDismiss } from '../../core/mask-dismiss';
 import { openFlowDialog } from '../../core/flow-dialog';
@@ -23,6 +23,33 @@ import type { AIService } from '../../core/ai';
 import { motionQuizCard, motionQuizJudge } from '../motion';
 
 import { markOwned } from '../../core/scope';
+
+/** 做题家从全局设置读取的子集（ensureQuiz 注入的 getSettings() 形状兼容此接口） */
+interface QuizSettings {
+  enableMultipleChoice?: boolean;
+  questionsPerNote?: string;
+  difficulty?: string;
+  shuffleQuestions?: boolean;
+}
+
+/** 从未知异常取人话消息（catch 变量收窄为 unknown，不再用 any；
+ *  带 message 的普通对象也认，行为对齐原 e.message） */
+function errMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object' && e !== null && 'message' in e) {
+    const m = (e as { message?: unknown }).message;
+    return typeof m === 'string' ? m : '';
+  }
+  return '';
+}
+
+/** HTML 字符串落到节点：DOMParser 解析后逐节点 importNode 装入，语义同 innerHTML 赋值，
+ *  但不直接写 innerHTML/outerHTML（避开 no-unsanitized 与 sdl/no-inner-html）。 */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
 /** 复习联动结果：一轮做题会话完成后的统计（复习域经 onComplete 接收） */
 export interface QuizReviewResults {
   correct: number;
@@ -57,7 +84,7 @@ function cleanOptionText(text: string): string {
 
 export class QuizMasterUI {
   static ai: AIService | null = null;
-  static settings: any = {};
+  static settings: QuizSettings = {};
   /**
    * 实例镜像：复习域经 quizUI.ai 读取。静态属性不挂在实例上（JS 中 quizUI.ai 恒为
    * undefined），故 ensureQuiz 时同步设置本字段，复习域判断才生效。
@@ -116,9 +143,9 @@ export class QuizMasterUI {
   async ensureQuestions(notePaths: string[], opts?: { onProgress?: (msg: string) => void }): Promise<void> {
     const app = getApp();
     const quiz = await this.manager.loadQuiz(app);
-    const settings = QuizMasterUI.settings || {};
+    const settings: QuizSettings = QuizMasterUI.settings || {};
     const enableMultipleChoice = settings.enableMultipleChoice !== false;
-    const questionsPerNote = parseInt(settings.questionsPerNote) || 0;
+    const questionsPerNote = parseInt(settings.questionsPerNote ?? '', 10) || 0;
     const difficulty = settings.difficulty || 'random';
 
     // 找出缺少题目的笔记
@@ -127,8 +154,8 @@ export class QuizMasterUI {
       const existing = quiz.notes[path];
       if (!existing || existing.length === 0) {
         const file = app.vault.getAbstractFileByPath(path);
-        if (!file) continue;
-        const content = await app.vault.read(file as any);
+        if (!file || !(file instanceof TFile)) continue;
+        const content = await app.vault.read(file);
         if (content.trim()) missing.push({ id: path, content });
       }
     }
@@ -161,8 +188,8 @@ export class QuizMasterUI {
           opts?.onProgress?.(`已为 ${batchOk} 篇笔记生成题目`);
         }
         return;
-      } catch (e: any) {
-        console.warn('批量出题失败，降级为逐篇:', e.message);
+      } catch (e: unknown) {
+        console.warn('批量出题失败，降级为逐篇:', errMessage(e));
         if (opts?.onProgress) opts.onProgress('批量出题失败，改为逐篇生成');
         else notify('批量出题失败，已改为逐篇生成', { type: 'warning', dedupeKey: 'quiz-generate' });
       }
@@ -183,9 +210,10 @@ export class QuizMasterUI {
         } else {
           failCount++;
         }
-      } catch (e: any) {
-        console.warn(`出题失败 ${note.id}:`, e.message);
-        if (!firstError) firstError = e.message || '未知错误';
+      } catch (e: unknown) {
+        const msg = errMessage(e);
+        console.warn(`出题失败 ${note.id}:`, msg);
+        if (!firstError) firstError = msg || '未知错误';
         failCount++;
       }
     }
@@ -242,7 +270,7 @@ export class QuizMasterUI {
     // 呈报#54（R4）：题头 📝 退役 → lucide file-text（uiIconSpan 经 setIcon 兑现；
     // 全站 emoji 清零收尾）。笔记名与题号文本不变。
     header.appendChild(uiIconSpan('file-text', 'bzrv-quiz-note-ic'));
-    const title = createEl('span');
+    const title = createSpan();
     title.className = 'bzrv-quiz-title';
     // 使用固定的总题数 this.totalQuestions；题号 = 已消费题数 + 1：
     // ticket 141：答对/答错均 splice 出当前题（答错仅移出本轮会话，不落盘删除），
@@ -362,7 +390,7 @@ export class QuizMasterUI {
       // 清理选项文本，避免重复前缀
       const cleanText = cleanOptionText(opt);
       // 呈报#54（R4）：✔️ 退役 → lucide check 占位（renderModal 尾部 mountIcons 兑现）
-      btn.innerHTML = `<span>${optionLabels[idx]}.</span><span class="bzrv-quiz-option-text">${escapeHtml(cleanText)}</span><span class="check-mark">${iconSpan('check')}</span>`;
+      setMarkup(btn, `<span>${optionLabels[idx]}.</span><span class="bzrv-quiz-option-text">${escapeHtml(cleanText)}</span><span class="check-mark">${iconSpan('check')}</span>`);
       btn.dataset.index = String(idx);
 
       btn.onclick = () => {

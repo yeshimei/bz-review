@@ -4,7 +4,6 @@
  * 这两个状态只影响「进不进本轮队列」，不改 FSRS 的任何排期字段。
  * 统一由 queue.ts 的 active() 一处拦，三区列、本轮队列、负荷预测自动同口径。
  */
-import type { ReviewItem } from './data';
 
 export interface QueueHidden {
   suspended?: boolean;
@@ -33,17 +32,17 @@ export function isHiddenFromQueue(it: QueueHidden | null | undefined, opts?: Tim
 
 /** 挂起：只写一个标记，不动 nextReviewDate / stability / difficulty / stage */
 export function setSuspended<T extends QueueHidden>(it: T, suspended: boolean): T {
-  return { ...it, suspended: suspended ? true : undefined } as T;
+  return { ...it, suspended: suspended ? true : undefined };
 }
 
 /** 埋藏：到期时间写到字段里；days 默认 1 天 */
 export function buryItem<T extends QueueHidden>(it: T, days = 1, opts?: TimeOpts): T {
-  return { ...it, buriedUntil: new Date(nowMsOf(opts) + days * 86400000).toISOString() } as T;
+  return { ...it, buriedUntil: new Date(nowMsOf(opts) + days * 86400000).toISOString() };
 }
 
 /** 恢复：清掉两个标记，排期字段原样保留 */
 export function unsuspendAndUnbury<T extends QueueHidden>(it: T): T {
-  const next: any = { ...it };
+  const next: QueueHidden = { ...it };
   delete next.suspended;
   delete next.buriedUntil;
   return next as T;

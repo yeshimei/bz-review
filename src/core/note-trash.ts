@@ -12,6 +12,12 @@
  */
 import type { App, TAbstractFile } from 'obsidian';
 
+/** Vault 的删除面（按最小形状收窄；库内回收站语义不变，不走 FileManager 尊重用户偏好那条路） */
+interface VaultTrash {
+  trash(file: TAbstractFile, useSystemTrash: boolean): Promise<void>;
+}
+
 export async function trashNote(app: App, file: TAbstractFile): Promise<void> {
-  await app.vault.trash(file, false);
+  const vault: VaultTrash = app.vault;
+  await vault.trash(file, false);
 }

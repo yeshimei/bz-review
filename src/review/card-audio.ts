@@ -55,7 +55,7 @@ export class CardAudio {
       const synth = this.deps.synthesize ?? synthesizeSpeech;
       const { buf, mime } = await synth(text, cfg);
       const makeUrl = this.deps.createObjectURL ?? ((blob: Blob) => URL.createObjectURL(blob));
-      const url = makeUrl(new Blob([buf as BlobPart], { type: mime }));
+      const url = makeUrl(new Blob([buf], { type: mime }));
       const create = this.deps.createAudio ?? defaultAudio;
       const player = create();
       player.src = url;

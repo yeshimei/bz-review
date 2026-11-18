@@ -47,7 +47,7 @@ export async function pickCardMethod(): Promise<PickCardMethodResult | null> {
     row.className = 'bzrv-card-method-row';
     const name = createEl('b');
     name.textContent = m.label;
-    const hint = createEl('span');
+    const hint = createSpan();
     hint.textContent = m.hint;
     row.appendChild(name);
     row.appendChild(hint);
@@ -59,7 +59,7 @@ export async function pickCardMethod(): Promise<PickCardMethodResult | null> {
   rememberWrap.className = 'bzrv-card-method-remember';
   const rememberBox = createEl('input');
   rememberBox.type = 'checkbox';
-  const rememberText = createEl('span');
+  const rememberText = createSpan();
   rememberText.textContent = '记住这个选择，以后加卡不再问';
   rememberWrap.appendChild(rememberBox);
   rememberWrap.appendChild(rememberText);
@@ -122,7 +122,7 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
 
     const qLabel = createEl('label');
     qLabel.className = 'bzrv-card-confirm-field';
-    const qCap = createEl('span');
+    const qCap = createSpan();
     qCap.textContent = '提示面（问句）';
     const qInput = createEl('input');
     qInput.className = 'bzrv-input';
@@ -134,7 +134,7 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
 
     const tLabel = createEl('label');
     tLabel.className = 'bzrv-card-confirm-field';
-    const tCap = createEl('span');
+    const tCap = createSpan();
     tCap.textContent = '原文（背面）';
     const tArea = createEl('textarea');
     tArea.className = 'bzrv-input';
@@ -213,17 +213,17 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
       list.forEach((q, i) => {
         const row = createDiv();
         row.className = 'bzrv-card-confirm-row';
-        const n = createEl('span');
+        const n = createSpan();
         n.className = 'bzrv-card-confirm-i';
         n.textContent = `${i + 1}`;
-        const txt = createEl('span');
+        const txt = createSpan();
         txt.className = 'bzrv-card-confirm-q';
         txt.textContent = q.question;
         const del = createEl('button');
         del.type = 'button';
         del.className = 'bzrv-icon-btn';
         del.textContent = '✕';
-        del.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '删掉这道题' }));
+        del.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '删掉这道题' }));
         del.addEventListener('click', () => {
           removed.push({ q, at: Date.now() });
           list = list.filter((x) => x !== q);
@@ -242,7 +242,7 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
       }
       removedWrap.innerHTML = '';
       if (!removed.length) return;
-      const cap = createEl('span');
+      const cap = createSpan();
       cap.textContent = '已删：';
       removedWrap.appendChild(cap);
       removed.forEach((r, i) => {
@@ -250,7 +250,7 @@ export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardCon
         chip.type = 'button';
         chip.className = 'bzrv-btn bzrv-btn--ghost bzrv-card-confirm-chip';
         chip.textContent = '补回这题';
-        chip.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: r.q.question }));
+        chip.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: r.q.question }));
         chip.addEventListener('click', () => {
           list.splice(Math.min(i, list.length), 0, r.q);
           removed.splice(i, 1);

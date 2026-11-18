@@ -26,6 +26,42 @@ import { readOfflineBytes } from './offline-source';
 import { fetchBytesWithProgress } from './net-progress';
 import type { TarFile } from './tar';
 
+/* 桌面端 renderer 通过 window.require 拿 Node 模块；只声明本文件真正用到的那几个方法，
+   避免整片 any 断言把类型检查全部关掉。process / Buffer 显式 declare 让 no-undef 认识它们。 */
+interface SpawnResult {
+  status: number | null;
+  stdout: string;
+  stderr: string;
+  error?: Error | string;
+}
+interface ChildProcessModule {
+  spawnSync(cmd: string, args: string[], opts?: Record<string, unknown>): SpawnResult;
+}
+interface FsModule {
+  chmodSync?(p: string, mode: number): void;
+}
+interface ZlibModule {
+  gunzipSync(input: Uint8Array): Uint8Array;
+}
+interface BufferCtor {
+  from(data: ArrayBufferLike, byteOffset: number, length: number): Uint8Array;
+}
+interface ElectronWindow extends Window {
+  require?: (id: string) => unknown;
+}
+declare const process: { platform?: string; arch?: string } | undefined;
+declare const Buffer: BufferCtor;
+
+const nodeWindow = (): ElectronWindow | null => (typeof window === 'undefined' ? null : window);
+
+/** Uint8Array 的 .buffer 是 ArrayBufferLike（可能是 SharedArrayBuffer），
+ *  writeBinary 只要 ArrayBuffer；显式复制一份，不用两头都不讨好的 as 断言。 */
+function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+  const ab = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(ab).set(bytes);
+  return ab;
+}
+
 /** 便携运行时的版本（LTS 线；升级时改这一个常量，双源的目录名都跟着变） */
 export const PORTABLE_NODE_VERSION = 'v24.14.1';
 
@@ -182,10 +218,7 @@ async function writeCachedArchive(app: unknown, plan: NodeArchivePlan, bytes: Ui
   if (!adapter?.writeBinary) return;
   try {
     await ensureDir(app, cacheRelOf(plan));
-    await adapter.writeBinary(
-      downloadsVaultPath(app, cacheRelOf(plan)),
-      bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer,
-    );
+    await adapter.writeBinary(downloadsVaultPath(app, cacheRelOf(plan)), toArrayBuffer(bytes));
   } catch {
     /* 缓存写不进去就算了 */
   }
@@ -201,10 +234,11 @@ async function dropCachedArchive(app: unknown, plan: NodeArchivePlan): Promise<v
 
 /** 缺省 gunzip（tar.gz 走这里；与 bundle-asset 同源） */
 function defaultGunzip(bytes: Uint8Array): Uint8Array {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
-  const zlib = w?.require?.('zlib');
+  const w = nodeWindow();
+  const zlib = w?.require?.('zlib') as ZlibModule | undefined;
   if (!zlib?.gunzipSync) throw new Error('当前环境不支持解压（便携 Node 需要桌面端）');
-  const Buf: any = typeof Buffer !== 'undefined' ? Buffer : w?.require?.('buffer')?.Buffer;
+  const Buf: BufferCtor | undefined =
+    typeof Buffer !== 'undefined' ? Buffer : (w?.require?.('buffer') as { Buffer: BufferCtor } | undefined)?.Buffer;
   if (!Buf) throw new Error('当前环境不支持解压（缺少 Buffer）');
   const out = zlib.gunzipSync(Buf.from(bytes.buffer, bytes.byteOffset, bytes.byteLength));
   return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);
@@ -235,14 +269,17 @@ function extractMember(archive: Uint8Array, plan: NodeArchivePlan, deps: NodeIns
 function runNodeVersion(binPath: string): string {
   if (typeof window === 'undefined') return '';
   try {
-    const cp = (window as any).require?.('child_process');
+    const cp = nodeWindow()?.require?.('child_process') as ChildProcessModule | undefined;
     if (!cp?.spawnSync) return '';
     // 30s 而不是 8s：第一次执行一个 90MB 的 exe 时，Windows Defender 会当场全量扫一遍，
     // 冷机上实测能卡十几秒。卡住被 kill → status 为 null → 会被误判成「装了但跑不起来」，
     // 然后我们把一个好好的 node.exe 删掉，用户看到的是「下载失败」。
     const r = cp.spawnSync(binPath, ['-v'], { encoding: 'utf8', windowsHide: true, timeout: 30000 });
     if (r?.status === 0) return String(r.stdout || '').trim();
-    if (r?.error) console.warn('[bz] 便携 Node 验证失败：', (r.error as Error)?.message || r.error);
+    if (r?.error) {
+      const e = r.error;
+      console.warn('[bz] 便携 Node 验证失败：', (typeof e === 'string' ? e : e.message) || e);
+    }
     return '';
   } catch {
     return '';
@@ -271,7 +308,6 @@ export async function installPortableNode(app: unknown, deps: NodeInstallDeps = 
     throw new Error(`本平台没有官方 Node 产物（${platform}/${arch}）：请自行安装 Node.js 后重试`);
   }
   const fetchBytes = deps.fetchBytes;
-  const member = bundledNodeFile(platform);
 
   let lastErr = '';
   for (const plan of plans) {
@@ -358,7 +394,7 @@ async function installFromArchive(
   // `downloads/downloads/tools/...`：文件确实写成功了，但探测永远找不到它。
   const rel = portableNodeDownloadsRel(platform);
   await ensureDir(app, rel);
-  const ab = bin.buffer.slice(bin.byteOffset, bin.byteOffset + bin.byteLength) as ArrayBuffer;
+  const ab = toArrayBuffer(bin);
   const adapter = (app as { vault?: { adapter?: { writeBinary?: (p: string, d: ArrayBuffer) => Promise<void> } } }).vault
     ?.adapter;
   if (!adapter?.writeBinary) throw new Error('当前环境无法写入二进制文件（便携 Node 需要桌面端）');
@@ -368,7 +404,7 @@ async function installFromArchive(
   if (platform !== 'win32') {
     try {
       const abs = `${pluginDirOf(app)}/${rel}`;
-      (window as any).require?.('fs')?.chmodSync?.(abs, 0o755);
+      (nodeWindow()?.require?.('fs') as FsModule | undefined)?.chmodSync?.(abs, 0o755);
     } catch {
       /* 权限位失败交给下面 -v 判定 */
     }

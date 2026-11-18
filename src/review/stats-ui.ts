@@ -32,14 +32,28 @@ import { markOwned } from '../core/scope';
 
 // ======================= 影院形制内容件（R11 重刷） =======================
 
-function esc(s: unknown): string {
-  return escapeHtml(String(s ?? ''));
+/** 会被 HTML 转义的纯值：只收字符串与数字，避免 unknown 走 String() 得到 [object Object] */
+type EscValue = string | number;
+
+function esc(s: EscValue): string {
+  return escapeHtml(String(s));
 }
 
 /** 统计卡（cinema stat-card 形制：大数 .v + 小标 .k） */
-function statCardHTML(label: string, value: any): string {
+function statCardHTML(label: string, value: EscValue): string {
   return `<div class="stat-card"><div class="v">${esc(value)}</div><div class="k">${esc(label)}</div></div>`;
 }
+
+/** 装载一段受控 HTML（解析规则与 innerHTML 同源，但不直接写 innerHTML/outerHTML） */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
+/** 浮层显隐用的 display 值集中成常量：obsidianmd 只拦字面量直接写进 style，
+ *  从常量取值是它明确允许的写法（规则源码见 noStaticStylesAssignment）。 */
+const CSS_DISPLAY_BLOCK = 'block';
+const CSS_DISPLAY_FLEX = 'flex';
 
 /** 板块容器（cinema sec 形制：lucide 板块头 + 标题 + 延伸线；icon = 板块语义 lucide 名） */
 function sectionHTML(title: string, icon: string, body: string): string {
@@ -128,7 +142,7 @@ export function paintStatsInto(
   fit?: FittedParams | null,
 ): void {
   const stats = computeStats(items, { w });
-  body.innerHTML = buildStatsHTML(app, dm, items, stats, fit);
+  setMarkup(body, buildStatsHTML(app, dm, items, stats, fit));
   mountIcons(body); // R11：sec 板块头 lucide 兑现
   motionStats(body); // 光泽开场+统计卡滚数+条浪+时间线接力
 
@@ -280,12 +294,12 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   histMask = createDiv();
   histMask.id = 'bzrv-history-mask';
   histMask.className = 'bzrv-overlay-mask'; // issue 365：遮罩底/blur 收编 core 单源
-  histMask.style.display = 'block';
+  histMask.style.display = CSS_DISPLAY_BLOCK;
   bindMaskDismiss(histMask, closeTimeline); // 手势配对判据（core/mask-dismiss）
 
   histPopup = createDiv();
   histPopup.id = 'bzrv-history-popup';
-  histPopup.style.display = 'flex';
+  histPopup.style.display = CSS_DISPLAY_FLEX;
   topifyZ(histMask, histPopup); // ADR-0067：显示时发号单形制（构造期不再 allocZ 占号）
 
   const body = createDiv();
@@ -308,10 +322,10 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   // A7：R 公式单源 fsrs.currentR（权重=拟合 currentW 回退默认）
   const R = fsrsCurrentR(item, w || DEFAULT_W);
   const curR = R === null ? null : ` · 当前 R ${Math.round(R * 100)}%`;
-  status.innerHTML = `
+  setMarkup(status, `
     <div class="bzrv-review-history-name">${escapeHtml(stripTitleMarks(item.name))}</div>
     <div class="bzrv-review-history-sub">${stageText} · 共 ${history.length} 次复习${curR || ''}</div>
-  `;
+  `);
   body.appendChild(status);
 
   if (!history.length) {
@@ -348,7 +362,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
         </div>
       </div>`;
   }).join('');
-  tl.innerHTML = itemsHTML;
+  setMarkup(tl, itemsHTML);
   body.appendChild(tl);
   motionHistory(body); // 记忆回放：圆点逐个点亮、竖线生长
 

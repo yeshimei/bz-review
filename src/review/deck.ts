@@ -121,16 +121,16 @@ export function applyFilter(items: readonly ReviewItem[], filter: ItemFilter = {
      suspended / buriedUntil 一并写进 staged：active() 会读它们，漏了就会造出
      「三区列不看挂起、单测却看」的口径分叉。 */
   const now = Date.now();
-  const staged = kept.map((it) => ({
+  const staged: ReviewItem[] = kept.map((it) => ({
     ...it,
-    isCompleted: !!(it as any).isCompleted || !!(it as any).completed,
+    isCompleted: !!it.isCompleted || !!it.completed,
     isOverdue:
-      typeof (it as any).isOverdue === 'boolean'
-        ? (it as any).isOverdue
+      typeof it.isOverdue === 'boolean'
+        ? it.isOverdue
         : !!it.nextReviewDate && new Date(it.nextReviewDate).getTime() <= now,
-    suspended: !!(it as any).suspended,
-    buriedUntil: (it as any).buriedUntil,
-  })) as ReviewItem[];
+    suspended: !!it.suspended,
+    buriedUntil: it.buriedUntil,
+  }));
   const cols = partitionQueue(staged, DEFAULT_R_THRESHOLD, DEFAULT_W);
   const bucket = status === 'overdue' ? cols.overdue : status === 'today' ? cols.today : cols.future;
   const keys = new Set(bucket.map((i) => i.filePath));

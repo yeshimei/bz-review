@@ -24,7 +24,7 @@ export function uiMobStrip(opts: BzMobStripOpts): {
     chip.className = 'bzrv-mobstrip-chip';
     chip.dataset.id = it.id;
     if (it.dot) {
-      const dot = createEl('span');
+      const dot = createSpan();
       dot.className = 'bzrv-mobstrip-dot';
       dot.style.setProperty('--bzrv-rail-tint', it.dot);
       chip.appendChild(dot);

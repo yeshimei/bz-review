@@ -75,8 +75,8 @@ export function createFileSync<D, R extends FileSyncRenameEvent = FileSyncRename
 
   /** 任务队列：串行执行（防并发读写同一 JSON）；失败通知（去重防刷屏）。
    *  任务执行前检查 _cancelled，卸载后积压任务首行短路。 */
-  let queue: Promise<any> = Promise.resolve();
-  function enqueue(task: () => Promise<any> | void) {
+  let queue: Promise<unknown> = Promise.resolve();
+  function enqueue(task: () => Promise<unknown> | void) {
     queue = queue
       .then(() => {
         if (_cancelled) return;
@@ -90,7 +90,7 @@ export function createFileSync<D, R extends FileSyncRenameEvent = FileSyncRename
 
   /** 去抖延迟：复用既有 DEBOUNCE_DELAY 设置（字符串毫秒，缺省 300） */
   function debounceDelay(): number {
-    const s: any = tryGetSettings();
+    const s = tryGetSettings() as Record<string, unknown> | null;
     return Number(s && s.DEBOUNCE_DELAY) || 300;
   }
 
@@ -131,11 +131,19 @@ export function createFileSync<D, R extends FileSyncRenameEvent = FileSyncRename
     return folders.some((f) => path.startsWith(f + '/') || path === f);
   }
 
-  function createAgent(app: App): void {
-    const isMd = (file: any) => file && file.extension === 'md' && inFolders(file.path, config.watchedFolders());
+  /** 总线载荷 → 现有闭包期望的伪 TFile 形状（{path, basename, extension:'md'}），
+   *  只声明这里真正读到的三个字段，避免整片 `as any` 把类型检查全部关掉。 */
+  interface PseudoMdFile {
+    path: string;
+    basename: string;
+    extension: string;
+  }
 
-    /** 总线载荷 → 现有闭包期望的伪 TFile 形状（{path, basename, extension:'md'}） */
-    const pseudoFile = (path: string): any => ({
+  function createAgent(app: App): void {
+    const isMd = (file: PseudoMdFile | null | undefined): boolean =>
+      !!file && file.extension === 'md' && inFolders(file.path, config.watchedFolders());
+
+    const pseudoFile = (path: string): PseudoMdFile => ({
       path,
       basename: stripMdExt(path.split('/').pop() || ''),
       extension: 'md',
@@ -198,13 +206,13 @@ export function createFileSync<D, R extends FileSyncRenameEvent = FileSyncRename
       for (const f of _flushers) {
         try {
           f.cancel();
-        } catch (e) { /* 忽略 */ }
+        } catch { /* 忽略 */ }
       }
       _flushers = [];
       for (const off of _refs) {
         try {
           off();
-        } catch (e) { /* 忽略 */ }
+        } catch { /* 忽略 */ }
       }
       _refs = [];
       initialized = false;

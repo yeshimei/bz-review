@@ -126,7 +126,7 @@ export function parseDownloadManifest(text: string | null): DownloadManifest | n
   let raw: unknown;
   try {
     raw = JSON.parse(text);
-  } catch (e) {
+  } catch {
     return null;
   }
   const obj = raw as {

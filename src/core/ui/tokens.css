@@ -271,7 +271,7 @@ body.theme-light [data-bzrv] {
 .bzrv-accent-dot[data-acc="indigo"] { background: var(--bzrv-accent-dot-indigo); }
 .bzrv-accent-dot[data-acc="moss"]   { background: var(--bzrv-accent-dot-moss); }
 .bzrv-accent-seg .bzrv-segmented-btn.is-on {
-  background: var(--bzrv-accent-soft) !important;
-  color: var(--bzrv-accent) !important;
-  box-shadow: inset 0 0 0 1px var(--bzrv-accent-line) !important;
+  background: var(--bzrv-accent-soft) ;
+  color: var(--bzrv-accent) ;
+  box-shadow: inset 0 0 0 1px var(--bzrv-accent-line) ;
 }

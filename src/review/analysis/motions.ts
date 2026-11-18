@@ -46,7 +46,7 @@
 import type { RaData } from './data';
 import { RA_RATING_NAMES, RA_RATING_ORDER } from './data';
 import {
-  at, clamp01, easeOut, easeInOut, easeBack, easeElastic, spring, stagger, rng,
+  at, clamp01, easeOut, easeInOut, easeBack, spring, stagger, rng,
   canvas, sampleText, rgba, qsa, rollTo, lerp, toward, type Palette,
   localAt, nearest, under, tip, type PointerAt,
 } from './kits';
@@ -590,7 +590,6 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
   {
     const s = scn('strata') as HTMLElement;
     const strata = qsa(s, '.ra-stratum');
-    const phs = strata.map((el) => vOf(el, '--ph', 0));
     const nsEls = strata.map((el) => el.querySelector<HTMLElement>('[data-r="stn"]'));
     const ns = data.dBuckets.map((b) => b.n);
     const bed = s.querySelector<HTMLElement>('[data-r="bed"]');
@@ -859,7 +858,6 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
     const quarters = qsa(s, '.ra-quarter');
     const lamps = quarters.map((el) => el.querySelector<HTMLElement>('[data-r="qlamp"]'));
     const numsEls = quarters.map((el) => el.querySelector<HTMLElement>('[data-r="qn"]'));
-    const phs = quarters.map((el) => vOf(el, '--ph', 0));
     const counts = [data.overdueN, data.todayN, data.futureN, data.doneColN];
     let hotQ = -1;
     out.set('quarters', {
@@ -890,7 +888,6 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
     const marks = qsa(s, '.ra-mark');
     const cuts = marks.map((el) => el.querySelector<HTMLElement>('[data-r="cut"]'));
     const numsEls = marks.map((el) => el.querySelector<HTMLElement>('[data-r="markn"]'));
-    const phs = marks.map((el) => vOf(el, '--ph', 0));
     const mrow = s.querySelector<HTMLElement>('[data-r="mrow"]');
     const counts = RA_RATING_ORDER.map((k) => data.lastDiffDist[k] || 0);
     let hotM = -1;

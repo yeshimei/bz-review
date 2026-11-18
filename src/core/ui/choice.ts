@@ -8,17 +8,21 @@
  * ============================================================ */
 import type { BzChoiceOpts } from './types';
 
+/** 浮岛指示器的过渡开关：字面量赋值走常量（obsidianmd/no-static-styles-assignment） */
+const SEG_TRANSITION_NONE = 'none';
+const SEG_TRANSITION_DEFAULT = '';
+
 /** 平铺单选组（可换行胶囊），返回容器 + setValue/detach 句柄。radiogroup + 方向键导航（L8） */
 export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDivElement; setValue: (v: T) => void; detach: () => void } {
   const el = createDiv();
   el.className = 'bzrv-choice' + (opts.float ? ' bzrv-choice--float' : '') + (opts.className ? ' ' + opts.className : '');
   el.setAttribute('role', 'radiogroup');
-  el.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
+  el.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: opts.label || '' }));
   const btns = new Map<T, HTMLButtonElement>();
   let cur: T = opts.value;
 
   // 浮岛滑动指示器（float 专属；非浮岛档无此节点，样式 display:none 兜底）
-  const seg = createEl('span');
+  const seg = createSpan();
   seg.className = 'bzrv-choice-seg';
   let segRAF = 0;
   let segTries = 0;
@@ -28,21 +32,21 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
    *  重试上限防永不挂载/display:none 死循环 */
   const syncSeg = (animate: boolean) => {
     if (!opts.float) return;
-    const on = el.querySelector('.bzrv-choice-btn.is-on') as HTMLElement | null;
+    const on = el.querySelector<HTMLElement>('.bzrv-choice-btn.is-on');
     if (!on) return;
     const tb = el.getBoundingClientRect();
     const bb = on.getBoundingClientRect();
     if (!el.isConnected || !tb.width || !bb.width) {
       if (segTries++ > 120) return;
       cancelAnimationFrame(segRAF);
-      segRAF = requestAnimationFrame(() => syncSeg(false));
+      segRAF = window.requestAnimationFrame(() => syncSeg(false));
       return;
     }
     segTries = 0;
-    if (!animate) seg.style.transition = 'none';
+    if (!animate) seg.style.transition = SEG_TRANSITION_NONE;
     seg.style.width = `${bb.width}px`;
     seg.style.transform = `translateX(${bb.left - tb.left}px)`;
-    if (!animate) { void seg.offsetWidth; seg.style.transition = ''; }
+    if (!animate) { void seg.offsetWidth; seg.style.transition = SEG_TRANSITION_DEFAULT; }
   };
   const onWinResize = () => {
     // C12：元素已离场即自摘 window resize 监听——detach 契约不变，调用方忘调时
@@ -65,7 +69,7 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
     b.setAttribute('role', 'radio');
     b.setAttribute('aria-checked', String(o.value === opts.value));
     if (o.dot) {
-      const d = createEl('span');
+      const d = createSpan();
       d.className = 'bzrv-choice-dot';
       d.style.background = o.dot;
       b.appendChild(d);

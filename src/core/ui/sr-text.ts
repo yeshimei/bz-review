@@ -8,7 +8,7 @@
 
 /** 视觉隐藏的 span：读屏读得到，肉眼不见，不触发悬停气泡。 */
 export function srText(text: string): HTMLSpanElement {
-  const span = createEl('span');
+  const span = createSpan();
   span.className = 'bzrv-sr-only';
   span.textContent = text;
   return span;

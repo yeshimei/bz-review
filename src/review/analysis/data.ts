@@ -213,9 +213,9 @@ export function deriveAnalysis(
     const hist = Array.isArray(it.reviewHistory) ? it.reviewHistory : [];
     for (const h of hist) {
       verdictTotal++;
-      const rating = String((h as any)?.rating ?? '');
+      const rating = String(h.rating ?? '');
       if (rating) ratingDist[rating] = (ratingDist[rating] || 0) + 1;
-      const ts = (h as any)?.timestamp ? new Date((h as any).timestamp).getTime() : NaN;
+      const ts = h.timestamp ? new Date(h.timestamp).getTime() : NaN;
       if (Number.isFinite(ts)) {
         distinct.add(dateKey(new Date(ts)));
         if (ts < firstMs) firstMs = ts;

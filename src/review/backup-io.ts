@@ -10,7 +10,7 @@ import { diskReadText, jsonFileStore, storageDir } from '../core/storage';
 import type { ReviewItem } from './data';
 import { getReviewFilePath, getReviewMetaPath, ReviewDataManager } from './data';
 import { backupFileName, buildBackup, parseBackup, toCsv } from './backup';
-import { serializeReviewItems, reviewMeta, parseReviewFile } from './store-format';
+import { serializeReviewItems, reviewMeta } from './store-format';
 import { writeSnapshotNow } from './snapshot-store';
 
 export function exportDir(): string {
@@ -40,7 +40,7 @@ export async function exportBackupFile(app: App, items: readonly ReviewItem[], k
 export async function restoreBackupFile(app: App, path: string, dm: ReviewDataManager): Promise<{ ok: boolean; message: string }> {
   let raw: string;
   try {
-    raw = (await app.vault.adapter.read(path)) as string;
+    raw = (await app.vault.adapter.read(path));
   } catch {
     return { ok: false, message: `读不到这个文件：${path}` };
   }
@@ -58,8 +58,8 @@ export async function restoreBackupFile(app: App, path: string, dm: ReviewDataMa
 
   /* 备份里可能混着运行时字段：剥一遍再走正常加载口径（isCard/note 都按现有规则补派生） */
   const items = parsed.items.map((it) => ({ ...it })) as ReviewItem[];
-  await jsonFileStore<any>(getReviewFilePath(), { app }).write(serializeReviewItems(items));
-  await jsonFileStore<any>(getReviewMetaPath(), { app }).write(reviewMeta(new Date()));
+  await jsonFileStore<unknown>(getReviewFilePath(), { app }).write(serializeReviewItems(items));
+  await jsonFileStore<unknown>(getReviewMetaPath(), { app }).write(reviewMeta(new Date()));
   return { ok: true, message: `已恢复 ${items.length} 条（恢复前的数据留了一份快照）` };
 }
 

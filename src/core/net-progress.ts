@@ -25,9 +25,9 @@ export async function fetchBytesWithProgress(
   url: string,
   onProgress?: (received: number, total: number) => void,
 ): Promise<Uint8Array | null> {
-  if (typeof fetch !== 'function') return null;
+  if (typeof window.fetch !== 'function') return null;
   try {
-    const res = await fetch(url, { method: 'GET' });
+    const res = await window.fetch(url, { method: 'GET' });
     if (!res?.ok) return null;
     const total = Number(res.headers?.get?.('content-length') || 0);
 

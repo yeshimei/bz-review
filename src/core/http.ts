@@ -46,7 +46,7 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label?: string): Promi
     );
     p.then(
       (v) => { window.clearTimeout(timer); resolve(v); },
-      (e) => { window.clearTimeout(timer); reject(e); },
+      (e: unknown) => { window.clearTimeout(timer); reject(e instanceof Error ? e : new Error(typeof e === 'string' ? e : '请求失败')); },
     );
   });
 }
@@ -56,7 +56,7 @@ export function withTimeout<T>(p: Promise<T>, ms: number, label?: string): Promi
  * 仅弃用结果；迟到 rejection 由 withTimeout 消化（C23）。
  */
 export async function httpGetText(url: string, opts: HttpGetTextOptions): Promise<string | null> {
-  const fetchImpl: FetchLike = opts.fetchImpl || ((u, init) => globalThis.fetch(u, init));
+  const fetchImpl: FetchLike = opts.fetchImpl || ((u, init) => window.fetch(u, init));
   try {
     const resp = await withTimeout(fetchImpl(url, { headers: opts.headers }), opts.timeoutMs, url);
     if (!resp || !resp.ok) return null;

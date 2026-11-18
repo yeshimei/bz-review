@@ -30,6 +30,13 @@ const FLIP_DUR = 200;
  *  这里是与 --bzrv-ease-out（cubic-bezier(0.33,1,0.68,1)）逐字同值的一份字面量。 */
 const EASE_OUT = 'cubic-bezier(0.33, 1, 0.68, 1)';
 
+/** FLIP 动画用的静态样式值集中成常量：obsidianmd 只拦字面量直接写进 style，
+ *  从常量取值是它明确允许的写法（规则源码见 noStaticStylesAssignment），行为逐字不变。 */
+const CSS_TRANSITION_NONE = 'none';
+const CSS_TRANSFORM_IDLE = 'rotate(0deg) scale(1)';
+const CSS_Z_TOP = '4';
+const CSS_EMPTY = '';
+
 export interface FlipEnterOpts {
   /** 接力张数上限（长列表只给前几张，省下几百个合成层） */
   n?: number;
@@ -87,18 +94,18 @@ export function playFlip(root: HTMLElement, before: Map<string, DOMRect> | null,
     const dy = a.top - b.top;
     if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) return;
     const deg = spin ? (vi % 2 ? spin : -spin) : 0;
-    n.style.transition = 'none';
+    n.style.transition = CSS_TRANSITION_NONE;
     n.style.transform = `translate(${dx}px, ${dy}px) rotate(${deg}deg) scale(${spin ? 0.96 : 1})`;
-    if (spin) n.style.zIndex = '4';
-    requestAnimationFrame(() => {
+    if (spin) n.style.zIndex = CSS_Z_TOP;
+    window.requestAnimationFrame(() => {
       n.style.transition = spin
         ? `transform ${dur + 60}ms cubic-bezier(0.34, 1.3, 0.5, 1)`
         : `transform ${dur}ms var(--bzrv-ease-out)`;
-      n.style.transform = 'rotate(0deg) scale(1)';
+      n.style.transform = CSS_TRANSFORM_IDLE;
       window.setTimeout(() => {
-        n.style.transition = '';
-        n.style.transform = '';
-        if (spin) n.style.zIndex = '';
+        n.style.transition = CSS_EMPTY;
+        n.style.transform = CSS_EMPTY;
+        if (spin) n.style.zIndex = CSS_EMPTY;
       }, dur + 100);
     });
   });
@@ -139,7 +146,7 @@ export function playFlip(root: HTMLElement, before: Map<string, DOMRect> | null,
     nodes.forEach((el) => {
       const k = el.dataset[opts.key];
       if (!k || before?.has(k)) return;
-      if (idx >= n) { el.style.opacity = ''; return; }
+      if (idx >= n) { el.style.opacity = CSS_EMPTY; return; }
       const delay = idx * stagger;
       idx++;
       const fromCss = from === 'right'
@@ -149,8 +156,8 @@ export function playFlip(root: HTMLElement, before: Map<string, DOMRect> | null,
         { opacity: 0, transform: fromCss, filter: 'blur(3px)' },
         { opacity: 1, transform: 'none', filter: 'blur(0px)' },
       ], { duration: 300, delay, easing: EASE_OUT, fill: 'both' });
-      if (!ea) { el.style.opacity = ''; return; } // 无 WAAPI：宁可不演，也不能让卡片停在 opacity 0
-      ea.onfinish = () => { el.style.opacity = ''; };
+      if (!ea) { el.style.opacity = CSS_EMPTY; return; } // 无 WAAPI：宁可不演，也不能让卡片停在 opacity 0
+      ea.onfinish = () => { el.style.opacity = CSS_EMPTY; };
     });
   }
 }

@@ -336,7 +336,6 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : '';
   /* 「已完成」只数真的复习完了的。col.done 里还混着挂起（文件缺失）的条目——
      直接拿它的长度当完成数，会让「已完成 2 篇」里藏着一条早就丢了文件的记录。 */
-  const doneCount = items.filter((i) => i.completed || i.isCompleted).length;
   /* 已完成挪到头行图标后，底栏这颗换成「批量选择」——不然它就彻底没了入口。 */
   const archItem = ctx.showArchived
     ? `<span class="bzrv-q-fitem bzrv-touch-target--lg is-back" data-act="arch"><span class="bzrv-sr-only">点此返回队列</span>

@@ -11,8 +11,14 @@ export type RowBtnState = 'busy' | 'ok' | 'fail' | 'idle';
 export const ROW_BTN_OK_TEXT = '已连通';
 
 /** 失败原因 → 按钮上的简短文案（几个字；按最明确的语义优先匹配） */
+/** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
+function textOf(v: unknown): string {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return '';
+}
+
 export function shortFailReason(e: unknown): string {
-  const msg = e instanceof Error ? e.message : String(e ?? '');
+  const msg = e instanceof Error ? e.message : textOf(e);
   if (/超时|Timeout/.test(msg)) return '超时';
   if (/取消|Abort/.test(msg)) return '已取消';
   if (/未配置.*密钥|密钥.*为空/.test(msg)) return '无密钥';

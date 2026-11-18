@@ -73,14 +73,17 @@ export function parseProofreadJson(raw: string): Array<{ n: number; text: string
   }
   if (end < 0) return null;
   try {
-    const obj = JSON.parse(cleaned.slice(start, end + 1));
-    const items = obj?.items;
+    const obj: unknown = JSON.parse(cleaned.slice(start, end + 1));
+    if (!obj || typeof obj !== 'object' || !('items' in obj)) return null;
+    const items: unknown = obj.items;
     if (!Array.isArray(items)) return null;
     const out: Array<{ n: number; text: string }> = [];
-    for (const it of items) {
+    for (const rawIt of items as unknown[]) {
+      if (!rawIt || typeof rawIt !== 'object') return null;
+      const it = rawIt as { n?: unknown; text?: unknown };
       // 严格型：条号必须是真数字——宽松的 Number('1') 会放过字符串条号，回填对位会错
-      const n = it?.n;
-      if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || typeof it?.text !== 'string') return null;
+      const n = it.n;
+      if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || typeof it.text !== 'string') return null;
       out.push({ n, text: it.text });
     }
     return out;

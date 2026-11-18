@@ -38,7 +38,7 @@ export const DIARY_DAY_BUILTIN_FORMATS = [
 export function diaryDayFormat(): string {
   try {
     return obsidianDailyNotesFormat();
-  } catch (e) {
+  } catch {
     return OBSIDIAN_DAILY_NOTES_DEFAULT_FORMAT;
   }
 }
@@ -68,7 +68,7 @@ export function diaryDayStamp(dateStr: string, format?: string): string | null {
   try {
     const stamp = d.format(fmt).trim();
     return stamp || null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -87,7 +87,7 @@ export function diaryDayDateFromStamp(stamp: string, formats: string[]): string 
     let m: ReturnType<typeof moment>;
     try {
       m = moment(raw, f, true);
-    } catch (e) {
+    } catch {
       continue;
     }
     if (!m.isValid()) continue;

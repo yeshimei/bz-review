@@ -25,7 +25,11 @@ export const TTS_LOCAL_TIMEOUT_MS = 30_000;
 
 export type TtsErrorKind = 'config' | 'unauthorized' | 'rate' | 'busy' | 'unknown';
 
-const trimBase = (u: unknown): string => String(u ?? '').trim().replace(/\/+$/, '');
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === 'object' && v !== null;
+
+const trimBase = (u: unknown): string =>
+  (typeof u === 'string' ? u : '').trim().replace(/\/+$/, '');
 
 export function speechEndpoint(baseUrl: string): string {
   const base = trimBase(baseUrl);
@@ -60,20 +64,20 @@ export function ttsMimeOf(format?: string): string {
 
 /** 兼容服务端的几种音色返回形状；去重、去空白，坏数据给空数组 */
 export function parseVoiceList(raw: unknown): string[] {
-  const arr = Array.isArray(raw)
+  const arr: unknown[] = Array.isArray(raw)
     ? raw
-    : raw && typeof raw === 'object' && Array.isArray((raw as any).voices)
-      ? (raw as any).voices
+    : isRecord(raw) && Array.isArray(raw.voices)
+      ? raw.voices
       : [];
   const out: string[] = [];
   for (const v of arr) {
-    const s =
-      typeof v === 'string'
-        ? v
-        : v && typeof v === 'object'
-          ? String((v as any).id ?? (v as any).name ?? '')
-          : '';
-    const name = s.trim();
+    let name = '';
+    if (typeof v === 'string') name = v;
+    else if (isRecord(v)) {
+      if (typeof v.id === 'string') name = v.id;
+      else if (typeof v.name === 'string') name = v.name;
+    }
+    name = name.trim();
     if (name && !out.includes(name)) out.push(name);
   }
   return out;
@@ -126,11 +130,12 @@ export async function synthesizeSpeech(text: string, cfg: TtsConfig): Promise<Sy
     body: JSON.stringify(speechBody(text, cfg)),
     throw: false,
   });
-  const status = Number((resp as any)?.status ?? 0);
+  const r = resp as { status?: number; arrayBuffer?: ArrayBuffer };
+  const status = Number(r.status ?? 0);
   if (status < 200 || status >= 300) {
     throw new Error(`朗读服务返回 ${status}（${ttsErrorKind(status)}），请检查设置里的服务地址与音色。`);
   }
-  const buf = (resp as any)?.arrayBuffer as ArrayBuffer | undefined;
+  const buf = r.arrayBuffer;
   if (!buf || buf.byteLength === 0) throw new Error('朗读服务没有返回音频，换个音色或重试。');
   return { buf, mime: ttsMimeOf(cfg.format) };
 }

@@ -48,7 +48,7 @@ export function uiField(opts: BzFieldOpts): HTMLElement {
     : createDiv();
   wrap.className = 'bzrv-field';
   if (opts.label) {
-    const l = createEl('span');
+    const l = createSpan();
     l.className = 'bzrv-field-label';
     l.textContent = opts.label;
     wrap.appendChild(l);
@@ -58,12 +58,12 @@ export function uiField(opts: BzFieldOpts): HTMLElement {
     // error 边框样式仅对 .bzrv-input 定义（L4）：select/range 等非 input 控件不上无效类，
     // 错误文案仍由 .bzrv-field-error 呈现
     if (opts.control.classList.contains('bzrv-input')) opts.control.classList.add('bzrv-input--error');
-    const e = createEl('span');
+    const e = createSpan();
     e.className = 'bzrv-field-error';
     e.textContent = opts.error;
     wrap.appendChild(e);
   } else if (opts.desc) {
-    const d = createEl('span');
+    const d = createSpan();
     d.className = 'bzrv-field-desc';
     d.textContent = opts.desc;
     wrap.appendChild(d);

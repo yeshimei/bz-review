@@ -19,6 +19,27 @@ export const OLLAMA_TIMEOUT_MS = 30000;
 /** Ollama 服务根地址（注册表 endpoint 为 /v1 兼容面，模型列表端点挂在根） */
 const OLLAMA_BASE_URL = 'http://localhost:11434';
 
+/** JSON/第三方响应的结构守卫：先确认是对象，再逐字段 typeof 收窄（全程不引入 any） */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
+/** 数组守卫：把 unknown 收窄为 unknown[]（直接 Array.isArray 会收成 any[]，故包一层） */
+function isUnknownArray(v: unknown): v is unknown[] {
+  return Array.isArray(v);
+}
+
+/** 安全转字符串：密钥字段本就是字符串，非字符串回落空串（避免 String(object) 的 [object Object]） */
+function asString(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
+
+/** 模型列表拉取的响应通道最小面（fetch 与 requestUrl 回退共用同一形状） */
+type ModelsAttempt = {
+  resp: { ok: boolean; status: number; json: () => Promise<unknown> };
+  via: 'fetch' | 'requestUrl';
+};
+
 /** 模型选项（选择器展示面：名称 + 来源说明） */
 export interface ModelOption {
   id: string;
@@ -28,7 +49,7 @@ export interface ModelOption {
 /** 拉取通道注入（测试桩；缺省用插件运行时真实实现） */
 export interface ModelsFetchDeps {
   /** 最小响应面：ok/status/json（测试桩无需完整 Response；缺省用全局 fetch 形态） */
-  fetchFn?: (url: string, init?: any) => Promise<{ ok: boolean; status: number; json: () => Promise<any> }>;
+  fetchFn?: (url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }>;
   requestUrlFn?: (opts: { url: string; method: string; headers: Record<string, string>; throw?: boolean }) => Promise<{
     status: number;
     text: string;
@@ -54,30 +75,32 @@ function keyFor(id: string): string {
   const s = tryGetSettings();
   const desc = providerDescriptorOf(id);
   if (desc.id === 'ollama') return '';
-  return String(s[desc.apiKeyKey] || '');
+  return asString(s[desc.apiKeyKey]);
 }
 
 /** Ollama /api/tags 响应 → 模型 id 列表（Ollama 原生格式，非 OpenAI 兼容面） */
-function ollamaModelIds(data: any): string[] {
-  const list = data?.models;
-  if (Array.isArray(list)) {
-    const ids = list.map((m: any) => (m && typeof m.name === 'string' ? m.name : '')).filter(Boolean);
+function ollamaModelIds(data: unknown): string[] {
+  if (!isRecord(data)) throw new Error('该服务商未返回可用模型');
+  const list = data.models;
+  if (isUnknownArray(list)) {
+    const ids = list.map((m) => (isRecord(m) && typeof m.name === 'string' ? m.name : '')).filter(Boolean);
     if (ids.length) return ids;
   }
   throw new Error('该服务商未返回可用模型');
 }
 
 /** OpenAI 兼容 /models 响应 → 模型 id 列表（兼容 data[].id 主格式与 data.models[].name 少数格式） */
-function openaiModelIds(data: any): string[] {
-  if (Array.isArray(data?.data)) {
-    const ids = (data.data as any[])
-      .map((m: any) => (m && typeof m.id === 'string' ? m.id : ''))
+function openaiModelIds(data: unknown): string[] {
+  if (!isRecord(data)) throw new Error('该服务商未返回可用模型');
+  if (isUnknownArray(data.data)) {
+    const ids = data.data
+      .map((m) => (isRecord(m) && typeof m.id === 'string' ? m.id : ''))
       .filter(Boolean);
     if (ids.length) return ids;
   }
-  if (Array.isArray(data?.models)) {
-    const ids = (data.models as any[])
-      .map((m: any) => (m && typeof m.name === 'string' ? m.name : ''))
+  if (isUnknownArray(data.models)) {
+    const ids = data.models
+      .map((m) => (isRecord(m) && typeof m.name === 'string' ? m.name : ''))
       .filter(Boolean);
     if (ids.length) return ids;
   }
@@ -85,7 +108,7 @@ function openaiModelIds(data: any): string[] {
 }
 
 /** 响应 → 模型 id 列表；空列表统一抛「未返回可用模型」（由调用方 toast） */
-export function parseModelList(desc: AIProviderDescriptor, data: any): string[] {
+export function parseModelList(desc: AIProviderDescriptor, data: unknown): string[] {
   return desc.id === 'ollama' ? ollamaModelIds(data) : openaiModelIds(data);
 }
 
@@ -97,28 +120,28 @@ async function fetchModelsJson(
   timeoutMs: number,
   label: string,
   deps: ModelsFetchDeps
-): Promise<any> {
-  const fetchFn = deps.fetchFn || ((u: string, init?: any) => fetch(u, init));
+): Promise<unknown> {
+  const fetchFn: (url: string, init?: RequestInit) => Promise<{ ok: boolean; status: number; json: () => Promise<unknown> }> =
+    deps.fetchFn || ((u: string, init?: RequestInit) => window.fetch(u, init));
   const requestUrlFn = deps.requestUrlFn || requestUrl;
 
   // fetch 优先（无 CORS 限制环境直接成功）；fetch 失败（CORS/网络）回退 requestUrl
-  const fetchAttempt = async (signal: AbortSignal): Promise<any> => {
+  const fetchAttempt = async (signal: AbortSignal): Promise<ModelsAttempt> => {
     const resp = await fetchFn(url, { method: 'GET', headers, signal });
     return { resp, via: 'fetch' as const };
   };
-  const requestUrlAttempt = async (): Promise<any> => {
+  const requestUrlAttempt = async (): Promise<ModelsAttempt> => {
     const r = await requestUrlFn({ url, method: 'GET', headers, throw: false });
-    return { resp: { ok: r.status >= 200 && r.status < 300, status: r.status, json: async () => JSON.parse(r.text) }, via: 'requestUrl' as const };
+    return { resp: { ok: r.status >= 200 && r.status < 300, status: r.status, json: async (): Promise<unknown> => JSON.parse(r.text) as unknown }, via: 'requestUrl' as const };
   };
 
-  let attempt:
-    | { resp: { ok: boolean; status: number; json: () => Promise<any> }; via: 'fetch' | 'requestUrl' };
+  let attempt: ModelsAttempt;
   {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), timeoutMs);
     try {
       attempt = await fetchAttempt(controller.signal);
-    } catch (e) {
+    } catch {
       if (controller.signal.aborted) {
         throw new Error(`${label} 无响应（超过 ${timeoutMs / 1000}s 未应答）`);
       }
@@ -139,9 +162,11 @@ async function fetchModelsJson(
     }
     let msg = `API ${resp.status}`;
     try {
-      const err = await resp.json();
-      if (err?.error?.message) msg = err.error.message;
-    } catch (e) { /* 保留状态码 */ }
+      const err: unknown = await resp.json();
+      if (isRecord(err) && isRecord(err.error) && typeof err.error.message === 'string') {
+        msg = err.error.message;
+      }
+    } catch { /* 保留状态码 */ }
     throw new Error(msg);
   }
 
@@ -192,16 +217,17 @@ export interface OllamaTag {
 }
 
 /** /api/tags 响应 → 结构化条目列表（畸形项跳过；capabilities 旧版服务不返回，空数组表示「未知」） */
-export function parseOllamaTags(data: any): OllamaTag[] {
-  const list = data?.models;
-  if (!Array.isArray(list)) return [];
+export function parseOllamaTags(data: unknown): OllamaTag[] {
+  if (!isRecord(data)) return [];
+  const list = data.models;
+  if (!isUnknownArray(list)) return [];
   const out: OllamaTag[] = [];
   for (const m of list) {
-    if (!m || typeof m.name !== 'string' || !m.name) continue;
-    const capabilities = Array.isArray(m.capabilities)
-      ? (m.capabilities as unknown[]).filter((c): c is string => typeof c === 'string')
+    if (!isRecord(m) || typeof m.name !== 'string' || !m.name) continue;
+    const capabilities = isUnknownArray(m.capabilities)
+      ? m.capabilities.filter((c): c is string => typeof c === 'string')
       : [];
-    const det = (m.details || {}) as Record<string, unknown>;
+    const det = isRecord(m.details) ? m.details : {};
     const bits: string[] = [];
     if (typeof det.parameter_size === 'string' && det.parameter_size) bits.push(det.parameter_size);
     if (typeof det.embedding_length === 'number' && det.embedding_length > 0) bits.push(`${det.embedding_length} 维`);
@@ -212,7 +238,7 @@ export function parseOllamaTags(data: any): OllamaTag[] {
 
 /** 向量化模型选项：有 capabilities 的按 embedding 能力过滤（聊天模型不进列表）；
  *  旧版 Ollama 不返回该字段（全部为空）→ 不过滤，全量返回由用户自辨。 */
-export function pickEmbeddingModels(data: any): ModelOption[] {
+export function pickEmbeddingModels(data: unknown): ModelOption[] {
   const tags = parseOllamaTags(data);
   const known = tags.some((t) => t.capabilities.length > 0);
   return (known ? tags.filter((t) => t.capabilities.includes('embedding')) : tags).map((t) => ({
@@ -226,7 +252,8 @@ export function pickEmbeddingModels(data: any): ModelOption[] {
  *  （「启用重排」总闸自 issue 431 起常显——Jev 第二通道不吃本地显存、不绑此门，8B 门只管本地通道）。
  *  只认 8b：本地重排是给 8B 嵌入配的增强档（显存共驻考量，8b 之外的嵌入模型不启用本地通道）。 */
 export function isQwen3Embedding8b(model: unknown): boolean {
-  return /qwen3[-_]?embedding[:\-_.]?8b\b/i.test(String(model ?? ''));
+  const name = typeof model === 'string' ? model : '';
+  return /qwen3[-_]?embedding[:\-_.]?8b\b/i.test(name);
 }
 
 /**
@@ -263,7 +290,7 @@ export function hasRerankNamed(items: Array<{ id: string }>): boolean {
 }
 
 /** 重排模型选项（issue 429）：名字含 rerank 的优先；一个都没有 → 全量返回由用户自辨。 */
-export function pickRerankModels(data: any): ModelOption[] {
+export function pickRerankModels(data: unknown): ModelOption[] {
   const tags = parseOllamaTags(data);
   const rerank = tags.filter((t) => RERANK_NAME_RE.test(t.id));
   return (rerank.length ? rerank : tags).map((t) => ({ id: t.id, detail: t.detail }));

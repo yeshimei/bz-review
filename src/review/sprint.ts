@@ -18,7 +18,7 @@
  * 本模块只做「会话编排」，markup 单源 render.ts（issue 253：视图构建迁出）；
  * 题目获取/评级写盘/笔记打开由调用方（app 编排）注入——保持与 data/fsrs/题库解耦，可独立测试。
  */
-import { stripMdExt, stripTitleMarks } from '../core/utils';
+import { stripTitleMarks } from '../core/utils';
 import type { App } from 'obsidian';
 import { notice, notifyActionError } from '../core/notice';
 import { openFlowDialog } from '../core/flow-dialog';
@@ -36,6 +36,12 @@ import {
   motionSprintReset, motionSprintLoading, motionQuestion, motionResult,
   motionSummary, motionFailFlash,
 } from './motion';
+
+/** 把 markup 落到容器：DOMParser 解析后逐节点 importNode 装入（不写 innerHTML） */
+function setHostMarkup(host: HTMLElement, markup: string): void {
+  const doc = new DOMParser().parseFromString(markup, 'text/html');
+  host.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
 
 /** 答对后亮绿到自动进下一题的延时（ticket 156 用户拍板 0.8s） */
 export const CORRECT_JUMP_DELAY_MS = 800;
@@ -482,7 +488,7 @@ export class SprintSession {
         options: q.options,
         correctIndices: q.correctIndices,
       });
-    } catch (e: any) {
+    } catch (e) {
       // C9：动作失败提示单源（core/notice notifyActionError），不再手拼同款文案
       notifyActionError(e, '删除题目');
     }
@@ -495,7 +501,6 @@ export class SprintSession {
   }
 
   private advanceAfterAnswer(): void {
-    const entry = this.entry();
     if (this.q!.list.length) {
       this.q!.answered = false;
       this.q!.sel = new Set();
@@ -524,7 +529,7 @@ export class SprintSession {
   private showLoading(entry: SprintEntry): void {
     this.view = 'loading';
     motionSprintReset(); // 换篇：清题面指纹与遗留编排
-    this.opts.host.innerHTML = `${sprintHeadHtml(this.mode)}${sprintLoadingHtml()}`;
+    setHostMarkup(this.opts.host, `${sprintHeadHtml(this.mode)}${sprintLoadingHtml()}`);
     motionSprintLoading(this.opts.host);
     this.bindTop();
   }
@@ -544,7 +549,7 @@ export class SprintSession {
       { answered: q.answered, sel: [...q.sel], lastCorrect: q.lastCorrect, remaining: q.list.length }
     );
     this.view = 'question';
-    this.opts.host.innerHTML = `${sprintHeadHtml(this.mode)}${sprintBodyHtml(main, this.asideStates())}`;
+    setHostMarkup(this.opts.host, `${sprintHeadHtml(this.mode)}${sprintBodyHtml(main, this.asideStates())}`);
     mountIcons(this.opts.host);
     this.bindTop();
     this.opts.host.querySelector('[data-action="submit"]')?.addEventListener('click', () => this.submitMulti());
@@ -588,7 +593,7 @@ export class SprintSession {
         : `${RATING_NAMES[rating]} · 下次 ${entry.passNote || '已排期'}`;
     this.view = 'result';
     // U7：结果卡仅通过态可达（未通过走 finish('fail') 中断，不出卡），markup 随死分支删除
-    this.opts.host.innerHTML = `${sprintHeadHtml(this.mode)}${sprintBodyHtml(
+    setHostMarkup(this.opts.host, `${sprintHeadHtml(this.mode)}${sprintBodyHtml(
       sprintResultHtml({
         name,
         acc: entry.acc,
@@ -598,7 +603,7 @@ export class SprintSession {
         showEnd: remain > 0 && this.mode !== 'single',
       }),
       this.asideStates()
-    )}`;
+    )}`);
     mountIcons(this.opts.host);
     this.bindTop();
     motionResult(this.opts.host); // 对勾描线+光环+滚分+评级盖章
@@ -619,7 +624,7 @@ export class SprintSession {
     const total = passed + failed;
     // item 8：结算屏追加连续 N 天（computeStats.streak 由调用方算好传入；0/缺省不展示）
     const streak = this.opts.streakDays ?? 0;
-    this.opts.host.innerHTML = `${sprintHeadHtml(this.mode)}${sprintSummaryHtml({ total, passed, failed, streak })}`;
+    setHostMarkup(this.opts.host, `${sprintHeadHtml(this.mode)}${sprintSummaryHtml({ total, passed, failed, streak })}`);
     mountIcons(this.opts.host);
     this.bindTop();
     this.opts.host.querySelector('[data-action="done"]')?.addEventListener('click', () => this.finish('done'));

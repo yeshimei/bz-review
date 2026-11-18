@@ -38,6 +38,64 @@
  */
 import { toolMissingHint } from './tool-hint';
 
+/** ---------- Node 全局 / 进程句柄最小形状 ---------- */
+
+/*
+ * Buffer / process 由桌面端 Electron 进程注入。obsidian 的 eslint globals 未含 Node，
+ * 这里做文件内局部声明（模块作用域，遮蔽全局、不与 @types/node 冲突），使 no-undef 通过；
+ * 全部是 type-query 声明，不产生运行时 import，打包与行为不变。
+ */
+declare const Buffer: typeof import('node:buffer').Buffer;
+declare const process: typeof import('node:process');
+/** Buffer 实例类型（值声明不能当类型用，故用 InstanceType 取） */
+type NodeBuffer = InstanceType<typeof Buffer>;
+
+/** 子进程 stdout/stderr 流（只用到 data 订阅） */
+interface ToolStream {
+  on(event: 'data', listener: (chunk: string | NodeBuffer) => void): void;
+}
+/** 子进程 stdin（回答 [bz-ask] 用） */
+interface ToolStdin {
+  destroyed: boolean;
+  writableEnded: boolean;
+  write(data: string): boolean;
+}
+/** spawn 出的子进程：只列用到的成员，假壳不必实现完整 ChildProcess */
+interface ToolChildProcess {
+  pid?: number;
+  stdout?: ToolStream | null;
+  stderr?: ToolStream | null;
+  stdin?: ToolStdin | null;
+  on(event: 'error', listener: (err: Error) => void): void;
+  on(event: 'exit', listener: (code: number | null) => void): void;
+  on(event: 'close', listener: (code: number | null) => void): void;
+  kill(signal?: string): boolean;
+}
+/** spawn 选项 */
+interface SpawnOpts {
+  shell?: boolean;
+  windowsHide?: boolean;
+  stdio: ('pipe' | 'ignore')[] | 'ignore' | 'pipe' | 'inherit';
+  cwd?: string;
+  env?: Record<string, string>;
+}
+/** child_process 模块最小形状（只用到 spawn） */
+interface ChildProcessModule {
+  spawn(cmd: string, args: string[], opts: SpawnOpts): ToolChildProcess;
+}
+/** 带结构化 stderr 字段的错误（close 分流时挂上，供调用方直接读） */
+interface ToolError extends Error {
+  stderr?: string;
+}
+
+/** unknown → 安全文本：primitive 直接 String，其余显式 toString（行为同 String(v)，不触发 no-base-to-string） */
+function toText(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'string') return v;
+  if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint') return String(v);
+  return (v as { toString(): string }).toString();
+}
+
 /** ---------- 协议行解析（纯函数，独立可测） ---------- */
 
 /** 四行协议解析出的事件（raw = 非协议输出原样透传） */
@@ -131,7 +189,7 @@ export function parseBzLine(line: string): BzToolEvent | null {
         kind: 'progress',
         phase: typeof p.phase === 'string' ? p.phase : null,
         // pct 允许 null = 该阶段不可估；缺失/非有限数一律归 null（绝不假报）
-        pct: Number.isFinite(p.pct as number) ? Number(p.pct) : null,
+        pct: typeof p.pct === 'number' && Number.isFinite(p.pct) ? p.pct : null,
       };
     }
     case 'info': {
@@ -153,7 +211,7 @@ export function parseBzLine(line: string): BzToolEvent | null {
 /** JSON 体解析：坏体 / 非普通对象（数组、原始值）一律返回 null（不抛） */
 function parseJsonObject(body: string): Record<string, unknown> | null {
   try {
-    const v = JSON.parse(body);
+    const v: unknown = JSON.parse(body);
     return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
   } catch {
     return null;
@@ -170,14 +228,14 @@ export const MAX_LINE_BYTES = 1024 * 1024;
  * chunk 劈开也能正确解码），跨 chunk 拼半行，超出单行上限的行截断透传。
  */
 export class BzLineSplitter {
-  private parts: Buffer[] = [];
+  private parts: NodeBuffer[] = [];
   private len = 0;
   private overflowed = false;
 
   constructor(private maxLineBytes: number = MAX_LINE_BYTES) {}
 
   /** 喂一段 stdout（Buffer 或 string），返回其中切出的完整行（不含行尾符） */
-  push(chunk: string | Buffer): string[] {
+  push(chunk: string | NodeBuffer): string[] {
     const buf = typeof chunk === 'string' ? Buffer.from(chunk, 'utf8') : chunk;
     const lines: string[] = [];
     let pos = 0;
@@ -200,7 +258,7 @@ export class BzLineSplitter {
   }
 
   /** 累积字节；超出单行上限后丢弃后续字节（截断语义，待换行时一并出列） */
-  private accumulate(part: Buffer): void {
+  private accumulate(part: NodeBuffer): void {
     if (this.overflowed) return;
     const room = this.maxLineBytes - this.len;
     if (part.length <= room) {
@@ -293,7 +351,7 @@ export interface ExternalToolHandle {
 
 /** child_process 注入口（测试打桩用；缺省桌面端 window.require('child_process')） */
 export interface ExternalToolDeps {
-  cp?: any;
+  cp?: ChildProcessModule;
 }
 
 /** stderr 尾部滑窗字符数（同知识盒口径：留尾不留头，失败原因取最后可见内容） */
@@ -306,9 +364,9 @@ const STDERR_TAIL_CHARS = 2048;
 export const FORCE_KILL_GRACE_MS = 3000;
 
 /** 桌面端专属（同知识盒 processor）：非桌面端返回 null */
-function defaultChildProcess(): any {
+function defaultChildProcess(): ChildProcessModule | null {
   if (typeof window === 'undefined') return null;
-  const w = window as any;
+  const w = window as Window & { require?: (m: string) => ChildProcessModule };
   if (!w.require) return null;
   try {
     return w.require('child_process');
@@ -327,7 +385,7 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
   let stderrTail = '';
   let settled = false;
   let stopped = false;
-  let child: any = null;
+  let child: ToolChildProcess | null = null;
   /** 直属进程是否已退（exit 事件到过）；强杀到点时靠它分辨「赖着不走」与「根死了、孤儿压着管道」 */
   let exitSeen = false;
   let exitCode: number | null = null;
@@ -350,7 +408,7 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
   };
 
   // stderr 尾部滑窗：超窗即裁到窗口（给出去的 stderr 恒 ≤ 2KB，长跑进程不攒内存）
-  const collectStderr = (d: string | Buffer): void => {
+  const collectStderr = (d: string | NodeBuffer): void => {
     stderrTail += String(d);
     if (stderrTail.length > STDERR_TAIL_CHARS) stderrTail = stderrTail.slice(-STDERR_TAIL_CHARS);
   };
@@ -392,7 +450,7 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
     return { stop: () => {}, answer: () => {}, done };
   }
 
-  const spawnOpts: any = {
+  const spawnOpts: SpawnOpts = {
     shell: !!spec.shell,
     windowsHide: true,
     // stdin 只在交互运行下开 pipe（见 spec.interactive 的说明）：给所有工具无差别开管道，
@@ -403,12 +461,13 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
   if (spec.env) spawnOpts.env = spec.env;
   try {
     child = cp.spawn(spec.cmd, spec.args || [], spawnOpts);
-  } catch (e: any) {
-    settle({ ok: false, stopped: false, code: null, stderr: stderrTail.trim(), error: new Error(`外部工具启动失败：${e?.message || String(e)}`) });
+  } catch (e: unknown) {
+    const msg = e instanceof Error && e.message ? e.message : toText(e);
+    settle({ ok: false, stopped: false, code: null, stderr: stderrTail.trim(), error: new Error(`外部工具启动失败：${msg}`) });
     return { stop: () => {}, answer: () => {}, done };
   }
 
-  child.stdout?.on('data', (d: string | Buffer) => {
+  child.stdout?.on('data', (d: string | NodeBuffer) => {
     for (const line of splitter.push(d)) dispatchLine(line);
   });
   child.stderr?.on('data', collectStderr);
@@ -436,8 +495,8 @@ export function runExternalTool(spec: ExternalToolSpec, cb: ExternalToolCallback
       settle({ ok: true, stopped: false, code: 0, stderr, error: null });
       return;
     }
-    const err = new Error(code === null ? `外部工具异常退出（无退出码）${stderr ? '：' + stderr : ''}` : `外部工具异常退出（退出码 ${code}）${stderr ? '：' + stderr : ''}`);
-    (err as any).stderr = stderr; // 结构化取用：不想拼消息的调用方直接读 stderr 字段
+    const err: ToolError = new Error(code === null ? `外部工具异常退出（无退出码）${stderr ? '：' + stderr : ''}` : `外部工具异常退出（退出码 ${code}）${stderr ? '：' + stderr : ''}`);
+    err.stderr = stderr; // 结构化取用：不想拼消息的调用方直接读 stderr 字段
     settle({ ok: false, stopped: false, code, stderr, error: err });
   });
 

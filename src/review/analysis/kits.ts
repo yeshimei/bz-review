@@ -11,6 +11,10 @@
  */
 import { hostLocalPx } from '../../core/landscape';
 
+/** 浮签显隐的静态样式值（字面量赋值提成常量，避免逐处写死） */
+const CSS_OPACITY_HIDDEN = '0';
+const CSS_OPACITY_SHOWN = '1';
+
 export const clamp01 = (x: number): number => (x < 0 ? 0 : x > 1 ? 1 : x);
 export const clamp = (x: number, lo: number, hi: number): number => (x < lo ? lo : x > hi ? hi : x);
 export const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
@@ -120,7 +124,7 @@ export function canvas(host: HTMLElement, key: string): Cv | null {
   const cv: Cv = {
     el, ctx, w: 0, h: 0,
     fit(): boolean {
-      const dpr = Math.min(2, (globalThis.devicePixelRatio || 1));
+      const dpr = Math.min(2, (window.devicePixelRatio || 1));
       // 只认布局尺寸：软横屏旋转态下 getBoundingClientRect 返回的是视觉尺寸（宽高对调），
       // 拿它采位图会把画布拉花（cinema yearbook 同款教训）
       const w = Math.max(1, el.offsetWidth), h = Math.max(1, el.offsetHeight);
@@ -219,20 +223,24 @@ export function tip(root: HTMLElement, html: string, cx = 0, cy = 0): void {
   let el = tipNode.get(root);
   if (!el) {
     if (typeof document === 'undefined') return;
-    el = createEl('span');
+    el = createSpan();
     el.className = 'ra-tip';
     el.setAttribute('aria-hidden', 'true');
     root.appendChild(el);
     tipNode.set(root, el);
   }
   if (!html) {
-    if (el.style.opacity !== '0') el.style.opacity = '0';
+    if (el.style.opacity !== CSS_OPACITY_HIDDEN) el.style.opacity = CSS_OPACITY_HIDDEN;
     return;
   }
-  if (el.dataset.h !== html) { el.dataset.h = html; el.innerHTML = html; }
+  if (el.dataset.h !== html) {
+    el.dataset.h = html;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+  }
   el.style.left = `${cx.toFixed(1)}px`;
   el.style.top = `${cy.toFixed(1)}px`;
-  el.style.opacity = '1';
+  el.style.opacity = CSS_OPACITY_SHOWN;
 }
 /** 平滑跟随（逐帧朝目标挪 k 比例；指针跳变时不「啪」地弹过去） */
 export const toward = (cur: number, target: number, k = .18): number => cur + (target - cur) * k;

@@ -10,7 +10,11 @@
  * 只能靠真机验证，回归时没人拦得住。
  * ============================================================ */
 import type { ReviewCard } from './data';
+import type BzSettings from '../settings';
 import { tryGetSettings } from '../core/settings-provider';
+
+/** 只需要这两个旧全局字段；tryGetSettings() 返回的就是同一份 Partial<BzSettings> */
+type ModeSettings = Partial<Pick<BzSettings, 'reviewCardMode' | 'reviewCardDefaultMethod'>>;
 
 /**
  * 划线卡的四种复习方式（外加 plain：不生成任何内容，直接展开全文）。
@@ -34,7 +38,7 @@ export function isCardMode(v: unknown): v is CardMode {
  * 旧的**全局**方式：只在两种地方还有意义——老卡片没有 `mode` 时的回落值，
  * 以及批量加卡（阅读器划线）没有逐张选择机会时的取值。
  */
-export function cardModeOf(settings?: any): CardMode {
+export function cardModeOf(settings?: ModeSettings): CardMode {
   const raw = (settings ?? tryGetSettings())?.reviewCardMode;
   return isCardMode(raw) ? raw : 'flashcard';
 }
@@ -45,7 +49,7 @@ export function cardModeOf(settings?: any): CardMode {
  * 卡上存了就用卡上的；老卡片没有 `mode` 才回落到全局旧值，保证升级后存量卡
  * 不会因为「没字段」整批失灵。
  */
-export function modeOfCard(card: ReviewCard | null | undefined, settings?: any): CardMode {
+export function modeOfCard(card: ReviewCard | null | undefined, settings?: ModeSettings): CardMode {
   if (isCardMode(card?.mode)) return card.mode;
   return cardModeOf(settings);
 }
@@ -55,7 +59,7 @@ export function modeOfCard(card: ReviewCard | null | undefined, settings?: any):
  *   · 「新卡默认方式」是 manual（默认）→ 返回 null，调用方弹选择界面；
  *   · 选了具体方式 → 直接返回它，不再打扰用户。
  */
-export function defaultCardMethod(settings?: any): CardMode | null {
+export function defaultCardMethod(settings?: ModeSettings): CardMode | null {
   const raw = (settings ?? tryGetSettings())?.reviewCardDefaultMethod;
   return isCardMode(raw) ? raw : null;
 }
@@ -70,8 +74,8 @@ export function defaultCardMethod(settings?: any): CardMode | null {
  * 为什么必须盖章：同一条计划里如果一半卡有 `mode`、一半没有，复习时的行为就分叉
  * 成「新卡按新口径、老卡按旧设置」，用户完全看不出规律。
  */
-export function stampCardModes(cards: readonly ReviewCard[], settings?: any): ReviewCard[] {
+export function stampCardModes(cards: readonly ReviewCard[], settings?: ModeSettings): ReviewCard[] {
   const fallback = defaultCardMethod(settings) ?? cardModeOf(settings);
-  const src = Array.isArray(cards) ? cards : [];
+  const src: readonly ReviewCard[] = Array.isArray(cards) ? (cards as ReviewCard[]) : [];
   return src.map((c) => (isCardMode(c?.mode) ? c : { ...c, mode: fallback }));
 }

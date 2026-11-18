@@ -3,7 +3,7 @@
  * 命令（review-*）由 main.ts 裸注册（含 review-mark-again/hard/good/easy）。
  */
 import { stripMdExt } from '../core/utils';
-import type { App } from 'obsidian';
+import type { App, EventRef, Events, TFile } from 'obsidian';
 import { notice, notifyUndo, notifySaveError, notifyActionError } from '../core/notice';
 import { onDomainEvent, emitDomainEvent } from '../core/domain-bus';
 import { ReviewDataManager, isCardItem } from './data';
@@ -89,9 +89,14 @@ export async function regenerateCardContent(key: string): Promise<boolean> {
   }
 }
 
-/** 原生事件注册即记账（把 offref 语义包装成退订函数：真实 Obsidian 与测试 mock 均按 ref 注销） */
-function listen(source: any, event: string, cb: (...args: any[]) => void): void {
-  const ref = source.on(event, cb);
+/**
+ * 原生事件注册即记账（把 offref 语义包装成退订函数：真实 Obsidian 与测试 mock 均按 ref 注销）。
+ *
+ * Obsidian 1.13 的 Events.on 回调签名是 `(...data: unknown[]) => unknown`，直接传带具体
+ * 参数的回调类型不合；这里用 never[] 参数接收任意回调，注册处再对齐成库声明的签名。
+ */
+function listen(source: Events, event: string, cb: (...args: never[]) => unknown): void {
+  const ref: EventRef = source.on(event, cb);
   if (!ref) return;
   unsubscribers.push(() => source.offref?.(ref));
 }
@@ -101,10 +106,14 @@ function listenBus<E>(channel: string, cb: (evt: E) => void): void {
   unsubscribers.push(onDomainEvent(channel, cb));
 }
 
-/** 总线载荷 → watcher 方法签名所需的伪 TFile（仅路径派生字段，满足签名即可） */
-function pseudoMdFile(path: string): any {
+/** 总线载荷 → watcher 方法签名所需的伪 TFile（仅路径派生字段，满足签名即可）。
+ *  watcher 只读这些字段，用别名表达「路径派生文件」语义；此处是按纯数据构造，
+ *  不存在对真实 TAbstractFile 做断言的问题。 */
+type PathOnlyFile = TFile & { oldPath?: string };
+
+function pseudoMdFile(path: string): PathOnlyFile {
   const base = path.split('/').pop() || '';
-  return { path, basename: stripMdExt(base), extension: 'md' };
+  return { path, basename: stripMdExt(base), extension: 'md' } as PathOnlyFile;
 }
 
 /**
@@ -190,18 +199,20 @@ export function ensureReview(app: App): void {
   // P3：首查句柄入账，卸载时取消（2s 内禁用插件不再触发逾期检查/周期注册）
   firstCheckTimer = window.setTimeout(() => {
     firstCheckTimer = null;
-    reviewApp.checkOverdueAndNotify();
-    checkInterval = window.setInterval(() => reviewApp.checkOverdueAndNotify(), 60000);
+    void reviewApp.checkOverdueAndNotify();
+    checkInterval = window.setInterval(() => {
+      void reviewApp.checkOverdueAndNotify();
+    }, 60000);
   }, 2000);
 
   // 事件监听（metadataCache resolved / vault modify / workspace quit 保持原生订阅；
   // created/deleted/renamed 已迁域事件总线，见下方总线接线）
-  listen(app.metadataCache as any, 'resolved', async () => {
-    await reviewApp.applyReviewStyles(app);
+  listen(app.metadataCache, 'resolved', () => {
+    void reviewApp.applyReviewStyles(app);
   });
-  listen(app.vault as any, 'modify', async (file: any) => {
+  listen(app.vault, 'modify', (file: TFile) => {
     // F9：vault modify 高频路径改走单文件刷新（复用 60s 轮询快照/按需单读，不再每次保存任意 md 全量读）
-    if (file.extension === 'md') await reviewApp.applyReviewStylesForFile(app, file);
+    if (file.extension === 'md') void reviewApp.applyReviewStylesForFile(app, file);
   });
   /* created / renamed 直接订原生 vault 事件。
      这两个能力原来是走域事件总线（core/file-sync 发、本域订）的，但拆成独立插件后
@@ -210,17 +221,17 @@ export function ensureReview(app: App): void {
      从队列消失、还被算进「已完成」。
      与下面保留下来的总线订阅并存：两个处理函数都有查重守卫，重复触发是空操作。
      deleted 仍走总线——它带确认弹窗，双触发会弹两次，不能这么兜。 */
-  listen(app.vault as any, 'create', (file: any) => {
+  listen(app.vault, 'create', (file: TFile) => {
     void reviewWatcher?.onVaultCreate(file);
   });
-  listen(app.vault as any, 'rename', (file: any, oldPath: string) => {
+  listen(app.vault, 'rename', (file: TFile, oldPath: string) => {
     reviewWatcher?.onVaultRename(file, oldPath);
   });
   /* delete 也直接订原生事件。onVaultDelete 里「同步移除复习记录？」的确认弹窗、
      移除、撤销全都写好了，但同一条总线没初始化，于是删掉计划内的笔记连弹窗都
      不出现、条目静默变挂起。它自带 300ms 防抖队列，即使总线将来恢复发射也只弹一次。 */
-  listen(app.vault as any, 'delete', (file: any) => {
-    if (file?.extension !== 'md') return;
+  listen(app.vault, 'delete', (file: TFile) => {
+    if (file.extension !== 'md') return;
     reviewWatcher?.onVaultDelete(file);
   });
   // ticket 098：监听文件夹自动加入（created）+ 删除/改名/移动确认（deleted/renamed）——
@@ -237,7 +248,7 @@ export function ensureReview(app: App): void {
     file.oldPath = evt.oldPath;
     reviewWatcher?.onVaultRename(file, evt.oldPath);
   });
-  listen(app.workspace as any, 'quit', () => {
+  listen(app.workspace, 'quit', () => {
     if (checkInterval) {
       window.clearInterval(checkInterval);
       checkInterval = null;
@@ -349,7 +360,7 @@ export async function reviewAddCurrent(app: App): Promise<void> {
     await reviewApp.addCurrentToReview(file);
     await uiManager!.refreshPanel();
     await reviewApp.applyReviewStyles(app);
-  } catch (e: any) {
+  } catch (e: unknown) {
     // C9：动作失败提示走 notifyActionError 单源（白拿 onRetry 挂「重试」出口，效率整改 8）
     notifyActionError(e, '加入复习计划', { onRetry: () => void reviewAddCurrent(app) });
   }
@@ -490,9 +501,11 @@ export async function reviewMarkDialog(app: App): Promise<void> {
     notice('该笔记已完成全部复习');
     return;
   }
-  uiManager?.showDifficultyDialog(item, async (diff) => {
-    await reviewApp.markReview(file.path, diff as Rating);
-    await reviewApp.applyReviewStyles(app);
+  uiManager?.showDifficultyDialog(item, (diff) => {
+    void (async () => {
+      await reviewApp.markReview(file.path, diff as Rating);
+      await reviewApp.applyReviewStyles(app);
+    })();
   });
 }
 
@@ -558,7 +571,7 @@ export function unloadReview(): void {
   for (const off of unsubscribers) {
     try {
       off();
-    } catch (e) {
+    } catch {
       /* 单个注销失败不阻断其余清理 */
     }
   }

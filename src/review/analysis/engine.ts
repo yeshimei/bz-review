@@ -23,8 +23,8 @@ export interface RaHandle { stop(): void; goTo(i: number): void }
 const GESTURE_GAP = 340;
 
 const rafFn = typeof requestAnimationFrame === 'function'
-  ? (cb: () => void): number => requestAnimationFrame(cb)
-  : (cb: () => void): number => window.setTimeout(cb, 16) as unknown as number;
+  ? (cb: () => void): number => window.requestAnimationFrame(cb)
+  : (cb: () => void): number => window.setTimeout(cb, 16);
 const rafStop = (id: number): void => {
   if (typeof cancelAnimationFrame === 'function') cancelAnimationFrame(id);
   else window.clearTimeout(id);
@@ -199,7 +199,7 @@ export function bindAnalysis(root: HTMLElement, data: RaData): RaHandle {
     window.clearTimeout(fallback);
     tick(performance.now());
     raf = rafFn(() => { window.clearTimeout(fallback); pump(); });
-    fallback = window.setTimeout(() => { rafStop(raf); pump(); }, 220) as unknown as number;
+    fallback = window.setTimeout(() => { rafStop(raf); pump(); }, 220);
   }
 
   function tick(now: number): void {

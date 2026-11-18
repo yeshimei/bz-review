@@ -13,6 +13,11 @@ import { openFlowDialog } from '../core/flow-dialog';
 import { tryGetSettings, saveSettings } from '../core/settings-provider';
 import { ReviewDataManager } from './data';
 
+/** 设置里的数组字段运行期可能被旧数据写脏：只认数组，再按 string[] 读 */
+function stringArray(v: unknown): string[] {
+  return Array.isArray(v) ? (v as string[]) : [];
+}
+
 /** 目录边界判定：path 恰为 folder 或位于其下（递归语义；core isUnderFolder 转发壳） */
 export function isUnderFolder(folder: string, path: string): boolean {
   return isUnderFolderCore(folder, path);
@@ -50,15 +55,12 @@ export class ReviewWatcher {
   }
 
   get watchedFolders(): string[] {
-    const s = tryGetSettings();
-    return Array.isArray(s?.reviewWatchedFolders)
-      ? (s.reviewWatchedFolders as any[]).filter((x) => typeof x === 'string' && x.trim().length > 0)
-      : [];
+    return stringArray(tryGetSettings().reviewWatchedFolders)
+      .filter((x) => typeof x === 'string' && x.trim().length > 0);
   }
 
   get excludedNotes(): string[] {
-    const s = tryGetSettings();
-    return Array.isArray(s?.reviewExcludedNotes) ? (s.reviewExcludedNotes as string[]) : [];
+    return stringArray(tryGetSettings().reviewExcludedNotes);
   }
 
   isWatched(path: string): boolean {
@@ -72,7 +74,7 @@ export class ReviewWatcher {
   /** 追加排除名单（去重 + 落盘；手动/确认四类表态共用） */
   async excludePaths(paths: string[]): Promise<void> {
     const s = tryGetSettings();
-    const cur = Array.isArray(s?.reviewExcludedNotes) ? [...(s.reviewExcludedNotes as string[])] : [];
+    const cur = stringArray(s?.reviewExcludedNotes);
     let changed = false;
     for (const p of paths) {
       if (p && !cur.includes(p)) {
@@ -89,7 +91,7 @@ export class ReviewWatcher {
   async removeExcludedNote(path: string): Promise<void> {
     const s = tryGetSettings();
     if (!s) return;
-    const cur = Array.isArray(s.reviewExcludedNotes) ? [...(s.reviewExcludedNotes as string[])] : [];
+    const cur = stringArray(s.reviewExcludedNotes);
     const kept = cur.filter((p) => p !== path);
     if (kept.length === cur.length) return;
     s.reviewExcludedNotes = kept;
@@ -136,7 +138,7 @@ export class ReviewWatcher {
       if (!items.some((i) => i.filePath === file.path)) return;
       this.deleteQueue.push(file.path);
       if (this.deleteTimer) return;
-      this.deleteTimer = window.setTimeout(async () => {
+      const runDeleteBatch = async (): Promise<void> => {
         this.deleteTimer = null;
         const batch = this.deleteQueue;
         this.deleteQueue = [];
@@ -181,7 +183,8 @@ export class ReviewWatcher {
             void this.refresh();
           }
         });
-      }, 300);
+      };
+      this.deleteTimer = window.setTimeout(() => { void runDeleteBatch(); }, 300);
     })();
   }
 
@@ -255,11 +258,11 @@ export class ReviewWatcher {
   async removeWatchedFolder(folder: string): Promise<number> {
     const s = tryGetSettings();
     if (!s) return 0;
-    const folders = Array.isArray(s.reviewWatchedFolders) ? [...(s.reviewWatchedFolders as string[])] : [];
+    const folders = stringArray(s.reviewWatchedFolders);
     const idx = folders.indexOf(folder);
     if (idx !== -1) folders.splice(idx, 1);
     s.reviewWatchedFolders = folders;
-    const before = Array.isArray(s.reviewExcludedNotes) ? [...(s.reviewExcludedNotes as string[])] : [];
+    const before = stringArray(s.reviewExcludedNotes);
     const kept = before.filter((p) => !isUnderFolder(folder, p));
     s.reviewExcludedNotes = kept;
     await saveSettings();

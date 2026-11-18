@@ -43,6 +43,12 @@ export const SPONSOR_URL = 'https://wzyp.cn/shop/IFCEI5I3';
  *  打开仓库页，Star 在页面右上角。slug 单源在 core/remote-base，与「关于」组同一处。 */
 export const REPO_URL = `https://github.com/${REPO_SLUG}`;
 
+/** 装载一段受控 HTML（解析规则与 innerHTML 同源，但不直接写 innerHTML/outerHTML） */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
 // 名单与日期格式化的门面留在原处：外部一直是从 reward-dialog 拿这两样的。
 export { REWARD_NAMES, formatRewardDate };
 export type { RewardName };
@@ -52,7 +58,7 @@ export function renderRewardList(names: readonly RewardName[]): HTMLOListElement
   const ol = createEl('ol');
   ol.className = 'bzrv-rw-names';
   const total = names.length;
-  ol.innerHTML = names
+  setMarkup(ol, names
     .map((it, i) => {
       const no = String(total - i).padStart(2, '0');
       const msg = it.message
@@ -76,7 +82,7 @@ export function renderRewardList(names: readonly RewardName[]): HTMLOListElement
         </div>
       </li>`;
     })
-    .join('');
+    .join(''));
   return ol;
 }
 
@@ -84,7 +90,7 @@ export function renderRewardList(names: readonly RewardName[]): HTMLOListElement
 export function renderRewardEmpty(): HTMLDivElement {
   const el = createDiv();
   el.className = 'bzrv-rw-empty';
-  el.innerHTML = '<div class="bzrv-rw-mark"></div><p>还没有人打赏。</p>';
+  setMarkup(el, '<div class="bzrv-rw-mark"></div><p>还没有人打赏。</p>');
   return el;
 }
 
@@ -118,18 +124,18 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   const close = createEl('button');
   close.className = 'bzrv-rw-close';
   close.type = 'button';
-  close.appendChild(Object.assign(createEl('span'), { className: 'bzrv-sr-only', textContent: '关闭' }));
-  close.innerHTML =
+  close.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
+  setMarkup(close,
     '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" ' +
-    'stroke-width="1.3" stroke-linecap="round"><path d="M1 1l11 11M12 1L1 12"/></svg>';
+    'stroke-width="1.3" stroke-linecap="round"><path d="M1 1l11 11M12 1L1 12"/></svg>');
   close.addEventListener('click', () => onClose());
   root.appendChild(close);
 
   const head = createDiv();
   head.className = 'bzrv-rw-head';
-  head.innerHTML =
+  setMarkup(head,
     '<div class="bzrv-rw-kicker">题赠</div>' +
-    `<p class="bzrv-rw-lead">${SUPPORT_PITCH}<br>${SUPPORT_PITCH_REST}</p>`;
+    `<p class="bzrv-rw-lead">${SUPPORT_PITCH}<br>${SUPPORT_PITCH_REST}</p>`);
   root.appendChild(head);
 
   const code = createDiv();
@@ -155,7 +161,7 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   // 移动端常常点了没反应，统一交给 core 的 openExternalUrl 兜底链（失败有人说人话）。
   const exits = createEl('p');
   exits.className = 'bzrv-rw-exits';
-  const sep = createEl('span');
+  const sep = createSpan();
   sep.className = 'bzrv-rw-exit-sep';
   sep.setAttribute('aria-hidden', 'true');
   sep.textContent = '·';
@@ -173,7 +179,7 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
 
   const foot = createDiv();
   foot.className = 'bzrv-rw-foot';
-  foot.innerHTML = FOOT_ARC;
+  setMarkup(foot, FOOT_ARC);
   root.appendChild(foot);
 
   return root;

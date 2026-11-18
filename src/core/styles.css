@@ -41,7 +41,7 @@
 /* 旧分页 .bzrv-tab-* 死类已删（ticket 131 Q14：grep 全仓零引用；.bzrv-tab 断言残留于
    tests/settings-tab.test.ts 的「无 tab」负向回归，非使用方） */
 .bzrv-setting-hidden {
-    display: none !important;
+    display: none ;
 }
 
 /* 设置行控件统一最小宽度（ticket 170）：number/text 等输入控件对齐到 120px */
@@ -61,12 +61,12 @@
 .bzrv-lib-header,
 .bzrv-lib-modal-header,
 .bzrv-encrypt-head {
-  display: flex !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  gap: var(--bzrv-space-sm) !important;
-  padding: var(--bzrv-space-lg) var(--bzrv-space-xl) 10px !important;
-  flex-shrink: 0 !important;
+  display: flex ;
+  justify-content: space-between ;
+  align-items: center ;
+  gap: var(--bzrv-space-sm) ;
+  padding: var(--bzrv-space-lg) var(--bzrv-space-xl) 10px ;
+  flex-shrink: 0 ;
 }
 /* 头行按钮容器：统一 8px 间距、垂直居中 */
 .bzrv-win-head > div,
@@ -75,9 +75,9 @@
 .fav-header > div,
 .bzrv-lib-header-btns,
 .bzrv-encrypt-head-btns {
-  display: flex !important;
-  align-items: center !important;
-  gap: var(--bzrv-space-sm) !important;
+  display: flex ;
+  align-items: center ;
+  gap: var(--bzrv-space-sm) ;
 }
 /* 头行按钮：统一 22×26/14px、透明、无阴影无边框、圆角 4、text-muted；hover 统一背景 */
 .bzrv-win-head button,
@@ -88,20 +88,20 @@
 .bzrv-lib-modal-header button,
 .bzrv-encrypt-head-btns button,
 .news-close-btn {
-  width: 22px !important;
-  height: 26px !important;
-  font-size: var(--bzrv-font-body) !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
-  border-radius: var(--bzrv-radius-xs) !important;
-  color: var(--text-muted) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  line-height: 1 !important;
+  width: 22px ;
+  height: 26px ;
+  font-size: var(--bzrv-font-body) ;
+  padding: 0 ;
+  margin: 0 ;
+  background: none ;
+  border: none ;
+  box-shadow: none ;
+  border-radius: var(--bzrv-radius-xs) ;
+  color: var(--text-muted) ;
+  display: flex ;
+  align-items: center ;
+  justify-content: center ;
+  line-height: 1 ;
 }@media (hover: hover) {
 
 .bzrv-win-head button:hover,
@@ -112,7 +112,7 @@
 .bzrv-lib-modal-header button:hover,
 .bzrv-encrypt-head-btns button:hover,
 .news-close-btn:hover {
-  background: var(--background-secondary) !important;
+  background: var(--background-secondary) ;
 }
 }
 /* 关闭按钮再小 2px（用户拍板）：20×24/12px（元素选择器提特异性，压过统一按钮组） */
@@ -120,16 +120,16 @@ button.bzrv-icon-btn--close,
 button.bzrv-win-close,
 button.todo-btn-close,
 button.news-close-btn {
-  width: 20px !important;
-  height: 24px !important;
-  font-size: var(--bzrv-font-meta) !important;
+  width: 20px ;
+  height: 24px ;
+  font-size: var(--bzrv-font-meta) ;
 }
 /* 非真全屏一律隐藏关闭按钮（含桌面端——用户拍板）：桌面/卡片态靠点遮罩与 ESC 关闭，真全屏时靠 ❌ 关闭 */
 button.bzrv-win-close,
 button.bzrv-icon-btn--close,
 button.todo-btn-close,
 button.news-close-btn {
-  display: none !important;
+  display: none ;
 }
 /* ==================== core 层样式收敛（ticket 60 延伸：notice/settings-modal/confirm/dom） ==================== */
 /* 通知 toast（原 core/notice.ts NOTICE_CSS，ADR-0010） */
@@ -333,7 +333,7 @@ button.news-close-btn {
   animation: none;
 }
 .bzrv-notice-progress--indeterminate {
-  width: 40% !important;
+  width: 40% ;
   animation: bzrvNoticeIndeterminate 1.2s ease-in-out infinite;
 }
 @keyframes bzrvNoticeIn {
@@ -584,7 +584,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
 /* 图标按钮（原 core/dom.ts createIconBtn 内联；hover 背景移 CSS；尺寸按关闭/普通两档类） */
 .bzrv-icon-btn {
   background: none;
-  border: none !important;
+  border: none ;
   cursor: pointer;
   color: var(--text-muted);
   padding: 0;
@@ -592,7 +592,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: none !important;
+  box-shadow: none ;
   font-size: var(--bzrv-font-body);
   width: 22px;
   height: 26px;
@@ -766,34 +766,34 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
    写死 height 会把那套皮肤的文字压扁；min-height 则默认 30px、皮肤更高，两边都成立。 */
 .bzrv-item-menu button.bzrv-item-menu-item {
   display: flex; align-items: center; gap: var(--bzrv-space-sm);
-  justify-content: flex-start !important; /* 抗 Obsidian 默认 button 居中 */
+  justify-content: flex-start ; /* 抗 Obsidian 默认 button 居中 */
   width: 100%; min-height: 30px; padding: 0 var(--bzrv-space-sm);
   font-size: var(--bzrv-font-label); line-height: 1.4; color: var(--text-normal);
-  background: transparent !important;
-  border: none !important;
-  border-radius: 6px !important;
-  box-shadow: none !important;
-  cursor: pointer; text-align: left !important;
+  background: transparent ;
+  border: none ;
+  border-radius: 6px ;
+  box-shadow: none ;
+  cursor: pointer; text-align: left ;
 }@media (hover: hover) {
 
-.bzrv-item-menu button.bzrv-item-menu-item:hover { background: var(--background-modifier-hover) !important; }
+.bzrv-item-menu button.bzrv-item-menu-item:hover { background: var(--background-modifier-hover) ; }
 }
-.bzrv-item-menu button.bzrv-item-menu-item--danger { color: var(--text-error) !important; }
+.bzrv-item-menu button.bzrv-item-menu-item--danger { color: var(--text-error) ; }
 /* 强调色调：整行（文字 + 图标 + 小字）同步换强调色（如解锁态加密/解密）；未解锁保持默认外观。
-   高特异性 + !important 抗 Obsidian 默认 button 样式压盖；桌面菜单无小字（不渲染） */
+   高特异性 +  抗 Obsidian 默认 button 样式压盖；桌面菜单无小字（不渲染） */
 .bzrv-item-sheet button.bzrv-item-sheet-item--accent,
 .bzrv-item-sheet button.bzrv-item-sheet-item--accent .bzrv-item-sheet-icon,
 .bzrv-item-sheet button.bzrv-item-sheet-item--accent .bzrv-item-sheet-item-sub,
 .bzrv-item-menu button.bzrv-item-menu-item--accent,
 .bzrv-item-menu button.bzrv-item-menu-item--accent .bzrv-item-menu-icon {
-  color: var(--color-green) !important;
+  color: var(--color-green) ;
 }
 .bzrv-item-menu-icon { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text-muted); }
 .bzrv-item-menu button.bzrv-item-menu-item--danger .bzrv-item-menu-icon { color: var(--text-error); }
 
 /* ---- 抽屉共享基线（恢复：movie 域退役 ADR-0087 时随 src/movie/styles.css 误删的共享规则——
    本组件样式早年散落各域文件，退役清理时未迁回 core，致动作项失 flex 纵列挤成一行、
-   抗 Obsidian 按钮 !important 组/危险红/右对齐小字/入场动画全部失效） ---- */
+   抗 Obsidian 按钮  组/危险红/右对齐小字/入场动画全部失效） ---- */
 /* 头部标题/小字（sheetTitle 路径；sheetHead 路径走 .bzrv-item-sheet-entry 族） */
 .bzrv-item-sheet-title {
   font-size: var(--bzrv-font-body); font-weight: 600; color: var(--text-normal);
@@ -801,25 +801,25 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
 }
 .bzrv-item-sheet-sub { font-size: var(--bzrv-font-meta); color: var(--text-muted); margin-top: 3px; }
 /* 功能项一行行列出：左对齐、无背景色、无边框分割，小字号。
-   高特异性 + !important 抗 Obsidian 默认 button 样式（灰底/边框/圆角）压盖 */
+   高特异性 +  抗 Obsidian 默认 button 样式（灰底/边框/圆角）压盖 */
 .bzrv-item-sheet button.bzrv-item-sheet-item {
   display: flex; align-items: center; gap: var(--bzrv-space-sm);
-  justify-content: flex-start !important; /* 抗 Obsidian 默认 button 居中 */
+  justify-content: flex-start ; /* 抗 Obsidian 默认 button 居中 */
   width: 100%; padding: var(--bzrv-space-sm) 6px;
   font-size: var(--bzrv-font-label); line-height: 1.5; color: var(--text-normal);
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  cursor: pointer; text-align: left !important;
+  background: transparent ;
+  border: none ;
+  border-radius: 0 ;
+  box-shadow: none ;
+  cursor: pointer; text-align: left ;
 }@media (hover: hover) {
 
 .bzrv-item-sheet button.bzrv-item-sheet-item:hover,
 .bzrv-item-sheet button.bzrv-item-sheet-item:active {
-  background: transparent !important; /* 无背景反馈，保持纯粹 */
+  background: transparent ; /* 无背景反馈，保持纯粹 */
 }
 }
-.bzrv-item-sheet button.bzrv-item-sheet-item--danger { color: var(--text-error) !important; }
+.bzrv-item-sheet button.bzrv-item-sheet-item--danger { color: var(--text-error) ; }
 /* 动作项右侧小字（次级/动态数据，如「123 字」）：右对齐、faint 弱化，不参与换行；仅移动端抽屉（桌面菜单不渲染小字） */
 .bzrv-item-sheet-item-sub {
   margin-left: auto;
@@ -1210,7 +1210,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
 button.bzrv-rowbtn--busy {
   position: relative;
   pointer-events: none;
-  color: transparent !important;
+  color: transparent ;
 }
 button.bzrv-rowbtn--busy::after {
   content: '';
@@ -1226,14 +1226,14 @@ button.bzrv-rowbtn--busy::after {
   animation: bzrv-rowbtn-spin 0.7s linear infinite;
 }
 button.bzrv-rowbtn--ok {
-  border: 2px solid #1f883d !important;
-  color: #1f883d !important;
-  background: transparent !important;
+  border: 2px solid #1f883d ;
+  color: #1f883d ;
+  background: transparent ;
 }
 button.bzrv-rowbtn--fail {
-  border: 2px solid #cf222e !important;
-  color: #cf222e !important;
-  background: transparent !important;
+  border: 2px solid #cf222e ;
+  color: #cf222e ;
+  background: transparent ;
 }
 @keyframes bzrv-rowbtn-spin {
   to {

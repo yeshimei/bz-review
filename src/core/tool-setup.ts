@@ -27,7 +27,11 @@ export type ToolSetupOutcome = 'skipped' | 'done' | 'failed';
 
 /** 值守的本机会话态根目录（口径与 tools/dock-watch/runtime.js 的 watchdogDir() 逐字一致） */
 export function watchdogDirPath(): string {
-  const env = (typeof process !== 'undefined' ? process.env : {}) as Record<string, string | undefined>;
+  // 经 window 取 process（Obsidian 桌面端 = Electron 渲染进程，window.process 可用）：
+  // 避开 no-undef（eslint globals 未声明 process）与 no-global-this（禁 globalThis）
+  const host = typeof window !== 'undefined' ? window : null;
+  const env: Record<string, string | undefined> =
+    (host as unknown as { process?: { env?: Record<string, string | undefined> } } | null)?.process?.env ?? {};
   const local = String(env.LOCALAPPDATA || '').trim();
   if (local) return `${local.replace(/[\\/]+$/, '')}/bz-dock-watch`;
   const home = String(env.USERPROFILE || env.HOME || '').trim();
@@ -42,14 +46,20 @@ export function watchdogVaultDirPath(vault: string): string {
   return key ? `${root}/vaults/${key}` : root;
 }
 
-/** 桌面端 fs（拿不到 → null） */
-function nodeFs(): {
+/** 本模块用到的 fs 子集（真 Node fs 与测试替身都满足） */
+interface NodeFsModule {
   readFileSync?: (p: string, enc: string) => string;
   existsSync?: (p: string) => boolean;
-} | null {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
+}
+
+/** 桌面端 fs（拿不到 → null） */
+function nodeFs(): NodeFsModule | null {
+  const w = typeof window !== 'undefined'
+    ? (window as unknown as { require?: (m: string) => unknown })
+    : null;
   try {
-    return w?.require?.('fs') ?? null;
+    const m = w?.require?.('fs');
+    return m && typeof m === 'object' ? m : null;
   } catch {
     return null;
   }
@@ -72,13 +82,34 @@ interface PsResult {
   out: string;
 }
 
+/** child_process 在本模块用到的最小面：spawn + 子进程的 stdout/stderr/error/close */
+interface ChildProcStream {
+  on(event: 'data', listener: (chunk: string | Uint8Array) => void): void;
+}
+interface ChildProcessLike {
+  stdout?: ChildProcStream;
+  stderr?: ChildProcStream;
+  on(event: 'error', listener: (err: Error) => void): void;
+  on(event: 'close', listener: (code: number | null) => void): void;
+}
+interface ChildProcessModule {
+  spawn(
+    command: string,
+    args: string[],
+    options: { cwd: string; windowsHide: boolean; stdio: string[] }
+  ): ChildProcessLike;
+}
+
 /** 跑一段 PowerShell（数组参数，路径不过 cmd 解析）；起不来 → code null */
 function runPowerShell(args: string[], cwd: string): Promise<PsResult> {
   return new Promise((resolve) => {
-    const w = typeof window !== 'undefined' ? (window as any) : null;
-    let cp: any = null;
+    const w = typeof window !== 'undefined'
+      ? (window as unknown as { require?: (m: string) => unknown })
+      : null;
+    let cp: ChildProcessModule | null = null;
     try {
-      cp = w?.require?.('child_process');
+      const m = w?.require?.('child_process');
+      cp = m && typeof m === 'object' ? (m as ChildProcessModule) : null;
     } catch {
       cp = null;
     }
@@ -87,7 +118,7 @@ function runPowerShell(args: string[], cwd: string): Promise<PsResult> {
       return;
     }
     let out = '';
-    let child: any;
+    let child: ChildProcessLike;
     try {
       child = cp.spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', ...args], {
         cwd,
@@ -98,21 +129,21 @@ function runPowerShell(args: string[], cwd: string): Promise<PsResult> {
       resolve({ code: null, out: (e as Error)?.message || String(e) });
       return;
     }
-    child.stdout?.on('data', (d: any) => (out += String(d)));
-    child.stderr?.on('data', (d: any) => (out += String(d)));
-    child.on('error', (e: Error) => resolve({ code: null, out: out || e.message }));
-    child.on('close', (code: number | null) => resolve({ code, out }));
+    child.stdout?.on('data', (d) => { out += String(d); });
+    child.stderr?.on('data', (d) => { out += String(d); });
+    child.on('error', (e) => resolve({ code: null, out: out || e.message }));
+    child.on('close', (code) => resolve({ code, out }));
   });
 }
 
 /** 读这个库自己的值守配置（判断「已经装过了」用）；坏读/不存在 → null */
-async function readWatchdogConfig(vault: string): Promise<{ vault?: string } | null> {
+async function readWatchdogConfig(vault: string): Promise<Record<string, unknown> | null> {
   const cfg = readJsonAt(`${watchdogVaultDirPath(vault)}/config.json`);
-  if (cfg) return cfg as { vault?: string };
+  if (cfg) return cfg;
   // 老安装（还没有 vaults/ 分层）配置在根上：只在 active.json 也没有时才认，
   // 否则「服务着别的库」会被误判成「这个库已经装过」
   if (readJsonAt(`${watchdogDirPath()}/active.json`)) return null;
-  return readJsonAt(`${watchdogDirPath()}/config.json`) as { vault?: string } | null;
+  return readJsonAt(`${watchdogDirPath()}/config.json`);
 }
 
 /** 值守现在服务的是哪个库（读 active.json；没有 → 空串） */
@@ -145,7 +176,8 @@ export async function setupAfterInstall(app: unknown, id: ToolId): Promise<ToolS
 
   // 已经装过（同一 vault）→ 不重复注册，也别再弹一次确认
   const existing = await readWatchdogConfig(vault);
-  if (existing && String(existing.vault || '').replace(/[\\/]+$/, '') === vault) return 'skipped';
+  const existingVault = existing && typeof existing.vault === 'string' ? existing.vault : '';
+  if (existingVault.replace(/[\\/]+$/, '') === vault) return 'skipped';
 
   // 值守正服务着**另一个**库：一台机器只跑一个值守进程，继续装等于把那个库的定时任务顶掉。
   // 不阻止（用户可能就是想要这个），但必须说清楚是「切过去」，不是「两个都跑」。
@@ -188,5 +220,5 @@ export function toolSetupBlurb(id: ToolId): string {
 
 /** 工具 id → 是否是本模块认识的运行时工具（在线资源里还有其他 bundle 时给调用方一个判据） */
 export function isToolBundleId(id: string): id is ToolId {
-  return Object.prototype.hasOwnProperty.call(TOOL_ENTRIES, id);
+  return Object.prototype.hasOwnProperty.call(TOOL_ENTRIES, id) === true;
 }

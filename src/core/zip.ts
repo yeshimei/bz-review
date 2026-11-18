@@ -33,6 +33,20 @@ export interface ZipEntry {
   localOffset: number;
 }
 
+/* 桌面端 renderer 通过 window.require 拿 Node 模块；只声明本文件真正用到的那几个方法，
+   避免整片 `as any` 把类型检查全部关掉。Buffer 显式 declare 让 no-undef 认识它们。 */
+interface ZlibModule {
+  inflateRawSync(input: Uint8Array): Uint8Array;
+}
+interface BufferCtor {
+  from(data: ArrayBufferLike, byteOffset: number, length: number): Uint8Array;
+}
+interface ElectronWindow extends Window {
+  require?: (id: string) => unknown;
+}
+declare const Buffer: BufferCtor;
+const nodeWindow = (): ElectronWindow | null => (typeof window === 'undefined' ? null : window);
+
 const SIG_EOCD = 0x06054b50;
 const SIG_CEN = 0x02014b50;
 const SIG_LOC = 0x04034b50;
@@ -109,15 +123,16 @@ export function readZipEntries(bytes: Uint8Array): ZipEntry[] {
 
 /** 缺省 inflateRaw：桌面端 Node 的 zlib（与 bundle-asset 的 gunzip 同源） */
 function defaultInflateRaw(data: Uint8Array): Uint8Array {
-  const w = typeof window !== 'undefined' ? (window as any) : null;
-  let zlib: any = null;
+  const w = nodeWindow();
+  let zlib: ZlibModule | undefined;
   try {
-    zlib = w?.require?.('zlib');
+    zlib = w?.require?.('zlib') as ZlibModule | undefined;
   } catch {
-    zlib = null;
+    zlib = undefined;
   }
   if (!zlib?.inflateRawSync) throw new Error('当前环境不支持解压（zip 需要桌面端）');
-  const Buf: any = typeof Buffer !== 'undefined' ? Buffer : w?.require?.('buffer')?.Buffer;
+  let Buf: BufferCtor | undefined = typeof Buffer !== 'undefined' ? Buffer : undefined;
+  if (!Buf) Buf = (w?.require?.('buffer') as { Buffer: BufferCtor } | undefined)?.Buffer;
   if (!Buf) throw new Error('当前环境不支持解压（缺少 Buffer）');
   const out = zlib.inflateRawSync(Buf.from(data.buffer, data.byteOffset, data.byteLength));
   return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);

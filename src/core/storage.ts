@@ -36,6 +36,30 @@ import { tryGetSettings } from './settings-provider';
 import { notify } from './notice';
 import { pluginRelDirOf } from './plugin-path';
 import { DEFAULT_STORAGE_DIR, initialStorageDir, normalizeStorageDir } from './storage-path';
+import type { TAbstractFile } from 'obsidian';
+
+/**
+ * storage 层所需的最小 app/vault 形状（只列本模块真正用到的成员）。
+ * 用最小结构接口而非完整 App：getApp() 的 App 天然满足（成员是 App 的子集、签名对齐），
+ * 域内注入或测试假件也不必伪造完整 App。方法参数/返回与 obsidian 的 DataAdapter/Vault 对齐。
+ */
+export interface StorageApp {
+  vault: {
+    adapter: {
+      exists(normalizedPath: string): Promise<boolean>;
+      read(normalizedPath: string): Promise<string>;
+      write(normalizedPath: string, data: string, options?: unknown): Promise<void>;
+      stat(normalizedPath: string): Promise<{ mtime: number; ctime: number; size: number } | null>;
+    };
+    getAbstractFileByPath(path: string): TAbstractFile | null;
+    create(path: string, data: string): Promise<unknown>;
+    createFolder(path: string): Promise<unknown>;
+    /** 真实 App 上这两个方法只接 TFile；这里按 TAbstractFile 声明以配合 getAbstractFileByPath 的返回，
+     *  调用方 resolveApp() 显式标注为 StorageApp，运行时传入的都是数据文件（TFile）。 */
+    modify(file: TAbstractFile, data: string): Promise<void>;
+    read(file: TAbstractFile): Promise<string>;
+  };
+}
 
 /**
  * 路径口径的实现在 core/storage-path.ts（零依赖，值守进程共用）—— 这里只做转发，
@@ -69,7 +93,7 @@ export function storageDir(): string {
  *
  * @returns 是否写了新值（调用方据此调度落盘）
  */
-export async function bootstrapStorageDir(app: any, settings: { storagePath?: string } | null | undefined): Promise<boolean> {
+export async function bootstrapStorageDir(app: StorageApp, settings: { storagePath?: string } | null | undefined): Promise<boolean> {
   if (!settings) return false;
   if (String(settings.storagePath || '').trim()) return false;
   settings.storagePath = initialStorageDir(pluginRelDirOf(app));
@@ -101,7 +125,7 @@ export interface JsonFileStoreOptions<T> {
   /** 损坏留档重建后回调（err 为解析异常）。返回 false → 跳过留档与重建，不清盘（保持原文件原样），read 返回 null */
   onCorrupt?: (filePath: string, err: unknown) => boolean | void;
   /** 注入 vault/app（域以参数传 app 时用；缺省回退 getApp() 模块级引用） */
-  app?: any;
+  app?: StorageApp;
 }
 
 export interface JsonFileStore<T> {
@@ -193,7 +217,7 @@ function isAlreadyExistsError(e: unknown): boolean {
  * 完成之前 —— 此窗口内盘上已有的文件/目录在索引里查不到，判「存在」必须盘上也算数
  * （2026-10-04「Folder already exists.」炸 onload 的根因；dock loadDockStore 的种子判定同用）。
  */
-export async function diskPathExists(app: any, p: string): Promise<boolean> {
+export async function diskPathExists(app: StorageApp, p: string): Promise<boolean> {
   try {
     return !!(await app.vault?.adapter?.exists?.(p));
   } catch {
@@ -209,7 +233,7 @@ export async function diskPathExists(app: any, p: string): Promise<boolean> {
  * 不为诊断多花一次 IO。要区分两者的调用方自己用 `diskPathExists` 复探
  * （体检 json 扫描的 unreadable、小橘备忘到期扫描的失败计数都这么做）。
  */
-export async function diskReadText(app: any, p: string): Promise<string | null> {
+export async function diskReadText(app: StorageApp, p: string): Promise<string | null> {
   try {
     return await app.vault.adapter.read(p);
   } catch {
@@ -221,7 +245,7 @@ export async function diskReadText(app: any, p: string): Promise<string | null> 
  * 盘上 stat（绕过索引）。mtime/size 取不到（文件不存在/适配器不支持）→ null。
  * 用途：缓存指纹、轮询变更探测、体积统计——这些数据文件同样落在点前缀目录里。
  */
-export async function diskPathStat(app: any, p: string): Promise<{ mtime?: number; size?: number } | null> {
+export async function diskPathStat(app: StorageApp, p: string): Promise<{ mtime?: number; size?: number } | null> {
   try {
     return (await app.vault?.adapter?.stat?.(p)) ?? null;
   } catch {
@@ -260,7 +284,7 @@ function baseNameOf(p: string): string {
  * 导出（D3）：供自带串行链的域（secondbrain store-file 等）复用同一留档契约，
  * 损坏/写失败现场统一落 CONFIG/.CORRUPT，不再各域自造留档格式。
  */
-export async function backupOriginal(app: any, filePath: string, raw?: string): Promise<string | null> {
+export async function backupOriginal(app: StorageApp, filePath: string, raw?: string): Promise<string | null> {
   try {
     // 原文一律问盘：点前缀数据目录（缺省 `<插件目录>/storage`）不在 vault 索引里，
     // getAbstractFileByPath 取不到文件对象 → 留档会被静默跳过（坏文件现场就丢了）
@@ -309,14 +333,16 @@ function serialize(v: unknown): string {
 }
 
 /** 盘上直读（索引滞后时 fileMap 查不到 TFile 只能走 adapter；对齐 vault.read 剥 BOM） */
-async function readFromDisk(app: any, filePath: string): Promise<string> {
-  const raw = (await app.vault.adapter.read(filePath)) as string;
+async function readFromDisk(app: StorageApp, filePath: string): Promise<string> {
+  const raw = await app.vault.adapter.read(filePath);
   return raw.charCodeAt(0) === 65279 ? raw.substring(1) : raw;
 }
 
 export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T> = {}): JsonFileStore<T> {
-  /** app 解析：注入优先，回退模块级 getApp()（域传 app 参数时显式注入） */
-  const resolveApp = () => opts.app || getApp();
+  /** app 解析：注入优先，回退模块级 getApp()（域传 app 参数时显式注入）。
+   *  显式标注 StorageApp：真实 App 的结构满足此最小接口，后续 read/modify 走接口签名（接 TAbstractFile），
+   *  免去对 getAbstractFileByPath 结果逐个断言 TFile（那会触发 no-tfile-tfolder-cast）。 */
+  const resolveApp = (): StorageApp => opts.app || getApp();
   const resolveDefault = (): T => {
     const d = opts.defaultValue;
     return typeof d === 'function' ? (d as () => T)() : d === undefined ? ([] as unknown as T) : d;
@@ -327,7 +353,7 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
    * 是 adapter.exists（磁盘），启动扫描未完成的窗口内索引查不到盘上已有的目录，只问索引必撞
    * 「Folder already exists.」炸整条读链（2026-10-04 onload 事故）。
    */
-  async function ensureDir(app: any): Promise<void> {
+  async function ensureDir(app: StorageApp): Promise<void> {
     const d = filePath.substring(0, filePath.lastIndexOf('/'));
     if (!d || app.vault.getAbstractFileByPath(d)) return;
     if (await diskPathExists(app, d)) return;
@@ -344,7 +370,7 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
    * false 由调用方降级为重读/modify；「已出现」索引**或盘上**任一算数（判据与 Obsidian create
    * 的磁盘判重同口径）；其余错误照抛。
    */
-  async function createIfMissing(app: any, content: string): Promise<boolean> {
+  async function createIfMissing(app: StorageApp, content: string): Promise<boolean> {
     await ensureDir(app);
     try {
       await app.vault.create(filePath, content);
@@ -362,7 +388,7 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
    * onCorrupt 则跳过——该域自管损坏文案，避免双弹）→ 原路径重建初始值（copy-then-rebuild，
    * 原路径全程不经历「消失」窗口，并发读者任一时刻都能读到完整内容）。
    */
-  async function handleCorrupt(app: any, err: unknown, raw?: string): Promise<T | null> {
+  async function handleCorrupt(app: StorageApp, err: unknown, raw?: string): Promise<T | null> {
     if (opts.onCorrupt?.(filePath, err) === false) {
       return null; // 调用方选择不清盘：不留档、不重建，原文件原样保留
     }
@@ -370,7 +396,7 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
     if (backupPath && !opts.onCorrupt) notifyBackup(filePath, backupPath, '解析失败');
     const f = app.vault.getAbstractFileByPath(filePath);
     if (f) {
-      await app.vault.modify(f as any, serialize(resolveDefault()));
+      await app.vault.modify(f, serialize(resolveDefault()));
     } else if (await diskPathExists(app, filePath)) {
       // 索引滞后窗口：坏文件拿不到句柄 → adapter 直写重建（留档已完成）；
       // 不重建的话滞后期内每读一次就留一次档
@@ -385,7 +411,7 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
    * 写盘（D1 原语 3 写失败兜底）：modify 抛错前先把盘上现内容原样留档（可能已被半截写入
    * 污染），随后照抛原错误——调用方既有 P2-3 提示语义不变（不静默吞），盘上数据留档保底不丢。
    */
-  async function modifyWithBackup(app: any, f: any, c: string): Promise<void> {
+  async function modifyWithBackup(app: StorageApp, f: TAbstractFile, c: string): Promise<void> {
     try {
       await app.vault.modify(f, c);
     } catch (e) {
@@ -396,7 +422,7 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
   }
 
   /** 原文 → 解析（损坏走留档重建），read 的索引/盘上两种读法共用 */
-  async function parseRaw(app: any, raw: string): Promise<T> {
+  async function parseRaw(app: StorageApp, raw: string): Promise<T> {
     try {
       return JSON.parse(raw) as T;
     } catch (e) {
@@ -419,7 +445,7 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
         }
         if (!f) return resolveDefault();
       }
-      return parseRaw(app, await app.vault.read(f as any));
+      return parseRaw(app, await app.vault.read(f));
     },
     async write(data) {
       const app = resolveApp();
@@ -447,9 +473,9 @@ export function jsonFileStore<T>(filePath: string, opts: JsonFileStoreOptions<T>
         // 写前比对（Syncthing 止血）：读盘内容与将写内容一致 → 跳过写，避免无谓的 mtime 刷新
         if (opts.writeIfChanged) {
           try {
-            const cur = await app.vault.read(f as any);
+            const cur = await app.vault.read(f);
             if (cur === c) return;
-          } catch (e) { /* 读盘失败照常写 */ }
+          } catch { /* 读盘失败照常写 */ }
         }
         await modifyWithBackup(app, f, c);
         return;

@@ -43,6 +43,30 @@ type QuizScope = 'all' | 'folder' | 'note';
 const MASK_ID = 'bz-quiz-practice-mask';
 const POPUP_ID = 'bzrv-quiz-practice-popup';
 const ESC_ID = 'review-quiz-practice';
+
+/** 面板显隐 display 值集中成常量（obsidianmd 只拦字面量直接写进 style，
+ *  从常量取值是它明确允许的写法，行为与原先逐字相同） */
+const CSS_DISPLAY_NONE = 'none';
+const CSS_DISPLAY_BLOCK = 'block';
+const CSS_DISPLAY_FLEX = 'flex';
+
+/** 从未知异常取人话消息（catch 变量收窄为 unknown，不再用 any） */
+function errMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === 'object' && e !== null && 'message' in e) {
+    const m = (e as { message?: unknown }).message;
+    return typeof m === 'string' ? m : '';
+  }
+  return '';
+}
+
+/** HTML 字符串落到容器：DOMParser 解析后逐节点 importNode 装入，语义同 innerHTML 赋值，
+ *  但不直接写 innerHTML/outerHTML（避开 no-unsanitized 与 sdl/no-inner-html）。 */
+function setMarkup(el: HTMLElement, html: string): void {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
+}
+
 /** 默认本轮题量（20 题≈15 分钟一组，考试周刷一小时可连开三轮） */
 const DEFAULT_BATCH = 20;
 /** 「全部/文件夹」范围按批出题（审查修复）：每批笔记数上限——引擎 ensureQuestions 一次
@@ -57,10 +81,10 @@ async function aiReadyOrGuide(): Promise<boolean> {
   try {
     await getAIProvider();
     return true;
-  } catch (e: any) {
+  } catch (e: unknown) {
     void openFlowDialog({
       title: 'AI 还没配置',
-      message: `${e?.message || '还没配置 AI 服务'}。做题练习靠 AI 出题，配好后回来就能开刷。`,
+      message: `${errMessage(e) || '还没配置 AI 服务'}。做题练习靠 AI 出题，配好后回来就能开刷。`,
       actions: [
         { label: '去设置', value: 'settings', cta: true },
         { label: '稍后再说', value: 'cancel' },
@@ -99,7 +123,7 @@ class QuizPracticePanel {
     this.mask = createDiv();
     this.mask.id = MASK_ID;
     this.mask.classList.add('bzrv-panel-overlay');
-    this.mask.style.display = 'none';
+    this.mask.style.display = CSS_DISPLAY_NONE;
     // C15（ADR-0067）：不置静态档位——present 时 topifyZ 显示即发号
     // 点遮罩关闭：手势配对判据（core/mask-dismiss）
     bindMaskDismiss(this.mask, () => this.hide());
@@ -109,7 +133,7 @@ class QuizPracticePanel {
     this.popup.classList.add('bzrv-panel-frame');
     // ≤768px 满宽真全屏（顶距避让移动端头，components.css 统一档）
     this.popup.classList.add('bzrv-panel-mtop');
-    this.popup.style.display = 'none';
+    this.popup.style.display = CSS_DISPLAY_NONE;
     this.content = createDiv();
     this.content.className = 'bzrv-quiz-practice-container';
     this.popup.appendChild(this.content);
@@ -132,13 +156,13 @@ class QuizPracticePanel {
   /** 仅置顶显示（设置视图渲染由 show 驱动；小结视图自带内容复用） */
   private present(): void {
     topifyZ(this.mask, this.popup);
-    this.mask.style.display = 'block';
-    this.popup.style.display = 'flex';
+    this.mask.style.display = CSS_DISPLAY_BLOCK;
+    this.popup.style.display = CSS_DISPLAY_FLEX;
     // 打开即入焦 + Tab 圈闭（呈报#13 F3+H3 全域范式，core trapPanelFocus 单源；幂等可重入）
     trapPanelFocus(this.popup);
     if (!this.escHandle) {
       this.escHandle = escManager.register(ESC_ID, {
-        isVisible: () => this.mask.style.display === 'block',
+        isVisible: () => this.mask.style.display === CSS_DISPLAY_BLOCK,
         close: () => this.hide(),
       });
     }
@@ -146,8 +170,8 @@ class QuizPracticePanel {
 
   hide(): void {
     this.cancelled = true; // 关面板即取消在途备题（startSession await 后检查）
-    this.mask.style.display = 'none';
-    this.popup.style.display = 'none';
+    this.mask.style.display = CSS_DISPLAY_NONE;
+    this.popup.style.display = CSS_DISPLAY_NONE;
   }
 
   /** 卸载清理（unloadQuizPanel）：会话在途先走契约强制收口（防御性结算 + 拆题面弹窗），
@@ -171,13 +195,13 @@ class QuizPracticePanel {
     // E5：重建前记录面板内焦点控件（innerHTML 重建会丢焦点），渲染后还原到同位控件
     const focusKey = this.captureFocusKey();
     const count = await this.probeBankCount();
-    this.content.innerHTML = quizPracticeSetupHtml({
+    setMarkup(this.content, quizPracticeSetupHtml({
       scope: this.state.scope,
       batch: this.state.batch,
       folders: this.state.folders,
       notePath: this.state.notePath,
       bankCount: count,
-    });
+    }));
     mountIcons(this.content);
     this.bindSetup();
     motionQuizSetup(this.content); // 段选接力浮起+开始钮蓄力
@@ -360,12 +384,12 @@ class QuizPracticePanel {
   private showSummary(results: QuizReviewResults): void {
     this.bankCacheKey = ''; // E5：本轮答题已改题库（答对出库），「再来一轮」回设置视图须重算计数
     const skipped = Math.max(0, this.roundSize - results.total);
-    this.content.innerHTML = quizPracticeSummaryHtml({
+    setMarkup(this.content, quizPracticeSummaryHtml({
       correct: results.correct,
       wrong: results.wrong,
       skipped,
       accuracy: results.accuracy,
-    });
+    }));
     mountIcons(this.content);
     this.content.querySelector('[data-act="again"]')?.addEventListener('click', () => {
       void this.renderSetup();

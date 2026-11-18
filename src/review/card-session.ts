@@ -24,7 +24,7 @@ import { QUIZ_RATIO, pickCardQuestions } from './card-quiz';
 import type { QuizQuestion } from './quiz-core/manager';
 import { checkBlanks, renderClozeHtmlParts } from './cloze';
 import { contextPromptOf } from './context';
-import { clozeContentUsable, clozeSlotWidth, clozeViewOf, promptOf, promptViewFor, quizViewOf } from './card-prompt';
+import { clozeContentUsable, clozeSlotWidth, clozeViewOf, promptViewFor, quizViewOf } from './card-prompt';
 import { stageNum } from './render';
 import { accuracyToRating } from './sprint';
 import { ratingForKey, ratingKeys } from './keys';
@@ -41,6 +41,11 @@ import { canUseCapability, capabilityBlock } from '../data/entitlement';
 /* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
    能直接断言「问过之后必须有字」。此处转出，保持既有引用面不变。 */
 export { promptOf, promptViewFor } from './card-prompt';
+
+/** Obsidian 内部插件注册表（App 类型未公开，只用于「bz-reader 是否安装」判定） */
+interface PluginRegistryHost {
+  plugins?: { plugins?: Record<string, unknown> };
+}
 
 /* ==================== 听卡片 / 跳回原文：可单测的纯逻辑 ====================
    这两块的 UI 都走 innerHTML 整段替换，真机点击在 node 里不好测；把「文案 / 朗读文本 /
@@ -667,7 +672,7 @@ export class CardSession {
       )
       .join('');
 
-    host.innerHTML = `
+    const markup = `
       <div class="bzrv-cs" role="group" data-tone="${meta.tone}"><span class="bzrv-sr-only">划线卡复习</span>
         <div class="bzrv-cs-top">
           <span class="bzrv-cs-brand">复习</span>
@@ -720,6 +725,8 @@ export class CardSession {
         </div>
         ${notice ? `<div class="bzrv-cs-notice" role="status">${esc(notice)}</div>` : ''}
       </div>`;
+    const parsed = new DOMParser().parseFromString(markup, 'text/html');
+    host.replaceChildren(...Array.from(parsed.body.childNodes, (n) => document.importNode(n, true)));
 
     if (notice) {
       const key = item.filePath;
@@ -1011,7 +1018,7 @@ export class CardSession {
       return;
     }
     const host = this.opts.host;
-    const key = card.key || item!.filePath;
+    const key = card.key || item.filePath;
     if (truncated) this.notice = '这段文字比较长，只念了前 200 字';
     void this.player.toggle(key, text, this.ttsConfig()).then(
       () => this.paintSpeak(host),
@@ -1029,7 +1036,7 @@ export class CardSession {
     if (!card) return;
     const url = backlinkOfCard(card, readerJumpUrl);
     if (!url) return;
-    const plugins = (this.opts.app as any)?.plugins?.plugins;
+    const plugins = (this.opts.app as PluginRegistryHost | null)?.plugins?.plugins;
     if (!plugins?.['bz-reader']) {
       this.notice = '还没装 bz Reader';
       this.render();

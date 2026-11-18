@@ -54,7 +54,7 @@ export function uiPopover(opts: BzPopoverOpts): {
         b.setAttribute('role', 'option');
         b.setAttribute('aria-selected', String(o.id === current));
         if (o.icon) b.appendChild(uiIcon(o.icon));
-        const span = createEl('span');
+        const span = createSpan();
         span.textContent = o.label;
         b.appendChild(span);
         b.addEventListener('click', (ev) => {

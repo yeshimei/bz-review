@@ -77,7 +77,7 @@ export class CryptoService {
     const decrypted = await crypto.subtle.decrypt(
       { name: 'AES-GCM', iv: iv },
       key,
-      ciphertext as BufferSource
+      ciphertext
     );
     return new TextDecoder().decode(decrypted);
   }
@@ -92,7 +92,7 @@ export function toBase64(bytes: Uint8Array): string {
   const CHUNK = 0x8000; // 32768，远低于引擎参数上限
   let bin = '';
   for (let i = 0; i < bytes.length; i += CHUNK) {
-    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as any);
+    bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
   }
   return btoa(bin);
 }
@@ -107,8 +107,8 @@ function cachePut(cacheKey: string, password: string, key: CryptoKey): void {
   keyCache.delete(cacheKey); // 重插 = 刷新为新（同 salt 重复派生的覆盖场景）
   keyCache.set(cacheKey, { pw: password, key });
   if (keyCache.size > KEY_CACHE_MAX) {
-    const oldest = keyCache.keys().next().value;
-    if (oldest !== undefined) keyCache.delete(oldest);
+    const first = keyCache.keys().next();
+    if (!first.done) keyCache.delete(first.value);
   }
 }
 
