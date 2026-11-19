@@ -35,11 +35,12 @@ import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entit
 import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
 import { ReviewPanelView } from './review/panel-view';
+import { reviewApp } from './review/app';
 import { REVIEW_VIEW_TYPE } from './review/panel-mode';
 import { importFromBzWithConfirm } from './data/migrate';
 import { isBzPluginEnabled } from './core/plugin-path';
 import { t } from './i18n';
-import { installScopeGuard } from './core/scope';
+import { installScopeGuard, markOwned } from './core/scope';
 import { notice } from './core/notice';
 import { DEFAULT_REVIEW_DIR, LEGACY_REVIEW_DIR, startupStorageDir } from './core/storage-dir';
 
@@ -58,8 +59,8 @@ export default class ReviewPlugin extends Plugin {
    * 就点了「加入复习」，那时域还没初始化、门面是空的。
    */
   readonly reviewApi = {
-    /** 契约版本：v2 起认得 quota() 与卡片的 questions 字段（做题题目落地） */
-    version: 2,
+    /** 契约版本：v2 认得 quota()；v3 起认得 embedInto()（主界面嵌进 bz-reader 的第四个页签） */
+    version: 3,
     addCards: async (cards: ReviewCardInput[]): Promise<ReviewAddSummary> => {
       ensureReview(this.app);
       const api = getReviewPlanApi();
@@ -81,6 +82,48 @@ export default class ReviewPlugin extends Plugin {
       ensureReview(this.app);
       const api = getReviewPlanApi();
       return api ? api.quota() : { used: 0, limit: 0, remaining: 0, full: false };
+    },
+    /**
+     * 把主界面嵌进 bz-reader 的「复习」页签（契约 v3，2026-11-19）。
+     *
+     * 与原生页（panel-view.ts）同形制：宿主给内容区容器与头栏动作栏，Review 只借 DOM，
+     * 不碰 bz-reader 自己的页签栏。品牌/标题那行让位给宿主的页签文字，四颗图标外置到
+     * 动作栏，点击仍走 bindPanelHead 原有的切页逻辑。返回的函数由宿主收场时调用。
+     */
+    embedInto: (host: HTMLElement, actionsHost: HTMLElement, onClose: () => void): (() => void) => {
+      ensureReview(this.app);
+      const ui = uiManager;
+      if (!ui) return () => {};
+      // 两个宿主都挂作用域锚点，scoped 样式（.bzrv-panel-host / .bzrv-icon-btn…）才命中；
+      // host 还必须带 .bzrv-panel-host，popup 的 position:absolute 才相对它定位而不是更外层。
+      markOwned(host);
+      host.classList.add('bzrv-panel-host');
+      markOwned(actionsHost);
+      ui.mountInto(host);
+      ui.popup?.classList.add('bzrv-embed');
+      /* 登记嵌入宿主：轮询据此认为「面板在眼前」，不再弹常驻逾期通知压住宿主图标。
+         必须在 showMain 之前登记，首次刷新就要生效。 */
+      reviewApp.embeddedHost = host;
+      /* 面板自己的右上角就有那四颗图标，常驻的逾期通知会正压在上面
+         （z 更高、点击落在通知上）——与原生页 onOpen 同口径，进面板先收掉。 */
+      reviewApp.hideOverdueNotice();
+      // 面板里点关闭 / ESC 不再 detach 标签页，而是通知宿主切回书库页。
+      ui.onRequestClose = onClose;
+      ui.mountEmbedActions(actionsHost);
+      void ui.showMain();
+      let cleaned = false;
+      return () => {
+        // 宿主离开页签与关开关可能都调一次：必须幂等，单例 UIManager 禁二次收场。
+        if (cleaned) return;
+        cleaned = true;
+        ui.clearEmbed();
+        /* 先解除「嵌入在眼前」登记：否则离开复习页后轮询仍以为面板开着，逾期通知再也不弹。 */
+        if (reviewApp.embeddedHost === host) reviewApp.embeddedHost = null;
+        // releaseView 先清 onRequestClose 再 detachToBody + 隐藏，避开 hostedInView 下
+        // hideMain → onRequestClose → cleanup → hideMain 的递归（与原生页 onClose 同路）。
+        ui.releaseView();
+        host.classList.remove('bzrv-panel-host');
+      };
     },
   };
 

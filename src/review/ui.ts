@@ -42,7 +42,8 @@ import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
 import {
   queueViewHtml, reviewBarHtml, trashViewHtml,
-  booksViewHtml, managerViewHtml, panelHeadHtml,
+  booksViewHtml, managerViewHtml, panelHeadHtml, panelHeadBtnsHtml, panelActIsOn,
+  type PanelHeadAct,
   isPlayable as isPlayableRender,
 } from './render';
 import { loadTrash } from './trash-store';
@@ -205,6 +206,9 @@ export class UIManager {
   private hostEl: HTMLElement | null = null;
   /** 原生页模式下「关闭」的出口（关掉所在标签页）；浮层模式为 null */
   onRequestClose: (() => void) | null = null;
+  /** bz-reader 嵌入态的外置动作栏宿主：非 null 表示头栏四颗图标住在宿主头栏里，
+   *  面板内那套由 .bzrv-embed 的 CSS 藏掉。cleanup 必须清空，否则单例会留残留引用。 */
+  embedActionsHost: HTMLElement | null = null;
   /** 关标签页途中：挡 hideMain → detach → onClose → hideMain 的递归 */
   private closingView = false;
 
@@ -283,6 +287,41 @@ export class UIManager {
     if (this.popup) this.popup.style.display = CSS_DISPLAY_NONE;
     if (this.mask) this.mask.style.display = CSS_DISPLAY_NONE;
     this.detachToBody();
+  }
+
+  /**
+   * bz-reader 嵌入门面：把头栏四颗图标渲染进宿主动作栏（面板内那套由 CSS 藏掉）。
+   * 只在这里创建一次节点：之后重绘只走 syncEmbedActions 改高亮——重建节点会丢掉
+   * bindPanelHead 挂的 click 监听，图标也会退回 <i data-lucide> 空壳。
+   */
+  mountEmbedActions(actionsHost: HTMLElement): void {
+    markOwned(actionsHost);
+    this.embedActionsHost = actionsHost;
+    setMarkup(actionsHost, `<div class="bzrv-panel-head-btns">${panelHeadBtnsHtml(this.page)}</div>`);
+    mountIcons(actionsHost);
+    // 切页逻辑复用面板头那一份：querySelector('[data-act=…]') 天然支持外置宿主
+    this.bindPanelHead(actionsHost);
+    this.syncEmbedActions();
+  }
+
+  /** 嵌入态下按当前页把 is-on 同步到外置四颗按钮（filter 不参与）。面板每次重绘都走这里：
+   *  actionsHost 在内容区之外，不会被 setMarkup 重建，监听器与高亮两不误。 */
+  syncEmbedActions(): void {
+    const host = this.embedActionsHost;
+    if (!host) return;
+    host.querySelectorAll<HTMLElement>('[data-act]').forEach((btn) => {
+      const act = btn.dataset.act as PanelHeadAct | undefined;
+      if (!act) return;
+      btn.classList.toggle('is-on', panelActIsOn(act, this.page));
+    });
+    // 图标是 <i data-lucide> 占位；若外置节点被宿主重建过，这里补挂一次免得只剩空壳
+    mountIcons(host);
+  }
+
+  /** 退出嵌入：只清外置态，面板壳迁回 body / 隐藏交给 releaseView 处理。 */
+  clearEmbed(): void {
+    this.embedActionsHost = null;
+    this.popup?.classList.remove('bzrv-embed');
   }
 
   // ================= 面板构建 =================
@@ -438,10 +477,12 @@ export class UIManager {
     /* 内置页（数据 / 设置）先占位：它们不是列表，也不该被三区列的刷新冲掉 */
     if (this.page) {
       this.renderPage(container, items);
+      this.syncEmbedActions();
       return;
     }
     if (this.showTrash) {
       this.renderTrash(container);
+      this.syncEmbedActions();
       return;
     }
     const focusKey = captureFocusKey(container);
@@ -522,6 +563,7 @@ export class UIManager {
       this.motionBootPending = false;
       motionQueueBoot(container);
     }
+    this.syncEmbedActions();
   }
   /** 内置页（批 8）：数据 / 设置 / 已完成——同一个内容区，头行换成「返回 + 标题」 */
   private renderPage(container: HTMLElement, items: ReviewItem[]): void {
@@ -542,6 +584,7 @@ export class UIManager {
        有底色的方块看得见（主队列渲染有 mountIcons，内置页这条路径漏了）。 */
     mountIcons(container);
     this.bindPanelHead(container);
+    this.syncEmbedActions();
     const body = container.querySelector<HTMLElement>('[data-page-body]');
     if (!body) return;
     void this.fillPage(body, items);
