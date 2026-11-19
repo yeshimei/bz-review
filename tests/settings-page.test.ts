@@ -40,7 +40,7 @@ describe('复习设置页 · 两列骨架与关于条', () => {
   });
 
   it('同组不拆、列内保持原顺序', () => {
-    const names = ['授权', '数据', '界面', '检查提醒', '划线卡', '做题家', '复习节奏', '记忆算法', '自动化', 'AI', '朗读'];
+    const names = ['授权', '数据', '界面', '检查提醒', '划线卡', '做题家', '复习节奏', '记忆算法', '自动化', 'AI', '探索'];
     const weights = [5, 5, 5, 4, 6, 7, 12, 5, 4, 4, 7];
     const [left, right] = groupColumns(names, weights);
     const indexIn = (col: string[]) => col.map((name) => names.indexOf(name));
@@ -59,7 +59,7 @@ describe('复习设置页 · 两列骨架与关于条', () => {
   });
 
   it('每个分组都有原型里的英文副标题', () => {
-    const names = ['授权', '数据', '界面', '检查提醒', '划线卡', '做题家', '复习节奏', '记忆算法', '自动化', 'AI', '朗读'];
+    const names = ['授权', '数据', '界面', '检查提醒', '划线卡', '做题家', '复习节奏', '记忆算法', '自动化', 'AI', '探索'];
     for (const name of names) expect(GROUP_SUBTITLES[name]).toBeTruthy();
   });
 

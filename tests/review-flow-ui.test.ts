@@ -45,7 +45,7 @@ describe('复习流程 · 卡片类型元数据', () => {
   it('界面名沿用制卡界面，不另造一套说法', () => {
     expect(modeMetaOf('flashcard').label).toBe('AI 抽认卡');
     expect(modeMetaOf('quiz').label).toBe('AI 做题');
-    expect(modeMetaOf('cloze').label).toBe('AI 填空');
+    expect(modeMetaOf('cloze').label).toBe('挖空卡（Cloze）');
     expect(modeMetaOf('context').label).toBe('上下文');
     expect(modeMetaOf('plain').label).toBe('展开全文');
   });
@@ -86,7 +86,7 @@ describe('复习流程 · 右侧队列状态', () => {
   it('序号从 1 开始，带上类型与名字', () => {
     const rows = queueRowsOf(QUEUE, 'reader:book:h2');
     expect(rows[0]).toMatchObject({ no: 1, label: 'AI 抽认卡', state: 'done' });
-    expect(rows[1]).toMatchObject({ no: 2, label: 'AI 填空', state: 'current' });
+    expect(rows[1]).toMatchObject({ no: 2, label: '挖空卡（Cloze）', state: 'current' });
   });
 
   it('找不到当前卡时没有一行会被误标成当前', () => {
@@ -96,7 +96,7 @@ describe('复习流程 · 右侧队列状态', () => {
 
 describe('复习流程 · 类型切换提示', () => {
   it('换类型时明确告诉用户切到了哪种', () => {
-    expect(switchNoticeOf('flashcard', 'cloze')).toBe('已按卡片类型切换到「AI 填空」');
+    expect(switchNoticeOf('flashcard', 'cloze')).toBe('已按卡片类型切换到「挖空卡（Cloze）」');
   });
 
   it('同一种类型连着做，不弹没意义的提示', () => {

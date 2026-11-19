@@ -304,6 +304,16 @@ export default class ReviewPlugin extends Plugin {
         void reviewApp.refreshPanel();
       }),
     });
+    this.addCommand({
+      id: 'review-import-anki',
+      name: t('从 Anki 文件导入卡片（探索）', 'Import cards from Anki file (explore)'),
+      callback: withReview(async (app) => {
+        const { importAnkiFromActiveFile } = await import('./review/anki-import');
+        const { reviewApp } = await import('./review/app');
+        reviewApp.ensure(app);
+        await importAnkiFromActiveFile(app, reviewApp.dataManager!);
+      }),
+    });
     for (const [id, label, kind] of [
       ['review-export', t('导出备份（JSON）', 'Export backup (JSON)'), 'json'],
       ['review-export-csv', t('导出表格（CSV）', 'Export spreadsheet (CSV)'), 'csv'],

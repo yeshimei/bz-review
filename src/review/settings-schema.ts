@@ -47,7 +47,6 @@ import { panelModeOf } from './panel-mode';
 import { DEFAULT_W } from './fsrs';
 import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
 import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
-import type { TtsConfig } from '../core/tts-client';
 
 /**
  * 激活码输入框的草稿：输入只改这里，不碰 settings、不触发通用 text 行的
@@ -629,12 +628,13 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               },
               save: () => saveSettings(),
             },
-            /* 2026-11-20 界面不再提供填空 / 上下文 / 展开全文三种新入口；
-               上面 set 校验的合法值仍保留这三种，老卡数据与存量设置照常生效。 */
+            /* 2026-11-20 挖空（Cloze）解锁为可选项；上下文 / 展开全文仍不提供新入口，
+               但上面 set 校验的合法值仍保留这两种，老卡数据与存量设置照常生效。 */
             options: [
               { value: 'manual', label: '每次问我（默认）' },
               { value: 'flashcard', label: 'AI 抽认卡' },
               { value: 'quiz', label: 'AI 做题' },
+              { value: 'cloze', label: '挖空卡（Cloze）' },
             ],
           },
           {
@@ -944,92 +944,31 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         rows: reviewLlmRows(),
       },
       {
-        /* 朗读（听卡片）：自建 OpenAI 兼容本地 TTS 客户端，与 AI 服务商分开配。
-           只在本组暴露地址/音色/格式/模型/可选密钥，处处给人话，不写死英文。 */
-        icon: 'volume-2',
-        name: '朗读',
+        /* 探索组（2026-11-20）：还在打磨的功能先放这里，代码在、暂不铺开给用户。
+           · 朗读听卡：实现有问题，做题界面的按钮与原来的「朗读」设置组都已撤下，
+             功能代码（tts-client / card-audio / card-session.speak）整段保留，成熟后再放回。
+           · 挖空卡（Cloze）：社区正名，读作「克洛兹」，Anki 的 {{c1::答案}} 写法；已解锁为
+             制卡方式之一，见「划线卡」组的新卡默认方式。
+           · Anki 格式导入：兼容 Anki 导出的 TSV / 挖空写法，入口在下方按钮与命令面板。 */
+        icon: 'flask-conical',
+        name: '探索',
         rows: [
           {
-            type: 'text',
-            name: '服务地址',
-            desc: '本地朗读服务的地址（如 http://127.0.0.1:5000）。留空就不能听卡片。',
-            placeholder: 'http://127.0.0.1:5000',
-            binding: { key: 'ttsUrl' },
-          },
-          {
-            type: 'text',
-            name: '音色',
-            desc: '服务端音色名，留空用服务端默认。',
-            placeholder: '可留空',
-            binding: { key: 'ttsVoice' },
-          },
-          {
-            type: 'select',
-            name: '格式',
-            desc: 'mp3 体积小、适合手机上听；wav 不用解码但大得多。',
-            binding: { key: 'ttsFormat' },
-            options: [
-              { value: 'mp3', label: 'mp3（默认）' },
-              { value: 'wav', label: 'wav' },
-            ],
-          },
-          {
-            type: 'text',
-            name: '模型',
-            desc: '服务端模型名，留空用服务端默认。',
-            placeholder: '可留空',
-            binding: { key: 'ttsModel' },
-          },
-          {
-            type: 'text',
-            name: 'API Key',
-            desc: '可选：服务需要鉴权时才填，不需要就留空。',
-            placeholder: '可留空',
-            binding: { key: 'ttsApiKey' },
+            type: 'info',
+            name: '还在打磨的功能',
+            desc:
+              '朗读听卡（代码在、暂不显示）、挖空卡 Cloze、Anki 格式导入都放在这里。' +
+              '挖空卡读作「克洛兹」，是 Anki 的 {{c1::答案}} 填空写法；导入的 Anki 卡会自动转成挖空卡。',
           },
           {
             type: 'button',
-            name: '测试朗读连接',
-            desc: '向朗读服务发一次最小请求，确认地址和音色可用。',
-            buttonText: '测试',
+            name: '从 Anki 导入',
+            desc: '选一份 Anki 导出的文本（.txt/.tsv），认 Tab 分隔的问答与 {{c1::挖空}}；也可以从命令面板执行。',
+            buttonText: '选文件导入',
             onClick: () => {
               void (async () => {
-                const live = getSettings();
-                const url = String(live.ttsUrl ?? '').trim();
-                if (!url) {
-                  notice('先填朗读服务地址再测试', 'warning');
-                  return;
-                }
-                const cfg: TtsConfig = {
-                  url,
-                  model: String(live.ttsModel ?? '').trim(),
-                  voice: String(live.ttsVoice ?? '').trim(),
-                  format: live.ttsFormat === 'wav' ? 'wav' : 'mp3',
-                  apiKey: String(live.ttsApiKey ?? '').trim(),
-                };
-                try {
-                  const { voicesEndpoint, synthesizeSpeech } = await import('../core/tts-client');
-                  const { requestUrl } = await import('obsidian');
-                  const headers: Record<string, string> = {};
-                  if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
-                  // 先问音色列表：拿到 2xx 就够，不必真合成，省一次模型开销。
-                  const resp = await requestUrl({
-                    url: voicesEndpoint(cfg.url, cfg.model),
-                    method: 'GET',
-                    headers,
-                    throw: false,
-                  });
-                  const status = resp.status;
-                  if (status >= 200 && status < 300) {
-                    notice('朗读连接正常', 'success');
-                    return;
-                  }
-                  // 有的服务只开了 speech、没开 voices；再试一句最短合成兜底。
-                  await synthesizeSpeech('测试', cfg);
-                  notice('朗读连接正常（音色列表接口不可用，但合成接口可用）', 'success');
-                } catch (e) {
-                  notice(`朗读连接失败：${e instanceof Error ? e.message : String(e)}`, 'error');
-                }
+                const { importAnkiFromPicker } = await import('./anki-import');
+                await importAnkiFromPicker(deps.app, deps.dataManager);
               })();
             },
           },
