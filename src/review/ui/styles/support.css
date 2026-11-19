@@ -407,7 +407,9 @@
 }
 
 .bzs-sup-retry:focus-visible {
-  outline: 2px solid var(--sup-accent, var(--bzrv-accent, #9a7434));
+  /* 焦点环属交互色，直接用已跟随 --bzrv-accent 的 --sup-accent；
+     原先三重兜底里写死的铜色散在组件层，违反「铜色只在 token 定义处」。 */
+  outline: 2px solid var(--sup-accent);
   outline-offset: 1px;
 }
 

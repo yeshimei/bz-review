@@ -13,7 +13,10 @@ export const SNAPSHOT_KEEP_DAYS = 7;
 /** 快照目录名（与数据文件同级的点目录，Obsidian 侧栏看不见） */
 export const SNAPSHOT_DIR_NAME = '.SNAPSHOT';
 
-const NAME_RE = /^review\.(\d{8}-\d{6})\.json$/;
+/* 同秒连点备份会加 -2/-3 后缀（见 snapshot-store.writeOne）。旧正则不认这些
+   带后缀的文件，导致它们被 listSnapshots 过滤掉、既回滚不到也永不清理；
+   扩展为可选 -(数字) 后缀，让它们也能被识别与轮转。时间戳段仍是第 1 组。 */
+const NAME_RE = /^review\.(\d{8}-\d{6})(?:-\d+)?\.json$/;
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');

@@ -14,7 +14,8 @@ export type ParsedBzReview = { ok: true; items: unknown[] } | { ok: false; messa
 export function parseBzReviewJson(raw: string): ParsedBzReview {
   let parsed: unknown;
   try {
-    parsed = JSON.parse(raw);
+    /* 剥 BOM：Windows 记事本另存的 JSON 带 BOM，JSON.parse 会直接失败。 */
+    parsed = JSON.parse(raw.replace(/^\uFEFF/, ''));
   } catch {
     return { ok: false, message: 'bz 的复习数据不是合法 JSON，导入中止。' };
   }

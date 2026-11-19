@@ -5,13 +5,14 @@
  * 付费形态照 bz Reader / 归物本：一个完整插件包，激活码离线验签；
  * 基础版 20 篇笔记 + 50 条划线卡，高级版不限，功能两边完全一致。
  *
- * 数据：自己的 review.json（默认 CONFIG/REVIEW），与 bz 的 CONFIG/STORAGE
+ * 数据：自己的 review.json（默认库根 bz-review/storage），与 bz 的 CONFIG/STORAGE
  * 分开存，两个插件同时装也不会互相覆盖。
  */
 import { Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, applyAccent } from './settings';
 import type BzSettings from './settings';
 import { setApp } from './core/app';
+import { setPluginRelDir } from './core/plugin-path';
 import { getSettings, saveSettings, setSettingsProvider, setSettingsSaver, setSettingsPanelOpener } from './core/settings-provider';
 import { setAISettingsProvider, resetAIProviderCache } from './core/ai';
 import {
@@ -173,6 +174,9 @@ export default class ReviewPlugin extends Plugin {
   };
 
   async onload(): Promise<void> {
+    /* 把本插件的真实目录注入 core：pluginRelDirOf 旧实现写死 bz 主插件目录，
+       一旦有代码走它（如 bootstrapStorageDir）就会把路径算到 bz 那边去。 */
+    setPluginRelDir(this.manifest.dir);
     await this.loadSettings();
     // 强调色：把落盘档位挂到 body，CSS 按 body[data-bzaccent] 选色；之后设置页切换会就地同步。
     applyAccent(this.settings.accent);
@@ -200,7 +204,7 @@ export default class ReviewPlugin extends Plugin {
 
     this.addRibbonIcon('calendar-check', t('复习计划', 'Review'), () => {
       ensureReview(this.app);
-      openReviewPanel(this.app);
+      void openReviewPanel(this.app);
     });
 
     // 原生页形态（reviewPanelMode = native，默认）：面板住在一个普通标签页里
@@ -347,6 +351,9 @@ export default class ReviewPlugin extends Plugin {
       name: t('成就', 'Achievements'),
       callback: () => {
         void (async () => {
+          /* 这条命令是唯一没走 withReview 的：enableAutoNotify=false 且面板从未打开时
+             uiManager 还是 null，openAchievements 会被可选链吞掉、点了没反应。先初始化。 */
+          ensureReview(this.app);
           const { uiManager } = await import('./review/index');
           await uiManager?.openAchievements();
         })();
@@ -453,8 +460,12 @@ export default class ReviewPlugin extends Plugin {
 
   onunload(): void {
     unloadReview();
-    // 原生页：插件卸了，挂在工作区里的标签页也要一起摘（否则留下一个空白 tab）
-    
+    /* 原生页：插件卸了，挂在工作区里的标签页也要一起摘（否则留下一个空白 tab）。
+       unloadReview 里 uiManager.destroy() 已先把 onRequestClose 置空，此时 detach
+       触发的视图 onClose 不会再反向操作已销毁的面板。 */
+    for (const leaf of this.app.workspace.getLeavesOfType(REVIEW_VIEW_TYPE)) {
+      leaf.detach();
+    }
   }
 
   async loadSettings(): Promise<void> {

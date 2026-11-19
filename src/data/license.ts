@@ -20,6 +20,19 @@ const PUBKEY_SPKI_B64 =
 const READER_PUBKEY_SPKI_B64 =
   'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDlauLuKMfRhggbifaU3QcR1R+gX7518ibeYfPeyFzLYcQesrjY0vViS/SukngZqMZDPwBbebtPoGqw/pLJRnxg==';
 
+/**
+ * 测试专用公钥注入点。
+ * 生产代码永不调用；测试在运行时用 Node crypto 生成临时密钥对，把公钥（base64 SPKI）
+ * 注入这里、私钥只留在内存签码，测试结束即弃。这样授权验签的核心路径能被真正测到，
+ * 而仓库/Git 历史里不需要存放任何测试私钥（存在即等于泄露）。
+ */
+let testLocalPubB64: string | null = null;
+let testReaderPubB64: string | null = null;
+export function setVerifyPublicKeysForTest(local?: string | null, reader?: string | null): void {
+  testLocalPubB64 = local ?? null;
+  testReaderPubB64 = reader ?? null;
+}
+
 export type LicensePlan = 'lifetime' | 'year' | 'trial';
 
 export interface LicensePayload {
@@ -107,7 +120,7 @@ function dateText(ms: number): string {
 /** 验一枚激活码。任何一步不过都给人话，不抛。 */
 export async function verifyLicense(code: string): Promise<LicenseCheck> {
   if (!code.trim()) return { ok: false, reason: 'empty', message: '还没有填激活码。' };
-  if (!PUBKEY_SPKI_B64) {
+  if (!PUBKEY_SPKI_B64 && !testLocalPubB64) {
     return { ok: false, reason: 'no-pubkey', message: '发行方还没配置公钥。' };
   }
   const parsed = parseLicense(code);
@@ -120,7 +133,9 @@ export async function verifyLicense(code: string): Promise<LicenseCheck> {
   }
   const fromReader = parsed.prefix === 'BZR1' || parsed.prefix === 'BZR2';
   try {
-    const pub = fromReader ? READER_PUBKEY_SPKI_B64 : PUBKEY_SPKI_B64;
+    const pub = fromReader
+      ? (testReaderPubB64 ?? READER_PUBKEY_SPKI_B64)
+      : (testLocalPubB64 ?? PUBKEY_SPKI_B64);
     const key = await spkiToCryptoKey(
       Uint8Array.from(atob(pub), (c) => c.charCodeAt(0)).buffer,
     );

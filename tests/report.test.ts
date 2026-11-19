@@ -94,4 +94,13 @@ describe('负荷预测文字版', () => {
   it('全空就说没有安排（不输出一张空表）', () => {
     expect(forecastToText([{ day: '2026-11-15', count: 0 }])).toBe('未来这些天没有安排复习。');
   });
+
+  it('峰值要在全部天数里找，不能漏掉显示窗口之外的那天', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({
+      day: `2026-12-${String(i + 1).padStart(2, '0')}`,
+      count: i === 24 ? 99 : 1,
+    }));
+    const text = forecastToText(many, 14); // 只显示前 14 天，峰值在第 25 天
+    expect(text).toContain('2026-12-25（99 条）');
+  });
 });

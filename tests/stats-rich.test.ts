@@ -134,6 +134,8 @@ describe('computeRichStats · 负载', () => {
     expect(s.load[0]).toBe(1);
     expect(s.load[2]).toBe(1);
     expect(s.load[1]).toBe(0);
+    // 今天到期的（a）也要进逾期分档的「今天到期」，旧实现这档恒为 0
+    expect(s.overdue.find((o) => o.label === '今天到期')?.n).toBe(1);
     expect(s.overdue.find((o) => o.label === '逾期 1-3 天')?.n).toBe(1);
     expect(s.overdue.find((o) => o.label === '逾期 8 天以上')?.n).toBe(1);
     expect(s.suspended).toBe(1);

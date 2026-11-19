@@ -2,23 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { scopeCss, findUnscopedSelectors } from '../scripts/css-scope.mjs';
+import { SOURCES as STYLE_SOURCES } from '../scripts/build-css.mjs';
 
 const ROOT = path.resolve(__dirname, '..');
-
-/** 与 scripts/build-css.mjs 的 SOURCES 保持一致（顺序无关，审计只看规则本身） */
-const STYLE_SOURCES = [
-  'src/core/reset.css',
-  'src/core/styles.css',
-  'src/core/ui/tokens.css',
-  'src/core/ui/components.css',
-  'src/review/styles.css',
-  'src/review/analysis/styles.css',
-  'src/review/ui/styles/settings-page.css',
-  'src/review/ui/styles/changelog.css',
-  'src/review/ui/styles/changelog-roadmap.css',
-  'src/review/ui/styles/support.css',
-  'src/review/ui/styles/unlock.css',
-];
+/* 直接复用构建脚本的 SOURCES（单一真源）：以前这里手工抄一份，新增样式源忘了同步，
+   审计就永远漏掉那个文件。 */
+const HAS_BUILD = fs.existsSync(path.join(ROOT, 'styles.css'));
 
 function walkTs(dir: string, out: string[] = []): string[] {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -72,25 +61,23 @@ describe('样式作用域审计', () => {
     expect(missing, `缺少 markOwned：${missing.join(' | ')}`).toEqual([]);
   });
 
-  it('构建产物里没有重复套作用域', () => {
-    const cssFile = path.join(ROOT, 'styles.css');
-    if (!fs.existsSync(cssFile)) return; // 还没构建过就跳过
-    const css = fs.readFileSync(cssFile, 'utf8');
+  // 以下三条依赖已构建的产物：用 skipIf 显式跳过（测试报告里能看到 skipped），
+  // 不再在函数体里 `if (!exists) return` 那样静默「通过」——那样会掩盖根本没构建过。
+  it.skipIf(!HAS_BUILD)('构建产物里没有重复套作用域', () => {
+    const css = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
     expect(css).not.toMatch(/\[data-bzrv\]\s+\[data-bzrv\]/);
   });
 
   it('构建产物的容器锚点与 scope.ts 常量一致', () => {
     const scopeTs = fs.readFileSync(path.join(ROOT, 'src/core/scope.ts'), 'utf8');
     expect(scopeTs).toContain(`SCOPE_ATTR = 'data-bzrv'`);
-    const cssFile = path.join(ROOT, 'styles.css');
-    if (!fs.existsSync(cssFile)) return;
-    expect(fs.readFileSync(cssFile, 'utf8')).toContain('[data-bzrv]');
+  });
+  it.skipIf(!HAS_BUILD)('产物 styles.css 带容器锚点', () => {
+    expect(fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8')).toContain('[data-bzrv]');
   });
 
-  it('开关旋钮样式修复进了产物：两条 checkbox-container::after 都清了宿主 transform（2026-11-20 真机反馈）', () => {
-    const cssFile = path.join(ROOT, 'styles.css');
-    if (!fs.existsSync(cssFile)) return; // 还没构建过就跳过
-    const css = fs.readFileSync(cssFile, 'utf8');
+  it.skipIf(!HAS_BUILD)('开关旋钮样式修复进了产物：两条 checkbox-container::after 都清了宿主 transform（2026-11-20 真机反馈）', () => {
+    const css = fs.readFileSync(path.join(ROOT, 'styles.css'), 'utf8');
     /* 源码里 b024e90 已加 transform:none，但产物 styles.css 若没重新构建就还是旧的——
        用户真机看到的就是旧产物：圆点被宿主 translateX 顶出胶囊。这里守住产物同步。 */
     const toggleBlock = css.slice(

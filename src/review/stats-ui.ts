@@ -191,7 +191,7 @@ export async function showStatsModal(app: App, dm: ReviewDataManager): Promise<v
   /* 面板还没装起来（极端情况：插件刚加载就执行命令）。退化成「先把面板开起来」，
      统计内容由面板自己在数据页里画，不再另开一层弹窗。 */
   const { openReviewPanel } = await import('./index');
-  openReviewPanel(app);
+  void openReviewPanel(app);
   void dm;
 }
 
@@ -285,7 +285,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   }
 
   // 评级分布（soft-row 软条 + 评级色数据驱动）
-  const total = Object.values(stats.ratingDist).reduce((a, b) => a + b, 0) || 1;
+  const ratingSum = Object.values(stats.ratingDist).reduce((a, b) => a + b, 0);
   const ratingBars = (['again', 'hard', 'good', 'easy'] as const).map((r) => ({
     label: RATING_NAMES[r],
     value: stats.ratingDist[r] || 0,
@@ -293,7 +293,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   }));
   const ratingHTML = sectionHTML('评级分布', 'gauge',
     ratingBars.map((e) => softRowHTML([e], e.color)).join('') +
-    statInlineHTML([`共 ${total} 次评级`]));
+    statInlineHTML([ratingSum ? `共 ${ratingSum} 次评级` : '暂无评级记录']));
 
   // 复习负载：未来 30 天迷你柱 + 逾期分档（14 天横条看不清「哪天砸下来」）
   const loadTotal = rich.load.reduce((a, b) => a + b, 0);
@@ -351,12 +351,13 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
     },
   ]));
 
-  const peakHour = rich.hours.indexOf(Math.max(...rich.hours));
+  const hoursTotal = rich.hours.reduce((a, b) => a + b, 0);
+  const peakHour = hoursTotal > 0 ? rich.hours.indexOf(Math.max(...rich.hours)) : null;
   const workday = rich.weekdays.slice(0, 5).reduce((a, b) => a + b, 0);
   const weekend = rich.weekdays.slice(5).reduce((a, b) => a + b, 0);
   const rhythmHTML = sectionHTML('复习节律', 'clock',
     statInlineHTML([
-      `最集中的时段 ${peakHour}:00-${peakHour + 1}:00`,
+      peakHour === null ? '最集中的时段 —' : `最集中的时段 ${peakHour}:00-${peakHour + 1}:00`,
       `工作日 ${workday} 次`,
       `周末 ${weekend} 次`,
     ]) +

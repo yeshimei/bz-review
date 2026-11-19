@@ -86,9 +86,19 @@ export function parseMarkdownCards(content: string, filePath: string, title?: st
 
     const cloze = CLOZE_RE.exec(line);
     if (cloze) {
-      const answer = stripMd(cloze[1] ?? cloze[2] ?? '');
-      if (!answer) continue;
-      const text = stripMd(raw.replace(/\{\{(.+?)\}\}/g, '{{$1}}').replace(/==(.+?)==/g, '==$1=='));
+      /* 一行可能有多个挖空：把所有 {{...}}/==...== 按顺序收集成答案，并把每个占位符
+         改成 {{1}}{{2}}… 与 blanks 一一对应。原实现只用第一个当答案、却把所有占位符
+         全替换成 {{1}}，多挖空时 blanks 只有一个，checkBlanks 永远判错。
+         先 stripMd 再收集，答案与显示文本同源。 */
+      const plain = stripMd(raw);
+      const blanks: string[] = [];
+      const text = plain.replace(/\{\{(.+?)\}\}|==(.+?)==/g, (_m, a: string | undefined, b: string | undefined) => {
+        const answer = stripMd(a ?? b ?? '');
+        if (!answer) return _m;
+        blanks.push(answer);
+        return `{{${blanks.length}}}`;
+      });
+      if (!blanks.length) continue;
       const key = `md:${filePath}#${index++}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -98,7 +108,7 @@ export function parseMarkdownCards(content: string, filePath: string, title?: st
           key,
           bookTitle: title || filePath.split('/').pop()?.replace(/\.md$/i, '') || filePath,
           text,
-          cloze: { text: text.replace(/\{\{(.+?)\}\}|==(.+?)==/g, '{{1}}'), blanks: [answer], at: Date.now() },
+          cloze: { text, blanks, at: Date.now() },
           backlink: `obsidian://open?path=${encodeURIComponent(filePath)}`,
         },
       });

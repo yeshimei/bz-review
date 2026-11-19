@@ -432,7 +432,7 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 }
 /* 色点：flex 容器里本来是 flex item，落在普通按钮里时必须显式 inline-block，
    否则宽高被 inline 流吃掉、整颗点塌成 0（强调色 swatch 就是踩在这里）。 */
-.bzrv-choice-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.bzrv-choice-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--bzrv-choice-dot, var(--bzrv-accent)); }
 /* 浮岛 segmented（float: true，issue 199 组件化；issue 200 拍板：视觉 = .bzrv-segmented
    同款取值，仅加白卡滑动指示器（choice.ts 量位 transform/width 200ms）。
    白卡 = .bzrv-choice-seg（surface-2 + 分段阴影）；未选中项透底灰字，选中加重。 */
@@ -859,19 +859,19 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
   font-family: var(--bzrv-font-ui);
   /* z-index 由调用方经 topifyZ 动态分配（ADR-0067），不设静态档 */
 }
-/* bz 界面级隐藏滚动条（ADR-0122 / issue 277）：滚动功能保留（不动 overflow），只隐藏条。
-   作用域 = bz 自有界面：bz- 前缀类/ID + 通用面板壳整树 + 非 bz 前缀的遗留容器。
+/* Review 界面级隐藏滚动条：滚动功能保留（不动 overflow），只隐藏条。
+   作用域 = 本插件私有界面：[data-bzrv] 锚点、bzrv- 前缀类/ID、通用面板壳整树。
    刻意不用 * 通配——Obsidian 核心 UI（文件树/编辑器/核心设置）不属本插件，不隐藏。
    scrollbar-width/-ms-overflow-style 可继承（子树自动生效）；::-webkit-scrollbar 不继承，
    故对同组选择器补「元素自身 + 子树」两种形态（守卫：tests/core/ui-scrollbar.test.ts）。
-   深审 U6：补 review 域三个无 bz- 前缀弹层壳（统计/历史/quiz 遗留会话弹窗）整树——
    内层滚动区（#bzrv-stats-body/.bzrv-review-history-tl/.bzrv-stats-chart-scroll）经继承/
-   子树形态一并覆盖，域内不得再自造滚动条规则。 */
+   子树形态一并覆盖，域内不得再自造滚动条规则。
+   已从 bz 主仓照搬时删掉 #add-diary-popup/.diary-datetime-scroll-container/[id^="knowledge-"]
+   等非私有锚点——本仓不产这些 DOM，留着只会破坏作用域口径。 */
 .bzrv-panel-overlay, .bzrv-panel-overlay *,
 .bzrv-panel-frame, .bzrv-panel-frame *,
 [class^="bzrv-"], [class*=" bzrv-"],
-[id^="bzrv-"], [id^="knowledge-"],
-#add-diary-popup, .diary-datetime-scroll-container,
+[id^="bzrv-"],
 #bzrv-entries, #bzrv-confirm-popup,
 #bzrv-history-popup, #bzrv-quiz-popup {
   scrollbar-width: none;
@@ -882,9 +882,6 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 [class^="bzrv-"]::-webkit-scrollbar, [class^="bzrv-"] *::-webkit-scrollbar,
 [class*=" bzrv-"]::-webkit-scrollbar, [class*=" bzrv-"] *::-webkit-scrollbar,
 [id^="bzrv-"]::-webkit-scrollbar, [id^="bzrv-"] *::-webkit-scrollbar,
-[id^="knowledge-"]::-webkit-scrollbar, [id^="knowledge-"] *::-webkit-scrollbar,
-#add-diary-popup::-webkit-scrollbar, #add-diary-popup *::-webkit-scrollbar,
-.diary-datetime-scroll-container::-webkit-scrollbar, .diary-datetime-scroll-container *::-webkit-scrollbar,
 #bzrv-entries::-webkit-scrollbar, #bzrv-entries *::-webkit-scrollbar,
 #bzrv-confirm-popup::-webkit-scrollbar, #bzrv-confirm-popup *::-webkit-scrollbar,
 #bzrv-history-popup::-webkit-scrollbar, #bzrv-history-popup *::-webkit-scrollbar,
@@ -994,7 +991,7 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
   flex-shrink: 0;
 }
 .bzrv-panel-brand .bzrv-ic { width: 13px; height: 13px; }
-.bzrv-panel-head-pipe { width: 1px; height: 14px; background: var(--bzrv-border); flex-shrink: 0; }
+.bzrv-panel-head-pipe { width: 1px; height: var(--bzrv-head-pipe-h); background: var(--bzrv-border); flex-shrink: 0; }
 .bzrv-panel-head-sub { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-panel-head-sp { flex: 1; }
 .bzrv-panel-head-btns { display: flex; align-items: center; gap: var(--bzrv-head-act-gap); }

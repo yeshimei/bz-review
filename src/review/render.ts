@@ -477,7 +477,9 @@ export interface BooksViewCtx {
  * 中文书名排序统一走 Intl.Collator('zh-CN')；空库给一句人话，不渲染一张只有表头的空表。
  */
 export function booksViewHtml(summaries: readonly BookSummary[], ctx: BooksViewCtx = {}): string {
-  const day = new Date(ctx.now ?? Date.now()).toISOString().slice(0, 10);
+  /* 本地日期（toISOString 是 UTC，东八区凌晨会显示前一天）。 */
+  const dnow = new Date(ctx.now ?? Date.now());
+  const day = `${dnow.getFullYear()}-${String(dnow.getMonth() + 1).padStart(2, '0')}-${String(dnow.getDate()).padStart(2, '0')}`;
   if (!summaries.length) {
     return `<div class="bzrv-book-view"><div class="bzrv-book-empty">还没有复习数据：加一篇笔记或一条划线，这里就会按书汇总。</div></div>`;
   }

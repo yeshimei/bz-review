@@ -99,7 +99,7 @@ function validQuestion(raw: unknown): QuizQuestion | null {
  * 一道都不剩就返回 null——调用方据此说「这次没生成出来」，而不是拿空数组
  * 当成「题库是空的」。
  */
-export function parseCardQuiz(reply: string, card: ReviewCard, limit = QUIZ_MAX): QuizQuestion[] | null {
+export function parseCardQuiz(reply: string, limit = QUIZ_MAX): QuizQuestion[] | null {
   const text = String(reply ?? '');
   const first = text.indexOf('{');
   const last = text.lastIndexOf('}');
@@ -141,7 +141,7 @@ export async function generateCardQuiz(
   const n = Math.min(QUIZ_MAX, Math.max(QUIZ_MIN, Math.round(Number(count) || quizCountFor(card.text))));
   try {
     const reply = await ai.json(buildCardQuizPrompt(card, n));
-    return parseCardQuiz(String(reply ?? ''), card, n);
+    return parseCardQuiz(String(reply ?? ''), n);
   } catch {
     return null;
   }

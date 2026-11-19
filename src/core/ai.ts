@@ -515,7 +515,12 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     if (borrowed) s = { ...s, ...borrowed };
   }
   // 调用方直接给完整配置（如脚本内指定第三方端点/key）——不经注册表，故无思考档位可查
-  if (override && typeof override === 'object' && override.apiKey) {
+  if (override && typeof override === 'object') {
+    /* 对象形态的 override 缺 apiKey 时，旧代码会让整段 if 落空、悄悄退回当前设置的
+       服务商——用户填的 endpoint/model 全失效且毫无提示。这里显式报错，别静默切换。 */
+    if (!override.apiKey) {
+      throw new Error('自定义 AI 配置缺少 apiKey：请提供密钥，或改用服务商 ID 走设置里的密钥');
+    }
     return {
       endpoint: String(override.endpoint || 'https://api.deepseek.com').replace(/\/+$/, ''),
       apiKey: override.apiKey,

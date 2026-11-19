@@ -37,7 +37,11 @@ export function normalizeQuestions(
       };
       if (q.explain) out.explain = String(q.explain);
       return out;
-    });
+    })
+    /* 没有有效正确答案的题必须丢掉：correct 缺失或索引全越界时会得到空数组，
+       这种题进题库后 session 判为多选、correct=[] → 用户怎么答都判错。
+       card-quiz.ts / generator.ts 都有同样的非空校验，这里不能漏。 */
+    .filter((q) => q.correctIndices.length > 0);
 }
 
 /**

@@ -12,7 +12,7 @@ const PLUGIN_DIR = process.env.BZ_REVIEW_VAULT_DIR || "E:/Obsidian/叫我包仔/
 
 // normalize.css 不再参与构建：它是标准的全局浏览器重置（html / body / button / a …），
 // 在 Obsidian 里等于改写宿主界面。插件自己的基线走 core/reset.css，已限定在 [data-bzrv] 内。
-const SOURCES = [
+export const SOURCES = [
   "src/core/reset.css",
   "src/core/styles.css",
   "src/core/ui/tokens.css",
@@ -48,11 +48,26 @@ const HEADER = [
 export function findStrayCommentClose(css) {
   const hits = [];
   let inComment = false;
+  let quote = null; // 当前字符串定界符 ' 或 "，null = 不在字符串里
+  let escaped = false;
   let line = 1;
   for (let i = 0; i < css.length; i += 1) {
     const c = css[i];
     const n = css[i + 1];
     if (c === "\n") line += 1;
+    /* 字符串字面量里的注释标记不是真的注释，必须跳过：
+       否则 content 里带星号斜杠的内容会被误判成孤儿闭合导致构建失败，
+       带斜杠星号的内容又会扰乱注释状态机让真正的孤儿闭合漏报。 */
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      quote = c;
+      continue;
+    }
     if (!inComment && c === "/" && n === "*") {
       inComment = true;
       i += 1;

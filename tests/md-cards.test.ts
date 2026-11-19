@@ -23,6 +23,15 @@ describe('从 Markdown 认卡片', () => {
     expect(cards[0].card.cloze?.text).toContain('{{1}}');
   });
 
+  it('一行多个挖空按序编号、答案一一对应（旧实现只记第一个、全替换 {{1}} 会永远判错）', () => {
+    const cards = parse('{{甲}} 与 {{乙}} 都是关键字');
+    expect(cards).toHaveLength(1);
+    const cloze = cards[0].card.cloze;
+    expect(cloze?.blanks).toEqual(['甲', '乙']);
+    expect(cloze?.text).toContain('{{1}}');
+    expect(cloze?.text).toContain('{{2}}');
+  });
+
   it('代码块、frontmatter、行内代码里的语法不算卡片', () => {
     const md = ['---', 'title: x', '---', '', '```', 'a :: b', '```', '', '正文 A :: B'].join('\n');
     const cards = parse(md);

@@ -255,8 +255,12 @@ export async function diskPathStat(app: StorageApp, p: string): Promise<{ mtime?
 
 // ---------- 冲突留档（D1 可靠写契约原语 3） ----------
 
-/** 留档目录（与 CONFIG/.ENCRYPT 同级的插件保留目录）：坏文件/写失败前内容原样留档，永不静默丢数据 */
-const CORRUPT_BACKUP_DIR = 'CONFIG/.CORRUPT';
+/** 留档目录（数据目录下的点目录）：坏文件/写失败前内容原样留档，永不静默丢数据。
+ *  从 bz 照搬的旧实现写死 CONFIG/.CORRUPT，与本仓「数据都在 storageDir 下、跟着库走」
+ *  的布局不同源（换数据目录时留档会留在旧地方）；改为基于 storageDir。 */
+function corruptBackupDir(): string {
+  return `${storageDir().replace(/\/+$/, '')}/.CORRUPT`;
+}
 /** 同文件留档通知去重窗口：短时间内重复失败只报一次（同步重试风暴不刷屏；与 notice 30s 窗口对齐） */
 const CORRUPT_NOTIFY_DEDUPE_MS = 30000;
 /** 文件路径 → 上次留档通知时刻 */
@@ -278,11 +282,11 @@ function baseNameOf(p: string): string {
 }
 
 /**
- * 原样留档到 CONFIG/.CORRUPT/<原文件名>.<yyyymmdd-hhmmss>.bak（目录不存在则创建；
+ * 原样留档到数据目录下 .CORRUPT/<原文件名>.<yyyymmdd-hhmmss>.bak（目录不存在则创建；
  * 同秒多条留档追加 -2/-3 序号防撞名）。raw 缺省时读盘取当前内容。
  * 返回留档路径；任何一步失败返回 null（留档失败不阻塞原流程——降级初始化照常走）。
- * 导出（D3）：供自带串行链的域（secondbrain store-file 等）复用同一留档契约，
- * 损坏/写失败现场统一落 CONFIG/.CORRUPT，不再各域自造留档格式。
+ * 导出（D3）：供自带串行链的域复用同一留档契约，
+ * 损坏/写失败现场统一落数据目录下的 .CORRUPT，不再各域自造留档格式。
  */
 export async function backupOriginal(app: StorageApp, filePath: string, raw?: string): Promise<string | null> {
   try {
@@ -290,22 +294,23 @@ export async function backupOriginal(app: StorageApp, filePath: string, raw?: st
     // getAbstractFileByPath 取不到文件对象 → 留档会被静默跳过（坏文件现场就丢了）
     const content = raw !== undefined ? raw : await diskReadText(app, filePath);
     if (content === undefined || content === null) return null;
-    // 留档目录 CONFIG/.CORRUPT 含点段，同样不在索引里 —— 判存在只能问盘
-    if (!(await diskPathExists(app, CORRUPT_BACKUP_DIR))) {
+    const backupDir = corruptBackupDir();
+    // 留档目录含点段，不在索引里 —— 判存在只能问盘
+    if (!(await diskPathExists(app, backupDir))) {
       try {
-        await app.vault.createFolder(CORRUPT_BACKUP_DIR);
+        await app.vault.createFolder(backupDir);
       } catch { /* 并发建目录竞态：已建则继续；真建不了由下方写盘报错走 null */ }
     }
     const base = baseNameOf(filePath);
     const stamp = corruptStamp();
-    let backupPath = `${CORRUPT_BACKUP_DIR}/${base}.${stamp}.bak`;
+    let backupPath = `${backupDir}/${base}.${stamp}.bak`;
     for (let i = 2; await diskPathExists(app, backupPath); i++) {
-      backupPath = `${CORRUPT_BACKUP_DIR}/${base}.${stamp}-${i}.bak`;
+      backupPath = `${backupDir}/${base}.${stamp}-${i}.bak`;
     }
     await app.vault.adapter.write(backupPath, content);
     return backupPath;
   } catch (e) {
-    console.warn('[storage] ' + filePath + ' 留档失败（' + CORRUPT_BACKUP_DIR + '），继续原流程', e);
+    console.warn('[storage] ' + filePath + ' 留档失败（' + corruptBackupDir() + '），继续原流程', e);
     return null;
   }
 }

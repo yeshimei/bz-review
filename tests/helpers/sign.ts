@@ -1,16 +1,28 @@
-import { createSign } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { createSign, generateKeyPairSync } from 'node:crypto';
+import { setVerifyPublicKeysForTest } from '../../src/data/license';
 
 /**
- * 测试用的签发器：拿 scripts/keys/private.pem 签一枚真码。
+ * 测试用签发器：运行时生成两对临时 P-256 密钥，全程只在内存里，不落盘、不进仓库。
  *
- * 刻意不复用 scripts/issue-license.mjs——那个是 CLI，输出到 stdout，
- * 而且它拒绝在密钥不存在时静默继续。测试要的是「能签、能指定过期时间」。
+ * 旧实现读 scripts/keys/private.pem（被 .gitignore 排除），干净克隆/CI 下密钥不存在，
+ * 验签测试整段 runIf 跳过——「481 个测试通过」对授权核心其实零覆盖。但把测试私钥
+ * 提交进仓库又等于公开泄露。办法是这里生成临时对：公钥注入 verifyLicense，私钥签码，
+ * 测试进程结束即弃。真机签发（scripts/gen-keys.mjs / issue-license.mjs）完全不变。
  */
-const KEY_PATH = join(process.cwd(), 'scripts', 'keys', 'private.pem');
-/** bz Reader 的私钥：本地有才跑跨产品测试，别的机器没有就跳过 */
-const READER_KEY_PATH = join(process.cwd(), '..', 'bz-reader', 'scripts', 'keys', 'private.pem');
+
+function makeKeyPair(): { privatePem: string; publicB64: string } {
+  const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
+  return {
+    privatePem: privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+    publicB64: publicKey.export({ type: 'spki', format: 'der' }).toString('base64'),
+  };
+}
+
+const LOCAL = makeKeyPair();
+const READER = makeKeyPair();
+
+// 临时公钥注入验签器，让 verifyLicense 用它们而不是内嵌的生产公钥。
+setVerifyPublicKeysForTest(LOCAL.publicB64, READER.publicB64);
 
 export interface Payload {
   v?: 1 | 2;
@@ -40,37 +52,24 @@ function derToP1363(der: Buffer): Buffer {
 const b64url = (buf: Buffer): string =>
   buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-export function signCodeWith(keyPath: string, payload: Payload, prefix = 'BZP2'): string {
+function signWith(privatePem: string, payload: Payload, prefix: string): string {
   const bytes = Buffer.from(JSON.stringify({ v: 2, ...payload }), 'utf8');
   const signer = createSign('sha256');
   signer.update(bytes);
-  const der = signer.sign({ key: readFileSync(keyPath), dsaEncoding: 'der' });
+  const der = signer.sign({ key: privatePem, dsaEncoding: 'der' });
   return `${prefix}.${b64url(bytes)}.${b64url(derToP1363(der))}`;
 }
 
+/** Review 本地高级版码 */
 export function signCode(payload: Payload, prefix = 'BZP2'): string {
-  return signCodeWith(KEY_PATH, payload, prefix);
+  return signWith(LOCAL.privatePem, payload, prefix);
 }
 
 /** Reader 签发的码：赞助人 / 专属定制码带 patron: true */
 export function signReaderCode(payload: Payload, prefix = 'BZR2'): string {
-  return signCodeWith(READER_KEY_PATH, payload, prefix);
+  return signWith(READER.privatePem, payload, prefix);
 }
 
-export const HAS_KEYS = (() => {
-  try {
-    readFileSync(KEY_PATH);
-    return true;
-  } catch {
-    return false;
-  }
-})();
-
-export const HAS_READER_KEYS = (() => {
-  try {
-    readFileSync(READER_KEY_PATH);
-    return true;
-  } catch {
-    return false;
-  }
-})();
+/** 兼容旧测试的导出名：密钥在内存，永远可用 */
+export const HAS_KEYS = true;
+export const HAS_READER_KEYS = true;

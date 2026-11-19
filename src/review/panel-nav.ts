@@ -24,7 +24,7 @@ export type PanelTarget = Exclude<PanelPage, 'home'> | null;
  * 为了让调用方一眼看清「从哪一页点过来」，以及将来若要恢复 toggle 有迹可循。
  */
 export function nextPanelPage(_current: string | null | undefined, clicked: PanelPage): PanelTarget {
-  return clicked === 'home' ? null : (clicked as Exclude<PanelPage, 'home'>);
+  return clicked === 'home' ? null : clicked;
 }
 
 /** 点搜索图标后的固定状态：回主列表 + 展开搜索面板 */

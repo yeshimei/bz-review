@@ -125,13 +125,6 @@ export interface RichStats {
 
 const pad = (n: number): string => String(n).padStart(2, '0');
 
-/** 本地日期键偏移 n 天（n 可为负） */
-function shiftDay(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return localDayKey(d);
-}
-
 function median(xs: number[]): number | null {
   if (!xs.length) return null;
   const s = [...xs].sort((a, b) => a - b);
@@ -325,9 +318,18 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
     const t = new Date(item.nextReviewDate).getTime();
     if (!Number.isFinite(t)) continue;
     const dayDiff = Math.round((startOfDay(t) - today0) / DAY);
+    if (dayDiff === 0) {
+      /* 「今天到期」在面板两处都展示：逾期分档的 overdue[0] 与负载柱的 load[0]。
+         旧代码只把它塞进 load[0]、overdue[0] 恒为 0（因为下面只有 dayDiff<0 才分档，
+         且 late=-dayDiff≥1，索引最小是 1），于是逾期面板的「今天到期」永远是 0。
+         这里同时填入两处，口径各自正确，也不动既有 load[0] 的展示。 */
+      overdue[0] += 1;
+      load[0] += 1;
+      continue;
+    }
     if (dayDiff < 0) {
       const late = -dayDiff;
-      overdue[late <= 0 ? 0 : late <= 3 ? 1 : late <= 7 ? 2 : 3] += 1;
+      overdue[late <= 3 ? 1 : late <= 7 ? 2 : 3] += 1;
       continue;
     }
     if (dayDiff < LOAD_DAYS) load[dayDiff] += 1;

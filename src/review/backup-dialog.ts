@@ -45,7 +45,7 @@ export async function openRestoreDialog(app: App): Promise<void> {
   });
   if (v !== 'ok') return;
   reviewApp.ensure(app);
-  const res = await restoreBackupFile(app, input.value.trim(), reviewApp.dataManager!);
+  const res = await restoreBackupFile(app, input.value.trim());
   notice(res.message, res.ok ? 'success' : 'warning');
   if (res.ok) void reviewApp.refreshPanel();
 }

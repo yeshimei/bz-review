@@ -42,12 +42,12 @@ export type JumpUrlBuilder = (
 
 /** 已有 backlink 优先；没有就用 key 兜底；都不是就不显示按钮 */
 export function backlinkOfCard(card: JumpCardLike, buildUrl: JumpUrlBuilder): string {
-  const existing = String(card?.backlink ?? '').trim();
+  const existing = textOf(card?.backlink).trim();
   if (existing) return existing;
   const bookId = bookIdOfCardKey(card?.key);
   if (!bookId) return '';
   return buildUrl(bookId, {
-    text: String(card?.text ?? '').replace(/\s+/g, ' ').trim().slice(0, SNIPPET),
+    text: textOf(card?.text).replace(/\s+/g, ' ').trim().slice(0, SNIPPET),
     chapter: card?.chapterTitle,
   });
 }

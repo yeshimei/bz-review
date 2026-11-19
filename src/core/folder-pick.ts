@@ -36,7 +36,7 @@ export class FolderPickModal extends FuzzySuggestModal<TFolder> {
     this.refreshPlaceholder();
   }
 
-  /** 打开并等待提交：单选返回 [路径]，多选返回已选集合（取消 = 初始已选）。 */
+  /** 打开并等待提交：单选返回 [路径]，多选返回已选集合（取消 = 当前已选集合，见 onClose）。 */
   pick(): Promise<string[]> {
     return new Promise<string[]>((resolve) => {
       this.resolve = resolve;

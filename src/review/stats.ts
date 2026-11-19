@@ -82,7 +82,7 @@ export function computeStats(items: ReviewItem[], opts?: { w?: number[] }): Revi
   const days = new Set<string>();
   for (const h of history) days.add(dateKey(new Date(h.timestamp)));
 
-  // 总复习次数（去重同日）
+  // 累计复习天数（按日期去重；CSV 导出标签也是「累计复习天数」，与 todayReviews 的「次数」口径不同）
   const totalReviews = days.size;
 
   // streak：从今天往前连续复习的天数（宽松口径：今天没复习但昨天有，从昨天起算）
@@ -96,7 +96,8 @@ export function computeStats(items: ReviewItem[], opts?: { w?: number[] }): Revi
     cursor.setDate(cursor.getDate() - 1);
   }
 
-  // 今日复习次数（同日去重后今日的条数）
+  // 今日复习次数（今天的评级记录条数；与下方 daily7 的每日条数同一口径，不是「天数」）
+  // 注意与 totalReviews 区分：totalReviews 是「复习过的天数」（days.size），这里是次数。
   const todayCount = history.filter((h) => dateKey(new Date(h.timestamp)) === todayKey).length;
 
   // 评级分布
@@ -105,8 +106,8 @@ export function computeStats(items: ReviewItem[], opts?: { w?: number[] }): Revi
     if (h.rating in ratingDist) ratingDist[h.rating]++;
   }
 
-  // 逾期率
-  const active = items.filter((i) => !i.completed && !i.isCompleted);
+  // 逾期率（分母排除缺失/挂起条目——与其它模块的 live 口径一致，缺失笔记不该拉低逾期率）
+  const active = items.filter((i) => !i.completed && !i.isCompleted && !i.isMissing && !i.suspended);
   const overdue = active.filter((i) => i.isOverdue);
   const overdueRate = active.length ? overdue.length / active.length : 0;
 

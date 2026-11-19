@@ -67,7 +67,7 @@
 .dot.tone-mid, .dot.is-hard { background: rgb(var(--ra-amber-rgb)); }
 .dot.tone-low, .dot.is-again { background: rgb(var(--ra-ember-rgb)); }
 .dot.tone-off { background: rgb(var(--ra-indigo-rgb)); }
-canvas { display: block; }
+.bzrv-ra-box canvas { display: block; }
 
 /* ── 01 点炉 ── */
 .ra-open { position: absolute; inset: 0; }

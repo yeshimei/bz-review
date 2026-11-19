@@ -305,8 +305,6 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
             const steps = 60;
             for (let i = 0; i <= steps * gp; i++) {
               const u = i / steps;
-              const r = Math.pow(1 + u * sV * 0 + (u * sV) / sV * 0 + u / 1 * sV / sV * 0 + (u) / (sV * d) * sV / sV * 0 + 0, 0); // 占位防误用
-              void r;
               const rr = Math.pow(1 + (u * 3) / (sV * d), -d); // 横轴单位 = 3×S 的三倍龄窗（u∈0..1 → t = u·3S）
               if (i === 0) ctx.moveTo(X(u), Y(rr));
               else ctx.lineTo(X(u), Y(rr));
@@ -361,7 +359,9 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
         if (oncliff) {
           const p = at(t, .6, 2.2);
           S(oncliff, `opacity:${p.toFixed(3)}`);
-          T(oncliff, `${data.rBelow50 + data.rAbove90 === data.total ? 0 : Math.max(0, data.active - data.rBelow50 - data.rAbove90)} 篇`);
+          /* 「在崖上」= 留存率落在 50%~90% 的可算条目数。旧式用 active（含 R=null 的
+             阶梯项）减两端，既把无 R 的条目算进来、===total 判断又几乎恒假。 */
+          T(oncliff, `${data.rMid} 篇`);
         }
       },
     });

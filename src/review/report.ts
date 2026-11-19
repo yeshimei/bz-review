@@ -26,7 +26,9 @@ export function statsToCsv(stats: ReviewStats): string {
   ];
   for (const d of stats.daily7 ?? []) rows.push([`近 7 天·${d.date}`, d.count]);
   const esc = (v: string | number): string => {
-    const s = String(v);
+    let s = String(v);
+    /* 防公式注入：指标名/日期若以 = + - @ 开头，Excel 会当公式执行。 */
+    if (/^[=+\-@]/.test(s)) s = `'${s}`;
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return ['指标,数值', ...rows.map(([k, v]) => `${esc(k)},${esc(v)}`)].join('\n') + '\n';
@@ -42,7 +44,9 @@ export function cardsToMarkdown(items: readonly ReviewItem[], now: Date = new Da
     list.push(it);
     byBook.set(book, list);
   }
-  const lines: string[] = [`# 划线卡`, '', `> 导出于 ${now.toISOString().slice(0, 10)}，共 ${cards.length} 张`, ''];
+  /* 本地日期：toISOString 是 UTC，东八区凌晨导出会写成前一天。 */
+  const d = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  const lines: string[] = [`# 划线卡`, '', `> 导出于 ${d}，共 ${cards.length} 张`, ''];
   for (const [book, list] of byBook) {
     lines.push(`## ${book}`, '');
     for (const it of list) {
@@ -64,7 +68,9 @@ export function cardsToMarkdown(items: readonly ReviewItem[], now: Date = new Da
 export function forecastToText(points: readonly LoadPoint[], limit = 14): string {
   const head = points.slice(0, Math.max(1, limit)).filter((p) => p.count > 0);
   if (!head.length) return '未来这些天没有安排复习。';
-  const peak = head.reduce((a, b) => (b.count > a.count ? b : a));
+  /* 峰值要在全部 points 里找：total 算的是全部天数，若只在显示的 head（前 N 天）里
+     找 peak，points 超过 N 天时会漏掉真正最忙的那天，报出一个偏小的假峰值。 */
+  const peak = points.reduce((a, b) => (b.count > a.count ? b : a));
   const total = points.reduce((s, p) => s + p.count, 0);
   return [
     `未来 ${points.length} 天共 ${total} 条，最忙的一天是 ${peak.day}（${peak.count} 条）。`,

@@ -1225,14 +1225,16 @@ button.bzrv-rowbtn--busy::after {
   border-radius: 50%;
   animation: bzrv-rowbtn-spin 0.7s linear infinite;
 }
+/* 成功/失败是语义色，走 --bzrv-success/--bzrv-danger token（明暗主题各自有值），
+   原先写死的绿/红在换主题或切暗色时不跟随。 */
 button.bzrv-rowbtn--ok {
-  border: 2px solid #1f883d ;
-  color: #1f883d ;
+  border: 2px solid var(--bzrv-success) ;
+  color: var(--bzrv-success) ;
   background: transparent ;
 }
 button.bzrv-rowbtn--fail {
-  border: 2px solid #cf222e ;
-  color: #cf222e ;
+  border: 2px solid var(--bzrv-danger) ;
+  color: var(--bzrv-danger) ;
   background: transparent ;
 }
 @keyframes bzrv-rowbtn-spin {

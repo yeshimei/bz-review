@@ -46,11 +46,12 @@ const DEFAULT_CONFIG_DIR = '.' + 'obsidian';
 export function pluginRelDirOf(app: unknown): string {
   if (injectedRelDir) return injectedRelDir;
   const fromManifests = trimSlashes(
-    String((app as { plugins?: { manifests?: Record<string, { dir?: string }> } })?.plugins?.manifests?.bz?.dir || ''),
+    String((app as { plugins?: { manifests?: Record<string, { dir?: string }> } })?.plugins?.manifests?.['bz-review']?.dir || ''),
   );
   if (fromManifests) return fromManifests;
   const configDir = trimSlashes(String((app as { vault?: { configDir?: string } })?.vault?.configDir || DEFAULT_CONFIG_DIR));
-  return `${configDir || DEFAULT_CONFIG_DIR}/plugins/bz`;
+  /* 兜底名是本插件 bz-review，不是照搬来的 bz 主插件——否则未注入时路径指到别的插件目录。 */
+  return `${configDir || DEFAULT_CONFIG_DIR}/plugins/bz-review`;
 }
 
 /**

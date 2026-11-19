@@ -103,9 +103,11 @@ export function applyFilter(items: readonly ReviewItem[], filter: ItemFilter = {
     if (deck) {
       const carded = isCardItem(it) ? String(it.card?.bookTitle ?? '').trim() : '';
       const hit = carded ? carded === deck : deckOf(it) === deck;
-      /* 标签筛选：调用方把标签也塞进 deck 字段（以 # 开头），这里按牌组名兜底匹配 */
-      if (!hit && !deck.startsWith('#')) return false;
-      if (!hit && deck.startsWith('#')) return false;
+      /* 只按牌组名匹配。旧代码这里有两行完全等价的 `if (!hit && …) return false`
+         （一行判 # 开头、一行判非 # 开头），还留着「按标签兜底匹配」的注释——
+         但 applyFilter 没有标签数据、UI 的下拉也只来自 collectFacets().decks，
+         所谓标签兜底根本不存在，以 # 开头的筛选只会把所有条目过滤光。 */
+      if (!hit) return false;
     }
     if (!matchesQuery(it, q)) return false;
     return true;
