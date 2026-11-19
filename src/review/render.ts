@@ -160,13 +160,12 @@ export function panelHeadBtnsHtml(activePage?: string | null): string {
  *
  * 2026-11-19 起：右上角关闭按钮撤掉（手机点遮罩退出，桌面本来就没有）；
  * 四个入口图标在高亮态再点一次回主列表，内置页也用这一行，所以不再画「← 返回」。
- * 品牌/标题另挂 .bzrv-panel-head-brand/.bzrv-panel-head-title：嵌入 bz-reader 时
- * 只藏这两段（页签文字由宿主画），四颗图标照常渲染、并可外置到宿主动作栏。
+ * 品牌图标已撤（左栏承担入口）；标题挂 .bzrv-panel-head-title：嵌入 bz-reader 时
+ * 藏掉这段（页签文字由宿主画），四颗图标照常渲染、并可外置到宿主动作栏。
  */
 export function panelHeadHtml(opts: { activePage?: string; title?: string; sub?: string } = {}): string {
   return `
       <div class="bzrv-panel-head">
-        <div class="bzrv-panel-brand bzrv-panel-head-brand">${iconSpan('repeat-2', 'bzrv-ic--sm')}</div>
         <div class="bzrv-panel-title bzrv-panel-head-title">${opts.title ?? '复习计划'}</div>
         <div class="bzrv-panel-head-pipe"></div>
         <div class="bzrv-panel-head-sub">${opts.sub ?? ''}</div>

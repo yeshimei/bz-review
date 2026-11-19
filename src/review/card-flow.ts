@@ -45,9 +45,9 @@ export interface PickCardMethodResult {
  * 取消（遮罩 / ESC / 「先不建」）返回 **null**，调用方据此什么都不做——
  * 不能把取消当成「用默认方式继续」，那会凭空给用户加一张他没要的卡。
  */
-export async function pickCardMethod(): Promise<PickCardMethodResult | null> {
-  /* 勾选框放进富正文，动作按钮只留「先不建」+ 五种方式：取消必须是显式一个动作，
-     否则用户点遮罩就走，事后不知道自己刚才做了什么。 */
+export async function pickCardMethod(purpose: 'add' | 'regenerate' = 'add'): Promise<PickCardMethodResult | null> {
+  /* 勾选框只属于「加入」：重新生成是一次性动作，没有「以后别问」这回事。 */
+  const regenerating = purpose === 'regenerate';
   const body = createDiv();
   body.className = 'bzrv-card-method';
 
@@ -66,24 +66,30 @@ export async function pickCardMethod(): Promise<PickCardMethodResult | null> {
   }
   body.appendChild(list);
 
-  const rememberWrap = createEl('label');
-  rememberWrap.className = 'bzrv-card-method-remember';
-  const rememberBox = createEl('input');
-  rememberBox.type = 'checkbox';
-  const rememberText = createSpan();
-  rememberText.textContent = '记住这个选择，以后加卡不再问';
-  rememberWrap.appendChild(rememberBox);
-  rememberWrap.appendChild(rememberText);
-  body.appendChild(rememberWrap);
+  let remember = false;
+  if (!regenerating) {
+    const rememberWrap = createEl('label');
+    rememberWrap.className = 'bzrv-card-method-remember';
+    const rememberBox = createEl('input');
+    rememberBox.type = 'checkbox';
+    const rememberText = createSpan();
+    rememberText.textContent = '记住这个选择，以后加卡不再问';
+    rememberWrap.appendChild(rememberBox);
+    rememberWrap.appendChild(rememberText);
+    body.appendChild(rememberWrap);
+    remember = rememberBox.checked;
+  }
 
   const actions = [
-    { label: '先不建', value: 'cancel' },
+    { label: regenerating ? '取消' : '先不建', value: 'cancel' },
     ...CARD_MODE_LABELS.map((m) => ({ label: m.label, value: m.value })),
   ];
 
   const picked = await openFlowDialog({
-    title: '这段内容做成哪种卡？',
-    message: '选一种制卡方式；复习时这张卡就按它走。',
+    title: regenerating ? '重新生成用哪种方式？' : '这段内容做成哪种卡？',
+    message: regenerating
+      ? '选一种方式重新生成题面；原卡不会动，直到你点「确认修改」。'
+      : '选一种制卡方式；复习时这张卡就按它走。',
     body,
     actions,
   });
@@ -91,7 +97,10 @@ export async function pickCardMethod(): Promise<PickCardMethodResult | null> {
   if (!picked || picked === 'cancel') return null;
   const mode = CARD_MODE_LABELS.find((m) => m.value === picked)?.value;
   if (!mode) return null;
-  return { mode, remember: rememberBox.checked };
+  if (!regenerating && body.querySelector('input') instanceof HTMLInputElement) {
+    remember = (body.querySelector('input') as HTMLInputElement).checked;
+  }
+  return { mode, remember };
 }
 
 /** 开卡前确认框的产物 */
@@ -394,12 +403,12 @@ export async function confirmRegenerated(opts: {
         : undefined,
     });
     const v = await openFlowDialog({
-      title: '确认替换题面',
-      message: '这是新生成的一版；点「替换」才会覆盖卡上原来的题面。',
+      title: '确认修改题面',
+      message: '这是按你选的方式新生成的一版；点「确认修改」才会覆盖卡上原来的题面。',
       body: parts.body,
       actions: [
-        { label: '不替换', value: 'cancel' },
-        { label: '替换题面', value: 'ok', cta: true },
+        { label: '取消', value: 'cancel' },
+        { label: '确认修改', value: 'ok', cta: true },
       ],
     });
     if (v !== 'ok') return { ok: false };
@@ -416,12 +425,12 @@ export async function confirmRegenerated(opts: {
         }
       : undefined);
     const v = await openFlowDialog({
-      title: '确认替换题库',
-      message: '这是新生成的一版；点「替换」才会覆盖卡上原来的题库。',
+      title: '确认修改题库',
+      message: '这是按你选的方式新生成的一版；点「确认修改」才会覆盖卡上原来的题库。',
       body: parts.body,
       actions: [
-        { label: '不替换', value: 'cancel' },
-        { label: '替换题库', value: 'ok', cta: true },
+        { label: '取消', value: 'cancel' },
+        { label: '确认修改', value: 'ok', cta: true },
       ],
     });
     if (v !== 'ok') return { ok: false };
@@ -442,12 +451,12 @@ export async function confirmRegenerated(opts: {
     preview.textContent = String(opts.draft.cloze?.text ?? '').replace(/\{\{\d+\}\}/g, '（　）');
     body.appendChild(preview);
     const v = await openFlowDialog({
-      title: '确认替换题面',
-      message: '点「替换」才会覆盖卡上原来的挖空。',
+      title: '确认修改题面',
+      message: '点「确认修改」才会覆盖卡上原来的挖空。',
       body,
       actions: [
-        { label: '不替换', value: 'cancel' },
-        { label: '替换题面', value: 'ok', cta: true },
+        { label: '取消', value: 'cancel' },
+        { label: '确认修改', value: 'ok', cta: true },
       ],
     });
     if (v !== 'ok' || !opts.draft.cloze?.blanks?.length) return { ok: false };

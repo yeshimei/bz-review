@@ -12,7 +12,7 @@ import { Plugin } from 'obsidian';
 import { DEFAULT_SETTINGS, applyAccent } from './settings';
 import type BzSettings from './settings';
 import { setApp } from './core/app';
-import { setSettingsProvider, setSettingsSaver, setSettingsPanelOpener } from './core/settings-provider';
+import { getSettings, saveSettings, setSettingsProvider, setSettingsSaver, setSettingsPanelOpener } from './core/settings-provider';
 import { setAISettingsProvider, resetAIProviderCache } from './core/ai';
 import {
   ensureReview,
@@ -36,6 +36,8 @@ import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
 import { ReviewPanelView } from './review/panel-view';
 import { reviewApp } from './review/app';
+import type { CardMode } from './review/card-ai';
+import { defaultCardMethod } from './review/card-mode';
 import { REVIEW_VIEW_TYPE } from './review/panel-mode';
 import { importFromBzWithConfirm } from './data/migrate';
 import { isBzPluginEnabled } from './core/plugin-path';
@@ -59,8 +61,8 @@ export default class ReviewPlugin extends Plugin {
    * 就点了「加入复习」，那时域还没初始化、门面是空的。
    */
   readonly reviewApi = {
-    /** 契约版本：v2 认得 quota()；v3 起认得 embedInto()（主界面嵌进 bz-reader 的第四个页签） */
-    version: 3,
+    /** 契约版本：v2 quota()；v3 embedInto()；v4 setDefaultCardMethod() / focusCard() */
+    version: 4,
     addCards: async (cards: ReviewCardInput[]): Promise<ReviewAddSummary> => {
       ensureReview(this.app);
       const api = getReviewPlanApi();
@@ -82,6 +84,30 @@ export default class ReviewPlugin extends Plugin {
       ensureReview(this.app);
       const api = getReviewPlanApi();
       return api ? api.quota() : { used: 0, limit: 0, remaining: 0, full: false };
+    },
+    /**
+     * 把 reader 老版本「以后都用这个方式」的勾选值迁到 Review 的「新卡默认方式」（契约 v4）。
+     * 只由 reader 在启动时调一次；已设过具体方式的机器不覆盖。
+     */
+    setDefaultCardMethod: async (mode: string): Promise<void> => {
+      ensureReview(this.app);
+      const valid = ['flashcard', 'cloze', 'context', 'quiz', 'plain'];
+      if (!valid.includes(mode)) return;
+      const settings = getSettings();
+      if (settings.reviewCardDefaultMethod && settings.reviewCardDefaultMethod !== 'manual') return;
+      settings.reviewCardDefaultMethod = mode as CardMode;
+      await saveSettings();
+    },
+    /** Reader 制卡时读这里，决定要不要弹选方式的那一屏（契约 v4） */
+    defaultCardMethod: async (): Promise<CardMode | null> => {
+      ensureReview(this.app);
+      return defaultCardMethod(getSettings());
+    },
+    /** 打开独立原生页并高亮指定卡片（契约 v4）：reader 已加入的划线点「去复习」走这里。 */
+    focusCard: async (key: string): Promise<void> => {
+      ensureReview(this.app);
+      await openReviewPanel(this.app);
+      await uiManager?.focusCardKey(key);
     },
     /**
      * 把主界面嵌进 bz-reader 的「复习」页签（契约 v3，2026-11-19）。
@@ -112,13 +138,16 @@ export default class ReviewPlugin extends Plugin {
       reviewApp.hideOverdueNotice();
       // 面板里点关闭 / ESC 不再 detach 标签页，而是通知宿主切回书库页。
       ui.onRequestClose = onClose;
+      ui.embeddedOnClose = onClose;
       ui.mountEmbedActions(actionsHost);
       void ui.showMain();
       let cleaned = false;
-      return () => {
+      const cleanup = () => {
         // 宿主离开页签与关开关可能都调一次：必须幂等，单例 UIManager 禁二次收场。
         if (cleaned) return;
         cleaned = true;
+        if (ui.embeddedCleanup === cleanup) ui.embeddedCleanup = null;
+        ui.embeddedOnClose = null;
         ui.clearEmbed();
         /* 先解除「嵌入在眼前」登记：否则离开复习页后轮询仍以为面板开着，逾期通知再也不弹。 */
         if (reviewApp.embeddedHost === host) reviewApp.embeddedHost = null;
@@ -128,6 +157,8 @@ export default class ReviewPlugin extends Plugin {
         ui.releaseView();
         host.classList.remove('bzrv-panel-host');
       };
+      ui.embeddedCleanup = cleanup;
+      return cleanup;
     },
   };
 

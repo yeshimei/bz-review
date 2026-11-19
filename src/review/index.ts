@@ -115,13 +115,13 @@ export interface CardRegenerateDraft {
  * 右键「重新生成 AI 内容」现在要先把新题面摆给用户看、确认后才替换；写盘动作
  * 交给 `applyCardRegenerateDraft`。生成失败返回 null，卡上的旧内容一个字节不动。
  */
-export async function generateCardRegenerateDraft(key: string): Promise<CardRegenerateDraft | null> {
+export async function generateCardRegenerateDraft(key: string, modeOverride?: CardMode): Promise<CardRegenerateDraft | null> {
   if (!dataManager) return null;
   const items = await dataManager.loadItems();
   const card = items.find((i) => i.filePath === key && isCardItem(i))?.card;
   if (!card) return null;
-  const mode = modeOfCard(card);
-  const prepareMode: CardMode = mode === 'plain' ? 'flashcard' : mode;
+  const mode = modeOverride ?? modeOfCard(card);
+  const prepareMode: CardMode = mode === 'plain' || mode === 'context' ? 'flashcard' : mode;
   try {
     const draft = await generateCardContent(card, cardPrepareCtx(prepareMode));
     return draft ? { card, mode, draft } : null;
@@ -133,9 +133,12 @@ export async function generateCardRegenerateDraft(key: string): Promise<CardRege
 /** 用户确认之后才真正替换（写盘） */
 export async function applyCardRegenerateDraft(entry: CardRegenerateDraft): Promise<boolean> {
   if (!dataManager) return false;
-  const mode = entry.mode === 'plain' ? 'flashcard' : entry.mode;
+  const mode: CardMode = entry.mode === 'plain' || entry.mode === 'context' ? 'flashcard' : entry.mode;
   try {
-    return await applyCardContent(entry.card, cardPrepareCtx(mode), entry.draft);
+    const ctx = cardPrepareCtx(mode);
+    /* 重新生成时用户可能换了方式，卡上的方式要跟着换，否则下次复习仍按老方式考 */
+    if (mode !== modeOfCard(entry.card)) await ctx.updateCard(entry.card.key, { mode });
+    return await applyCardContent(entry.card, ctx, entry.draft);
   } catch {
     return false;
   }
@@ -316,8 +319,11 @@ export function ensureReview(app: App): void {
  *  - popup：原来那层挂在 body 上的浮层。
  * 切换模式后再打开时，另一个形态的壳会被收掉，不会出现「标签页空着 + 浮层盖着」两套。
  */
-export function openReviewPanel(app: App): void {
+export async function openReviewPanel(app: App): Promise<void> {
   ensureReview(app);
+  /* 书架「复习」页签和命令共用同一份面板 DOM：命令进来先把嵌入收掉、让书架回书库，
+     否则新开的原生页只会露出空壳，用户看到的还是书架里那一屏。 */
+  uiManager?.releaseEmbedded();
   if (panelModeOf(tryGetSettings()) === 'popup') {
     const leaves = app.workspace.getLeavesOfType(REVIEW_VIEW_TYPE);
     if (leaves.length) {
@@ -326,10 +332,10 @@ export function openReviewPanel(app: App): void {
       for (const leaf of leaves) void leaf.detach();
     }
     reviewApp.hideOverdueNotice();
-    void uiManager?.showMain();
+    await uiManager?.showMain();
     return;
   }
-  void openPanelView(app);
+  await openPanelView(app);
 }
 
 /** 原生页模式：已有标签页就亮出来，没有就新开一个（工作区恢复时 onOpen 会自己接管） */

@@ -4,16 +4,14 @@
  * 以前卡片内容只能「重新生成」——AI 怎么写的就怎么背。用户看到明显的错字或
  * 断句不对，唯一的办法是回去改划线再重新加卡，排期进度跟着一起丢。
  *
- * 2026-11-19 起不再用 Obsidian 原生 Setting 排这个框：Setting 默认是
- * 「左边标题 / 右边控件」的横向 flex，手机上输入框只剩半幅宽、还挤在右侧。
- * 改成标题与说明在上、输入框在下的纵向布局，并给弹窗根挂上本插件的作用域
- * 标记，样式就能命中这里而不会漏到别的弹窗。
- *
+ * 2026-11-20 起改用 core/flow-dialog 的统一壳（与确认题面、重新生成同一套），
+ * 不再单开一个 Obsidian 原生 Modal——弹窗风格从此只有一种。
  * 保存时打上 `manual` 标记（由调用方写）：之后后台自动补内容会跳过这张卡，
  * 免得刚改完就被 AI 顶掉；点「重新生成」仍然可以覆盖。
  */
-import { Modal, type App } from 'obsidian';
+import type { App } from 'obsidian';
 import type { ReviewItem } from './data';
+import { openFlowDialog } from '../core/flow-dialog';
 
 export interface CardEditValues {
   text: string;
@@ -21,13 +19,11 @@ export interface CardEditValues {
 }
 
 export function openCardEditor(app: App, item: ReviewItem, onSave: (v: CardEditValues) => void | Promise<void>): void {
+  void app;
   const card = item.card;
   if (!card) return;
-  const modal = new Modal(app);
-  modal.titleEl.setText('编辑这张卡');
-  const root = modal.contentEl;
-  root.dataset.bzrv = '';
-  root.addClass('bzrv-edit-modal');
+  const root = createDiv();
+  root.className = 'bzrv-edit-modal';
 
   const textField = root.createDiv({ cls: 'bzrv-edit-field' });
   textField.createDiv({ cls: 'bzrv-edit-head', text: '原文' });
@@ -43,16 +39,19 @@ export function openCardEditor(app: App, item: ReviewItem, onSave: (v: CardEditV
   ideaArea.rows = 3;
   ideaArea.value = String(card.comment ?? '');
 
-  const actions = root.createDiv({ cls: 'bzrv-edit-actions' });
-  const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: '取消' });
-  cancel.addEventListener('click', () => modal.close());
-  const save = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: '保存' });
-  save.addEventListener('click', () => {
+  void openFlowDialog({
+    title: '编辑这张卡',
+    message: '改完点「保存」才会写回卡片；取消则一个字节不动。',
+    body: root,
+    actions: [
+      { label: '取消', value: 'cancel' },
+      { label: '保存', value: 'ok', cta: true },
+    ],
+  }).then((v) => {
+    if (v !== 'ok') return;
     const text = textArea.value.trim();
     /* 原文清空等于把卡变成空白，复习时无从回忆——挡在保存前，不去改结构 */
     if (!text) return;
-    void Promise.resolve(onSave({ text, comment: ideaArea.value.trim() })).finally(() => modal.close());
+    void Promise.resolve(onSave({ text, comment: ideaArea.value.trim() }));
   });
-
-  modal.open();
 }

@@ -27,7 +27,7 @@
  *
  * 公共面（对外契约不变）：UIManager / reviewSettingsSchema（re-export）/ isPlayable / isDueToday
  */
-import { Modal, TFile, type App } from 'obsidian';
+import { TFile, type App } from 'obsidian';
 import { topifyZ, allocZ } from '../core/z-order';
 import { bindMaskDismiss } from '../core/mask-dismiss';
 import { trapPanelFocus } from '../core/ui/focus-trap';
@@ -37,7 +37,7 @@ import { escManager } from '../core/esc-manager';
 import { getSettings, tryGetSettings, panelSizePersist } from '../core/settings-provider';
 import { createAI } from '../core/ai';
 import { isMobileEnv } from '../core/mobile';
-import { uiEmpty, mountIcons, uiResizable } from '../core/ui';
+import { uiEmpty, uiRail, mountIcons, uiResizable } from '../core/ui';
 import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
@@ -102,39 +102,23 @@ function setMarkup(el: HTMLElement, html: string): void {
   el.replaceChildren(...Array.from(doc.body.childNodes, (n) => document.importNode(n, true)));
 }
 
-/** 手动排期的日期输入：Obsidian Modal 承载，交互与原生 prompt 等价（预填、回车/确定、取消）。 */
+/** 手动排期的日期输入：统一流程弹窗，交互与原生 prompt 等价（预填、确定、取消）。 */
 function promptDate(app: App, message: string, initial: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    const modal = new Modal(app);
-    let settled = false;
-    const finish = (v: string | null): void => {
-      if (settled) return;
-      settled = true;
-      resolve(v);
-      modal.close();
-    };
-    modal.titleEl.setText('手动排期');
-    modal.contentEl.createDiv().setText(message);
-    const input = modal.contentEl.createEl('input');
-    input.type = 'text';
-    input.value = initial;
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        finish(input.value);
-      }
-    });
-    const row = modal.contentEl.createDiv();
-    const ok = row.createEl('button');
-    ok.textContent = '确定';
-    ok.addEventListener('click', () => finish(input.value));
-    const cancel = row.createEl('button');
-    cancel.textContent = '取消';
-    cancel.addEventListener('click', () => finish(null));
-    modal.onClose = () => finish(null);
-    modal.open();
-    input.focus();
-  });
+  void app;
+  const body = createDiv();
+  body.createDiv().setText(message);
+  const input = body.createEl('input');
+  input.type = 'text';
+  input.value = initial;
+  return openFlowDialog({
+    title: '手动排期',
+    message: '',
+    body,
+    actions: [
+      { label: '取消', value: 'cancel' },
+      { label: '确定', value: 'ok', cta: true },
+    ],
+  }).then((v) => (v === 'ok' ? input.value : null));
 }
 
 // issue 253：到期标签/可做题判定等纯口径随 markup 一并迁 render.ts（dueLabelOf/isPlayable/stageTagHtml/stageNum）
@@ -210,6 +194,10 @@ export class UIManager {
   /** bz-reader 嵌入态的外置动作栏宿主：非 null 表示头栏四颗图标住在宿主头栏里，
    *  面板内那套由 .bzrv-embed 的 CSS 藏掉。cleanup 必须清空，否则单例会留残留引用。 */
   embedActionsHost: HTMLElement | null = null;
+  /** bz-reader 书架「复习」页签的收场函数；命令要开独立页时先调它，避免共用同一份面板 DOM */
+  embeddedCleanup: (() => void) | null = null;
+  /** 嵌入时宿主给的「关掉就回书库」出口，命令抢回面板时也要让书架回到书库页 */
+  embeddedOnClose: (() => void) | null = null;
   /** 关标签页途中：挡 hideMain → detach → onClose → hideMain 的递归 */
   private closingView = false;
 
@@ -329,6 +317,19 @@ export class UIManager {
     this.popup?.classList.remove('bzrv-embed');
   }
 
+  /**
+   * review 命令要开独立页时调用：先把书架里那块收掉、让宿主切回书库，
+   * 再让面板壳回归 body。宿主留在「复习」页会把刚开的原生页 DOM 抢回去。
+   */
+  releaseEmbedded(): void {
+    const cleanup = this.embeddedCleanup;
+    const onClose = this.embeddedOnClose;
+    this.embeddedCleanup = null;
+    this.embeddedOnClose = null;
+    cleanup?.();
+    onClose?.();
+  }
+
   // ================= 面板构建 =================
 
   createMainUI(): void {
@@ -353,6 +354,21 @@ export class UIManager {
     // ≤768px 弹窗满宽近全屏：挂顶距工具类（44px 避让 Obsidian 移动端头，components.css 统一档）
     this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = CSS_DISPLAY_NONE;
+
+    /* 左栏固定一项「复习计划」（与 bz Reader 的书库/笔记同形制）。
+       嵌进 reader 书架时由 CSS 收起——那边页签栏已经承担了这件事。 */
+    const railHost = createDiv({ cls: 'bzrv-rail-host' });
+    const rail = uiRail({
+      groups: [{ items: [{ id: 'home', name: '复习计划', icon: 'calendar-check' }] }],
+      activeId: 'home',
+      onSelect: () => {
+        this.page = null;
+        void this.refreshPanel();
+      },
+    });
+    railHost.appendChild(rail.el);
+    this.popup.appendChild(railHost);
+
     const content = createDiv();
     content.id = 'bzrv-entries';
     this.popup.appendChild(content);
@@ -470,6 +486,17 @@ export class UIManager {
     this.trashEntries = await loadTrash(this.app);
     this.trashCount = this.trashEntries.length;
     this.renderEntries(items);
+  }
+
+  /** 从阅读器跳过来：回主列表并高亮那张卡（钥匙就是卡条目的 filePath） */
+  async focusCardKey(key: string): Promise<void> {
+    this.page = null;
+    await this.refreshPanel();
+    const card = this.entriesContainer?.querySelector<HTMLElement>(`[data-path="${CSS.escape(key)}"]`);
+    if (!card) return;
+    card.scrollIntoView({ block: 'center' });
+    card.addClass('bzrv-card-jump');
+    window.setTimeout(() => card.removeClass('bzrv-card-jump'), 2400);
   }
 
   /** 渲染队列视图（冲刺态不响应）。
@@ -1730,9 +1757,14 @@ export class UIManager {
     const { aiReadyOrGuide } = await import('./ai-guide');
     if (!(await aiReadyOrGuide('重新生成要用 AI'))) return;
 
-    const progress = notify('正在重新生成…', { type: 'progress' });
+    /* 先选题再生成：与「加入复习」同一套三选一流程，取消则一个字节不动。 */
+    const { pickCardMethod } = await import('./card-flow');
+    const picked = await pickCardMethod('regenerate');
+    if (!picked) return;
+
+    const progress = notify('正在按新方式生成…', { type: 'progress' });
     const { generateCardRegenerateDraft, applyCardRegenerateDraft } = await import('./index');
-    const entry = await generateCardRegenerateDraft(item.filePath);
+    const entry = await generateCardRegenerateDraft(item.filePath, picked.mode);
     progress.hide();
     if (!entry) {
       notify('这次没生成出来（看看 AI 配置）', { type: 'warning' });
@@ -1742,10 +1774,11 @@ export class UIManager {
     const { confirmRegenerated } = await import('./card-flow');
     const res = await confirmRegenerated({
       item,
-      mode: entry.mode,
+      mode: picked.mode,
       draft: entry.draft,
       /* 确认页里再点「重新生成」：只换草稿，仍然不写盘 */
-      regenerate: async () => (await generateCardRegenerateDraft(item.filePath))?.draft ?? null,
+      regenerate: async () =>
+        (await generateCardRegenerateDraft(item.filePath, picked.mode))?.draft ?? null,
     });
     if (!res.ok) return;
 
@@ -1754,7 +1787,7 @@ export class UIManager {
     if (res.cloze) draft.cloze = { ...res.cloze, at: Date.now() };
     if (res.questions) draft.questions = res.questions;
     const ok = await applyCardRegenerateDraft({ ...entry, draft });
-    notify(ok ? '已替换题面' : '这次没生成出来（看看 AI 配置）', { type: ok ? 'success' : 'warning' });
+    notify(ok ? '已修改题面' : '这次没生成出来（看看 AI 配置）', { type: ok ? 'success' : 'warning' });
     if (ok) await this.refreshPanel();
   }
 
