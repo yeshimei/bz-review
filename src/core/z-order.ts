@@ -52,6 +52,21 @@ export function allocZ(): number {
   return allocZBlock(1);
 }
 
+/**
+ * 取一档严格高于给定元素现有层级的号。
+ * 更新日志的二次确认层挂 body，必须盖住主窗遮罩；写死常数会被压在下面。
+ */
+export function allocZAbove(...els: (HTMLElement | undefined | null)[]): number {
+  let top = 0;
+  for (const el of els) {
+    const raw = el?.style?.zIndex;
+    const z = Number(raw);
+    if (raw !== '' && Number.isFinite(z) && z > top) top = z;
+  }
+  const next = allocZ();
+  return next > top ? next : top + 1;
+}
+
 /** topifyZ(els...)：显示时抬顶。按传入顺序发号（遮罩在前、本体在后，保持成对上下关系） */
 export function topifyZ(...els: (HTMLElement | undefined | null)[]): void {
   const live = els.filter((el): el is HTMLElement => !!el);

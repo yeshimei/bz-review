@@ -562,15 +562,12 @@ export class UIManager {
       return;
     }
     if (this.page === 'settings') {
-      const [{ reviewSettingsSchema }, { renderSettingsInto }] = await Promise.all([
-        import('./settings-schema'),
-        import('../core/settings-schema'),
-      ]);
+      const { renderReviewSettingsPage } = await import('./ui/settings-page');
       if (this.page !== 'settings' || !body.isConnected) return;
       const wrap = createDiv();
       wrap.className = 'bzrv-settings-content';
-      renderSettingsInto(wrap, reviewSettingsSchema({ app: this.app, dataManager: this.dataManager }));
       body.appendChild(wrap);
+      await renderReviewSettingsPage(wrap, { app: this.app, dataManager: this.dataManager });
       return;
     }
     const [{ paintStatsInto }, { forecastLoad }, { forecastToText }] = await Promise.all([
