@@ -1,44 +1,37 @@
-import { describe, expect, it, vi } from 'vitest';
+/**
+ * 「开卡前先看一眼」已删除（2026-11-20 用户拍板）。
+ *
+ * 这条反馈要的是：划线卡设置页不再有那个开关，点开卡片也不再先弹确认框，
+ * 相关判定/弹窗代码随之退役。重新生成后的确认（confirmRegenerated）是另一个
+ * 功能，照常保留——这里只守「开卡前确认已彻底移除、重新生成确认没被误删」。
+ */
+import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
-/* card-flow 经 flow-dialog 间接 import obsidian；node 单测里给最小壳让模块能加载。
-   被测的是「要不要弹确认框」这一层纯判定，不碰宿主 API。 */
-vi.mock('obsidian', () => ({
-  Modal: class {},
-  Setting: class {},
-  requestUrl: async () => ({ status: 200, arrayBuffer: () => new ArrayBuffer(0) }),
-  setIcon: () => {},
-  Platform: {},
-  ItemView: class {},
-  Plugin: class {},
-  Notice: class {},
-}));
+const read = (rel: string) => readFileSync(resolve(process.cwd(), rel), 'utf8');
 
-import { confirmBeforeRound, needsCardConfirm } from '../src/review/card-flow';
-import type { ReviewItem } from '../src/review/data';
-
-describe('开卡前确认只留给做题卡', () => {
-  it('抽认卡不需要确认：默认正面一句话，点看答案才出原文', () => {
-    expect(needsCardConfirm('flashcard')).toBe(false);
+describe('开卡前确认已删除（划线卡「开卡前先看一眼」）', () => {
+  it('设置页划线卡组不再有「开卡前先看一眼」开关与 reviewCardConfirm 字段', () => {
+    expect(read('src/review/settings-schema.ts')).not.toContain('开卡前先看一眼');
+    expect(read('src/settings.ts')).not.toContain('reviewCardConfirm');
   });
 
-  it('做题卡仍要确认：可以先把不想要的题删掉', () => {
-    expect(needsCardConfirm('quiz')).toBe(true);
+  it('点开卡片不再走 confirmCardStart 二次确认', () => {
+    const ui = read('src/review/ui.ts');
+    expect(ui).not.toContain('confirmCardStart');
+    expect(ui).not.toContain('confirmBeforeRound');
+    expect(ui).not.toContain('needsCardConfirm');
   });
 
-  it('其余制卡方式也不弹确认', () => {
-    for (const m of ['plain', 'cloze', 'context']) {
-      expect(needsCardConfirm(m as never)).toBe(false);
-    }
+  it('card-flow.ts 不再导出开卡前那两个判定/弹窗', () => {
+    const flow = read('src/review/card-flow.ts');
+    expect(flow).not.toContain('export function needsCardConfirm');
+    expect(flow).not.toContain('export async function confirmBeforeRound');
   });
 
-  it('抽认卡直接放行，不会去要模型重新生成问句', async () => {
-    const regen = vi.fn();
-    const res = await confirmBeforeRound({
-      item: {} as ReviewItem,
-      mode: 'flashcard',
-      regenerateAsk: regen as never,
-    });
-    expect(res).toEqual({ go: true });
-    expect(regen).not.toHaveBeenCalled();
+  it('重新生成后的确认（confirmRegenerated）仍在，没被一刀切删掉', () => {
+    expect(read('src/review/card-flow.ts')).toContain('export async function confirmRegenerated');
+    expect(read('src/review/ui.ts')).toContain('confirmRegenerated');
   });
 });

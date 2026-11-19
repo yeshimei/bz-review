@@ -64,12 +64,10 @@ import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
 import { CardSession } from './card-session';
 import { generateFlashcard } from './flashcard';
-import { cardModeOf, cardQuizRatioOf, modeOfCard } from './card-ai';
-import { confirmBeforeRound, needsCardConfirm } from './card-flow';
+import { cardModeOf, cardQuizRatioOf } from './card-ai';
 import { openCardEditor } from './card-edit';
-import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
+import { getCardQuiz } from './card-quiz-store';
 import { isCardItem } from './data';
-import type { ReviewCard } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { QuizMasterUI } from './quiz-core/session';
 
@@ -1480,9 +1478,7 @@ export class UIManager {
   async startCardRound(queue: ReviewItem[], onDone?: () => void): Promise<void> {
     const container = this.entriesContainer;
     if (!container || !queue.length) return;
-    /* 二次确认放在所有销毁动作**之前**：用户点取消时面板里该是什么还是什么，
-       不能先把上一轮的会话拆掉、再问「要不要开始」。 */
-    if (!(await this.confirmCardStart(queue))) return;
+    /* 「开卡前先看一眼」开关与二次确认已删除（2026-11-20 用户拍板）：点开卡片直接进会话。 */
     const prevSprint = this.sprint;
     this.sprint = null;
     prevSprint?.destroy();
@@ -1563,86 +1559,6 @@ export class UIManager {
     });
     this.cardSession = session;
     session.start();
-  }
-
-  /**
-   * 开卡前的二次确认（2026-11-15）。
-   *
-   * 只在**单张开卡**时问：整轮十几张卡逐张弹框会把人烦死，而且那本来就不是
-   * 「我想先看一眼这张卡」的语境。抽认卡让改问句和原文、做题卡让删题，
-   * 其余方式没有可改的东西就不弹空框。返回 false = 用户取消了，别开会话。
-   */
-  private async confirmCardStart(queue: ReviewItem[]): Promise<boolean> {
-    if (queue.length !== 1) return true;
-    if (!(getSettings()).reviewCardConfirm) return true;
-    const item = queue[0];
-    const card = item.card;
-    if (!card) return true;
-    const mode = modeOfCard(card);
-    if (!needsCardConfirm(mode)) return true;
-
-    const questions = mode === 'quiz' ? ((await getCardQuiz(card.key)) ?? undefined) : undefined;
-    /* 题库还没生成（没配 AI / 加入时生成失败）：没有可删的题，弹出来只会看到一个
-       空列表和一个点不动的「开始」。交给会话自己去补内容 / 降级看全文。 */
-    if (mode === 'quiz' && !questions?.length) return true;
-    const res = await confirmBeforeRound({
-      item,
-      mode,
-      questions,
-      regenerateQuiz:
-        mode === 'quiz'
-          ? async () => {
-              const { regenerateCardContent } = await import('./index');
-              await regenerateCardContent(item.filePath);
-              return (await getCardQuiz(card.key)) ?? null;
-            }
-          : undefined,
-      regenerateAsk:
-        mode === 'flashcard'
-          ? async () => {
-              try {
-                return await generateFlashcard(card, () => createAI());
-              } catch {
-                return null;
-              }
-            }
-          : undefined,
-    });
-    if (!res.go) return false;
-
-    if (mode === 'flashcard') {
-      const patch: Partial<ReviewCard> = {};
-      const nextText = typeof res.text === 'string' ? res.text : card.text;
-      if (nextText !== card.text) patch.text = nextText;
-      const nextQ = String(res.question ?? '').trim();
-      if (nextQ && nextQ !== card.qa?.q) patch.qa = { q: nextQ, a: nextText, at: Date.now() };
-      if (Object.keys(patch).length) {
-        patch.manual = true; // 手改过就不要再被后台预生成顶掉
-        try {
-          await this.dataManager?.updateCard(card.key, patch);
-          Object.assign(card, patch);
-        } catch (e) {
-          notifySaveError(e, '保存卡片修改');
-        }
-      }
-      return true;
-    }
-
-    /* 做题卡：删题只在确认时生效。全删光就不让开始——不然进会话拿不到题，
-       会被当成「本篇没题」直接跳过，用户以为自己白点了一次。 */
-    const left = res.questions ?? [];
-    if (!left.length) {
-      notice('这一轮的题都删掉了：先点「重新生成整份题库」，或把删掉的补回来');
-      return false;
-    }
-    if (left.length !== (questions?.length ?? 0)) {
-      try {
-        await saveCardQuiz(card.key, left);
-      } catch (e) {
-        notifySaveError(e, '保存题库');
-      }
-    }
-    return true;
   }
 
   /** 队列里所有到期卡片（给「开始本轮」按类型分流用） */

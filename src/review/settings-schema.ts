@@ -638,12 +638,6 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             ],
           },
           {
-            type: 'toggle',
-            name: '开卡前先看一眼',
-            desc: '点开一张卡时先弹确认框：抽认卡可改、做题卡可删题',
-            binding: { key: 'reviewCardConfirm' },
-          },
-          {
             type: 'select',
             name: '每轮抽题比例',
             desc: '题库固定，每轮只抽其中一部分',

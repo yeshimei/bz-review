@@ -337,8 +337,10 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
     return `<div class="bzrv-q-view">${head}${filterPanel}${strip}<div class="bzrv-q-cols bzrv-q-empty-wrap"><div data-empty-host></div></div>${emptyFooter}</div>`;
   }
 
-  // item 8：今日全清（开始本轮集合为空 = 逾期/今日/提前全无）→ 绿点 +「今日已清空」+ 隐藏主按钮
-  // （partitionQueue 的 today 列已含提前卡 → overdue+today 与 roundQueue 同集合，item 6 同口径）
+  // 2026-11-20 用户拍板：只有**有逾期**才能开始本轮复习。
+  // 以前按「逾期∪今日到期∪R 阈值提前」出按钮，导致没有逾期、只有今天到期也能开一轮。
+  // 这里只管按钮可见性；startRoundSprint() 里另有一道同样的门控，别只拦界面。
+  const hasOverdue = col.overdue.length > 0;
   const clearToday = col.overdue.length + col.today.length === 0;
   const futureCount = col.future.length;
   // V1 原型拍板（issue 253）：归档视图状态条 = 绿点 +「已完成复习」+ 回队列指引（旧态误用红点「开始本轮」）
@@ -353,7 +355,13 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         <strong>今日已清空</strong>
         <span class="bzrv-q-strip-txt">${futureCount ? `未来还有 ${futureCount} 条待复习` : '没有待复习条目'}</span>
       </div>`
-      : `<div class="bzrv-q-strip">
+      : !hasOverdue
+        ? `<div class="bzrv-q-strip">
+        <span class="bzrv-q-strip-dot ok"></span>
+        <strong>暂无逾期</strong>
+        <span class="bzrv-q-strip-txt">有逾期才能开始本轮，今天到期的 ${col.today.length} 条先记着</span>
+      </div>`
+        : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
         <strong>开始本轮</strong>
         <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延</span>
