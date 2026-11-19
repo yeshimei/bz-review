@@ -16,7 +16,7 @@ describe('复习设置页 · 两列骨架与关于条', () => {
 
   it('关于条带品牌、版本号与身份徽章', () => {
     const html = aboutBarHtml('1.0.0', false, '');
-    expect(html).toContain('bzs-brand');
+    expect(html).not.toContain('bzs-brand"');
     expect(html).toContain('>Review<');
     expect(html).toContain('v1.0.0');
     expect(html).toContain('基础版');

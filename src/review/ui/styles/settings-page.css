@@ -308,10 +308,10 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
 .bzrv-settings-content .bzs-about {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   flex-wrap: wrap;
-  row-gap: 10px;
-  padding: 18px 22px;
+  row-gap: 8px;
+  padding: 12px 18px;
   border-top: 0;
   background: none;
 }
@@ -343,7 +343,7 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
 }
 body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
 .bzrv-settings-content .bzs-brand-txt { display: flex; flex-direction: column; gap: 2px; }
-.bzrv-settings-content .bzs-brand-txt h3 { font-size: 17px; letter-spacing: .08em; }
+.bzrv-settings-content .bzs-brand-txt h3 { font-size: 15px; letter-spacing: .08em; }
 .bzrv-settings-content .bzs-brand-txt h3::before,
 .bzrv-settings-content .bzs-brand-txt h3::after { content: none; }
 .bzrv-settings-content .bzs-brand-txt .tagline { font-size: var(--bzsp-fs-caption); color: var(--bzsp-t3); letter-spacing: .04em; }
@@ -371,7 +371,8 @@ body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
   background: none;
   color: var(--bzsp-t3);
 }
-.bzrv-settings-content .bzs-about .sp { flex: 1; }
+/* 顶栏留白有空间就靠右、没空间就收成 0：桌面端五个出口不该被挤到下一行 */
+.bzrv-settings-content .bzs-about .sp { flex: 0 1 8px; min-width: 0; }
 .bzrv-settings-content .bzs-about .dot { width: 3px; height: 3px; background: var(--bzsp-t3); opacity: .5; flex-shrink: 0; border-radius: 50%; }
 .bzrv-settings-content .bzs-about-link {
   appearance: none;

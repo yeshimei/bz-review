@@ -57,7 +57,6 @@ export function aboutBarHtml(version: string, paid: boolean, name: string, group
   const seal = paid ? '<span class="seal">✦</span>' : '';
   const sr = paid ? `<span class="bzs-sr-only">${esc(name ? '赞助人' : '高级版')}</span>` : '';
   return `<div class="bzs-setgrp wide bzs-about">
-      <span class="bzs-brand">R</span>
       <span class="bzs-brand-txt">
         <h3>Review</h3>
         <span class="tagline">把要记住的，排进复习计划</span>
