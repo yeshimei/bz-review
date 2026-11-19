@@ -948,19 +948,34 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 }
 
 /* ═══════════ B. 窗口头行 .bzrv-panel-head ═══════════
-   影院式整宽头行：品牌块/标题/竖线副题 + 右侧钮组，高 44px。
-   现状：cinema/bookshelf/favorites/belongings 四份逐字 + clipbook(50px) 变体。 */
+   整宽头行：品牌块/标题/竖线副题 + 右侧钮组。
+   几何以 bz Reader 书架头行为基准（tokens.css 的 --bzrv-head-*）：
+   顶留白 12、左右 32（≤820px 16）、内容行 41（按钮 32 + 距底 9），
+   底线贴着内容行。嵌入 Reader「复习」页签时四颗图标住进那条动作栏，
+   两边数字必须一样，否则切页会跳。 */
 .bzrv-panel-head {
   display: flex;
-  align-items: center;
+  /* 贴底对齐：右侧按钮组按「距底 9px」落座，文字按页签基线落座 */
+  align-items: flex-end;
   gap: var(--bzrv-space-sm);
-  padding: 0 var(--bzrv-space-lg);
-  height: var(--bzrv-head-h, 44px);
+  /* 高度含内边距与底线：54 = 顶留白 12 + 内容行 41 + 底线 1 */
+  box-sizing: border-box;
+  height: var(--bzrv-head-h, 54px);
+  padding: var(--bzrv-head-pad-t) var(--bzrv-head-pad-x) 0;
   flex-shrink: 0;
   border-bottom: 1px solid var(--bzrv-border);
 }
+/* 左侧文字簇与 Reader 页签文字同一条基线：页签内边距是 8 上 / 12 下，
+   这里补同样的距底 12，标题、副题、竖线一起落在同一条线上 */
+.bzrv-panel-head .bzrv-panel-brand,
+.bzrv-panel-head .bzrv-panel-title,
+.bzrv-panel-head .bzrv-panel-head-pipe,
+.bzrv-panel-head .bzrv-panel-head-sub {
+  padding-bottom: 12px;
+}
 .bzrv-panel-title {
-  font-size: var(--bzrv-font-label);
+  /* 与 Reader 页签同一档（14px），字号对齐才算「同一行东西」 */
+  font-size: var(--bzrv-font-body);
   font-weight: var(--bzrv-weight-semibold);
   color: var(--bzrv-text-1);
 }
@@ -980,7 +995,51 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 .bzrv-panel-head-pipe { width: 1px; height: 14px; background: var(--bzrv-border); flex-shrink: 0; }
 .bzrv-panel-head-sub { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-panel-head-sp { flex: 1; }
-.bzrv-panel-head-btns { display: flex; align-items: center; gap: var(--bzrv-space-sm); }
+.bzrv-panel-head-btns { display: flex; align-items: center; gap: var(--bzrv-head-act-gap); }
+/* 头行钮组离底线 9px：Reader 的动作栏就是这么落的座 */
+.bzrv-panel-head .bzrv-panel-head-btns { padding-bottom: var(--bzrv-head-act-pb); }
+
+/* ── 头行四颗图标钮（面板里 / 嵌进 bz-reader 的动作栏里，同一套尺寸）──
+   34×32 的方块、18px 图标、1px 透明描边（悬停时才显形），
+   与 Reader 的 .bzs-stuacts .bzs-cbtn 逐项对齐。 */
+.bzrv-panel-head .bzrv-icon-btn,
+.bzrv-embed-acts .bzrv-icon-btn {
+  width: var(--bzrv-head-act-w);
+  height: var(--bzrv-head-act-h);
+  border: 1px solid transparent;
+  border-radius: var(--bzrv-radius-ctl);
+  color: var(--bzrv-text-2);
+}
+.bzrv-panel-head .bzrv-icon-btn .bzrv-ic,
+.bzrv-embed-acts .bzrv-icon-btn .bzrv-ic {
+  width: var(--bzrv-head-act-ic);
+  height: var(--bzrv-head-act-ic);
+}
+@media (hover: hover) {
+  .bzrv-panel-head .bzrv-icon-btn:hover,
+  .bzrv-embed-acts .bzrv-icon-btn:hover {
+    color: var(--bzrv-accent);
+    background: var(--bzrv-accent-soft);
+    border-color: var(--bzrv-border-hover);
+  }
+}
+/* 选中只留强调色：Reader 的口径是「这颗是当前页」，不铺底也不描边 */
+.bzrv-panel-head .bzrv-icon-btn.is-on,
+.bzrv-embed-acts .bzrv-icon-btn.is-on {
+  color: var(--bzrv-accent);
+  background: none;
+  border-color: transparent;
+}
+.bzrv-panel-head .bzrv-icon-btn.is-on:hover,
+.bzrv-embed-acts .bzrv-icon-btn.is-on:hover {
+  color: var(--bzrv-accent);
+  background: none;
+  border-color: transparent;
+}
+
+/* 嵌入 bz-reader 时这组按钮住在宿主动作栏里：间距、贴边、离底线都交给宿主
+   （.bzs-review-acts），这里只排横队，别在宿主的留白上再垫一层。 */
+.bzrv-embed-acts { display: flex; align-items: center; gap: var(--bzrv-head-act-gap); padding: 0; }
 
 /* ═══════════ C. 主头行 .bzrv-main-head ═══════════
    内容区主头行：当前分组标题(16px) + 计数 + spacer + 主按钮(30px)。

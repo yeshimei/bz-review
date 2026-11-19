@@ -30,6 +30,7 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 8. 未定稿探索稿只放 `.scratch/<名>/`，不得混入 `src/`。
 9. 强调色是全局设计变量，不是装饰：选中态、主按钮、链接、进度条、chip、焦点环、状态点等一切「交互色」都必须走强调色 token，禁止写死铜色。每个原型 / 设计都要带强调色切换并验过每一档的可读性；规则见下节「强调色（accent）」。
 10. **禁止悬停气泡属性（2026-11-17）**：插件生成的 DOM 一律不挂 `aria-label` / `title`，也不调用 `setTooltip()`——Obsidian 会把它们变成悬停气泡，用户看着像「莫名其妙的小弹窗」。纯图标控件的可读名字改用视觉隐藏文本：模板里写 `<span class="bzrv-sr-only">名字</span>`，DOM API 用 `src/core/ui/sr-text.ts` 的 `srText()` / `withSrText()`；`aria-labelledby` 指向隐藏节点也可以用（它不触发气泡）。提交前跑 `node scripts/check-tooltip-attrs.mjs`，有违规就停。
+11. **头行几何与 bz Reader 同源（2026-11-19）**：`.bzrv-panel-head` 的高度、左右留白、右侧图标钮的尺寸/间距/距底一律读 `--bzrv-head-*` token，域内不许再写死数字（窄屏档也是改变量，不写选择器）。基准是 Reader 的 `.bzs-stuhead` / `.bzs-stuacts`（`D:/Obsidian/bz-reader/src/shell/styles/study.css`）：嵌入「复习」页签时四颗图标就住在那条动作栏里，数字一歪切页就跳。
 
 ## 强调色（accent）—— 所有原型与设计通用
 
@@ -77,6 +78,7 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 | 激活码 / 数量门控 | `src/data/entitlement.ts`、`src/data/license.ts`、`scripts/gen-keys.mjs`、`scripts/issue-license.mjs` |
 | 样式作用域与聚合 | `scripts/build-css.mjs`、`scripts/css-scope.mjs` 文件头 |
 | 通知语义与图标 | `src/core/notice.ts` 的 `ICONS` |
+| 头行几何（与 Reader 对齐的那套数） | `src/core/ui/tokens.css` 的 `--bzrv-head-*`；Reader 对应 `src/shell/styles/study.css` 的 `.bzs-stuhead` / `.bzs-stuacts` |
 | 测试怎么写（纯逻辑 / 搬 UI 测试） | `vitest.config.ts` 文件头 |
 
 本文与代码冲突时以代码为准，并顺手改这里。

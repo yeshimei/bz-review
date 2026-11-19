@@ -51,8 +51,10 @@
 #bzrv-popup.bzrv-embed .bzrv-panel-head-sub,
 #bzrv-popup.bzrv-embed .bzrv-panel-head-sp,
 #bzrv-popup.bzrv-embed .bzrv-panel-head-btns { display: none; }
-/* 子元素全藏后头行只剩 44px 空壳和一条底线，整行收起，内容区从顶开始 */
+/* 子元素全藏后头行只剩一条底线和一格高度，整行收起，内容区从顶开始 */
 #bzrv-popup.bzrv-embed .bzrv-panel-head { height: 0; padding: 0; border: none; overflow: hidden; }
+/* 外置那套（.bzrv-embed-acts）的尺寸与间距在 core 组件的头行段统一给：
+   34×32 / 图标 18 / 间距 4，贴边与距底交给 Reader 的动作栏，切页不跳。 */
 
 /* 队列/冲刺滚动条隐藏由 core 界面级单源规则接管（ADR-0122 / issue 277，
    #bzrv-entries 在册），域内不再重复定义 */
@@ -515,31 +517,31 @@
      L5 控件          面板内 .bzrv-btn（40px 高）· 评级条按钮       15
      L6 角标          到期/阶段 tag · 阶段号 · 日期副题 · 统计小字 13
 
-   控件尺寸随同级文字抬档（设计手册 §8.2）：头行图标钮 40×44、选项行 ≥44、评级条
-   按钮 ≥44、面板内主钮 40。本段置于文件末尾——媒体查询不增特异性，靠「后写者赢」
+   控件尺寸随同级文字抬档（设计手册 §8.2）：选项行 ≥44、评级条按钮 ≥44、面板内主钮
+   40；头行那四颗例外，跟 bz Reader 的动作栏同档（34×32），见下方 L5 段。
+   本段置于文件末尾——媒体查询不增特异性，靠「后写者赢」
    压过上方基础规则（域内既有移动端块只改布局，字号单归本段）。
    桌面 >768px 逐像素不变。 */
 @media (max-width: 768px) {
   /* ---- L1 面板题 ---- */
-  #bzrv-popup .bzrv-panel-head { height: 52px; padding: 0 14px; gap: 6px; }
-  /* 窄屏头行：标题不折行；日期整条收起。
-     算过账——品牌 28 + 标题 80 + 三颗图标 136 + 间距，390 宽里只剩 39px 给日期，
-     「11月15日 周日」只能显示「11月…」，既没信息量又难看；卡片上本来就带着日期。 */
-  #bzrv-popup .bzrv-panel-title { font-size: 20px; white-space: nowrap; flex-shrink: 0; }
+  /* 头行几何不再在这里定：≤820px 已由 tokens 收成 Reader 的窄屏档
+     （顶 12 / 左右 16 / 按钮 34×32 / 距底 0）。这里只定字。 */
+  #bzrv-popup .bzrv-panel-title { font-size: 16px; white-space: nowrap; flex-shrink: 0; }
+  /* 窄屏头行：日期整条收起——品牌 24 + 标题 + 四颗图标，390 宽里没地方给它，
+     卡片上本来就带着日期。 */
   #bzrv-popup .bzrv-panel-head-sub,
   #bzrv-popup .bzrv-panel-head-pipe { display: none; }
-  #bzrv-popup .bzrv-panel-head-sub { font-size: 13px; }
-  #bzrv-popup .bzrv-panel-brand { width: 28px; height: 28px; }
-  #bzrv-popup .bzrv-panel-brand .bzrv-ic { width: 16px; height: 16px; }
-  #bzrv-popup .bzrv-panel-head-pipe { height: 16px; }
   .bzrv-sprint-title { font-size: 20px; }
   .bzrv-sprint-sub { font-size: 13px; }
   .bzrv-summary-title { font-size: 22px; }
 
-  /* ---- L5 控件：面板内主钮 + 头行图标钮（唯一关闭入口，抬到触控档） ---- */
+  /* ---- L5 控件：面板内主钮抬到触控档；头行那四颗是例外 ----
+     Reader 动作栏里就是 34×32，Review 的窄屏档跟着它——两边切页时图标不跳。 */
   #bzrv-popup .bzrv-btn { height: 40px; padding: 0 18px; font-size: 15px; }
   #bzrv-popup .bzrv-icon-btn { width: 40px; height: 44px; }
   #bzrv-popup .bzrv-icon-btn .bzrv-ic { width: 18px; height: 18px; }
+  #bzrv-popup .bzrv-panel-head .bzrv-icon-btn { width: var(--bzrv-head-act-w); height: var(--bzrv-head-act-h); }
+  #bzrv-popup .bzrv-panel-head .bzrv-icon-btn .bzrv-ic { width: var(--bzrv-head-act-ic); height: var(--bzrv-head-act-ic); }
 
   /* ---- 开始本轮条：字号抬档后一行放不下 → 信息一行、主钮独占一行（满宽 40px 靶） ---- */
   .bzrv-q-strip { flex-wrap: wrap; }
@@ -885,10 +887,8 @@
     min-height: 44px;
     min-width: 44px;
   }
-  .bzrv-panel-head-btns .bzrv-icon-btn {
-    min-width: 40px;
-    min-height: 40px;
-  }
+  /* 头行四颗不再垫 40×40 的最小热区：Reader 动作栏里就是 34×32，
+     放大反而比旁边几页的图标大一圈（两边必须同尺寸）。 */
   .bzrv-q-strip {
     flex-wrap: wrap;
     gap: 6px;
@@ -1066,11 +1066,13 @@
 
 /* ==================== 2026-11-19 移动端布局收口 ==================== */
 
-/* 头行图标高亮：点一下进页，再点一下回主列表 */
+/* 头行图标高亮：点一下进页，再点一下回主列表。
+   画法与 bz Reader 的动作栏一致：只把图标染成强调色，不铺底、不加内描边——
+   嵌入后这几颗就在那条动作栏里，画法不同一眼就看出是两个插件。 */
 .bzrv-panel-head-btns .bzrv-icon-btn.is-on {
   color: var(--bzrv-accent);
-  background: color-mix(in srgb, var(--bzrv-accent) 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bzrv-accent) 30%, transparent);
+  background: none;
+  border-color: transparent;
 }
 
 /* 编辑这张卡：不再用 Obsidian Setting 的左右排布，手机上输入框占满宽 */

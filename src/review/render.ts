@@ -881,7 +881,9 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
         <div class="bzrv-panel-head-pipe"></div>
         <div class="bzrv-panel-head-sub">只刷题 · 不排期复习</div>
         <span class="bzrv-panel-head-sp"></span>
-        <button class="bzrv-icon-btn" data-act="close"><span class="bzrv-sr-only">关闭</span>${iconSpan('x', 'bzrv-q-ic')}</button>
+        <div class="bzrv-panel-head-btns">
+          <button class="bzrv-icon-btn" data-act="close"><span class="bzrv-sr-only">关闭</span>${iconSpan('x', 'bzrv-q-ic')}</button>
+        </div>
       </div>
       <div class="bzrv-qp-body">
         <div class="bzrv-qp-sec">

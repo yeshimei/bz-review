@@ -57,9 +57,24 @@
   --bzrv-icon-btn-h: 26px;
   --bzrv-icon-btn-lg: 32px;  /* 触控档 */
 
-  /* 面板头行高度（影院式整宽头行） */
-  --bzrv-head-h: 44px;
+  /* 面板头行高度（整宽头行）。54 = 顶留白 12 + 内容行 41 + 底线 1；
+     内容行再拆成「按钮 32 + 距底 9」，与 bz Reader 书架头行同一套算式。 */
+  --bzrv-head-h: 54px;
   --bzrv-head-h-lg: 50px;    /* 高档：剪藏本 */
+
+  /* ── 头行度量（以 bz Reader 书架头行为唯一基准，2026-11-19）──
+     对应 Reader 的 src/shell/styles/study.css：.bzs-stuhead（顶留白 12 /
+     左右 32，≤820px 变 16）、.bzs-stuacts（按钮 34×32、组距底 9）。
+     嵌入 Reader「复习」页签时，四颗图标就住在那条动作栏里，数字对不上就会
+     「一切页大小就跳」。改这里必须同步 Reader 那边，反之亦然。 */
+  --bzrv-head-pad-t: 12px;
+  --bzrv-head-pad-x: 32px;
+  --bzrv-head-act-gap: 4px;   /* 组内间距：Reader 定稿 4，四颗才像一组 */
+  --bzrv-head-act-pb: 9px;    /* 组距底线 */
+  --bzrv-head-act-w: 34px;    /* 按钮（含 1px 透明描边） */
+  --bzrv-head-act-h: 32px;
+  --bzrv-head-act-ic: 18px;   /* 图标本体 */
+  --bzrv-radius-ctl: 6px;     /* 图标钮圆角，对齐 Reader 的 --r-ctl */
 
   /* 阴影三档（透明黑、表达抬升） */
   --bzrv-shadow-sm:
@@ -128,6 +143,16 @@
   --bzrv-accent-dot-copper: #9a7434;
   --bzrv-accent-dot-indigo: #3f5b8f;
   --bzrv-accent-dot-moss: #4c6b52;
+}
+
+/* 窄屏头行：Reader 在 ≤820px 收边距、动作栏距底归零（mobile.css 的
+   .bzs-stuhead / .bzs-stuacts 段），这里同口径。只改变量，不碰选择器。 */
+@media (max-width: 820px) {
+  :root {
+    --bzrv-head-h: 49px;      /* 12 + 内容行 36 + 底线 1 */
+    --bzrv-head-pad-x: 16px;
+    --bzrv-head-act-pb: 0;
+  }
 }
 
 /* ── 暗色（默认）── */
