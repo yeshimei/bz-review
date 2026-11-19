@@ -37,7 +37,7 @@ import { escManager } from '../core/esc-manager';
 import { getSettings, tryGetSettings, panelSizePersist } from '../core/settings-provider';
 import { createAI } from '../core/ai';
 import { isMobileEnv } from '../core/mobile';
-import { uiEmpty, uiRail, mountIcons, uiResizable } from '../core/ui';
+import { uiEmpty, mountIcons, uiResizable } from '../core/ui';
 import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
@@ -355,19 +355,9 @@ export class UIManager {
     this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = CSS_DISPLAY_NONE;
 
-    /* 左栏固定一项「复习计划」（与 bz Reader 的书库/笔记同形制）。
-       嵌进 reader 书架时由 CSS 收起——那边页签栏已经承担了这件事。 */
-    const railHost = createDiv({ cls: 'bzrv-rail-host' });
-    const rail = uiRail({
-      groups: [{ items: [{ id: 'home', name: '复习计划', icon: 'calendar-check' }] }],
-      activeId: 'home',
-      onSelect: () => {
-        this.page = null;
-        void this.refreshPanel();
-      },
-    });
-    railHost.appendChild(rail.el);
-    this.popup.appendChild(railHost);
+    /* 左侧竖栏已撤（2026-11-20，图三形制）：原来那一项「复习计划」挪到头栏成了
+       顶部页签（见 render.panelHeadHtml 的 .bzrv-stutab），点击回主列表由
+       bindPanelHead 的 data-act="home" 承接。独立界面与嵌入态都不再有左栏。 */
 
     const content = createDiv();
     content.id = 'bzrv-entries';
@@ -1244,6 +1234,12 @@ export class UIManager {
    * 主队列与内置页共用 panelHeadHtml，所以绑定也共用这一份，不再各写一套。
    */
   private bindPanelHead(container: HTMLElement): void {
+    /* 顶部「复习计划」页签：点它回主列表，承接撤掉的左栏 onSelect。 */
+    container.querySelector('[data-act="home"]')?.addEventListener('click', () => {
+      if (!this.page) return;
+      this.page = null;
+      void this.refreshPanel();
+    });
     const go = (page: 'settings' | 'stats' | 'achv' | 'arch' | 'trash'): void => {
       this.page = this.page === page || this.page ? null : page;
       void this.refreshPanel();

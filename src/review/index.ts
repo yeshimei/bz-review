@@ -327,6 +327,10 @@ export async function openReviewPanel(app: App): Promise<void> {
      之前判断——借道时那份嵌入正挂在 Reader 里，收掉就露空壳了。 */
   const embedRoute = embeddedReviewRoute(app);
   if (embedRoute) {
+    /* 只借道、不碰已存在的原生独立页：detach 它会触发 ReviewPanelView.onClose，
+      那套清理会把正要挂进 reader 的嵌入面板一起收掉，留下一张空标签（踩过）。
+      独立页留着无妨——openStudy 会把 reader 书架 reveal 到前台，用户看到的就是
+      内嵌页；旧标签还在后台，但不在眼前。 */
     embedRoute.openReviewTab();
     return;
   }
