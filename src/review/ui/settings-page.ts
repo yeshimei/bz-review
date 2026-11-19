@@ -81,7 +81,11 @@ export async function renderReviewSettingsPage(
 
   const grid = createDiv();
   grid.className = 'bzs-set-grid';
-  const [leftNames, rightNames] = groupColumns(schema.groups.map((g) => g.name));
+  /* 体量 ≈ 行数 + 组头/内边距那点固定高度；长组（复习节奏）不再把左列架空 */
+  const [leftNames, rightNames] = groupColumns(
+    schema.groups.map((g) => g.name),
+    schema.groups.map((g) => (g.rows?.length ?? 0) + 2),
+  );
   const cols = [leftNames, rightNames].map((names) => {
     const col = createDiv();
     col.className = 'bzs-set-col';

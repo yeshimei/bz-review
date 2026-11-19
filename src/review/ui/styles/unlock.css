@@ -3,7 +3,7 @@
   --un-line: var(--background-modifier-border, rgba(128, 128, 128, .3));
   --un-ink: var(--text-normal, #222);
   --un-muted: var(--text-muted, #777);
-  --un-accent: var(--interactive-accent, #9a7434);
+  --un-accent: var(--bzrv-accent, #9a7434);
   --un-tint: color-mix(in srgb, var(--un-accent) 8%, transparent);
   --pcol: 92px;
   display: block;
