@@ -33,6 +33,10 @@
   align-items: center;
   gap: 6px;
   letter-spacing: 0;
+  /* 与旁边的日期副题同一基线：副题靠 .bzrv-panel-head-sub 的 12px 垫底落在
+     头栏文字线上。页签是 button，选择器没覆盖到那条 padding，得自己补一份，
+     否则它比日期高出一截（2026-11-20 真机量到差 8px），看着像没对齐。 */
+  padding-bottom: 12px;
   transition: color var(--bzrv-dur-base) var(--bzrv-ease-out);
 }
 .bzrv-stutab:hover { color: var(--bzrv-text-2); }
@@ -42,7 +46,9 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* padding-bottom 12px 是为了和日期副题同基线，下划线要落在文字底（padding 顶），
+     不能贴 button 底（那是头栏底线，会和 border-bottom 重合看不见）。 */
+  bottom: 12px;
   height: 2px;
   background: var(--bzrv-accent);
 }
