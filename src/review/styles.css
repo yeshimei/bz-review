@@ -978,6 +978,57 @@
 }
 .bzrv-arch-name { flex: 1; min-width: 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ==================== 已移出内置页（2026-11-19） ====================
+   形制对齐 bz-reader 的「笔记」页：左缘一条强调色竖线、引文、出处行、右下动作。
+   页面不写大标题（位置由页签 / 头行图标说明），顶部只留一条期限说明，
+   滚动交给 .bzrv-page-body，这里不再套一层滚动区。 */
+.bzrv-trash-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bzrv-space-sm);
+  padding: var(--bzrv-space-md) var(--bzrv-space-lg) var(--bzrv-space-lg);
+}
+.bzrv-trash-note { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-trash-note-txt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-trash-note .bzrv-btn { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-trash-sp { flex: 1; }
+.bzrv-trash-list { display: flex; flex-direction: column; gap: 8px; }
+.bzrv-trash-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--bzrv-border);
+  border-left: 3px solid var(--bzrv-accent-line);
+  border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-1);
+}
+.bzrv-trash-card-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bzrv-trash-card-title { flex: 1; min-width: 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-trash-tag {
+  flex: none;
+  font-size: var(--bzrv-font-caption);
+  color: var(--bzrv-text-3);
+  border: 1px solid var(--bzrv-border);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+.bzrv-trash-card-quote {
+  margin: 0;
+  font-size: var(--bzrv-font-meta);
+  line-height: 1.55;
+  color: var(--bzrv-text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bzrv-trash-card-foot { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-trash-src { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bzrv-text-2); }
+.bzrv-trash-when { flex: none; }
+.bzrv-trash-card-foot .bzrv-btn { flex: none; height: 26px; padding: 0 12px; font-size: var(--bzrv-font-caption); }
+.bzrv-trash-empty-host { padding: 24px 12px; }
+
 /* ==================== 按书档案 / 卡片管理器（高级档，2026-11-18） ====================
    两个新的内置页，样式只消费 --bzrv-* token，构建时统一挂 [data-bzrv] 作用域。 */
 .bzrv-book-view, .bzrv-mgr-view { display: flex; flex-direction: column; gap: 12px; padding: var(--bzrv-space-md) var(--bzrv-space-lg); }

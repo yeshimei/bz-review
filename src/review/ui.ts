@@ -20,7 +20,8 @@
  * 深审批 C（2026-09-19）：
  *  - U4/A4/E7/U10 难度弹窗迁 openFlowDialog choice 形态（ESC/遮罩/焦点 core 单源收口 +
  *    1-4 快捷键 + onSelect promise 兜底），旧自绘 .difficulty-dialog 不再产出
- *  - E1/C1 抽屉「移出复习计划」免确认直达 notifyUndo（效率整改 5 口径）
+ *  - E1/C1 抽屉「移出复习计划」原按效率整改 5 免确认直达；2026-11-19 用户口径改为
+ *    先弹二次确认（confirm-flows），确认后仍保留撤销 toast
  *  - E6 队列重建前记录三区列滚位与焦点控件，重建后还原
  *  - C15 构造期 allocZ 删（ADR-0067 仅显示时 topifyZ 发号）；ESC 层 id 改 'bzrv-review-main'
  *
@@ -41,11 +42,12 @@ import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
 import {
-  queueViewHtml, reviewBarHtml, trashViewHtml,
+  queueViewHtml, reviewBarHtml, trashPageHtml,
   booksViewHtml, managerViewHtml, panelHeadHtml, panelHeadBtnsHtml, panelActIsOn,
   type PanelHeadAct,
   isPlayable as isPlayableRender,
 } from './render';
+import { confirmPostponePlan, confirmRemovePlan } from './confirm-flows';
 import { loadTrash } from './trash-store';
 import type { TrashEntry } from './trash';
 import {
@@ -171,11 +173,9 @@ export class UIManager {
   /** 冲刺入口 in-flight 防抖（双击/并发触发只放行一次，防双开会话双倍 AI 调用） */
   private sprintStarting = false;
   showArchived = false;
-  /** 回收站视图开关（与归档互斥：两个都是「另一种列表」，同时开没有意义） */
-  showTrash = false;
-  /** 回收站条目缓存（进入视图前由 refreshPanel 刷新） */
+  /** 已移出条目缓存（每次 refreshPanel 一起读，页与底栏入口共用这一份） */
   private trashEntries: TrashEntry[] = [];
-  /** 回收站条数（底部入口按它决定显不显示） */
+  /** 已移出条数（底栏入口按它决定显不显示） */
   private trashCount = 0;
   /** 当前筛选（批 4b）；面板关掉再开仍然保留——用户刚筛完不想又重设一遍 */
   private filter: ItemFilter = {};
@@ -186,9 +186,10 @@ export class UIManager {
   /** 关键字输入的防抖句柄 */
   private filterTimer: number | null = null;
   /** 面板内置页（批 8）：数据 / 设置；null = 队列主列表 */
-  /* 内置页（批 8 起）：数据 / 设置 / 已完成。三页共用同一个内容区与「返回」头行，
-     不再各开一套弹窗（用户 2026-11-15 口径：全部内置到面板，入口在右上角）。 */
-  private page: 'stats' | 'settings' | 'arch' | 'books' | 'manager' | null = null;
+  /* 内置页（批 8 起）：数据 / 设置 / 已完成 / 已移出。同一内容区、同一行图标入口，
+     不再各开一套弹窗（用户 2026-11-15 口径：全部内置到面板，入口在右上角；
+     2026-11-19 追加「已移出」，移走的条目要在一个页面里找回来）。 */
+  private page: 'stats' | 'settings' | 'arch' | 'books' | 'manager' | 'trash' | null = null;
   /** 卡片管理器自己的筛选（与队列筛选互不干扰） */
   private mgrFilter: ItemFilter = {};
   /** 管理器搜索框重绘后要把光标放回去 */
@@ -374,9 +375,9 @@ export class UIManager {
     this.createMainUI();
     if (!this.mask || !this.popup) return;
     this.closingView = false;
-    /* 关面板时停在回收站，下次打开还停在回收站会很奇怪——每次打开都从队列开始。
+    /* 关面板时停在「已移出」，下次打开还停在那儿会很奇怪——每次打开都从队列开始。
        选择模式同理：跨会话保留选择只会造成误删，一律清掉。筛选保留。 */
-    this.showTrash = false;
+    if (this.page === 'trash') this.page = null;
     this.selectMode = false;
     this.selected.clear();
     if (this.hostedInView) {
@@ -474,14 +475,9 @@ export class UIManager {
     if (this.sprint) return;
     const container = this.entriesContainer;
     if (!container) return;
-    /* 内置页（数据 / 设置）先占位：它们不是列表，也不该被三区列的刷新冲掉 */
+    /* 内置页（数据 / 设置 / 已移出）先占位：它们不是列表，也不该被三区列的刷新冲掉 */
     if (this.page) {
       this.renderPage(container, items);
-      this.syncEmbedActions();
-      return;
-    }
-    if (this.showTrash) {
-      this.renderTrash(container);
       this.syncEmbedActions();
       return;
     }
@@ -565,17 +561,19 @@ export class UIManager {
     }
     this.syncEmbedActions();
   }
-  /** 内置页（批 8）：数据 / 设置 / 已完成——同一个内容区，头行换成「返回 + 标题」 */
+  /** 内置页（批 8）：数据 / 设置 / 已完成 / 已移出——同一个内容区，头行换成「返回 + 标题」 */
   private renderPage(container: HTMLElement, items: ReviewItem[]): void {
     const title = this.page === 'stats'
       ? '数据'
       : this.page === 'arch'
         ? '已完成'
-        : this.page === 'books'
-          ? '按书档案'
-          : this.page === 'manager'
-            ? '卡片管理器'
-            : '设置';
+        : this.page === 'trash'
+          ? '已移出'
+          : this.page === 'books'
+            ? '按书档案'
+            : this.page === 'manager'
+              ? '卡片管理器'
+              : '设置';
     setMarkup(container, `<div class="bzrv-q-view bzrv-page">
       ${panelHeadHtml({ activePage: this.page ?? undefined, title })}
       <div class="bzrv-page-body" data-page-body></div>
@@ -594,6 +592,10 @@ export class UIManager {
   private async fillPage(body: HTMLElement, items: ReviewItem[]): Promise<void> {
     if (this.page === 'arch') {
       this.fillArchPage(body, items);
+      return;
+    }
+    if (this.page === 'trash') {
+      this.fillTrashPage(body);
       return;
     }
     if (this.page === 'books') {
@@ -799,6 +801,8 @@ export class UIManager {
     };
     const remove = async (it: ReviewItem): Promise<void> => {
       if (!this.dataManager) return;
+      /* 二次确认（2026-11-19）：管理器一行只有一颗垃圾桶图标，误触的代价是「条目没了」 */
+      if (!(await confirmRemovePlan({ name: it.name }))) return;
       try {
         /* 卡片走 plan-ops.removeCard（连题库一起清），笔记走 removeNote；两者都进回收站 */
         if (it.kind === 'card') await planRemoveCard(this.dataManager, it.filePath);
@@ -956,59 +960,53 @@ export class UIManager {
     body.appendChild(wrap);
   }
 
-  /** 回收站视图（与队列共用内容区；条目来自 refreshPanel 刷新的缓存） */
-  private renderTrash(container: HTMLElement): void {
-    setMarkup(container, trashViewHtml(this.trashEntries));
+  /**
+   * 「已移出」内置页（2026-11-19）：移出计划的笔记与划线卡都收在这里，逐条捞回。
+   *
+   * 条目来自 refreshPanel 一起刷新的缓存（`trashEntries`），本页只负责画与绑。
+   * 以前这是队列底部的一个临时视图，只在真删过东西时出现，用户找不到入口；
+   * 现在头行有一颗常驻图标，页面本身也不写大标题。
+   */
+  private fillTrashPage(body: HTMLElement): void {
+    const wrap = createDiv();
+    wrap.className = 'bzrv-trash-page';
+    setMarkup(wrap, trashPageHtml(this.trashEntries));
     if (!this.trashEntries.length) {
-      const host = container.querySelector('[data-empty-host]');
+      const host = wrap.querySelector('[data-empty-host]');
       if (host) {
         host.appendChild(
           uiEmpty({
-            icon: 'trash-2',
-            title: '回收站是空的',
-            desc: '移出复习计划的条目会先来这里，30 天内都能恢复',
+            icon: 'archive-restore',
+            title: '还没有移出过条目',
+            desc: '从计划里移走的笔记和划线会先来这里，30 天内都能恢复',
           })
         );
       }
     }
-    mountIcons(container);
-    container.querySelector('[data-act="close"]')?.addEventListener('click', () => this.hideMain());
-    const back = (): void => {
-      this.showTrash = false;
-      void this.refreshPanel();
-    };
-    container.querySelectorAll('[data-act="trash-back"]').forEach((el) => el.addEventListener('click', back));
-    container.querySelector('[data-act="trash-clear"]')?.addEventListener('click', () => void this.clearTrashFlow());
-    container.querySelectorAll<HTMLElement>('[data-restore]').forEach((btn) => {
+    body.appendChild(wrap);
+    mountIcons(wrap);
+    wrap.querySelector('[data-act="trash-clear"]')?.addEventListener('click', () => void this.clearTrashFlow());
+    wrap.querySelectorAll<HTMLElement>('[data-restore]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        /* 卡片本身没绑点击（回收站里点一下不该发生任何事），这里 stopPropagation
-           只是防以后给行加动作时误触 */
+        /* 卡片本身没绑点击（这一页点一下不该发生任何事），stopPropagation 只防误触 */
         e.stopPropagation();
         void this.restoreTrashKey(btn.dataset.restore || '');
       });
     });
-    container.querySelector('[data-act="trash-restore-all"]')?.addEventListener('click', () => void this.restoreAllTrash());
+    wrap.querySelector('[data-act="trash-restore-all"]')?.addEventListener('click', () => void this.restoreAllTrash());
   }
 
-  /** 批量移出（批 4b）：先进回收站，误删可捞回来 */
+  /** 批量移出（批 4b）：先二次确认，确认后先进回收站，误删可捞回来 */
   private async batchRemove(): Promise<void> {
     const keys = [...this.selected];
     if (!keys.length) {
       notice('先点几张卡片选中', 'warning');
       return;
     }
-    const v = await openFlowDialog({
-      title: `移出 ${keys.length} 条？`,
-      message: '移出后先进回收站，30 天内都能恢复，排期与复习历史一并保留。',
-      actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '移出', value: 'ok', cta: true, danger: true },
-      ],
-    });
-    if (v !== 'ok') return;
+    if (!(await confirmRemovePlan({ count: keys.length }))) return;
     try {
       const n = await this.dataManager.removeItems(keys);
-      notice(`已移出 ${n} 条，可在回收站恢复`, 'success');
+      notice(n ? `已移出 ${n} 条，可在「已移出」里恢复` : '没找到这些条目', n ? 'success' : 'warning');
       this.selected.clear();
       this.selectMode = false;
     } catch (e) {
@@ -1017,13 +1015,14 @@ export class UIManager {
     await this.refreshPanel();
   }
 
-  /** 批量顺延（批 4b）：出差一周回来再说的场景 */
+  /** 批量顺延（批 4b）：出差一周回来再说的场景；顺延也先问一句 */
   private async batchPostpone(): Promise<void> {
     const keys = [...this.selected];
     if (!keys.length) {
       notice('先点几张卡片选中', 'warning');
       return;
     }
+    if (!(await confirmPostponePlan(keys.length, 7))) return;
     try {
       const n = await this.dataManager.postponeItems(keys, 7);
       notice(`已把 ${n} 条顺延 7 天`, 'success');
@@ -1174,13 +1173,16 @@ export class UIManager {
    * 主队列与内置页共用 panelHeadHtml，所以绑定也共用这一份，不再各写一套。
    */
   private bindPanelHead(container: HTMLElement): void {
-    const go = (page: 'settings' | 'stats' | 'arch'): void => {
+    const go = (page: 'settings' | 'stats' | 'arch' | 'trash'): void => {
       this.page = this.page === page || this.page ? null : page;
       void this.refreshPanel();
     };
     container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
     container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
     container.querySelector('[data-act="arch"]')?.addEventListener('click', () => go('arch'));
+    /* trash 有两处入口（头行那颗图标 + 底栏「已移出 N 条」）：querySelector 只会绑到
+       头行那颗，底栏那颗就成了纯装饰。这里两处都绑同一个动作。 */
+    container.querySelectorAll('[data-act="trash"]').forEach((el) => el.addEventListener('click', () => go('trash')));
     container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
       if (this.page) {
         this.page = null;
@@ -1208,12 +1210,8 @@ export class UIManager {
         void this.beginRound();
       });
     }
-    // 回收站入口（只在有内容时渲染）：与归档互斥，进回收站先把归档关掉
-    container.querySelector('[data-act="trash"]')?.addEventListener('click', () => {
-      this.showTrash = true;
-      this.showArchived = false;
-      void this.refreshPanel();
-    });
+    /* 底部「已移出 N 条」入口由 bindPanelHead 统一绑（同一个 data-act="trash"，
+       两边各绑一次会让一次点击跑两遍 go()，等于点了没反应）。 */
     // 累计/连续 chip 现在是纯展示：记忆分析入口已摘（analysis/ 代码保留，未删）。
     // item 10：空态两条路（把当前笔记加入复习 / 监听文件夹配置说明）
     container.querySelector('[data-act="add-current"]')?.addEventListener('click', () => void this.addCurrentNote());
@@ -1721,9 +1719,10 @@ export class UIManager {
         label: '移出复习计划',
         kind: 'danger',
         onClick: () => {
-          // E1/C1（效率整改 5 口径）：撤销链已在位（notifyUndo + restoreItem 原样插回），
-          // 删除免确认直达——不再弹 openFlowDialog 双保险
+          /* 2026-11-19 用户口径：先二次确认（此处不再走「免确认直达」）。
+             确认后撤销链照旧（notifyUndo + restoreItem 原样插回）——两道都在，不互相替代。 */
           void (async () => {
+            if (!(await confirmRemovePlan({ name: item.name }))) return;
             try {
               /* 卡片走 plan-ops.removeCard：顺手把题库一起清掉，不然反复加/移同一段
                  划线，旧题会一直堆在 review-quiz.json 里 */
