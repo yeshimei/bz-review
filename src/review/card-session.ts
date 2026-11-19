@@ -966,7 +966,9 @@ export class CardSession {
   // ==================== 听卡片 / 跳回原文 ====================
 
   private speakHtml(): string {
-    return speakButtonHtml(canUseCapability('speech'), this.speakState());
+    /* 朗读听卡 2026-11-20 暂不展示：入口撤掉，speak()/ttsConfig()/纯函数与接线
+       全部保留（用户觉得实现有问题，后续再放回来，届时这里改回一行即可）。 */
+    return '';
   }
 
   /** 「回到原文」「听这张」并成一行：复习区只留回忆本身，改卡去卡片管理器。 */
