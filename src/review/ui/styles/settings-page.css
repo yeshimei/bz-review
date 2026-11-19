@@ -163,6 +163,10 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   font-size: var(--bzsp-fs-mini);
   min-height: 0;
 }
+/* 两列布局把 .setting-item 显式改成 flex，必须给隐藏行留一条更具体的规则，
+   否则 visibleWhen 只挂类不隐藏（没装 bz 时「从 bz 导入」会露出来）。 */
+.bzrv-settings-content .bzs-setgrp .setting-item.bzrv-setting-hidden,
+.bzrv-settings-content .bzs-setgrp.bzrv-setting-hidden { display: none; }
 .bzrv-settings-content .bzs-setgrp .setting-item:first-child { border-top: 0; }
 .bzrv-settings-content .bzs-setgrp .setting-item:hover { background: none; }
 .bzrv-settings-content .bzs-setgrp .setting-item-info { min-width: 86px; flex: 0 1 auto; max-width: 44%; gap: 3px; }
