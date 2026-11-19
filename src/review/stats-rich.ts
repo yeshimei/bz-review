@@ -412,7 +412,17 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
     ],
     top,
     avgInterval: intervalN ? intervalSum / intervalN : null,
-    badges: buildBadges({ reviews, days, streak, bestStreak, notes: notes + cards, strengths: strengths.length, passRate, bestDay }),
+    badges: buildBadges({
+      reviews,
+      days,
+      streak,
+      bestStreak,
+      notes: notes + cards,
+      strengths: strengths.length,
+      veryStable: strengths.filter((s) => s.s >= 100).length,
+      passRate,
+      bestDay,
+    }),
   };
 }
 
@@ -430,6 +440,8 @@ interface BadgeInput {
   bestStreak: number;
   notes: number;
   strengths: number;
+  /** S ≥ 100 天的条目数 */
+  veryStable: number;
   passRate: number;
   bestDay: DayCount | null;
 }
@@ -459,6 +471,7 @@ function buildBadges(b: BadgeInput): BadgeRow[] {
     mk('notes100', '复习 100 篇', b.notes, 100),
     mk('day50', '单日 50 次', peak, 50),
     mk('s30', '稳定度 30 天以上的条目 10 条', b.strengths, 10),
+    mk('s100', '记忆常青：S ≥ 100 天的条目 5 条', b.veryStable, 5),
     mk('pass80', '一次通过率 80%（≥50 次）', b.reviews >= 50 ? Math.round(b.passRate * 100) : 0, 80),
   ];
 }

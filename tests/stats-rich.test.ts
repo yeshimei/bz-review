@@ -178,4 +178,15 @@ describe('computeRichStats · 成就', () => {
     const s = computeRichStats([item({ history: [{ t: at(19), rating: 'easy' }] })], { now: NOW });
     expect(s.badges.find((x) => x.id === 'pass80')?.got).toBe(false);
   });
+
+  it('记忆常青徽章：S ≥ 100 天的条目满 5 条才解锁', () => {
+    const s0 = computeRichStats([item({ id: 'a', stability: 99 })], { now: NOW });
+    expect(s0.badges.find((x) => x.id === 's100')).toMatchObject({ got: false, cur: 0, goal: 5 });
+    const s1 = computeRichStats(
+      Array.from({ length: 5 }, (_, i) => item({ id: `a${i}`, stability: 100 + i })),
+      { now: NOW },
+    );
+    expect(s1.badges.find((x) => x.id === 's100')?.got).toBe(true);
+    expect(s1.badges.length).toBe(13);
+  });
 });

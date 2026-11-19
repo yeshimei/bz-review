@@ -6044,6 +6044,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-stats-body .hc.l2:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-accent) 46%, transparent); }
 .bzrv-stats-body .hc.l3:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-accent) 70%, transparent); }
 .bzrv-stats-body .hc.l4:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); }
+/* 成就单列页：顶部一句说明，徽章网格沿用 .badges */
+.bzrv-stats-body .achv-head:is([data-bzrv], [data-bzrv] *) { padding: 14px 16px 2px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); line-height: 1.5; }
+.bzrv-stats-body .achv-head b:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); font-variant-numeric: tabular-nums; }
 .bzrv-stats-body .badges:is([data-bzrv], [data-bzrv] *) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .bzrv-stats-body .badge:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 4px; padding: 9px 10px; border: 1px dashed var(--bzrv-border); border-radius: 9px; }
 .bzrv-stats-body .badge.is-got:is([data-bzrv], [data-bzrv] *) { border-style: solid; border-color: var(--bzrv-accent-line); background: var(--bzrv-accent-soft); }

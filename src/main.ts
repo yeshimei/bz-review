@@ -296,6 +296,16 @@ export default class ReviewPlugin extends Plugin {
       }),
     });
     this.addCommand({
+      id: 'review-achievements',
+      name: t('成就', 'Achievements'),
+      callback: () => {
+        void (async () => {
+          const { uiManager } = await import('./review/index');
+          await uiManager?.openAchievements();
+        })();
+      },
+    });
+    this.addCommand({
       id: 'review-export-stats',
       name: t('导出统计（CSV）', 'Export stats (CSV)'),
       callback: withReview(async (app) => {
