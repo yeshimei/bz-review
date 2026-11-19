@@ -326,9 +326,12 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   background: var(--bzsp-t3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
   /* 宿主原生 .checkbox-container::after 用 transform: translateX(...) 推旋钮，
-     这里改用 left 定位；若不清零，开态 left:19px 会再叠加宿主的 translateX，
-     把圆点顶出胶囊右缘（2026-11-20 真机反馈）。两条 ::after 都要清零。 */
+     还带一条 margin-top:2px。这里改用 left 定位：translateX 不清会把圆点顶出
+     右缘，margin 不清则在 21px 胶囊里把圆点往下压 2px（上 5 / 下 1），
+     真机放大截图里看着贴底、显大。两条都要清零（2026-11-20 真机反馈）。 */
   transform: none;
+  margin: 0;
+  right: auto;
   transition: left .16s var(--bzsp-ease), background .16s var(--bzsp-ease);
 }
 .bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled {
