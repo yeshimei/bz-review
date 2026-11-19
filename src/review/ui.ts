@@ -604,18 +604,8 @@ export class UIManager {
     holder.appendChild(fc);
     const row = createDiv();
     row.className = 'bzrv-btn-row';
-    const btn = createEl('button');
-    btn.className = 'bzrv-btn';
-    btn.textContent = '看记忆分析';
-    btn.addEventListener('click', () => {
-      void (async () => {
-        const { openReviewAnalysis } = await import('./analysis/index');
-        await openReviewAnalysis(this.app);
-      })();
-    });
-    row.appendChild(btn);
-    /* 数据页顺带放两个高级档入口：可用就进页，不可用给解锁按钮并弹能力位文案。
-       门控只锁入口与内容，基础版的统计 / 负荷 / 分析一切照旧。 */
+    /* 数据页放两个入口：可用就进页，不可用给解锁按钮并弹能力位文案。
+       记忆分析（逐幕报幕）的入口已摘，analysis/ 代码保留。 */
     const bookCap = canUseCapability('bookReport');
     const bookBtn = createEl('button');
     bookBtn.className = 'bzrv-btn';
@@ -1184,14 +1174,7 @@ export class UIManager {
       this.showArchived = false;
       void this.refreshPanel();
     });
-    // 累计/连续 chip = 直开记忆分析特刊（2026-09-23 拍板：去掉中间统计弹窗与「记忆分析」
-    // 入口字样；analysis/ 动态 import 不拖主包，空库/无动画宿主在层内回落经典统计）
-    container.querySelector('[data-act="stats"]')?.addEventListener('click', () => {
-      void (async () => {
-        const { openReviewAnalysis } = await import('./analysis/index');
-        await openReviewAnalysis(this.app);
-      })();
-    });
+    // 累计/连续 chip 现在是纯展示：记忆分析入口已摘（analysis/ 代码保留，未删）。
     // item 10：空态两条路（把当前笔记加入复习 / 监听文件夹配置说明）
     container.querySelector('[data-act="add-current"]')?.addEventListener('click', () => void this.addCurrentNote());
     container.querySelector('[data-act="watch-help"]')?.addEventListener('click', () => void this.showWatchHelp());

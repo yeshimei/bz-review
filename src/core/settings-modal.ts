@@ -101,24 +101,9 @@ export function refreshSettingsGroupCounts(content: HTMLElement): void {
   });
 }
 
-/**
- * 移动端两行式标注（ticket 128，ADR-0061）：控件区（.setting-item-control）含 ≥2 个子元素的
- * 设置行挂 .bzrv-setting-split 类（如「搜索框 + 下拉」等组合控件），纯 CSS 在窄视口拆成两行
- * （名称+描述一行、控件区一行并允许内部折行）；单控件行（开关/下拉/单按钮）不挂类保持原生。
- * ticket 133：路径设置行（.bzrv-path-picker-setting-row）直接跳过——空态控件区为「按钮 + chips 容器」
- * 两个子元素，按计数会被误标两行式；其移动端单行由兜底类 CSS 保证（src/core/styles.css）。
- * 实现口径：不依赖 `:has()`（顾虑 Obsidian 移动端 WebView 兼容性），由 JS 在 build 后遍历挂类
- * （ADRs 对票二选一中选了挂类方案）。调用点：域设置弹窗 build 后（本模块）、主设置页 display
- * 末尾（main.ts BzSettingTab）、动态重渲染处按需调用（如第二大脑自动双链明细）。
- * 幂等：可对同一容器重复调用。类名仅 bz JS 挂载，原生非 bz 设置行不落类，天然不误伤。
- */
-export function markSettingSplitRows(container: HTMLElement): void {
-  container.querySelectorAll('.setting-item').forEach((el) => {
-    if ((el as HTMLElement).classList.contains('bzrv-path-picker-setting-row')) return;
-    const ctl = (el as HTMLElement).querySelector('.setting-item-control');
-    (el as HTMLElement).classList.toggle('bzrv-setting-split', !!ctl && ctl.children.length >= 2);
-  });
-}
+/* 移动端两行式标注移到 core/settings-split.ts（纯 DOM、可单测），此处再导出保旧 import 路径。
+   调用点不变：域设置弹窗 build 后（本模块）、主设置页 display 末尾、动态重渲染处按需调用。 */
+export { markSettingSplitRows } from './settings-split';
 
 let currentModal: { mask: HTMLElement; popup: HTMLElement; dispose: () => void; onClose?: () => void } | null = null;
 

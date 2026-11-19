@@ -367,7 +367,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         ${archItem}
         ${trashItem ? `<i class="sep"></i>${trashItem}` : ''}
         <i class="sep"></i>
-        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="stats"><span class="bzrv-sr-only">逐幕回放全馆记忆</span>
+        <span class="bzrv-q-fitem">
           ${iconSpan('flame', 'bzrv-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
         </span>
         ${savedItem}
