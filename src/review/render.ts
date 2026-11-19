@@ -393,10 +393,17 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         ${iconSpan('archive-restore', 'bzrv-q-ic')}<span class="lbl">已移出 <b>${ctx.trashCount}</b> 条</span>
       </span>`
     : '';
+  /* 成就单列一页（2026-11-20）：不放进统计页，也不占头行第 6 颗图标——
+     头行四颗要与 Reader 嵌入的动作栏一一对齐，多一颗切页就会跳。 */
+  const achvItem = `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="achv"><span class="bzrv-sr-only">成就徽章，单独成页</span>
+      ${iconSpan('trophy', 'bzrv-q-ic')}<span class="lbl">成就</span>
+    </span>`;
   const footer = `
       <div class="bzrv-q-footer">
         ${archItem}
         ${trashItem ? `<i class="sep"></i>${trashItem}` : ''}
+        <i class="sep"></i>
+        ${achvItem}
         <i class="sep"></i>
         <span class="bzrv-q-fitem">
           ${iconSpan('flame', 'bzrv-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
