@@ -289,7 +289,7 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
 function cardsOf(items: ReviewItem[], ctx: QueueViewCtx): string {
   // 呈报#19-R13：列内空态统一 uiEmpty 小图标口径（emptyHtmlStr 与 core uiEmpty 同 markup 单源，
   // 渲染后由 ui.renderEntries 的 mountIcons 兑现 inbox 图标；原纯文本 .bzrv-q-hint 第三形制退役）
-  if (!items.length) return emptyHtmlStr('inbox', '没有条目');
+  if (!items.length) return emptyHtmlStr('inbox', '这一档暂时没有');
   return items.map((it) => cardHtml(it, ctx)).join('');
 }
 
@@ -326,12 +326,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   if (!items.length) {
     /* 一条都没有的时候说「今日已清空」是骗人的——第一次装、刚清空计划都落在这里，
        用户会以为自己今天已经复习完了。这里只说事实 + 下一步能做什么。 */
-    const strip = `
-      <div class="bzrv-q-strip">
-        <span class="bzrv-q-strip-dot muted"></span>
-        <strong>还没有复习条目</strong>
-        <span class="bzrv-q-strip-txt">加一篇笔记或一条划线，这里就有东西了</span>
-      </div>`;
+    const strip = '';
     /* 空计划 + 已移出里有东西 = 刚把最后几条删掉。这时候不给入口，用户就只剩
        「去设置里翻」一条路——把入口留在空态下面。 */
     const emptyFooter =
@@ -366,8 +361,8 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : !hasOverdue
         ? `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot ok"></span>
-        <strong>暂无逾期</strong>
-        <span class="bzrv-q-strip-txt">有逾期才能开始本轮，今天到期的 ${col.today.length} 条先记着</span>
+        <strong>今天没有到期复习</strong>
+        <span class="bzrv-q-strip-txt">本轮只收逾期条目，今天的 ${col.today.length} 条到明天逾期后会自动进来</span>
       </div>`
         : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
@@ -479,7 +474,7 @@ export interface BooksViewCtx {
 export function booksViewHtml(summaries: readonly BookSummary[], ctx: BooksViewCtx = {}): string {
   const day = new Date(ctx.now ?? Date.now()).toISOString().slice(0, 10);
   if (!summaries.length) {
-    return `<div class="bzrv-book-view"><div class="bzrv-book-empty">还没有复习数据：加一篇笔记或一条划线，这里就会按书汇总。</div></div>`;
+    return `<div class="bzrv-book-view"><div class="bzrv-book-empty">还没有可汇总的复习条目。把笔记或划线加入计划后，这里会按书和文件夹显示卡片数、留存率、最容易忘的点；可回复习页添加。</div></div>`;
   }
   const collator = new Intl.Collator('zh-CN');
   const sorted = summaries.slice().sort(
@@ -551,10 +546,10 @@ export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCt
     </div>`;
   const hint = `<div class="bzrv-mgr-hint">挂起 / 埋藏只影响进不进本轮，排期不变；移出后进回收站，可以撤销。</div>`;
   if (!items.length) {
-    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">还没有卡片或笔记，先加入复习条目再来管理。</div></div>`;
+    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">还没有卡片或笔记。先看视频教程了解怎么把内容加进复习计划，再回来管理。</div><div class="bzrv-btn-row bzrv-btn-row--center"><button class="bzrv-btn bzrv-btn--primary" data-act="mgr-go-add">去添加条目</button></div></div>`;
   }
   if (!shown.length) {
-    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">没有符合筛选的条目，换个条件试试。</div></div>`;
+    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">当前筛选没有匹配到条目，清除后看全部。</div><div class="bzrv-btn-row bzrv-btn-row--center"><button class="bzrv-btn bzrv-btn--ghost" data-act="mgr-filter-clear">清除筛选</button></div></div>`;
   }
   const rows = shown
     .map((it) => {
@@ -820,10 +815,10 @@ export function sprintSummaryHtml(p: { total: number; passed: number; failed: nu
   const none = p.total === 0;
   return `
       <div class="bzrv-summary">
-        <div class="bzrv-summary-title">${none ? '这一轮没有做成任何一篇' : '本轮复习完成'}</div>
+        <div class="bzrv-summary-title">${none ? '这一轮没出成题' : '本轮复习完成'}</div>
         ${
           none
-            ? '<div class="bzrv-summary-stats"><div class="st"><b>0</b><span>篇（都没出成题）</span></div></div>'
+            ? '<div class="bzrv-summary-stats"><div class="st"><b>0</b><span>篇（AI 没配好或笔记太短）</span></div><div class="bzrv-summary-hint">检查 AI 设置后可再来一轮</div></div>'
             : `<div class="bzrv-summary-stats">
           <div class="st"><b>${p.total}</b><span>复习篇数</span></div>
           <div class="st"><b>${p.passed}</b><span>通过</span></div>
@@ -904,7 +899,7 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
           ? ''
           : ctx.bankCount > 0
             ? `当前范围现有 <b>${ctx.bankCount}</b> 题`
-            : '当前范围还没有题目，开始后会自动出题';
+            : '当前范围还没有题目，开始后会自动出题（需先配置 AI）';
   return `
     <div class="bzrv-qp-view">
       <div class="bzrv-panel-head">

@@ -67,7 +67,7 @@ describe('按书档案视图', () => {
 
   it('空库给空态文案，不渲染只有表头的空表', () => {
     const html = booksViewHtml([], { now: NOW.getTime() });
-    expect(html).toContain('还没有复习数据');
+    expect(html).toContain('还没有可汇总的复习条目');
     expect(html).not.toContain('bzrv-book-group');
   });
 });
@@ -99,7 +99,7 @@ describe('卡片管理器视图', () => {
     expect(html).toContain('已挂起');
     expect(html).toContain('is-suspended');
     expect(managerViewHtml([], { now: NOW.getTime() })).toContain('还没有卡片或笔记');
-    expect(managerViewHtml(items, { now: NOW.getTime(), filter: { query: '不存在' } })).toContain('没有符合筛选');
+    expect(managerViewHtml(items, { now: NOW.getTime(), filter: { query: '不存在' } })).toContain('当前筛选没有匹配到条目');
   });
 });
 
