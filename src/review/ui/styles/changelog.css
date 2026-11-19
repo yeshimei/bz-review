@@ -13,6 +13,20 @@
    .bzs- 开头的选择器会原样保留（见 esbuild.config.mjs 的 scopeShellStyles）。
    ========================================================== */
 
+/* 读屏文本：reader 的壳层 common.css 里有，这里弹窗挂 body 不吃那份，
+   自己补一份（作用域锚点由构建期保证，只命中本插件的 DOM）。 */
+[data-bzrv] .bzs-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* 局部令牌 + 基础字体（弹窗不在 .bzs-shell 里，这一层自己给） */
 .bzs-chgn,
 .bzs-chgn-m {

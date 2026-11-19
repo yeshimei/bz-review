@@ -262,9 +262,9 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
 }
 
-/* 开关：38×21 胶囊 */
-.bzrv-settings-content .bzs-setgrp input[type="checkbox"] {
-  appearance: none;
+/* 开关：38×21 胶囊（Obsidian 的 .checkbox-container 自带一颗 ::after 旋钮，
+   这里整颗接管，别在 input 上再画一颗，否则真机会出现上下两枚圆点） */
+.bzrv-settings-content .bzs-setgrp .checkbox-container {
   width: 38px;
   height: 21px;
   border-radius: var(--bzsp-r-pill);
@@ -275,7 +275,7 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   cursor: pointer;
   margin: 0;
 }
-.bzrv-settings-content .bzs-setgrp input[type="checkbox"]::after {
+.bzrv-settings-content .bzs-setgrp .checkbox-container::after {
   content: "";
   position: absolute;
   left: 2px;
@@ -284,15 +284,24 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   height: 15px;
   border-radius: 50%;
   background: var(--bzsp-t3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
   transition: left .16s var(--bzsp-ease), background .16s var(--bzsp-ease);
 }
-.bzrv-settings-content .bzs-setgrp input[type="checkbox"]:checked {
+.bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled {
   background: var(--bzsp-accent);
   border-color: var(--bzsp-accent);
 }
-.bzrv-settings-content .bzs-setgrp input[type="checkbox"]:checked::after {
+.bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled::after {
   left: 19px;
   background: #fff;
+}
+.bzrv-settings-content .bzs-setgrp .checkbox-container input {
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 /* ── 关于栏（品牌化，通栏） ── */
