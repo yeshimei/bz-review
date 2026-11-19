@@ -135,9 +135,9 @@ export function ownAiConfigured(s: AISettingsLike): boolean {
  * 所以按「manifest.dir 是否带斜杠」自动判：带斜杠直接用，只有裸目录名才补前缀。
  */
 export function readerDataPath(configDir: string, pluginDir: string): string {
-  const cd = configDir.replace(/^\/+|\/+$/g, '') || '.obsidian';
+  const cd = configDir.replace(/^\/+|\/+$/g, '');
   const d = pluginDir.replace(/^[/\\]+|[/\\]+$/g, '');
-  const full = d.includes('/') || d.includes('\\') ? d : `${cd}/plugins/${d}`;
+  const full = d.includes('/') || d.includes('\\') ? d : `${cd ? `${cd}/` : ''}plugins/${d}`;
   return `${full.replace(/\\/g, '/')}/data.json`;
 }
 
