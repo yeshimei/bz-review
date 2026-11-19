@@ -174,6 +174,26 @@ describe('三路合并（带基准）', () => {
     expect(r.conflicts).toEqual([]);
     expect(r.items).toHaveLength(2);
   });
+
+  /* 2026-11-19 真机事故（截图）：每移出一条就弹「这份复习数据在别的设备上也被改过
+     （1 条）」并留一份 .bak。移出 = 本机删条目 + 刚写墓碑 + 立刻落盘，盘上那份副本
+     按时间看确实「比墓碑旧」，只按墓碑判断就等于把自家删除当成远端复活。 */
+  it('本机这次自己移出的条目：不算远端复活，不弹冲突提示', () => {
+    const disk = [{ ...A, updatedAt: '2026-11-15T09:00:00.000Z' }];
+    const base = fingerprintsOf(disk);
+    const tombstones = new Map([['a', new Date('2026-11-15T10:00:00.000Z').getTime()]]);
+    const r = mergeReviewItems([], disk, { ...opts(base), tombstones });
+    expect(r.revived).toEqual([]);
+    expect(r.items).toEqual([]);
+  });
+
+  it('读盘之后才冒出来的远端副本（基准里没有）：仍然报「被墓碑挡下」', () => {
+    const base = fingerprintsOf([]);
+    const remote = [{ ...A, updatedAt: '2026-11-15T09:00:00.000Z' }];
+    const tombstones = new Map([['a', new Date('2026-11-15T10:00:00.000Z').getTime()]]);
+    const r = mergeReviewItems([], remote, { ...opts(base), tombstones });
+    expect(r.revived).toEqual(['a']);
+  });
 });
 
 describe('卡片管理器字段的持久化', () => {

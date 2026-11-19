@@ -177,7 +177,7 @@ export interface MergeResult {
   items: ReviewRecord[];
   /** 两边都改过、只能留一份的条目（调用方留档 + 提示） */
   conflicts: string[];
-  /** 被墓碑挡下的远端条目（同样是冲突信号） */
+  /** 被墓碑挡下的远端条目（同样是冲突信号；本机这次自己删的不算，见 selfDeleted） */
   revived: string[];
 }
 
@@ -225,6 +225,19 @@ export function mergeReviewItems(
     return t !== undefined && updatedMs(item) <= t;
   };
 
+  /**
+   * 这一条是不是**本次**本机自己删掉的。
+   *
+   * 移出计划的动作序是：读盘 → 删条目 → 写回收站墓碑 → 写回。写回时盘上还留着那条，
+   * 本机已经不是它了，墓碑又是刚刚盖的——只按「盘上有、本机没有、墓碑更新」判断，
+   * 同一台机器的删除会被判成「别的设备想复活它」，每移出一条就弹一次冲突警告、
+   * 留一份 .bak（2026-11-19 真机事故，截图里的「在别的设备上也被改过（1 条）」）。
+   * 基准（`fingerprintsOf` 那次读盘的结果，见 MergeOptions.base）里本来就有这条，
+   * 说明它是在这一个事务里被本机删掉的，不算远端冲突；基准里没有、盘上却冒出来的
+   * 那份副本才真的是远端动静。
+   */
+  const selfDeleted = (key: string): boolean => !!opts.base?.has(key);
+
   const keys: string[] = [];
   for (const k of localMap.keys()) keys.push(k);
   for (const k of remoteMap.keys()) if (!localMap.has(k)) keys.push(k);
@@ -234,7 +247,7 @@ export function mergeReviewItems(
     const r = remoteMap.get(key);
     const buriedL = l ? isBuried(key, l) : false;
     const buriedR = r ? isBuried(key, r) : false;
-    if (r && buriedR && !l) revived.push(key);
+    if (r && buriedR && !l && !selfDeleted(key)) revived.push(key);
     if (!l && !r) continue;
     if (l && buriedL && !r) continue;
     if (!l) {
