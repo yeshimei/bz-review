@@ -418,7 +418,7 @@ export default class ReviewPlugin extends Plugin {
           reviewApp.ensure(app);
           const items = await reviewApp.dataManager!.loadItems();
           const path = await exportBookReportMarkdown(app, items);
-          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，没有可导出的按书报告。', path ? 'success' : 'warning');
+          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，先加入条目并完成一次复习。', path ? 'success' : 'warning');
         } catch (e) {
           const { notifyActionError } = await import('./core/notice');
           notifyActionError(e, '导出按书报告');

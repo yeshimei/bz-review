@@ -30,7 +30,7 @@ describe('开始本轮复习门控：只有有逾期才给按钮', () => {
     const items = [mk('today', { isOverdue: false, nextReviewDate: new Date(2026, 10, 20, 9, 0).toISOString() })] as any[];
     const html = queueViewHtml(items, { now });
     expect(html).not.toContain('data-act="begin"');
-    expect(html).toContain('暂无逾期');
+    expect(html).toContain('今天没有到期复习');
   });
 
   it('有一条逾期 → 出「开始本轮」按钮', () => {

@@ -26,9 +26,9 @@ describe('主界面打开方式（reviewPanelMode）', () => {
 });
 
 describe('队列空态文案', () => {
-  it('一条都没有时说「还没有复习条目」，不说「今日已清空」', () => {
+  it('一条都没有时只留一处空态宿主，不说「今日已清空」', () => {
     const html = queueViewHtml([]);
-    expect(html).toContain('还没有复习条目');
+    expect(html).toContain('data-empty-host');
     expect(html).not.toContain('今日已清空');
   });
 

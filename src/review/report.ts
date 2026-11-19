@@ -63,7 +63,7 @@ export function cardsToMarkdown(items: readonly ReviewItem[], now: Date = new Da
 /** 负荷预测的纯文字版（弹窗与导出共用） */
 export function forecastToText(points: readonly LoadPoint[], limit = 14): string {
   const head = points.slice(0, Math.max(1, limit)).filter((p) => p.count > 0);
-  if (!head.length) return '未来这些天没有安排复习。';
+  if (!head.length) return '未来这些天没有安排复习。可以在「复习节奏」里调间隔缩放，或用「休假到」压后。';
   const peak = head.reduce((a, b) => (b.count > a.count ? b : a));
   const total = points.reduce((s, p) => s + p.count, 0);
   return [

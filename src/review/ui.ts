@@ -38,6 +38,7 @@ import { getSettings, tryGetSettings, panelSizePersist } from '../core/settings-
 import { createAI } from '../core/ai';
 import { isMobileEnv } from '../core/mobile';
 import { uiEmpty, mountIcons, uiResizable } from '../core/ui';
+import { openExternalUrl, VIDEO_TUTORIAL_URL } from './ui/links-bridge';
 import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
@@ -523,35 +524,37 @@ export class UIManager {
       /* 有数据但筛没了：说清楚是筛掉的，别让用户以为计划空了 */
       const host = container.querySelector('[data-empty-host]');
       if (host) {
+        const acts = createDiv();
+        acts.className = 'bzrv-btn-row';
+        const clearBtn = createEl('button');
+        clearBtn.className = 'bzrv-btn bzrv-btn--ghost';
+        clearBtn.dataset.act = 'filter-clear';
+        clearBtn.textContent = '清除筛选';
+        acts.appendChild(clearBtn);
         host.appendChild(
           uiEmpty({
             icon: 'list-filter',
             title: '没有符合筛选的条目',
-            desc: `当前条件：${describeFilter(this.filter)}`,
+            desc: `当前条件：${describeFilter(this.filter)}，清除后看全部`,
+            actions: acts,
           })
         );
       }
     } else if (!visible.length) {
-      // item 10：空库两条路引导（组件库 uiEmpty 工厂）
       const host = container.querySelector('[data-empty-host]');
       if (host) {
         const acts = createDiv();
         acts.className = 'bzrv-btn-row';
-        const addBtn = createEl('button');
-        addBtn.className = 'bzrv-btn bzrv-btn--primary';
-        addBtn.dataset.act = 'add-current';
-        addBtn.textContent = '把当前笔记加入复习';
-        const helpBtn = createEl('button');
-        helpBtn.className = 'bzrv-btn bzrv-btn--ghost';
-        helpBtn.dataset.act = 'watch-help';
-        helpBtn.textContent = '如何配置监听文件夹';
-        acts.appendChild(addBtn);
-        acts.appendChild(helpBtn);
+        const videoBtn = createEl('button');
+        videoBtn.className = 'bzrv-btn bzrv-btn--primary';
+        videoBtn.dataset.act = 'watch-video';
+        videoBtn.textContent = '看视频教程';
+        acts.appendChild(videoBtn);
         host.appendChild(
           uiEmpty({
             icon: 'inbox',
             title: '复习计划还是空的',
-            desc: '添加监听文件夹后新笔记自动加入',
+            desc: 'bz review 把制卡、整卡交给 AI，让你专注阅读与复习。内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。',
             actions: acts,
           })
         );
@@ -736,6 +739,16 @@ export class UIManager {
     exp.textContent = '导出按书报告（Markdown）';
     exp.addEventListener('click', () => void this.exportBookReport(items));
     row.appendChild(exp);
+    if (!items.length) {
+      const go = createEl('button');
+      go.className = 'bzrv-btn bzrv-btn--primary';
+      go.textContent = '去添加条目';
+      go.addEventListener('click', () => {
+        this.page = null;
+        void this.refreshPanel();
+      });
+      row.appendChild(go);
+    }
     wrap.appendChild(row);
     body.appendChild(wrap);
   }
@@ -745,7 +758,7 @@ export class UIManager {
     try {
       const { exportBookReportMarkdown } = await import('./export-actions');
       const path = await exportBookReportMarkdown(this.app, items);
-      notice(path ? `按书报告已导出：${path}` : '还没有复习数据，没有可导出的按书报告。', path ? 'success' : 'warning');
+      notice(path ? `按书报告已导出：${path}` : '还没有复习数据，先加入条目并完成一次复习。', path ? 'success' : 'warning');
     } catch (e) {
       notifySaveError(e, '导出按书报告');
     }
@@ -785,6 +798,14 @@ export class UIManager {
 
   /** 管理器事件：搜索防抖 + 三个筛选下拉 + 每行五个动作。 */
   private bindManagerEvents(root: HTMLElement, items: ReviewItem[]): void {
+    root.querySelector('[data-act="mgr-go-add"]')?.addEventListener('click', () => {
+      this.page = null;
+      void this.refreshPanel();
+    });
+    root.querySelector('[data-act="mgr-filter-clear"]')?.addEventListener('click', () => {
+      this.mgrFilter = {};
+      void this.refreshPanel();
+    });
     const rerender = (): void => {
       void this.refreshPanel();
     };
@@ -1010,7 +1031,7 @@ export class UIManager {
           uiEmpty({
             icon: 'archive-restore',
             title: '还没有移出过条目',
-            desc: '从计划里移走的笔记和划线会先来这里，30 天内都能恢复',
+            desc: '从计划里移走的笔记和划线会先来这里，30 天内都能恢复；排期和复习历史不丢',
           })
         );
       }
@@ -1295,9 +1316,8 @@ export class UIManager {
     /* 底部「已移出 N 条」入口由 bindPanelHead 统一绑（同一个 data-act="trash"，
        两边各绑一次会让一次点击跑两遍 go()，等于点了没反应）。 */
     // 累计/连续 chip 现在是纯展示：记忆分析入口已摘（analysis/ 代码保留，未删）。
-    // item 10：空态两条路（把当前笔记加入复习 / 监听文件夹配置说明）
-    container.querySelector('[data-act="add-current"]')?.addEventListener('click', () => void this.addCurrentNote());
-    container.querySelector('[data-act="watch-help"]')?.addEventListener('click', () => void this.showWatchHelp());
+    // 空态：看视频教程占位
+    container.querySelector('[data-act="watch-video"]')?.addEventListener('click', () => openExternalUrl(VIDEO_TUTORIAL_URL));
     // 筛选（批 8：就地展开，不再弹原生弹窗）的图标绑定已并入 bindPanelHead；
     // 下面只管筛选区里的关键字与三个下拉。
     // 筛选区控件：关键字防抖 220ms，三个下拉即时生效（没有「应用」这一步）
@@ -1443,11 +1463,11 @@ export class UIManager {
     }
   }
 
-  /** 配置监听文件夹说明（空库引导动作；设置面板路径指路） */
+  /** 空库引导（保留给可能的调用点）：先看视频教程了解用法 */
   private async showWatchHelp(): Promise<void> {
     await openFlowDialog({
-      title: '配置监听文件夹',
-      message: '打开 设置 → 复习计划 → 监听文件夹，添加文件夹后，其中新建的笔记会自动加入复习计划；已存在的笔记可在添加时选择一并加入。',
+      title: '怎么把内容加进复习计划',
+      message: '先看视频教程，了解制卡、划线与自动收编的用法。',
       actions: [{ label: '知道了', value: 'ok', cta: true }],
     });
   }
