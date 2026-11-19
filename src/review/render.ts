@@ -10,6 +10,7 @@
  */
 import { emptyHtmlStr, esc, iconSpan, stripTitleMarks } from '../core/ui/str';
 import type { ReviewItem } from './data';
+import { TRASH_LIMIT, TRASH_TTL_DAYS, type TrashEntry } from './trash';
 import { applyFilter, deckOf, type ItemFilter } from './deck';
 import { isBuried, isHiddenFromQueue } from './card-manager';
 import type { BookSummary } from './book-summary';
@@ -121,14 +122,16 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 
 // ==================== 三区队列视图 ====================
 
-/** 头行四颗入口图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
- *  不然两处各写一份，迟早出现「一边叫数据、一边叫统计」或顺序漂移。 */
-export const PANEL_HEAD_ACTS = ['filter', 'arch', 'data', 'settings'] as const;
+/** 头行入口图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
+ *  不然两处各写一份，迟早出现「一边叫数据、一边叫统计」或顺序漂移。
+ *  trash（已移出）排在与它同源的 arch（已完成）后面：都是「另一份名单」的入口。 */
+export const PANEL_HEAD_ACTS = ['filter', 'arch', 'trash', 'data', 'settings'] as const;
 export type PanelHeadAct = (typeof PANEL_HEAD_ACTS)[number];
 
 /** data-act → 对应内置页；filter 是就地展开开关，没有「当前页」概念 */
 const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct, string>>> = {
   arch: 'arch',
+  trash: 'trash',
   data: 'stats',
   settings: 'settings',
 };
@@ -147,6 +150,7 @@ export function panelHeadBtnsHtml(activePage?: string | null): string {
   const on = (act: PanelHeadAct): string => (panelActIsOn(act, activePage) ? ' is-on' : '');
   return `<button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
 <button data-act="arch" class="bzrv-icon-btn${on('arch')}"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
+<button data-act="trash" class="bzrv-icon-btn${on('trash')}"><span class="bzrv-sr-only">已移出（从计划里移走的条目，可以找回）</span>${iconSpan('archive-restore', 'bzrv-q-ic')}</button>
 <button data-act="data" class="bzrv-icon-btn${on('data')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
 <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>`;
 }
@@ -311,13 +315,13 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         <strong>还没有复习条目</strong>
         <span class="bzrv-q-strip-txt">加一篇笔记或一条划线，这里就有东西了</span>
       </div>`;
-    /* 空计划 + 回收站里有东西 = 刚把最后几条删掉。这时候不给入口，用户就只剩
-       「去设置里翻」一条路——把回收站入口留在空态下面。 */
+    /* 空计划 + 已移出里有东西 = 刚把最后几条删掉。这时候不给入口，用户就只剩
+       「去设置里翻」一条路——把入口留在空态下面。 */
     const emptyFooter =
       (ctx.trashCount ?? 0) > 0
         ? `<div class="bzrv-q-footer">
-        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash"><span class="bzrv-sr-only">最近删掉的条目，可以捞回来</span>
-          ${iconSpan('trash-2', 'bzrv-q-ic')}<span class="lbl">回收站 <b>${ctx.trashCount}</b> 条</span>
+        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash"><span class="bzrv-sr-only">从计划里移走的条目，可以捞回来</span>
+          ${iconSpan('archive-restore', 'bzrv-q-ic')}<span class="lbl">已移出 <b>${ctx.trashCount}</b> 条</span>
         </span>
       </div>`
         : '';
@@ -382,11 +386,11 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
     : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="batch"><span class="bzrv-sr-only">批量选择</span>
         ${iconSpan('square-check-big', 'bzrv-q-ic')}<span class="lbl">批量选择</span>
       </span>`;
-  /* 回收站入口只在真有东西时出现：没删过东西的人不需要一个永远空着的入口，
+  /* 底栏入口只在真有东西时出现（头行那颗图标常驻）：没删过东西的人不需要多一行 0 条，
      删过的人则必须有地方把东西捞回来（以前只有几秒的 toast 撤销，错过就没了）。 */
   const trashItem = (ctx.trashCount ?? 0) > 0
-    ? `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash"><span class="bzrv-sr-only">最近删掉的条目，可以捞回来</span>
-        ${iconSpan('trash-2', 'bzrv-q-ic')}<span class="lbl">回收站 <b>${ctx.trashCount}</b> 条</span>
+    ? `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash"><span class="bzrv-sr-only">从计划里移走的条目，可以捞回来</span>
+        ${iconSpan('archive-restore', 'bzrv-q-ic')}<span class="lbl">已移出 <b>${ctx.trashCount}</b> 条</span>
       </span>`
     : '';
   const footer = `
@@ -558,7 +562,7 @@ export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCt
   return `<div class="bzrv-mgr-view">${bar}${hint}<div class="bzrv-mgr-list">${rows}</div></div>`;
 }
 
-// ==================== 回收站视图 ====================
+// ==================== 已移出（回收站）页 ====================
 
 /** 删除时间的人话（刚删的别写「0 天前删除」） */
 export function deletedLabel(at: number, now: number = Date.now()): string {
@@ -570,62 +574,65 @@ export function deletedLabel(at: number, now: number = Date.now()): string {
   return '刚刚删除';
 }
 
+/** 条目出处那一行：划线卡写「书名 · 章节」，笔记写所在文件夹 */
+function trashSrcOf(e: TrashEntry): string {
+  const card = e.item.card;
+  if (card) {
+    return [card.bookTitle, card.chapterTitle].map((s) => String(s ?? '').trim()).filter(Boolean).join(' · ') || '划线卡';
+  }
+  const path = String(e.item.filePath ?? e.key);
+  const cut = path.lastIndexOf('/');
+  return cut > 0 ? path.slice(0, cut) : '根目录';
+}
+
+/** 卡片原文摘要：只给划线卡，太长就截断（恢复前足够认出是哪条） */
+function trashQuoteOf(e: TrashEntry): string {
+  const text = String(e.item.card?.text ?? '').trim();
+  if (!text) return '';
+  return text.length > 90 ? `${text.slice(0, 90)}…` : text;
+}
+
 /**
- * 回收站视图：一条一行，右下一个「恢复」。
- * 恢复是逐条的而不是全选——用户来这里通常只想捞回刚才误删的那一条。
+ * 「已移出」内置页（2026-11-19）：移出计划的条目在这里捞回来。
+ *
+ * 形制对齐 bz-reader 的「笔记」页——左侧一条强调色竖线、引文、出处行、右下动作，
+ * 页面本身不写大标题（位置由页签与这颗入口说明），顶部只留一条期限说明。
+ * 逐条恢复为主：来这里的用户通常只想捞回刚才误删的那一条；「全部恢复 / 清空」放右上。
  */
-export function trashViewHtml(entries: ReadonlyArray<{ key: string; title: string; kind: string; at: number }>, ctx: { now?: number } = {}): string {
+export function trashPageHtml(entries: readonly TrashEntry[], ctx: { now?: number } = {}): string {
   const now = ctx.now ?? Date.now();
-  const head = `
-      <div class="bzrv-panel-head">
-        <div class="bzrv-panel-brand">${iconSpan('trash-2', 'bzrv-ic--sm')}</div>
-        <div class="bzrv-panel-title">回收站</div>
-        <div class="bzrv-panel-head-pipe"></div>
-        <div class="bzrv-panel-head-sub">删掉的条目还能捞回来</div>
-        <span class="bzrv-panel-head-sp"></span>
-        <div class="bzrv-panel-head-btns">
-          <button class="bzrv-icon-btn" data-act="trash-back"><span class="bzrv-sr-only">返回队列</span>${iconSpan('arrow-left', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="close"><span class="bzrv-sr-only">关闭</span>${iconSpan('x', 'bzrv-q-ic')}</button>
-        </div>
-      </div>`;
-  const strip = `<div class="bzrv-q-strip">
-        <span class="bzrv-q-strip-dot muted"></span>
-        <strong>${entries.length ? `${entries.length} 条` : '空的'}</strong>
-        <span class="bzrv-q-strip-txt">只保留最近 30 天；恢复后排期与复习历史原样回来</span>
-      </div>`;
+  const note = `<div class="bzrv-trash-note">
+      <span class="bzrv-trash-note-txt">只保留最近 ${TRASH_TTL_DAYS} 天、最多 ${TRASH_LIMIT} 条；恢复后排期与复习历史原样回来</span>
+      <span class="bzrv-trash-sp"></span>
+      ${
+        entries.length
+          ? `<button class="bzrv-btn bzrv-btn--ghost" data-act="trash-restore-all">全部恢复</button>
+             <button class="bzrv-btn bzrv-btn--ghost" data-act="trash-clear">清空</button>`
+          : ''
+      }
+    </div>`;
   const rows = entries.length
-    ? entries
-        .map(
-          (e) => `
-      <div class="bzrv-q-card" data-trash-key="${esc(e.key)}">
-        <div class="bzrv-q-card-top">
-          <span class="bzrv-q-card-title">${esc(e.title)}</span>
-          <span class="bzrv-q-card-stage">${e.kind === 'card' ? '划线' : '笔记'}</span>
+    ? `<div class="bzrv-trash-list">${entries
+        .map((e) => {
+          const quote = trashQuoteOf(e);
+          const left = Math.max(0, Math.ceil((e.at + TRASH_TTL_DAYS * 86400000 - now) / 86400000));
+          return `<article class="bzrv-trash-card" data-trash-key="${esc(e.key)}">
+        <div class="bzrv-trash-card-top">
+          <span class="bzrv-trash-card-title">${esc(e.title)}</span>
+          <span class="bzrv-trash-tag">${e.kind === 'card' ? '划线' : '笔记'}</span>
         </div>
-        <div class="bzrv-q-card-meta">
-          <span class="bzrv-q-tag">${deletedLabel(e.at, now)}</span>
+        ${quote ? `<p class="bzrv-trash-card-quote">「${esc(quote)}」</p>` : ''}
+        <div class="bzrv-trash-card-foot">
+          <span class="bzrv-trash-src">${esc(trashSrcOf(e))}</span>
+          <span class="bzrv-trash-when">${deletedLabel(e.at, now)} · 还剩 ${left} 天</span>
+          <span class="bzrv-trash-sp"></span>
           <button class="bzrv-btn bzrv-btn--ghost" data-restore="${esc(e.key)}">恢复</button>
         </div>
-      </div>`
-        )
-        .join('')
-    : `<div class="bzrv-q-cols bzrv-q-empty-wrap"><div data-empty-host></div></div>`;
-  const footer = `<div class="bzrv-q-footer">
-        <span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash-back">
-          ${iconSpan('undo-2', 'bzrv-q-ic')}<span class="lbl">返回队列</span>
-        </span>
-        ${
-          entries.length
-            ? `<i class="sep"></i><span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash-restore-all"><span class="bzrv-sr-only">把这些条目全部放回复习计划</span>
-                ${iconSpan('archive-restore', 'bzrv-q-ic')}<span class="lbl">全部恢复</span>
-              </span>
-              <i class="sep"></i><span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="trash-clear"><span class="bzrv-sr-only">清空后不可恢复</span>
-                ${iconSpan('trash-2', 'bzrv-q-ic')}<span class="lbl">清空回收站</span>
-              </span>`
-            : ''
-        }
-      </div>`;
-  return `<div class="bzrv-q-view">${head}${strip}<div class="bzrv-q-cols bzrv-q-cols--single">${rows}</div>${footer}</div>`;
+      </article>`;
+        })
+        .join('')}</div>`
+    : `<div class="bzrv-trash-empty-host" data-empty-host></div>`;
+  return `<div class="bzrv-trash-view">${note}${rows}</div>`;
 }
 
 // ==================== 整窗冲刺视图 ====================

@@ -12,6 +12,7 @@ import { ReviewWatcher } from './watch';
 import { UIManager } from './ui';
 import { reviewApp } from './app';
 import { openQuizPanel, unloadQuizPanel } from './quiz-panel';
+import { confirmRemovePlan } from './confirm-flows';
 import { resetQuiz } from './quiz-core';
 import { closeStatsModal } from './stats-ui';
 import { unloadReviewAnalysis } from './analysis/index';
@@ -434,8 +435,8 @@ export async function reviewAddSelection(app: App): Promise<void> {
   }
 }
 
-/** 移出复习计划（review-remove-current）：A12/E1/C1——免前置确认直达 notifyUndo
- *  （效率整改 5 定稿口径：接了 notifyUndo 的删除不再二次确认，restoreItem 撤销链兜底误删）；
+/** 移出复习计划（review-remove-current）：先二次确认（2026-11-19 用户口径，命令面板里
+ *  误触也会直接删条目），确认后照旧走 notifyUndo 撤销链 + restoreItem 原样插回；
  *  写盘/刷新链包 try/catch + notifySaveError（对齐抽屉同动作口径，写失败不再零反馈） */
 export async function reviewRemoveCurrent(app: App): Promise<void> {
   ensureReview(app);
@@ -450,6 +451,7 @@ export async function reviewRemoveCurrent(app: App): Promise<void> {
     notice('该笔记不在复习计划中');
     return;
   }
+  if (!(await confirmRemovePlan({ name: file.basename }))) return;
   try {
     await dataManager!.removeItem(file.path);
     // 行为流（issue 261）：移出复习计划入小橘行为流（review:removed）
