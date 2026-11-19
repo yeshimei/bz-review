@@ -316,8 +316,8 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           {
             type: 'text',
             name: '激活码',
-            desc: '填高级版激活码，解锁不限数量。离线验签，不联网。',
-            placeholder: 'BZP2.…',
+            desc: '填激活码解锁不限数量。赞助人 / 专属定制码两款插件通用；普通高级版码各插件独立。离线验签，不联网。',
+            placeholder: 'BZP2.… 或 BZR2.…（赞助人 / 专属码）',
             binding: { key: 'licenseKey' },
             actions: [
               {

@@ -7,13 +7,18 @@
  *   sig = ECDSA P-256 + SHA-256，IEEE-P1363 裸格式（r||s 各 32 字节）。
  *
  * 离线验签，不联网：公钥内嵌在包里，激活一次管到 exp 为止。
- * 这套机制与 bz / bz Reader / 归物本同源，只是换了前缀与密钥对——
- * 四者的码互不通用，各自的私钥也只签各自的。
+ * 这套机制与 bz / bz Reader / 归物本同源，前缀与密钥对各自独立：
+ * 普通高级版码只在本插件有效；**例外**是赞助人 / 专属定制码
+ * （payload.patron === true，Reader 私钥签发），两款插件都能激活。
  * ============================================================ */
 
 /** ECDSA P-256 公钥（SPKI DER 的 base64）。由 scripts/gen-keys.mjs 生成。 */
 const PUBKEY_SPKI_B64 =
   'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEF6+mBvqMpLZTZIK7w5nTzVbqRJ9MfLMcbp1fcq4FPFqYa4S/EstvYC7KcUcLSRpiaXOLxspUVUzAsjqbrD65sQ==';
+
+/** bz Reader 的公钥：只用来验它签发的赞助人 / 专属定制码。 */
+const READER_PUBKEY_SPKI_B64 =
+  'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEDlauLuKMfRhggbifaU3QcR1R+gX7518ibeYfPeyFzLYcQesrjY0vViS/SukngZqMZDPwBbebtPoGqw/pLJRnxg==';
 
 export type LicensePlan = 'lifetime' | 'year' | 'trial';
 
@@ -21,15 +26,27 @@ export interface LicensePayload {
   v: 1 | 2;
   id?: string;
   name?: string;
+  /**
+   * 赞助人 / 专属定制标记。Reader 的码带这个字段时可在 Review 激活；
+   * 没有的就是 Reader 自己卖的高级版码，仍只在 Reader 有效。
+   */
+  patron?: boolean;
   plan?: LicensePlan;
   exp?: number;
 }
 
 /**
  * 验签失败的原因分类。
- *   empty / format / no-pubkey / invalid / expired / env-error
+ *   empty / format / no-pubkey / invalid / expired / scope / env-error
  */
-export type LicenseFail = 'empty' | 'format' | 'no-pubkey' | 'invalid' | 'expired' | 'env-error';
+export type LicenseFail =
+  | 'empty'
+  | 'format'
+  | 'no-pubkey'
+  | 'invalid'
+  | 'expired'
+  | 'scope'
+  | 'env-error';
 
 export interface LicenseCheck {
   ok: boolean;
@@ -47,18 +64,32 @@ function b64urlToBytes(s: string): Uint8Array {
   return out;
 }
 
-export function parseLicense(
-  code: string,
-): { payloadBytes: Uint8Array; sig: Uint8Array; payload: LicensePayload } | null {
+export interface ParsedLicense {
+  /** 决定用哪把公钥验：BZP* 是本地，BZR* 是 Reader 的通用码 */
+  prefix: string;
+  payloadBytes: Uint8Array;
+  sig: Uint8Array;
+  payload: LicensePayload;
+}
+
+export function parseLicense(code: string): ParsedLicense | null {
   const parts = code.trim().split('.');
   if (parts.length !== 3) return null;
-  if (parts[0] !== 'BZP1' && parts[0] !== 'BZP2') return null;
+  const prefix = parts[0];
+  if (
+    prefix !== 'BZP1' &&
+    prefix !== 'BZP2' &&
+    prefix !== 'BZR1' &&
+    prefix !== 'BZR2'
+  ) {
+    return null;
+  }
   try {
     const payloadBytes = b64urlToBytes(parts[1]);
     const sig = b64urlToBytes(parts[2]);
     const payload = JSON.parse(new TextDecoder().decode(payloadBytes)) as LicensePayload;
     if (payload?.v !== 1 && payload?.v !== 2) return null;
-    return { payloadBytes, sig, payload };
+    return { prefix, payloadBytes, sig, payload };
   } catch {
     return null;
   }
@@ -81,11 +112,17 @@ export async function verifyLicense(code: string): Promise<LicenseCheck> {
   }
   const parsed = parseLicense(code);
   if (!parsed) {
-    return { ok: false, reason: 'format', message: '激活码格式不对：应为 BZP1 / BZP2 开头的三段式。' };
+    return {
+      ok: false,
+      reason: 'format',
+      message: '激活码格式不对：应为 BZP1 / BZP2 / BZR1 / BZR2 开头的三段式。',
+    };
   }
+  const fromReader = parsed.prefix === 'BZR1' || parsed.prefix === 'BZR2';
   try {
+    const pub = fromReader ? READER_PUBKEY_SPKI_B64 : PUBKEY_SPKI_B64;
     const key = await spkiToCryptoKey(
-      Uint8Array.from(atob(PUBKEY_SPKI_B64), (c) => c.charCodeAt(0)).buffer,
+      Uint8Array.from(atob(pub), (c) => c.charCodeAt(0)).buffer,
     );
     const ok = await crypto.subtle.verify(
       { name: 'ECDSA', hash: 'SHA-256' },
@@ -94,6 +131,15 @@ export async function verifyLicense(code: string): Promise<LicenseCheck> {
       new Uint8Array(parsed.payloadBytes).buffer,
     );
     if (!ok) return { ok: false, reason: 'invalid', message: '激活码验签失败：内容或签名被改过。' };
+    /* Reader 的码只对「赞助人 / 专属定制」开口子：普通高级版码仍各自激活。
+       用 Reader 私钥签的普通码前缀换成 BZP2 也过不了——公钥跟着前缀走。 */
+    if (fromReader && parsed.payload.patron !== true) {
+      return {
+        ok: false,
+        reason: 'scope',
+        message: '这是 bz Reader 的高级版激活码。只有赞助人与专属定制码可跨插件使用；两款插件的高级版码请分别在各自的插件激活。',
+      };
+    }
     const exp = parsed.payload.exp ?? 0;
     if (exp && Date.now() > exp) {
       return { ok: false, reason: 'expired', message: `激活码已于 ${dateText(exp)} 过期。` };
