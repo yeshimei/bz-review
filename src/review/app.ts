@@ -97,6 +97,14 @@ export const reviewApp = {
   _notifiedOverdue: new Set<string>(),
   /** 逾期常驻通知句柄：同键合并时 notify 返回空操作，留存真句柄供逾期清零时主动收起 */
   _overdueNotice: null as NoticeHandle | null,
+  /**
+   * 被 bz-reader 嵌进书架时的宿主容器（null = 没嵌入）。
+   *
+   * 有值且宿主可见时，面板同样算「正摆在眼前」：否则轮询会照弹常驻逾期通知，
+   * 而那条通知 z 更高，正好压住宿主头栏右侧那四颗图标（与原生页当初被压
+   * 「设置」是同一个毛病）。cleanup 时由门面清回 null。
+   */
+  embeddedHost: null as HTMLElement | null,
   /** ticket 48：已染色/挂徽章的文件路径（移出计划后据此回退；仅提交计划路径 + 曾染色路径，不再全库扫描） */
   _styledPaths: new Set<string>(),
   /** ADR-0077：最近一次复习的累计计数（每 N 次触发拟合重算） */
@@ -1271,11 +1279,22 @@ export const reviewApp = {
   hideOverdueNotice(): void {
     if (this._overdueNotice?.el?.isConnected) this._overdueNotice.hide();
     this._overdueNotice = null;
+    /* 兜底（2026-11-19）：同键合并 / 句柄被消费后引用会失联，只靠句柄收不干净——
+       嵌入 bz-reader 时真机上就出现过「通知一直压住头栏四颗图标」。按 action 文案
+       认回那条常驻逾期通知直接摘掉；别的通知没有「去复习」按钮，不会误伤。 */
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll<HTMLElement>('.bzrv-notice').forEach((el) => {
+      if (el.querySelector('.bzrv-notice-action')?.textContent === '去复习') el.remove();
+    });
   },
 
-  /** 复习面板是否正摆在眼前（原生页形态 = 当前标签页就是它） */
+  /** 复习面板是否正摆在眼前（原生页形态 = 当前标签页就是它；嵌入形态 = 宿主可见） */
   panelOnScreen(): boolean {
     try {
+      /* 嵌入 bz-reader：宿主还在文档里、且没被 display:none 藏起来（切到别的标签页），
+         就算面板在眼前。offsetParent 为 null 时多半是宿主被隐藏了。 */
+      const host = this.embeddedHost;
+      if (host) return host.isConnected && host.offsetParent !== null;
       /* activeLeaf 是官方 lint 的 no-deprecated 豁免项：minAppVersion 1.7.2 下无等价替代
          （要的正是「当前标签页」这个语义，getActiveViewOfType 只认 ItemView，覆盖不到）。
          这里用局部结构类型读同一字段，行为不变，也不带 deprecated 类型标记。 */

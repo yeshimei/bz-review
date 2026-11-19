@@ -121,27 +121,54 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 
 // ==================== 三区队列视图 ====================
 
+/** 头行四颗入口图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
+ *  不然两处各写一份，迟早出现「一边叫数据、一边叫统计」或顺序漂移。 */
+export const PANEL_HEAD_ACTS = ['filter', 'arch', 'data', 'settings'] as const;
+export type PanelHeadAct = (typeof PANEL_HEAD_ACTS)[number];
+
+/** data-act → 对应内置页；filter 是就地展开开关，没有「当前页」概念 */
+const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct, string>>> = {
+  arch: 'arch',
+  data: 'stats',
+  settings: 'settings',
+};
+
+/** 某颗图标此刻是否高亮。纯函数：外置动作栏的高亮同步复用同一口径，不另写一套 if。 */
+export function panelActIsOn(act: PanelHeadAct, activePage?: string | null): boolean {
+  const page = ACT_PAGE[act];
+  return !!page && page === activePage;
+}
+
+/**
+ * 只生成四颗图标按钮（不含 .bzrv-panel-head-btns 外壳），给面板头与嵌入门面复用。
+ * 可读名只用 sr-only，绝不写 aria-label / title——Obsidian 会把它们变成悬停气泡。
+ */
+export function panelHeadBtnsHtml(activePage?: string | null): string {
+  const on = (act: PanelHeadAct): string => (panelActIsOn(act, activePage) ? ' is-on' : '');
+  return `<button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
+<button data-act="arch" class="bzrv-icon-btn${on('arch')}"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
+<button data-act="data" class="bzrv-icon-btn${on('data')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
+<button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>`;
+}
+
 /**
  * 面板头行（主列表与内置页共用）。
  *
  * 2026-11-19 起：右上角关闭按钮撤掉（手机点遮罩退出，桌面本来就没有）；
  * 四个入口图标在高亮态再点一次回主列表，内置页也用这一行，所以不再画「← 返回」。
- * data-act 写在 class 前面，高亮态直接跟在属性后面，读 DOM 一眼能看出当前在哪一页。
+ * 品牌/标题另挂 .bzrv-panel-head-brand/.bzrv-panel-head-title：嵌入 bz-reader 时
+ * 只藏这两段（页签文字由宿主画），四颗图标照常渲染、并可外置到宿主动作栏。
  */
 export function panelHeadHtml(opts: { activePage?: string; title?: string; sub?: string } = {}): string {
-  const on = (page: string): string => (opts.activePage === page ? ' is-on' : '');
   return `
       <div class="bzrv-panel-head">
-        <div class="bzrv-panel-brand">${iconSpan('repeat-2', 'bzrv-ic--sm')}</div>
-        <div class="bzrv-panel-title">${opts.title ?? '复习计划'}</div>
+        <div class="bzrv-panel-brand bzrv-panel-head-brand">${iconSpan('repeat-2', 'bzrv-ic--sm')}</div>
+        <div class="bzrv-panel-title bzrv-panel-head-title">${opts.title ?? '复习计划'}</div>
         <div class="bzrv-panel-head-pipe"></div>
         <div class="bzrv-panel-head-sub">${opts.sub ?? ''}</div>
         <span class="bzrv-panel-head-sp"></span>
         <div class="bzrv-panel-head-btns">
-          <button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
-          <button data-act="arch" class="bzrv-icon-btn${on('arch')}"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
-          <button data-act="data" class="bzrv-icon-btn${on('stats')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
-          <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>
+          ${panelHeadBtnsHtml(opts.activePage)}
         </div>
       </div>`;
 }

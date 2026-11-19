@@ -41,6 +41,19 @@
   animation: none;
 }
 
+/* ==================== bz-reader 嵌入态（reviewApi.embedInto） ====================
+   头栏文字由 bz-reader 自己的「复习」页签画，Review 这边只把四颗图标外置到宿主的动作栏。
+   bzrv-embed 由 embedInto 挂到 #bzrv-popup；这里按 #bzrv- 根选择器写（不进 scopeCss 作用域）。 */
+/* 重绘会在面板里再生一套按钮，外置那套已在宿主动作栏，面板内这套必须一起藏掉 */
+#bzrv-popup.bzrv-embed .bzrv-panel-head-brand,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-title,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-pipe,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-sub,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-sp,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-btns { display: none; }
+/* 子元素全藏后头行只剩 44px 空壳和一条底线，整行收起，内容区从顶开始 */
+#bzrv-popup.bzrv-embed .bzrv-panel-head { height: 0; padding: 0; border: none; overflow: hidden; }
+
 /* 队列/冲刺滚动条隐藏由 core 界面级单源规则接管（ADR-0122 / issue 277，
    #bzrv-entries 在册），域内不再重复定义 */
 
