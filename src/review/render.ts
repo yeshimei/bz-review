@@ -164,9 +164,17 @@ export function panelHeadBtnsHtml(activePage?: string | null): string {
  * 藏掉这段（页签文字由宿主画），四颗图标照常渲染、并可外置到宿主动作栏。
  */
 export function panelHeadHtml(opts: { activePage?: string; title?: string; sub?: string } = {}): string {
+  /* 独立界面的「复习计划」从左侧竖栏挪到顶部成一个横排页签（2026-11-20，图三形制）。
+     它是唯一一个页签——点它回主列表，承接原竖栏 onSelect；其余功能仍在右侧图标。
+     主队列（无 activePage）时选中；进内置页时淡化，点一下就能回来。
+     嵌入 reader 时这一整行由 CSS 收起、页签由宿主画，所以这里统一渲染不影响嵌入态。 */
+  const on = opts.activePage ? '' : ' is-on';
   return `
       <div class="bzrv-panel-head">
-        <div class="bzrv-panel-title bzrv-panel-head-title">${opts.title ?? '复习计划'}</div>
+        <button data-act="home" class="bzrv-panel-head-title bzrv-stutab${on}">${iconSpan(
+          'calendar-check',
+          'bzrv-stutab-ic',
+        )}<span class="bzrv-stutab-txt">${opts.title ?? '复习计划'}</span></button>
         <div class="bzrv-panel-head-pipe"></div>
         <div class="bzrv-panel-head-sub">${opts.sub ?? ''}</div>
         <span class="bzrv-panel-head-sp"></span>
