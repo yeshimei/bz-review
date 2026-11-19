@@ -292,7 +292,7 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
 }
 .bzrv-notice--warning .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--color-orange); }
 .bzrv-notice--error .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--color-red); }
-.bzrv-notice--info .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--interactive-accent); }
+.bzrv-notice--info .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); }
 .bzrv-notice--success .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--color-green); }
 .bzrv-notice--pause .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--text-muted); }
 .bzrv-notice--accept .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--color-purple); }
@@ -301,7 +301,7 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
 .bzrv-notice--restore .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--color-cyan); }
 .bzrv-notice--skip .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--color-orange); }
 .bzrv-notice--archive .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--color-blue); }
-.bzrv-notice--progress .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--interactive-accent); }
+.bzrv-notice--progress .bzrv-notice-icon:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); }
 .bzrv-notice--progress .bzrv-notice-icon svg:is([data-bzrv], [data-bzrv] *) {
   animation: bzrvNoticeSpin 1s linear infinite;
 }
@@ -330,7 +330,7 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
   border-radius: var(--bzrv-radius-xs);
   border: 1px solid transparent;
   background: transparent;
-  color: var(--interactive-accent);
+  color: var(--bzrv-accent);
   font-size: var(--bzrv-font-meta);
   font-weight: 500;
   line-height: 1;
@@ -349,7 +349,7 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
   bottom: 0;
   height: 3px;
   width: 0;
-  background: var(--interactive-accent);
+  background: var(--bzrv-accent);
   background-image: linear-gradient(
     45deg,
     rgba(255, 255, 255, 0.25) 25%,
@@ -993,7 +993,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
   background: var(--input-bg, var(--background-primary));
   color: var(--text-normal);
 }
-.bzrv-path-picker-search:is([data-bzrv], [data-bzrv] *):focus { outline: none; border-color: var(--interactive-accent); }
+.bzrv-path-picker-search:is([data-bzrv], [data-bzrv] *):focus { outline: none; border-color: var(--bzrv-accent); }
 .bzrv-path-picker-list:is([data-bzrv], [data-bzrv] *) {
   flex: 1;
   min-height: 120px;
@@ -1015,7 +1015,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
 
 .bzrv-path-picker-row:is([data-bzrv], [data-bzrv] *):hover { background: var(--background-modifier-hover); }
 }
-.bzrv-path-picker-row--sel:is([data-bzrv], [data-bzrv] *) { background: var(--background-modifier-hover); color: var(--interactive-accent); font-weight: 600; }
+.bzrv-path-picker-row--sel:is([data-bzrv], [data-bzrv] *) { background: var(--background-modifier-hover); color: var(--bzrv-accent); font-weight: 600; }
 .bzrv-path-picker-check:is([data-bzrv], [data-bzrv] *) {
   flex: 0 0 auto;
   width: 18px;
@@ -1028,7 +1028,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
   font-size: var(--bzrv-font-meta);
   color: var(--text-on-accent);
 }
-.bzrv-path-picker-row--sel .bzrv-path-picker-check:is([data-bzrv], [data-bzrv] *) { background: var(--interactive-accent); border-color: var(--interactive-accent); }
+.bzrv-path-picker-row--sel .bzrv-path-picker-check:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); border-color: var(--bzrv-accent); }
 .bzrv-path-picker-name:is([data-bzrv], [data-bzrv] *) {
   flex: 1;
   min-width: 0;
@@ -1078,7 +1078,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
 }
 .bzrv-path-picker-btn--primary:is([data-bzrv], [data-bzrv] *) {
   border: none;
-  background: var(--interactive-accent);
+  background: var(--bzrv-accent);
   color: var(--text-on-accent);
 }@media (hover: hover) {
 
@@ -1103,7 +1103,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:is([data-bzrv], [data-bzr
 /* 已选 chip 文本可点重开选择器（ticket 133）：指针 + 悬停强调；✕ 保持独立按钮语义 */
 .bzrv-path-picker-chip--click .bzrv-path-picker-chip-name:is([data-bzrv], [data-bzrv] *) { cursor: pointer; }@media (hover: hover) {
 
-.bzrv-path-picker-chip--click .bzrv-path-picker-chip-name:is([data-bzrv], [data-bzrv] *):hover { color: var(--interactive-accent); }
+.bzrv-path-picker-chip--click .bzrv-path-picker-chip-name:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-accent); }
 }
 
 /* 已选 chips（设置行控件区内与选择器共用；随控件区 flex-wrap 自动折行） */
@@ -1301,10 +1301,10 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
 .bzrv-dev-replay .counter:is([data-bzrv], [data-bzrv] *) { position: relative; font-family: Consolas, 'Cascadia Code', monospace; flex-shrink: 0; }
 .bzrv-dev-replay .lcd:is([data-bzrv], [data-bzrv] *) {
   font-size: 15px; font-weight: 700; letter-spacing: 2px;
-  color: var(--interactive-accent);
+  color: var(--bzrv-accent);
   background: color-mix(in srgb, var(--bzrv-surface-1) 72%, black);
   border: 1px solid var(--bzrv-border); border-radius: 8px; padding: 5px 12px;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px color-mix(in srgb, var(--bzrv-accent) 14%, transparent);
 }
 .bzrv-dev-replay .lcd small:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-3); font-size: 10px; letter-spacing: 1px; margin-right: 8px; }
 .bzrv-dev-replay .floater:is([data-bzrv], [data-bzrv] *) {
@@ -1325,10 +1325,10 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   color: var(--bzrv-text-3); flex-shrink: 0;
 }
 .bzrv-dev-replay .floater .fi.on:is([data-bzrv], [data-bzrv] *) {
-  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  background: color-mix(in srgb, var(--bzrv-accent) 14%, transparent);
   color: var(--bzrv-text-1);
 }
-.bzrv-dev-replay .floater .fi.on .n:is([data-bzrv], [data-bzrv] *) { color: var(--interactive-accent); font-weight: 700; }
+.bzrv-dev-replay .floater .fi.on .n:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); font-weight: 700; }
 .bzrv-dev-replay .floater .fi.done:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-3); }
 .bzrv-dev-replay .floater .fi.done .n:is([data-bzrv], [data-bzrv] *) { color: var(--color-green); }
 /* 分段胶带：每段弹性能缩（min 4px），步数再多只往横向挤、始终一条 4px 线 */
@@ -1337,14 +1337,14 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   flex: 1 1 0; min-width: 5px; height: 6px; border-radius: 3px;
   background: var(--bzrv-border-strong); position: relative; overflow: hidden;
 }
-.bzrv-dev-replay .seg.done:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--interactive-accent) 82%, transparent); }
+.bzrv-dev-replay .seg.done:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-accent) 82%, transparent); }
 /* 没走完的步骤：红一格——「第 N 步卡住了」在条带上就该看得见，不用回去翻日志 */
 .bzrv-dev-replay .seg.bad:is([data-bzrv], [data-bzrv] *) { background: var(--color-red); }
 .bzrv-dev-replay .floater .fi.bad:is([data-bzrv], [data-bzrv] *) { color: var(--color-red); }
-.bzrv-dev-replay .seg.cur:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-surface-3); box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 45%, transparent); }
+.bzrv-dev-replay .seg.cur:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-surface-3); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bzrv-accent) 45%, transparent); }
 .bzrv-dev-replay .seg.cur:is([data-bzrv], [data-bzrv] *)::after {
   content: ''; position: absolute; inset: 0; transform-origin: left;
-  background: linear-gradient(90deg, var(--interactive-accent), color-mix(in srgb, var(--interactive-accent) 60%, white));
+  background: linear-gradient(90deg, var(--bzrv-accent), color-mix(in srgb, var(--bzrv-accent) 60%, white));
   animation: bzrv-dev-seg-fill 1.5s linear infinite;
 }
 @keyframes bzrv-dev-seg-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -1359,7 +1359,7 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
 .bzrv-dev-replay .lbl small:is([data-bzrv], [data-bzrv] *) { display: block; font-size: 10px; color: var(--bzrv-text-3); font-weight: 400; }
 .bzrv-dev-replay .transport:is([data-bzrv], [data-bzrv] *) { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .bzrv-dev-replay .transport .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 32px; height: 32px; padding: 0; justify-content: center; display: inline-flex; align-items: center; }
-.bzrv-dev-replay .transport .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *) { box-shadow: 0 2px 10px color-mix(in srgb, var(--interactive-accent) 45%, transparent); }
+.bzrv-dev-replay .transport .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *) { box-shadow: 0 2px 10px color-mix(in srgb, var(--bzrv-accent) 45%, transparent); }
 .bzrv-dev-replay .transport .bzrv-btn .svg-icon { --icon-size: 15px; }
 
 /* 合集面板（uiModal 皮）：命令面板式，按域折叠收纳 */
@@ -1407,12 +1407,12 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
 
 @media (hover: hover) {
   .bzrv-dev-panel .grp-head:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-text-2); }
-  .bzrv-dev-panel .pitem:is([data-bzrv], [data-bzrv] *):hover { background: color-mix(in srgb, var(--interactive-accent) 8%, transparent); }
+  .bzrv-dev-panel .pitem:is([data-bzrv], [data-bzrv] *):hover { background: color-mix(in srgb, var(--bzrv-accent) 8%, transparent); }
   .bzrv-dev-panel .pitem:hover .num:is([data-bzrv], [data-bzrv] *) {
-    background: linear-gradient(135deg, var(--interactive-accent), color-mix(in srgb, var(--interactive-accent) 60%, white));
+    background: linear-gradient(135deg, var(--bzrv-accent), color-mix(in srgb, var(--bzrv-accent) 60%, white));
     color: #fff;
   }
-  .bzrv-dev-panel .pitem:hover .go:is([data-bzrv], [data-bzrv] *) { color: var(--interactive-accent); transform: translateX(3px); }
+  .bzrv-dev-panel .pitem:hover .go:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); transform: translateX(3px); }
 }
 /* ============================================================
  * bz design tokens（自绘，不依赖 Obsidian 变量）
@@ -2155,7 +2155,9 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
 
 .bzrv-choice-btn.is-on:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-brand-hover) ; }
 }
-.bzrv-choice-dot:is([data-bzrv], [data-bzrv] *) { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+/* 色点：flex 容器里本来是 flex item，落在普通按钮里时必须显式 inline-block，
+   否则宽高被 inline 流吃掉、整颗点塌成 0（强调色 swatch 就是踩在这里）。 */
+.bzrv-choice-dot:is([data-bzrv], [data-bzrv] *) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 /* 浮岛 segmented（float: true，issue 199 组件化；issue 200 拍板：视觉 = .bzrv-segmented
    同款取值，仅加白卡滑动指示器（choice.ts 量位 transform/width 200ms）。
    白卡 = .bzrv-choice-seg（surface-2 + 分段阴影）；未选中项透底灰字，选中加重。 */
@@ -4382,8 +4384,8 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
  */
 .bzrv-lockscreen {
   /* 各域可覆盖：--ls-accent / --ls-accent-soft / --ls-seal-radius */
-  --ls-accent: var(--interactive-accent, var(--bzrv-brand));
-  --ls-accent-soft: var(--interactive-accent, var(--bzrv-brand));
+  --ls-accent: var(--bzrv-brand);
+  --ls-accent-soft: var(--bzrv-brand-soft);
   --ls-seal-radius: 22px;
   /* 弹层挂 body，够不着域作用域 token —— 一律引宿主主题变量并写兜底链（ADR-0122 同款教训） */
   --ls-bg: var(--background-secondary, var(--background-primary, #1e1e1e));
@@ -4622,8 +4624,8 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
  * surface 输入框 + accent 整行主按钮 + 描边次按钮。变量名沿用 --su-*。
  */
 .bzrv-su {
-  --su-accent: var(--interactive-accent, var(--bzrv-brand));
-  --su-accent-soft: var(--interactive-accent, var(--bzrv-brand));
+  --su-accent: var(--bzrv-brand);
+  --su-accent-soft: var(--bzrv-brand-soft);
   /* 弹层挂 body，够不着域作用域 token —— 一律引宿主主题变量并写兜底链（同 .bzrv-lockscreen） */
   --su-bg: var(--background-secondary, var(--background-primary, #1e1e1e));
   --su-surface: var(--background-primary, var(--background-secondary, #262626));
@@ -7151,7 +7153,9 @@ body.theme-dark .bzrv-settings-content.bzs-set-page {
   --bzsp-t1: #ececf0;
   --bzsp-t2: #a2a2ad;
   --bzsp-t3: #71717d;
-  --bzsp-accent: var(--interactive-accent, #c8a464);
+  /* 交互色必须跟着插件的强调色档位走（body[data-bzaccent]），不是宿主主题色；
+     这一层以前单开了一条宿主 accent 的线，导致换色后整页不动。 */
+  --bzsp-accent: var(--bzrv-accent, #c8a464);
   --bzsp-sheen: rgba(255, 255, 255, .04);
 }
 
@@ -7165,7 +7169,7 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   --bzsp-t1: #16140f;
   --bzsp-t2: #5c564b;
   --bzsp-t3: #918a79;
-  --bzsp-accent: var(--interactive-accent, #9a7434);
+  --bzsp-accent: var(--bzrv-accent, #9a7434);
   --bzsp-sheen: rgba(255, 255, 255, .7);
 }
 
@@ -7356,18 +7360,25 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
 .bzrv-settings-content .bzrv-segmented button:is([data-bzrv], [data-bzrv] *) {
   flex: 1;
   min-width: 0;
+  /* 色点与文字同排：按钮自己是 inline 流时圆点会掉到下一行 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 0;
   background: none;
   color: var(--bzsp-t3);
   font-size: var(--bzsp-fs-mini);
-  padding: 6px 5px;
+  padding: 6px 8px;
   border-radius: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
 }
+.bzrv-settings-content .bzrv-segmented button.is-on:is([data-bzrv], [data-bzrv] *),
 .bzrv-settings-content .bzrv-segmented button.is-active:is([data-bzrv], [data-bzrv] *),
+.bzrv-settings-content .bzrv-segmented button[aria-checked="true"]:is([data-bzrv], [data-bzrv] *),
 .bzrv-settings-content .bzrv-segmented button[aria-selected="true"]:is([data-bzrv], [data-bzrv] *) {
   background: var(--bzsp-bg-2);
   color: var(--bzsp-accent);
@@ -7606,9 +7617,9 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
 /* 局部令牌 + 基础字体（弹窗不在 .bzs-shell 里，这一层自己给） */
 .bzs-chgn:is([data-bzrv], [data-bzrv] *),
 .bzs-chgn-m:is([data-bzrv], [data-bzrv] *) {
-  /* 与支持作者弹窗同一口径：优先吃壳层读来的 --bzs-accent（用户选的那一档），
-     读不到才退回宿主 accent——两个弹窗挨着打开时不能一个铜一个紫。 */
-  --chg-accent: var(--bzs-accent, var(--interactive-accent, var(--text-accent, #7856d6)));
+  /* 与支持作者弹窗同一口径：直接吃全局 --bzrv-accent（档位属性在 body 上，弹窗继承），
+     --bzs-accent 只作旧路径兜底——两个弹窗挨着打开时不能一个铜一个紫。 */
+  --chg-accent: var(--bzrv-accent, var(--bzs-accent, #9a7434));
   --chg-accent-soft: color-mix(in srgb, var(--chg-accent) 12%, transparent);
   --chg-panel: var(--background-primary, #ffffff);
   --chg-ink: var(--text-normal, #1f1f23);
@@ -8660,7 +8671,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   --cc-ink:var(--text-normal,#1f1f23);
   --cc-ink-2:var(--text-muted,#5a5a63);
   --cc-line:var(--background-modifier-border,rgba(0,0,0,.12));
-  --cc-accent:var(--interactive-accent,var(--text-accent,#7856d6));
+  --cc-accent:var(--bzrv-accent,#9a7434);
   --cc-accent-soft:color-mix(in srgb,var(--cc-accent) 12%,transparent);
   position:fixed;inset:0;z-index:300;display:grid;place-items:center;
   background:rgba(0,0,0,.5);font-family:-apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
@@ -8701,9 +8712,9 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
 
 .bzs-sup-dialog:is([data-bzrv], [data-bzrv] *),
 .bzs-sup:is([data-bzrv], [data-bzrv] *) {
-  /* 强调色优先吃打开弹窗时从壳层读来的 --bzs-accent（用户选的档位，见
-     shell/theme-accent.ts）；读不到才退回宿主 accent。 */
-  --sup-accent: var(--bzs-accent, var(--interactive-accent, var(--text-accent, #7856d6)));
+  /* 强调色直接吃全局 --bzrv-accent：弹窗虽挂 body，但档位属性也在 body 上，
+     变量会继承下来，换色时已打开的弹窗跟着变；--bzs-accent 只作旧路径兜底。 */
+  --sup-accent: var(--bzrv-accent, var(--bzs-accent, #9a7434));
   --sup-accent-soft: color-mix(in srgb, var(--sup-accent) 12%, transparent);
   --sup-panel: var(--background-primary, #ffffff);
   --sup-ink: var(--text-normal, #1f1f23);
@@ -9092,7 +9103,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
 }
 
 .bzs-sup-retry:is([data-bzrv], [data-bzrv] *):focus-visible {
-  outline: 2px solid var(--sup-accent, var(--bzs-accent, #b8924a));
+  outline: 2px solid var(--sup-accent, var(--bzrv-accent, #9a7434));
   outline-offset: 1px;
 }
 
@@ -9217,7 +9228,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   --un-line: var(--background-modifier-border, rgba(128, 128, 128, .3));
   --un-ink: var(--text-normal, #222);
   --un-muted: var(--text-muted, #777);
-  --un-accent: var(--interactive-accent, #9a7434);
+  --un-accent: var(--bzrv-accent, #9a7434);
   --un-tint: color-mix(in srgb, var(--un-accent) 8%, transparent);
   --pcol: 92px;
   display: block;

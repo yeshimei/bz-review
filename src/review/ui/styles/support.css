@@ -16,9 +16,9 @@
 
 .bzs-sup-dialog,
 .bzs-sup {
-  /* 强调色优先吃打开弹窗时从壳层读来的 --bzs-accent（用户选的档位，见
-     shell/theme-accent.ts）；读不到才退回宿主 accent。 */
-  --sup-accent: var(--bzs-accent, var(--interactive-accent, var(--text-accent, #7856d6)));
+  /* 强调色直接吃全局 --bzrv-accent：弹窗虽挂 body，但档位属性也在 body 上，
+     变量会继承下来，换色时已打开的弹窗跟着变；--bzs-accent 只作旧路径兜底。 */
+  --sup-accent: var(--bzrv-accent, var(--bzs-accent, #9a7434));
   --sup-accent-soft: color-mix(in srgb, var(--sup-accent) 12%, transparent);
   --sup-panel: var(--background-primary, #ffffff);
   --sup-ink: var(--text-normal, #1f1f23);
@@ -407,7 +407,7 @@
 }
 
 .bzs-sup-retry:focus-visible {
-  outline: 2px solid var(--sup-accent, var(--bzs-accent, #b8924a));
+  outline: 2px solid var(--sup-accent, var(--bzrv-accent, #9a7434));
   outline-offset: 1px;
 }
 

@@ -30,12 +30,32 @@ describe('复习设置页 · 两列骨架与关于条', () => {
     expect(html).toContain('bzs-sr-only');
   });
 
-  it('两列分组按原型排布：左五组右六组，朗读不丢', () => {
+  it('两列按体量均衡：重的组不会都堆在一列', () => {
+    const names = ['A', 'B', 'C', 'D', 'E'];
+    const weights = [5, 1, 5, 1, 1];
+    const [left, right] = groupColumns(names, weights);
+    const sum = (col: string[]) => col.reduce((n, name) => n + weights[names.indexOf(name)], 0);
+    expect(Math.abs(sum(left) - sum(right))).toBeLessThanOrEqual(Math.max(...weights));
+    expect([...left, ...right].sort()).toEqual([...names].sort());
+  });
+
+  it('同组不拆、列内保持原顺序', () => {
     const names = ['授权', '数据', '界面', '检查提醒', '划线卡', '做题家', '复习节奏', '记忆算法', '自动化', 'AI', '朗读'];
-    const [left, right] = groupColumns(names);
-    expect(left).toEqual(['授权', '数据', '界面', '检查提醒', '划线卡']);
-    expect(right).toEqual(['做题家', '复习节奏', '记忆算法', '自动化', 'AI', '朗读']);
+    const weights = [5, 5, 5, 4, 6, 7, 12, 5, 4, 4, 7];
+    const [left, right] = groupColumns(names, weights);
+    const indexIn = (col: string[]) => col.map((name) => names.indexOf(name));
+    const ascending = (xs: number[]) => xs.every((x, i) => i === 0 || x > xs[i - 1]);
+    expect(ascending(indexIn(left))).toBe(true);
+    expect(ascending(indexIn(right))).toBe(true);
     expect(left.length + right.length).toBe(names.length);
+    expect(new Set([...left, ...right]).size).toBe(names.length);
+  });
+
+  it('不传权重时按组数均分（11 组 → 6/5）', () => {
+    const names = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
+    const [left, right] = groupColumns(names);
+    expect(left.length).toBe(6);
+    expect(right.length).toBe(5);
   });
 
   it('每个分组都有原型里的英文副标题', () => {
