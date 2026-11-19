@@ -79,6 +79,7 @@ const CSV_COLUMNS = [
   'stage',
   'phase',
   'stability',
+  'stabilityShort',
   'difficulty',
   'nextReviewDate',
   'totalReviews',

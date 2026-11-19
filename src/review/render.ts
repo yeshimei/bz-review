@@ -14,7 +14,7 @@ import { TRASH_LIMIT, TRASH_TTL_DAYS, type TrashEntry } from './trash';
 import { applyFilter, deckOf, type ItemFilter } from './deck';
 import { isBuried, isHiddenFromQueue } from './card-manager';
 import type { BookSummary } from './book-summary';
-import { DEFAULT_W, TOTAL_STAGES, currentR as fsrsCurrentR } from './fsrs';
+import { DEFAULT_W, currentR as fsrsCurrentR } from './fsrs';
 import { partitionQueue, etaTextOf, isEarlyDue, isDueToday } from './queue';
 import { compareReviewLoad, computeStats, RATING_NAMES } from './stats';
 import { ratingKeys } from './keys';
@@ -83,28 +83,23 @@ export function currentRPct(item: ReviewItem, w: number[] = DEFAULT_W, now: numb
   return R === null ? null : Math.round(R * 100);
 }
 
-/** 卡片右上阶段号（FSRS Lv.n / 阶梯 n/10 / 挂起） */
+/** 卡片右上阶段号（FSRS-7 无阶梯；按复习次数给一个成熟度档位） */
 export function stageNum(item: ReviewItem): string {
   if (item.isMissing) return '挂起';
-  if (item.phase === 'fsrs') {
-    const LADDER_MAX = 9;
-    return `FSRS Lv.${item.stage - LADDER_MAX + 1}`;
-  }
-  return `${item.currentStage ?? item.stage + 1}/${TOTAL_STAGES}`;
+  const n = item.totalReviews || 0;
+  const level = n <= 1 ? 1 : n <= 3 ? 2 : n <= 7 ? 3 : n <= 15 ? 4 : 5;
+  return `FSRS Lv.${level}`;
 }
 
-/** 阶段标签（FSRS=R% 分档色 / 阶梯=阶段 n/10 / 已完成） */
+/** 阶段标签（FSRS=R% 分档色 / 未首次复习=新卡 / 已完成） */
 export function stageTagHtml(item: ReviewItem, w: number[] = DEFAULT_W, now: number = Date.now()): string {
   if (item.completed) return '<span class="bzrv-q-tag is-done">已完成</span>';
-  if (item.phase === 'fsrs') {
-    const r = currentRPct(item, w, now);
-    if (r !== null) {
-      const cls = r >= 90 ? 'r-high' : r >= 70 ? 'r-mid' : 'r-low';
-      return `<span class="bzrv-q-tag is-r ${cls}">R=${r}%</span>`;
-    }
-    return `<span class="bzrv-q-tag is-r">FSRS</span>`;
+  const r = currentRPct(item, w, now);
+  if (r !== null) {
+    const cls = r >= 90 ? 'r-high' : r >= 70 ? 'r-mid' : 'r-low';
+    return `<span class="bzrv-q-tag is-r ${cls}">R=${r}%</span>`;
   }
-  return `<span class="bzrv-q-tag is-stage">阶段 ${item.currentStage ?? item.stage + 1}/${TOTAL_STAGES}</span>`;
+  return `<span class="bzrv-q-tag is-r">新卡</span>`;
 }
 
 /** 列内排序（V1 拍板：置顶 → R 升序 → 到期时间；阶梯无 R 视为最低优先级靠后。

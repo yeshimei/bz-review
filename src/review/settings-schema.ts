@@ -743,21 +743,22 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             name: '复习间隔缩放',
             desc: '数值越小复习越频繁，数值越大越宽松',
             help:
-              '作用在 FSRS 动态间隔上的乘数：间隔 = intervalDays × scale，只对已进入 FSRS 的复习生效；固定的阶梯间隔表（含进入 FSRS 那一步）不受影响。' +
+              '作用在 FSRS 间隔上的乘数：间隔 = intervalDays × scale。' +
               '范围 0.1 到 5，填 0.5 更勤、填 2 更宽松。',
             binding: { key: 'reviewIntervalScale' },
             min: 0.1,
             max: 5,
           },
-          // ADR-0077：R 目标阈值（低于该值视为可复习/提前；默认 0.9）。
-          // F3 语义披露：该阈值仅用于提前复习判定，不改变排期间隔（真阈值排期是待拍板项）
+          // FSRS-7：目标留存率（desired retention）——既决定排期间隔，也用于提前复习判定。
+          // 默认 0.9 是 Anki 官方推荐值（留存与负担的平衡点）。
           {
             type: 'number',
-            name: 'R 目标阈值',
-            desc: '触发提前复习的保留度阈值，不改变排期间隔',
+            name: '目标留存率',
+            desc: '到期时希望还记得的比例，默认 90%',
             help:
-              'R 是算法估计的记忆保留度，取值 0 到 1（1 = 完全记得）。' +
-              '低于这个阈值会触发一次提前复习，但不改变排期间隔本身，所以调它不会让整体节奏变快变慢。',
+              'FSRS 会把卡片排到「你还有这么多概率记得」的那一天。90% 是官方推荐的默认值，' +
+              '在记得牢和复习量之间最均衡。调高（如 95%）间隔变短、复习更勤，越接近 100% 复习量增长越快；' +
+              '调低则更省时间但忘得更多。官方建议不要超过 97%。',
             binding: { key: 'reviewRThreshold' },
             min: 0.5,
             max: 0.99,
@@ -858,7 +859,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                留空即恢复「全自动」，想退回默认把内容清干净就行。 */
             type: 'textarea',
             name: '手填调度权重',
-            desc: '19 个数字，逗号分隔；填了就用它，留空 = 用自动拟合的结果',
+            desc: '34 个数字，逗号分隔；填了就用它，留空 = 用自动拟合的结果',
             placeholder: DEFAULT_W.join(', '),
             binding: { key: 'reviewFsrsWeights' },
           },

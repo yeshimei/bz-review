@@ -54,7 +54,7 @@ export default interface BzSettings {
   reviewEnableFit: boolean;
   /** 每复习多少次重算一次拟合 */
   reviewFitEveryN: number;
-  /** 拟合的召回阈值 */
+  /** FSRS 目标留存率（desired retention，默认 0.9）：决定排期间隔与提前复习判定 */
   reviewRThreshold: number;
   /**
    * 旧版的**全局**划线卡复习方式（AI 抽认卡 / 填空 / 上下文 / 做题 / 展开全文）。
@@ -78,7 +78,7 @@ export default interface BzSettings {
   reviewVacationFrom: string;
   /** 最长复习间隔（天；0 = 不限） */
   reviewMaxIntervalDays: number;
-  /** 手填 FSRS 权重（19 个数，逗号分隔；空 = 用拟合值） */
+  /** 手填 FSRS-7 权重（34 个数，逗号分隔；空 = 用拟合值） */
   reviewFsrsWeights: string;
   /** 每轮新条目上限（0 = 不限） */
   reviewNewLimit: number;

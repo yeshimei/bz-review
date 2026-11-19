@@ -7,7 +7,7 @@
  */
 import { DEFAULT_W } from './fsrs';
 
-/** FSRS 权重固定 19 个 */
+/** FSRS-7 权重固定 34 个 */
 export const WEIGHTS_LENGTH = DEFAULT_W.length;
 
 /**
@@ -29,9 +29,9 @@ export function parseWeights(input: unknown): number[] | null {
   const parts = text.split(/[\s,，;；]+/).filter(Boolean);
   if (parts.length !== WEIGHTS_LENGTH) return null;
   const nums = parts.map((p) => Number(p));
-  /* 0 也要拒绝：初始稳定性为 0 会让 R(t,S)=(1+t/(S·d))^-d 除零；
-     而 fsrs.initS 用 ?? 兜底不会再把 0 悄悄改成 1——入口不挡就会落一张坏曲线。 */
-  if (nums.some((n) => !Number.isFinite(n) || n <= 0)) return null;
+  /* FSRS-7 官方默认参数含 0（w[8]=0、w[29]=0），0 必须放行；拒绝负数与非有限数。
+     S 在核心计算里有 S_MIN 下界守卫，个别 0 参数不会除零。 */
+  if (nums.some((n) => !Number.isFinite(n) || n < 0)) return null;
   return nums;
 }
 

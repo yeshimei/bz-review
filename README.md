@@ -85,13 +85,43 @@
 
 ## 排期是怎么算的
 
-- **两段式**：先用十级阶梯把新卡铺开（1 分钟、30 分钟、6 小时、1 天、3 天、7 天、15 天、30 天、60 天、120 天），爬满进入 FSRS 自由档；爬级按评级走，忘了退一级、一般进一级、简单进两级。
-- **FSRS v4**：满血幂律遗忘曲线，用稳定性 S、难度 D、留存率 R 动态算下一次间隔，不是到了 120 天就无限循环。
+- **FSRS-7 全量**：官方最新版算法，从第一次复习就用 FSRS，没有固定阶梯。记忆状态用长期/短期双稳定性 + 难度动态描述，两条遗忘曲线加权算出当前留存率，再按目标留存率反推下一次间隔。
+- **目标留存率可调**：默认 90%（官方推荐值，记得牢与复习量的平衡点），可在设置里调高（更勤、间隔更短）或调低（更省时、忘得更多）。
 - **四档评级**：忘了 / 困难 / 一般 / 简单。评完立刻重排，并给出撤销。
-- **参数可自调**：19 个权重会按你自己的复习记录自动拟合，也能手填；另有间隔缩放系数与最长间隔上限，防止算出几千天等于不再出现。
+- **参数可自调**：34 个权重按你的复习记录自动拟合，也能手填；另有间隔缩放系数与最长间隔上限，防止算出几千天等于不再出现。
 - **提前与逾期**：留存率掉到阈值以下会提前进入本轮；逾期有每日上限与常驻提醒，提醒不列题目、只报篇数，点「去复习」走完整流程。
 - **假期**：设一个结束日期，之前不提醒、不算逾期；那天计划整体顺延，回来不会一屏欠账。
 - **负荷预测**：按未来 30 天排程算出每天的复习量，提前看到哪天要挤时间。
+
+### 排期算法的长期仿真验证
+
+排期不是拍脑袋定的。我们按官方 FSRS-7 的公式做了一场 20 年的蒙特卡洛仿真：造一个虚拟学生，每天新增 20 张卡片，卡片到期时按模型算出的真实留存概率决定答对还是答错，再按结果重新排期。复刻公式和参数见 [`scripts/fsrs7-sim.py`](scripts/fsrs7-sim.py)。结果如下（每天新增 20 张、目标留存 90%、最长间隔 365 天）：
+
+| 时间跨度 | 累计卡片 | 累计复习 | 累计答对 | 实际留存率 | 近30天日均复习 | 近30天单日峰值 | 近30天平均间隔 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 1 周 | 140 | 42 | 37 | 88.10% | 6 | 22 | 22.8 天 |
+| 1 个月 | 600 | 769 | 662 | 86.09% | 26 | 40 | 16.7 天 |
+| 半年 | 3,640 | 15,258 | 13,125 | 86.02% | 124 | 146 | 58.7 天 |
+| 1 年 | 7,300 | 41,822 | 35,994 | 86.06% | 154 | 167 | 53.0 天 |
+| 2 年 | 14,600 | 112,605 | 97,647 | 86.72% | 205 | 233 | 77.0 天 |
+| 3 年 | 21,900 | 201,281 | 175,256 | 87.07% | 254 | 283 | 92.5 天 |
+| 4 年 | 29,200 | 304,149 | 265,818 | 87.40% | 284 | 315 | 109.1 天 |
+| 5 年 | 36,500 | 419,003 | 367,271 | 87.65% | 333 | 378 | 114.0 天 |
+| 6 年 | 43,800 | 544,878 | 479,306 | 87.97% | 355 | 378 | 129.4 天 |
+| 7 年 | 51,100 | 683,253 | 602,575 | 88.19% | 387 | 429 | 138.2 天 |
+| 8 年 | 58,400 | 833,131 | 736,429 | 88.39% | 424 | 457 | 142.1 天 |
+| 9 年 | 65,700 | 993,521 | 880,509 | 88.63% | 456 | 489 | 148.3 天 |
+| 10 年 | 73,000 | 1,161,682 | 1,032,223 | 88.86% | 470 | 505 | 159.4 天 |
+| 15 年 | 109,500 | 2,147,183 | 1,927,206 | 89.76% | 597 | 624 | 187.1 天 |
+| 20 年 | 146,000 | 3,355,978 | 3,037,658 | 90.51% | 728 | 775 | 205.1 天 |
+
+**怎么看这张表：**
+
+- **留存率稳在目标附近**：实际留存从初期的 86% 逐年收敛到 20 年的 90.5%，全程围绕设定的 90% 目标上下小幅波动，没有随时间恶化——说明排期是自我稳定的，不会越用越不准。初期的几个点偏低，是因为新卡还在建立记忆稳定性，且仿真按整天排期（间隔取整）会带来一点误差。
+- **复习量可预期**：在"每天雷打不动加 20 张新卡"这个设定下，日均复习量从第一周 6 次涨到 20 年后 728 次。这不是算法失控，而是 20 年累积了 14.6 万张卡、每张都要定期复习的自然结果——它说明**复习负担由你每天加多少新卡决定，不是由算法决定**。
+- **间隔随成熟度拉开**：平均间隔从半年时 59 天涨到 20 年时 205 天，说明记得越牢的卡被排得越疏，这正是间隔重复该有的样子。
+
+> 说明：这是仿真推演，不是真实用户数据；数字用于验证算法在长期尺度上的稳定性，不代表每个账号的实际数值。默认参数与求解口径复刻自 [open-spaced-repetition/srs-benchmark](https://github.com/open-spaced-repetition/srs-benchmark) 的 FSRS-7 实现，与 [Anki 官方 FSRS FAQ](https://docs.ankiweb.net/faqs/frequently-asked-questions-about-fsrs) 对首间隔与留存率的描述一致。
 
 ## 记忆分析
 
@@ -202,7 +232,7 @@ Flashcards and AI-generated multiple-choice quizzes. Each card keeps its own mod
 
 ### Scheduling
 
-New cards climb a ten-step ladder (1 minute to 120 days), then move to a full FSRS v4 model that computes intervals from stability, difficulty and retention. Ratings are Again / Hard / Good / Easy. The 19 weights are fitted from your own review history, with manual override, an interval multiplier and a maximum interval. Overdue cards get a daily cap and a reminder; a vacation date stops reminders and shifts the whole plan on the end date. A 30-day workload forecast shows what's coming.
+Uses the full FSRS-7 algorithm from the first review — no fixed ladder. Memory is tracked with long- and short-term stability plus difficulty, and the next interval is solved from a target retention you can set (90% by default, the official recommendation). Ratings are Again / Hard / Good / Easy. The 34 weights are fitted from your own review history, with manual override, an interval multiplier and a maximum interval. Overdue cards get a daily cap and a reminder; a vacation date stops reminders and shifts the whole plan on the end date. A 30-day workload forecast shows what's coming.
 
 ### Data and network
 
