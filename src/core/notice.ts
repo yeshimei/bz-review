@@ -255,14 +255,38 @@ function suppressedByLevel(kind: NoticeKind, opts?: NoticeOptions): boolean {
  *  移动端媒体查询（id 特异性低于 id+类）恒顶部居中不被覆盖。缺省 top-right 不挂类 */
 const POSITION_CLASSES = ['bzrv-notice-pos--bottom-right', 'bzrv-notice-pos--bottom-left', 'bzrv-notice-pos--top-left'] as const;
 
+export type NoticePos = 'top-right' | 'top-left' | 'bottom-right' | 'bottom-left';
+
+/**
+ * 通知该落在哪个角。
+ *
+ * 2026-11-19：被 bz Reader 嵌进书架时，顶部两个角正压住宿主头栏那几颗图标
+ * （截图里「正在重新生成…」把页签栏挡住了），所以嵌入形态一律改走下方两个角。
+ * 纯函数，单测直接钉住。
+ */
+export function resolveNoticePos(pref: string | undefined, embedded: boolean): NoticePos {
+  const pos: NoticePos =
+    pref === 'bottom-right' || pref === 'bottom-left' || pref === 'top-left' ? pref : 'top-right';
+  if (!embedded) return pos;
+  if (pos === 'top-right') return 'bottom-right';
+  if (pos === 'top-left') return 'bottom-left';
+  return pos;
+}
+
+/** 被嵌进宿主（书架）的开关；main.ts 的 embedInto / 收场函数各调一次 */
+let embeddedInHost = false;
+
+export function setNoticeEmbedded(on: boolean): void {
+  embeddedInHost = on;
+  const container = typeof document !== 'undefined' ? document.getElementById('bzrv-notice-container') : null;
+  if (container) applyPositionClass(container);
+}
+
 function applyPositionClass(container: HTMLElement): void {
-  const pos = noticePref('noticePosition');
+  const pos = resolveNoticePos(noticePref('noticePosition'), embeddedInHost);
   container.classList.remove(...POSITION_CLASSES);
-  const cls =
-    pos === 'bottom-right' || pos === 'bottom-left' || pos === 'top-left'
-      ? `bzrv-notice-pos--${pos}`
-      : '';
-  if (cls) container.classList.add(cls);
+  /* 缺省 top-right 不挂类（样式里就是它） */
+  if (pos !== 'top-right') container.classList.add(`bzrv-notice-pos--${pos}`);
 }
 
 /** 基础阅读速度：每字符约 60ms（中英文混合均值）；短文本用 base 兜底 */

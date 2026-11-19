@@ -31,7 +31,7 @@ import { Modal, TFile, type App } from 'obsidian';
 import { topifyZ, allocZ } from '../core/z-order';
 import { bindMaskDismiss } from '../core/mask-dismiss';
 import { trapPanelFocus } from '../core/ui/focus-trap';
-import { notice, notifyUndo, notifySaveError, notifyActionError } from '../core/notice';
+import { notice, notify, notifyUndo, notifySaveError, notifyActionError } from '../core/notice';
 import { openFlowDialog } from '../core/flow-dialog';
 import { escManager } from '../core/esc-manager';
 import { getSettings, tryGetSettings, panelSizePersist } from '../core/settings-provider';
@@ -898,13 +898,7 @@ export class UIManager {
         });
       });
       row.querySelector<HTMLElement>('[data-act="mgr-regen"]')?.addEventListener('click', () => {
-        void (async () => {
-          const { regenerateCardContent } = await import('./index');
-          notice('正在重新生成…', 'info');
-          const ok = await regenerateCardContent(it.filePath);
-          notice(ok ? '已重新生成' : '这次没生成出来（看看 AI 配置）', ok ? 'success' : 'warning');
-          if (ok) await this.refreshPanel();
-        })();
+        void this.regenerateWithConfirm(it);
       });
       row.querySelector<HTMLElement>('[data-act="mgr-suspend"]')?.addEventListener('click', () => void applyHidden(it, 'suspend'));
       row.querySelector<HTMLElement>('[data-act="mgr-bury"]')?.addEventListener('click', () => void applyHidden(it, 'bury'));
@@ -1156,10 +1150,31 @@ export class UIManager {
    * 与 bz Reader 同一形态：用户在哪用这个插件，就在哪改它的设置。原生设置页
    * 那套 PluginSettingTab 已删——两处设置最容易长出「同一个开关两个名字」。
    */
-  async openSettings(): Promise<void> {
+  async openSettings(anchor?: string): Promise<void> {
     this.page = 'settings';
     void this.showMain();
     await this.refreshPanel();
+    if (anchor) this.scrollSettingsTo(anchor);
+  }
+
+  /**
+   * 滚到设置里的某一组（2026-11-19：「去设置 AI」的那个出口）。
+   *
+   * 设置页每次重绘都是新节点，所以要按组名现查；渲染是异步的，找不到时
+   * 按 80ms 重试几次就停——不轮询、也不报错。
+   */
+  private scrollSettingsTo(anchor: string, tries = 10): void {
+    const groupName = anchor === 'ai' ? 'AI' : anchor;
+    const seek = (left: number): void => {
+      const el = document.querySelector<HTMLElement>('.bzs-set-page .bzs-setgrp[data-group="' + groupName + '"]');
+      if (el) {
+        el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        return;
+      }
+      if (left <= 0) return;
+      window.setTimeout(() => seek(left - 1), 80);
+    };
+    seek(tries);
   }
 
   /** 打开「数据」内置页（命令与右上角那颗图钉共用一条路，不再有第二套弹窗） */
@@ -1704,6 +1719,45 @@ export class UIManager {
     });
   }
 
+  /**
+   * 「重新生成 AI 内容」的唯一入口（右键抽屉 / 卡片管理器行内按钮共用）。
+   *
+   * 2026-11-19 用户口径：点了重新生成也要先把新题面摆出来确认，确认后才替换。
+   * 所以这里三步走——生成草稿（进度通知）→ 确认页 → 确认后写盘；取消则卡上
+   * 一个字节都不动。生成与结果各一条通知，进度先收起再出结果，不再两条叠着。
+   */
+  private async regenerateWithConfirm(item: ReviewItem): Promise<void> {
+    const { aiReadyOrGuide } = await import('./ai-guide');
+    if (!(await aiReadyOrGuide('重新生成要用 AI'))) return;
+
+    const progress = notify('正在重新生成…', { type: 'progress' });
+    const { generateCardRegenerateDraft, applyCardRegenerateDraft } = await import('./index');
+    const entry = await generateCardRegenerateDraft(item.filePath);
+    progress.hide();
+    if (!entry) {
+      notify('这次没生成出来（看看 AI 配置）', { type: 'warning' });
+      return;
+    }
+
+    const { confirmRegenerated } = await import('./card-flow');
+    const res = await confirmRegenerated({
+      item,
+      mode: entry.mode,
+      draft: entry.draft,
+      /* 确认页里再点「重新生成」：只换草稿，仍然不写盘 */
+      regenerate: async () => (await generateCardRegenerateDraft(item.filePath))?.draft ?? null,
+    });
+    if (!res.ok) return;
+
+    const draft = { ...entry.draft };
+    if (res.qa) draft.qa = { q: res.qa.q, a: res.qa.a, at: Date.now() };
+    if (res.cloze) draft.cloze = { ...res.cloze, at: Date.now() };
+    if (res.questions) draft.questions = res.questions;
+    const ok = await applyCardRegenerateDraft({ ...entry, draft });
+    notify(ok ? '已替换题面' : '这次没生成出来（看看 AI 配置）', { type: ok ? 'success' : 'warning' });
+    if (ok) await this.refreshPanel();
+  }
+
   private async openDrawer(item: ReviewItem, x: number, y: number): Promise<void> {
     const { openItemMenu, resetItemMenuClickGuard } = await import('../core/item-actions');
     const actions: ItemActionLite[] = [
@@ -1714,18 +1768,7 @@ export class UIManager {
             {
               icon: 'refresh-cw',
               label: '重新生成 AI 内容',
-              onClick: () => {
-                void (async () => {
-                  const { regenerateCardContent } = await import('./index');
-                  notice('正在重新生成…', 'info');
-                  const ok = await regenerateCardContent(item.filePath);
-                  notice(
-                    ok ? '已重新生成' : '这次没生成出来（看看 AI 配置）',
-                    ok ? 'success' : 'warning'
-                  );
-                  if (ok) await this.refreshPanel();
-                })();
-              },
+              onClick: () => void this.regenerateWithConfirm(item),
             } as ItemActionLite,
           ]
         : [

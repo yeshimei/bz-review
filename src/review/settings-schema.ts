@@ -25,6 +25,7 @@ import {
   DEFAULT_AI_PROVIDER,
   getProviderDescriptor,
   maxOutputCapOf,
+  resetAIProviderCache,
   testAIConnectivity,
   thinkingLevelsOf,
 } from '../core/ai';
@@ -258,6 +259,18 @@ export function reviewLlmRows(): SettingsRow[] {
     });
   }
   rows.push(providerModelRow(), providerMaxTokensRow(), providerThinkingRow());
+  /* 共享 bz Reader 的配置（2026-11-19）：放在最后，读完上面那一堆再看它——
+     它的语义是「上面都空着时去哪儿找」，不是又一个服务商选项。 */
+  rows.push({
+    type: 'toggle',
+    name: '共享 bz Reader 的 AI 配置',
+    desc: '自己没配时借用 bz Reader 填好的那一份；只读，不会写回它',
+    binding: { key: 'aiShareReader' },
+    onChange: () => {
+      /* 配置源变了：清掉解析缓存，下一次调用按新开关重新决定借不借 */
+      resetAIProviderCache();
+    },
+  });
   return rows;
 }
 

@@ -56,6 +56,66 @@ export function safeMakeAI(): AIService | null {
   }
 }
 
+/** 生成结果（还没写盘）：确认之后才替换掉卡上的旧题面 */
+export interface CardContentDraft {
+  mode: CardMode;
+  qa?: { q: string; a: string; at: number };
+  cloze?: { text: string; blanks: string[]; at: number };
+  questions?: QuizQuestion[];
+}
+
+/**
+ * 只生成、不写盘。
+ *
+ * 「重新生成」2026-11-19 起要先过一次确认页（用户改完才替换），所以把生成
+ * 与落盘拆开：这个函数出草稿，`ensureCardContent` 负责在后台补内容，界面侧
+ * 拿到草稿先给用户看。
+ */
+export async function generateCardContent(
+  card: ReviewCard,
+  ctx: CardPrepareContext,
+): Promise<CardContentDraft | null> {
+  if (!card?.key) return null;
+  if (ctx.mode === 'plain') return null;
+  /* 上下文卡用的是阅读器给的 before/after，没有要生成的东西 */
+  if (ctx.mode === 'context') return null;
+
+  if (ctx.mode === 'flashcard') {
+    const res = await generateFlashcard(card, ctx.makeAI);
+    if (!res?.q) return null;
+    return { mode: 'flashcard', qa: { q: res.q, a: res.a, at: Date.now() } };
+  }
+
+  if (ctx.mode === 'cloze') {
+    /* 先问模型；模型不给、或给得不合格，退回规则挖空——复习不能因为模型卡住 */
+    const made = (await generateCloze(card, ctx.makeAI)) ?? ruleCloze(String(card.text ?? ''));
+    if (!made.blanks?.length || !made.text.includes('{{1}}')) return null;
+    return { mode: 'cloze', cloze: made };
+  }
+
+  const list = await generateCardQuiz(card, ctx.makeAI);
+  if (!list?.length) return null;
+  return { mode: 'quiz', questions: list };
+}
+
+/** 把一份草稿写到卡上（确认之后调用） */
+export async function applyCardContent(card: ReviewCard, ctx: CardPrepareContext, draft: CardContentDraft): Promise<boolean> {
+  if (!card?.key || !draft) return false;
+  if (draft.mode === 'flashcard') {
+    if (!draft.qa?.q) return false;
+    await ctx.updateCard(card.key, { qa: draft.qa });
+    return true;
+  }
+  if (draft.mode === 'cloze') {
+    if (!draft.cloze?.blanks?.length) return false;
+    await ctx.updateCard(card.key, { cloze: draft.cloze });
+    return true;
+  }
+  if (!draft.questions?.length) return false;
+  await ctx.saveQuiz(card.key, draft.questions);
+  return true;
+}
+
 /**
  * 给一张卡补齐当前方式要用的内容。
  *
@@ -77,29 +137,16 @@ export async function ensureCardContent(
 
   if (ctx.mode === 'flashcard') {
     if (!force && String(card.qa?.q ?? '').trim()) return false;
-    const res = await generateFlashcard(card, ctx.makeAI);
-    if (!res?.q) return false;
-    await ctx.updateCard(card.key, { qa: { q: res.q, a: res.a, at: Date.now() } });
-    return true;
-  }
-
-  if (ctx.mode === 'cloze') {
+  } else if (ctx.mode === 'cloze') {
     if (!force && card.cloze?.text && card.cloze.blanks?.length) return false;
-    // 先问模型；模型不给、或给得不合格，退回规则挖空——复习不能因为模型卡住
-    const made = (await generateCloze(card, ctx.makeAI)) ?? ruleCloze(String(card.text ?? ''));
-    if (!made.blanks?.length || !made.text.includes('{{1}}')) return false;
-    await ctx.updateCard(card.key, { cloze: made });
-    return true;
-  }
-
-  if (!force) {
+  } else if (!force) {
     const have = await ctx.loadQuiz(card.key);
     if (have && have.length) return false;
   }
-  const list = await generateCardQuiz(card, ctx.makeAI);
-  if (!list?.length) return false;
-  await ctx.saveQuiz(card.key, list);
-  return true;
+
+  const draft = await generateCardContent(card, ctx);
+  if (!draft) return false;
+  return applyCardContent(card, ctx, draft);
 }
 
 /** 正在排队/生成中的钥匙（同一张卡被连点两次不排两遍） */

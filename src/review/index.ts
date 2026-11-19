@@ -22,7 +22,19 @@ import { setReviewPlanApi } from './reader-api';
 import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
 import { tryGetSettings } from '../core/settings-provider';
 import { canUseCapability, capabilityBlock } from '../data/entitlement';
-import { cardModeOf, defaultCardMethod, ensureCardContent, modeOfCard, queueCardPreparation, safeMakeAI, type CardMode, type CardPrepareContext } from './card-ai';
+import {
+  applyCardContent,
+  cardModeOf,
+  defaultCardMethod,
+  ensureCardContent,
+  generateCardContent,
+  modeOfCard,
+  queueCardPreparation,
+  safeMakeAI,
+  type CardContentDraft,
+  type CardMode,
+  type CardPrepareContext,
+} from './card-ai';
 import { pickCardMethod } from './card-flow';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { cardQuota, quizOf, withoutPrepared } from './reader-input';
@@ -85,6 +97,45 @@ export async function regenerateCardContent(key: string): Promise<boolean> {
   const mode = modeOfCard(card);
   try {
     return await ensureCardContent(card, cardPrepareCtx(mode === 'plain' ? 'flashcard' : mode), true);
+  } catch {
+    return false;
+  }
+}
+
+/** 重新生成的第一步产物：草稿 + 这张卡按哪种方式生成 */
+export interface CardRegenerateDraft {
+  card: ReviewCard;
+  mode: CardMode;
+  draft: CardContentDraft;
+}
+
+/**
+ * 只生成「重新生成」的草稿，**不写盘**（2026-11-19）。
+ *
+ * 右键「重新生成 AI 内容」现在要先把新题面摆给用户看、确认后才替换；写盘动作
+ * 交给 `applyCardRegenerateDraft`。生成失败返回 null，卡上的旧内容一个字节不动。
+ */
+export async function generateCardRegenerateDraft(key: string): Promise<CardRegenerateDraft | null> {
+  if (!dataManager) return null;
+  const items = await dataManager.loadItems();
+  const card = items.find((i) => i.filePath === key && isCardItem(i))?.card;
+  if (!card) return null;
+  const mode = modeOfCard(card);
+  const prepareMode: CardMode = mode === 'plain' ? 'flashcard' : mode;
+  try {
+    const draft = await generateCardContent(card, cardPrepareCtx(prepareMode));
+    return draft ? { card, mode, draft } : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 用户确认之后才真正替换（写盘） */
+export async function applyCardRegenerateDraft(entry: CardRegenerateDraft): Promise<boolean> {
+  if (!dataManager) return false;
+  const mode = entry.mode === 'plain' ? 'flashcard' : entry.mode;
+  try {
+    return await applyCardContent(entry.card, cardPrepareCtx(mode), entry.draft);
   } catch {
     return false;
   }

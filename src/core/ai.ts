@@ -26,6 +26,7 @@ import { getApp } from './app';
 import { resolveModelLimits } from './model-limits';
 import { toBase64 } from './crypto';
 import { DEFAULT_AI_PROVIDER, resolveProviderId } from './ai-provider-id';
+import { ensureReaderAi, ownAiConfigured } from './ai-share';
 
 export { DEFAULT_AI_PROVIDER };
 
@@ -53,6 +54,8 @@ export interface AISettingsLike {
    *  issue 411/ADR-0179：档位词表逐家不同（deepseek 有 off 无 medium；zhipu-plan 无 off；
    *  ollama 走 reasoning_effort），故按 provider 分开存，切服务商不互相污染 */
   aiThinkingOverrides?: Record<string, string>;
+  /** 共享 bz Reader 的 AI 配置（2026-11-19）：自己没配时借用对方那份，只读不写回 */
+  aiShareReader?: boolean;
 }
 
 let _settingsProvider: (() => AISettingsLike) | null = null;
@@ -504,7 +507,13 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     if (cacheable) _aiProviderCache = p;
     return p;
   };
-  const s = getQ3Settings();
+  let s = getQ3Settings();
+  /* 共享 AI 配置（2026-11-19）：自己没配、开关开着，就借用 bz Reader 那份。
+     只读、不写回；借来的半成品在 ai-share 里已经滤掉。 */
+  if (!override && s.aiShareReader !== false && !ownAiConfigured(s)) {
+    const borrowed = await ensureReaderAi();
+    if (borrowed) s = { ...s, ...borrowed };
+  }
   // 调用方直接给完整配置（如脚本内指定第三方端点/key）——不经注册表，故无思考档位可查
   if (override && typeof override === 'object' && override.apiKey) {
     return {
