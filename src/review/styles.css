@@ -17,9 +17,9 @@
   /* 移动端全屏（issue 254 迭代）：钉满视口，不受内容高度收缩（原 max-height:100% 短内容时缩成悬浮卡） */
   #bzrv-popup { animation: none ; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
 }
-/* 独立界面顶部的「复习计划」页签（2026-11-20，图三形制）：
-   左侧竖栏整条撤掉，那一项挪到头栏成了一个横排页签。样式对齐 bz-reader 的
-   .bzs-stunav button——图标+文字一行、选中态加深、底部 2px 强调下划线。 */
+/* 独立界面顶部的「复习」页签（2026-11-20，图三形制）：
+   左侧竖栏整条撤掉，那一项挪到头栏成了一个横排页签。图标+文字一行，选中态只靠
+   字色加深——底部强调下划线已撤（2026-11-20 用户口径）。 */
 .bzrv-stutab {
   position: relative;
   appearance: none;
@@ -41,19 +41,13 @@
 }
 .bzrv-stutab:hover { color: var(--bzrv-text-2); }
 .bzrv-stutab.is-on { color: var(--bzrv-text-1); }
-.bzrv-stutab.is-on::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  /* padding-bottom 12px 是为了和日期副题同基线，下划线要落在文字底（padding 顶），
-     不能贴 button 底（那是头栏底线，会和 border-bottom 重合看不见）。 */
-  bottom: 12px;
-  height: 2px;
-  background: var(--bzrv-accent);
-}
+/* 下划线已撤（2026-11-20 用户口径）：选中态只靠字色加深，不再画底部强调线。
+   与日期副题同基线靠 padding-bottom 12px 保持。 */
 .bzrv-stutab .bzrv-stutab-ic { width: 16px; height: 16px; opacity: .72; flex-shrink: 0; }
 .bzrv-stutab.is-on .bzrv-stutab-ic { opacity: 1; }
+/* 「复习」与日期之间的分隔竖线加长（2026-11-20）：core 默认 14px 比两行文字都矮，
+   看着像一段没画完的短线；抬到 20px 与页签文字行齐平，分隔感才成立。 */
+#bzrv-popup .bzrv-panel-head-pipe { height: 20px; }
 /* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动）。
    不再有左栏，内容区独占整宽。 */
 #bzrv-entries { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }

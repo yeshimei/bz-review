@@ -55,6 +55,7 @@ import {
 } from './motion';
 import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
 import { ratingForKey } from './keys';
+import { FILTER_CLICK_STATE, nextPanelPage, type PanelPage } from './panel-nav';
 import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
 import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './plan-ops';
 import { canUseCapability, capabilityBlock } from '../data/entitlement';
@@ -1232,16 +1233,14 @@ export class UIManager {
    * 主队列与内置页共用 panelHeadHtml，所以绑定也共用这一份，不再各写一套。
    */
   private bindPanelHead(container: HTMLElement): void {
-    /* 顶部「复习计划」页签：点它回主列表，承接撤掉的左栏 onSelect。 */
-    container.querySelector('[data-act="home"]')?.addEventListener('click', () => {
-      if (!this.page) return;
-      this.page = null;
-      void this.refreshPanel();
-    });
-    const go = (page: 'settings' | 'stats' | 'achv' | 'arch' | 'trash'): void => {
-      this.page = this.page === page || this.page ? null : page;
+    /* 图标点击统一走 panel-nav 的语义（2026-11-20）：点哪个图标直接打开对应页，
+       幂等；只有点「复习」页签（home）回主列表。此前那套 toggle 在某内置页点
+       另一个图标会先回主列表、再点一次才开，用户反馈很奇怪，已废弃。 */
+    const go = (clicked: PanelPage): void => {
+      this.page = nextPanelPage(this.page, clicked);
       void this.refreshPanel();
     };
+    container.querySelector('[data-act="home"]')?.addEventListener('click', () => go('home'));
     container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
     container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
     /* 成就入口在底栏（头行四颗图标要与 Reader 嵌入动作栏对齐，不能再加） */
@@ -1251,12 +1250,11 @@ export class UIManager {
        头行那颗，底栏那颗就成了纯装饰。这里两处都绑同一个动作。 */
     container.querySelectorAll('[data-act="trash"]').forEach((el) => el.addEventListener('click', () => go('trash')));
     container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
-      if (this.page) {
-        this.page = null;
-      } else {
-        this.filterOpen = !this.filterOpen;
-        this.keepFilterFocus = this.filterOpen;
-      }
+      /* 点搜索图标恒定展开搜索面板（FILTER_CLICK_STATE）：从内置页点也回主列表并打开，
+         连点不再 toggle 收起、更不清掉已输入的条件——清条件是筛选区「清除」那颗的事。 */
+      this.page = FILTER_CLICK_STATE.page;
+      this.filterOpen = FILTER_CLICK_STATE.filterOpen;
+      this.keepFilterFocus = true;
       void this.refreshPanel();
     });
   }
