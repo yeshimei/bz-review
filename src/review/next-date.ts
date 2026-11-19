@@ -27,7 +27,7 @@ export async function openNextDateDialog(app: App, file: TFile | null): Promise<
   const items = await reviewApp.dataManager!.loadItems();
   const item = items.find((i) => i.filePath === file.path);
   if (!item) {
-    notice('这篇不在复习计划里，先加入计划', 'warning');
+    notice('这篇不在复习里，先加入计划', 'warning');
     return;
   }
   const body = createDiv();

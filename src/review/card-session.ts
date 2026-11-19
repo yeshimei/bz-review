@@ -1,7 +1,7 @@
 /* ============================================================
  * bz · 划线卡复习会话（review/card-session.ts）
  *
- * 复习一条划线卡不该打开任何文件——内容就在条目里。三种方式由复习计划这边
+ * 复习一条划线卡不该打开任何文件——内容就在条目里。三种方式由复习这边
  * 定（设置里的「复习方式」），这里只管把选中的那种跑完：
  *
  *   · **抽认卡**：先给一句问句，点开看全文，再自评。问句不能等于答案——
@@ -34,6 +34,8 @@ import { modeMetaOf, modeOfItem, queueRowsOf, switchNoticeOf, typeBucketsOf } fr
 import { CardAudio } from './card-audio';
 import type { TtsConfig } from '../core/tts-client';
 import { backlinkOfCard } from './reader-jump';
+import { noteSourceOf } from './note-source';
+import { jumpToSourceNote } from './note-jump';
 import { readerJumpUrl } from '../core/reader-link';
 import { openExternalUrl } from '../core/utils';
 import { canUseCapability, capabilityBlock } from '../data/entitlement';
@@ -1027,6 +1029,17 @@ export class CardSession {
   private back(): void {
     const card = this.current()?.card;
     if (!card) return;
+    /* 笔记选段：opens 库里的笔记并重新选中那段（不要求装 bz Reader） */
+    const note = noteSourceOf(card.sourceNote);
+    if (note) {
+      void jumpToSourceNote(this.opts.app, note).then((ok) => {
+        if (!ok) {
+          this.notice = '这篇笔记已经不在库里了';
+          this.render();
+        }
+      });
+      return;
+    }
     const url = backlinkOfCard(card, readerJumpUrl);
     if (!url) return;
     const plugins = (this.opts.app as PluginRegistryHost | null)?.plugins?.plugins;

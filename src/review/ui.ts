@@ -1,5 +1,5 @@
 /**
- * 复习计划 UI（2026-09-04 拍板形态重写：三区队列面板；issue 253 起 markup 单源自 render.ts）
+ * 复习 UI（2026-09-04 拍板形态重写：三区队列面板；issue 253 起 markup 单源自 render.ts）
  *
  * 用户拍板（原型 rp1x 评审结论）：
  *  - 桌面右上角无设置按钮；「归档 / 统计」改为非按钮 → 沉到面板底部一条弱化信息行
@@ -20,7 +20,7 @@
  * 深审批 C（2026-09-19）：
  *  - U4/A4/E7/U10 难度弹窗迁 openFlowDialog choice 形态（ESC/遮罩/焦点 core 单源收口 +
  *    1-4 快捷键 + onSelect promise 兜底），旧自绘 .difficulty-dialog 不再产出
- *  - E1/C1 抽屉「移出复习计划」原按效率整改 5 免确认直达；2026-11-19 用户口径改为
+ *  - E1/C1 抽屉「移出复习」原按效率整改 5 免确认直达；2026-11-19 用户口径改为
  *    先弹二次确认（confirm-flows），确认后仍保留撤销 toast
  *  - E6 队列重建前记录三区列滚位与焦点控件，重建后还原
  *  - C15 构造期 allocZ 删（ADR-0067 仅显示时 topifyZ 发号）；ESC 层 id 改 'bzrv-review-main'
@@ -355,11 +355,11 @@ export class UIManager {
     this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = CSS_DISPLAY_NONE;
 
-    /* 左栏固定一项「复习计划」（与 bz Reader 的书库/笔记同形制）。
+    /* 左栏固定一项「复习」（与 bz Reader 的书库/笔记同形制）。
        嵌进 reader 书架时由 CSS 收起——那边页签栏已经承担了这件事。 */
     const railHost = createDiv({ cls: 'bzrv-rail-host' });
     const rail = uiRail({
-      groups: [{ items: [{ id: 'home', name: '复习计划', icon: 'calendar-check' }] }],
+      groups: [{ items: [{ id: 'home', name: '复习', icon: 'calendar-check' }] }],
       activeId: 'home',
       onSelect: () => {
         this.page = null;
@@ -561,7 +561,7 @@ export class UIManager {
         host.appendChild(
           uiEmpty({
             icon: 'inbox',
-            title: '复习计划还是空的',
+            title: '复习还是空的',
             desc: '添加监听文件夹后新笔记自动加入',
             actions: acts,
           })
@@ -989,10 +989,10 @@ export class UIManager {
               entry.pendingRedo = false;
               entry.nextReviewDate = new Date().toISOString();
             });
-            notice(`「${it.name || it.filePath}」已移回复习计划`);
+            notice(`「${it.name || it.filePath}」已移回复习`);
             await this.refreshPanel();
           } catch (e) {
-            notifySaveError(e, '移回复习计划');
+            notifySaveError(e, '移回复习');
           }
         })();
       });
@@ -1053,7 +1053,7 @@ export class UIManager {
       this.selected.clear();
       this.selectMode = false;
     } catch (e) {
-      notifySaveError(e, '移出复习计划');
+      notifySaveError(e, '移出复习');
     }
     await this.refreshPanel();
   }
@@ -1384,7 +1384,7 @@ export class UIManager {
         if (!it) return;
         void openFlowDialog({
           title: '这篇笔记不在了',
-          message: `「${it.name}」的文件找不到（可能被删除、改名或移走了）。要把它移出复习计划吗？移出后可以重新加入。`,
+          message: `「${it.name}」的文件找不到（可能被删除、改名或移走了）。要把它移出复习吗？移出后可以重新加入。`,
           actions: [
             { label: '留着', value: 'cancel' },
             { label: '移出', value: 'ok', cta: true, danger: true },
@@ -1393,9 +1393,9 @@ export class UIManager {
           if (v !== 'ok' || !this.dataManager) return;
           try {
             await planRemoveNote(this.dataManager, it.filePath);
-            notice('已移出复习计划', 'success');
+            notice('已移出复习', 'success');
           } catch (e) {
-            notifySaveError(e, '移出复习计划');
+            notifySaveError(e, '移出复习');
           }
           await this.refreshPanel();
         });
@@ -1430,7 +1430,7 @@ export class UIManager {
       await reviewApp.applyReviewStyles(this.app);
     } catch (e: unknown) {
       // C9：动作失败提示走 core 单源（不再手拼「X失败：msg，请重试」）
-      notifyActionError(e, '加入复习计划');
+      notifyActionError(e, '加入复习');
     }
   }
 
@@ -1438,7 +1438,7 @@ export class UIManager {
   private async showWatchHelp(): Promise<void> {
     await openFlowDialog({
       title: '配置监听文件夹',
-      message: '打开 设置 → 复习计划 → 监听文件夹，添加文件夹后，其中新建的笔记会自动加入复习计划；已存在的笔记可在添加时选择一并加入。',
+      message: '打开 设置 → 复习 → 监听文件夹，添加文件夹后，其中新建的笔记会自动加入复习；已存在的笔记可在添加时选择一并加入。',
       actions: [{ label: '知道了', value: 'ok', cta: true }],
     });
   }
@@ -1823,7 +1823,7 @@ export class UIManager {
       },
       {
         icon: 'trash-2',
-        label: '移出复习计划',
+        label: '移出复习',
         kind: 'danger',
         onClick: () => {
           /* 2026-11-19 用户口径：先二次确认（此处不再走「免确认直达」）。

@@ -44,7 +44,7 @@ describe('备份文件', () => {
   it('别的插件的备份不接（提示说清楚，不静默导一半）', () => {
     const r = parseBackup({ plugin: 'bz', items: [] });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toContain('不是复习计划');
+    if (!r.ok) expect(r.error).toContain('不是复习');
   });
 });
 

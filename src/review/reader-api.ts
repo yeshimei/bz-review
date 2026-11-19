@@ -1,5 +1,5 @@
 /**
- * 复习计划对外门面（ADR-0294 同范式：叶子模块，只放类型与注册表）。
+ * 复习对外门面（ADR-0294 同范式：叶子模块，只放类型与注册表）。
  *
  * bz-reader 的「划线 → 复习卡」要往计划里加一篇**它自己写出来的笔记**，
  * 这是它第一次反向写 bz 的排期数据（以前只有 knowledge 录入与 readerAi 检索，
@@ -46,7 +46,7 @@ export interface ReviewAddSummary {
 }
 
 /**
- * 一张卡片在复习计划里的现状（只读）。
+ * 一张卡片在复习里的现状（只读）。
  *
  * 阅读器拿它做两件事：划线上标「复习中」，以及把下次复习日期写在提示里。
  * `planned: false` 时其余字段全是空态——调用方不必再判空。
@@ -81,6 +81,8 @@ export interface ReviewCardInput {
   comment?: string;
   /** 回到原文的链接（obsidian:// 协议串） */
   backlink?: string;
+  /** 笔记选段出处（path + 字符范围）：bz Reader 文件夹/选字入口交来的卡带它 */
+  sourceNote?: { path: string; from: number; to: number };
   /**
    * 划线前后各一段原文（可选）。
    *

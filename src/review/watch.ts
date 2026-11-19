@@ -1,5 +1,5 @@
 /**
- * 复习计划监听器（ticket 098；ticket 099 修订）：
+ * 复习监听器（ticket 098；ticket 099 修订）：
  *  - 监听文件夹自动加入（新建自动加入 + 排除名单）
  *  - 删除计划内文件 → 确认「是否同步移除复习记录？」
  *  - 重命名/移动计划内文件 → 自动更新路径（不再确认，ticket 099）
@@ -109,8 +109,8 @@ export class ReviewWatcher {
       await this.dataManager.addItem(file.path, file.basename);
     } catch (e) {
       // F10：查重类错误（并发已加入）静默；写盘类失败给人话提示——自动加入不再静默失败
-      if (e instanceof Error && e.message.includes('已在复习计划中')) return;
-      notifySaveError(e, '自动加入复习计划');
+      if (e instanceof Error && e.message.includes('已在复习中')) return;
+      notifySaveError(e, '自动加入复习');
       return;
     }
     // U8：面板开着时列表即时补卡（对齐 rename 路径的「列表即时、通知合并」）
@@ -127,7 +127,7 @@ export class ReviewWatcher {
       if (!batch.length) return;
       const shown = batch.slice(0, 3).join('、');
       const tail = batch.length > 3 ? ` 等 ${batch.length - 3} 篇` : '';
-      notice(batch.length > 1 ? `已自动加入复习计划：${shown}${tail}` : `已自动加入复习计划：${shown}`, 'success');
+      notice(batch.length > 1 ? `已自动加入复习：${shown}${tail}` : `已自动加入复习：${shown}`, 'success');
     }, REVIEW_AUTO_ADD_MERGE_MS);
   }
 
@@ -150,11 +150,11 @@ export class ReviewWatcher {
           title: n > 1 ? `删除 ${n} 篇笔记` : '笔记已删除',
           message:
             n > 1
-              ? `有 ${n} 篇笔记已从 vault 删除，是否同步移除复习计划里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。`
-              : `「${firstName}」已从 vault 删除，是否同步移除复习计划里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。`,
+              ? `有 ${n} 篇笔记已从 vault 删除，是否同步移除复习里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。`
+              : `「${firstName}」已从 vault 删除，是否同步移除复习里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。`,
           actions: [
             { label: '保留', value: 'cancel' },
-            // danger（issue 291 评审补）：移除 = 同步删掉复习计划里的记录并写入排除名单
+            // danger（issue 291 评审补）：移除 = 同步删掉复习里的记录并写入排除名单
             //（删除类主动作，故主按钮不高亮；「保留」才是无损选项，手册 §9/§10）
             { label: '移除', value: 'ok', cta: true, danger: true },
           ],
@@ -213,7 +213,7 @@ export class ReviewWatcher {
         const shown = batch.slice(0, 3).join('、');
         const tail = batch.length > 3 ? `，等 ${batch.length - 3} 篇` : '';
         notice(
-          batch.length > 1 ? `已更新 ${batch.length} 篇笔记的复习路径：${shown}${tail}` : '已更新复习计划路径',
+          batch.length > 1 ? `已更新 ${batch.length} 篇笔记的复习路径：${shown}${tail}` : '已更新复习路径',
           'success'
         );
       }, RENAME_MERGE_MS);
@@ -236,8 +236,8 @@ export class ReviewWatcher {
     const candidates = this.collectAutoaddCandidates(folder, items);
     if (!candidates.length) return true; // 无存量候选：直接接受
     const v = await openFlowDialog({
-      title: '批量加入复习计划',
-      message: `监听文件夹「${folder}」下有 ${candidates.length} 篇笔记未加入复习计划，是否一并加入？`,
+      title: '批量加入复习',
+      message: `监听文件夹「${folder}」下有 ${candidates.length} 篇笔记未加入复习，是否一并加入？`,
       actions: [
         { label: '取消', value: 'cancel' },
         { label: '加入', value: 'ok', cta: true },
@@ -248,7 +248,7 @@ export class ReviewWatcher {
     const res = await this.dataManager.addItems(
       candidates.map((p) => ({ filePath: p, fileName: stripMdExt(p.split('/').pop()!) }))
     );
-    notice(`已加入 ${res.added} 篇笔记到复习计划`, 'success');
+    notice(`已加入 ${res.added} 篇笔记到复习`, 'success');
     await this.refresh();
     return true;
   }
