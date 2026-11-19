@@ -59,7 +59,6 @@ import { ratingForKey } from './keys';
 import { FILTER_CLICK_STATE, nextPanelPage, type PanelPage } from './panel-nav';
 import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
 import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './plan-ops';
-import { canUseCapability, capabilityBlock } from '../data/entitlement';
 import { bookSummariesOf } from './book-summary';
 import { setSuspended, buryItem, unsuspendAndUnbury, hiddenNotice } from './card-manager';
 import { SprintSession } from './sprint';
@@ -183,6 +182,12 @@ export class UIManager {
   /** 已选条目（filePath） */
   private selected = new Set<string>();
   private escHandle: { unregister: () => void } | null = null;
+  /** 「更多」菜单的 ESC 层句柄（比主面板层后注册，ESC 时优先收菜单） */
+  private moreEscHandle: { unregister: () => void } | null = null;
+  /** 「更多」下拉菜单当前打开的那份节点（null = 全关）。重绘/切页/ESC/点外部统一收起。 */
+  private moreMenuEl: HTMLElement | null = null;
+  /** 点外部关闭的 document 监听只挂一次（面板单例，重绘不重复挂） */
+  private moreOutsideBound = false;
   /** 动效 boot 消费标志：showMain 置位，首个 renderEntries 消费（后台刷新静默不重播） */
   private motionBootPending = false;
   /** 桌面拖拽缩放句柄（ADR-0084/ADR-0094）：壳常驻 DOM，showMain 幂等挂 / hideMain 摘；null = 未挂 */
@@ -377,6 +382,12 @@ export class UIManager {
       isVisible: () => this.isShown,
       close: () => this.hideMain(),
     });
+    /* 「更多」菜单层后注册 → 排在数组末尾 → ESC 从后往前先判它：菜单开着时只收菜单、
+       不关面板。顺序反了会一次 ESC 直接关掉面板（2026-11-20 真机测出来的坑）。 */
+    this.moreEscHandle = escManager.register('bzrv-review-more-menu', {
+      isVisible: () => !!this.moreMenuEl && !this.moreMenuEl.hidden,
+      close: () => this.closeMoreMenu(),
+    });
   }
 
   // ================= 显示/隐藏 =================
@@ -450,6 +461,15 @@ export class UIManager {
       this.escHandle.unregister();
       this.escHandle = null;
     }
+    if (this.moreEscHandle) {
+      this.moreEscHandle.unregister();
+      this.moreEscHandle = null;
+    }
+    if (this.moreOutsideBound) {
+      document.removeEventListener('click', this.onDocClickCloseMore, true);
+      this.moreOutsideBound = false;
+    }
+    this.moreMenuEl = null;
     if (this.mask) this.mask.remove();
     if (this.popup) this.popup.remove();
     this.mask = null;
@@ -462,6 +482,9 @@ export class UIManager {
 
   /** 读盘并渲染三区队列（外部刷新入口） */
   async refreshPanel(): Promise<void> {
+    /* 重绘会替换整段头栏 DOM，旧菜单节点随之脱离——先复位引用 + 复位开态按钮，
+       免得 isVisible（菜单层 ESC）还指着游离节点、或下次打开时两颗按钮都亮着。 */
+    this.closeMoreMenu();
     if (this.sprint) return;
     /* 卡片会话正接管内容区：这时候重画队列会把它冲掉（评级会顺手调本方法，
        等于每评一张就把会话打回队列）。会话结束时 onExit 自己会重画。 */
@@ -685,52 +708,14 @@ export class UIManager {
     tip.textContent = '峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。';
     fc.appendChild(tip);
     holder.appendChild(fc);
-    const row = createDiv();
-    row.className = 'bzrv-btn-row';
-    /* 数据页放两个入口：可用就进页，不可用给解锁按钮并弹能力位文案。
-       记忆分析（逐幕报幕）的入口已摘，analysis/ 代码保留。 */
-    const bookCap = canUseCapability('bookReport');
-    const bookBtn = createEl('button');
-    bookBtn.className = 'bzrv-btn';
-    bookBtn.textContent = bookCap ? '按书档案' : '解锁按书报告';
-    bookBtn.addEventListener('click', () => {
-      if (!bookCap) {
-        notice(capabilityBlock('bookReport').message, 'warning');
-        return;
-      }
-      this.page = 'books';
-      void this.refreshPanel();
-    });
-    row.appendChild(bookBtn);
-    const mgrCap = canUseCapability('cardManager');
-    const mgrBtn = createEl('button');
-    mgrBtn.className = 'bzrv-btn';
-    mgrBtn.textContent = mgrCap ? '卡片管理器' : '解锁卡片管理器';
-    mgrBtn.addEventListener('click', () => {
-      if (!mgrCap) {
-        notice(capabilityBlock('cardManager').message, 'warning');
-        return;
-      }
-      this.page = 'manager';
-      void this.refreshPanel();
-    });
-    row.appendChild(mgrBtn);
-    holder.appendChild(row);
+    /* 按书档案 / 卡片管理器的入口已收进头行「更多」菜单（2026-11-20）：数据页底部
+       不再重复摆两颗按钮，避免同一个功能两处入口。记忆分析入口亦已摘，analysis/ 保留。 */
   }
 
-  /** 「按书档案」内置页（高级档 bookReport）：分组列表 + 一键导出 Markdown。 */
+  /** 「按书档案」内置页：分组列表 + 一键导出 Markdown。基础版功能，无门控。 */
   private fillBooksPage(body: HTMLElement, items: ReviewItem[]): void {
     const wrap = createDiv();
     wrap.className = 'bzrv-book-page';
-    if (!canUseCapability('bookReport')) {
-      const btn = createEl('button');
-      btn.className = 'bzrv-btn bzrv-btn--primary';
-      btn.textContent = '解锁按书报告';
-      btn.addEventListener('click', () => notice(capabilityBlock('bookReport').message, 'warning'));
-      wrap.appendChild(btn);
-      body.appendChild(wrap);
-      return;
-    }
     setMarkup(wrap, booksViewHtml(bookSummariesOf(items)));
     const row = createDiv();
     row.className = 'bzrv-btn-row';
@@ -764,19 +749,10 @@ export class UIManager {
     }
   }
 
-  /** 「卡片管理器」内置页（高级档 cardManager）：全部条目的挂起 / 埋藏 / 恢复 / 排期 / 移出。 */
+  /** 「卡片管理器」内置页：全部条目的挂起 / 埋藏 / 恢复 / 排期 / 移出。基础版功能，无门控。 */
   private fillManagerPage(body: HTMLElement, items: ReviewItem[]): void {
     const wrap = createDiv();
     wrap.className = 'bzrv-mgr-page';
-    if (!canUseCapability('cardManager')) {
-      const btn = createEl('button');
-      btn.className = 'bzrv-btn bzrv-btn--primary';
-      btn.textContent = '解锁卡片管理器';
-      btn.addEventListener('click', () => notice(capabilityBlock('cardManager').message, 'warning'));
-      wrap.appendChild(btn);
-      body.appendChild(wrap);
-      return;
-    }
     setMarkup(wrap, managerViewHtml(items, {
       filter: this.mgrFilter,
       decks: collectFacets(items).decks,
@@ -1250,44 +1226,46 @@ export class UIManager {
   }
 
   /**
-   * 头行四个图标的点击（2026-11-19 口径：点一下高亮进页，再点一下回主列表）。
-   * 主队列与内置页共用 panelHeadHtml，所以绑定也共用这一份，不再各写一套。
+   * 头行图标点击（2026-11-20 口径：点哪个图标直接打开对应页，幂等；只有「复习」
+   * 页签回主列表）。主队列与内置页共用 panelHeadHtml，绑定也共用这一份。
+   * 四个次级入口（arch/trash/books/manager）收进「更多」下拉菜单：点 more 开合，
+   * 点菜单项进页，点外部/ESC/切页关菜单。嵌入态外置动作栏也走这一份绑定。
    */
   private bindPanelHead(container: HTMLElement): void {
-    /* 图标点击统一走 panel-nav 的语义（2026-11-20）：点哪个图标直接打开对应页，
-       幂等；只有点「复习」页签（home）回主列表。此前那套 toggle 在某内置页点
-       另一个图标会先回主列表、再点一次才开，用户反馈很奇怪，已废弃。 */
     const go = (clicked: PanelPage): void => {
+      this.closeMoreMenu();
       this.page = nextPanelPage(this.page, clicked);
       void this.refreshPanel();
     };
     container.querySelector('[data-act="home"]')?.addEventListener('click', () => go('home'));
     container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
     container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
-    /* 按书档案 / 卡片管理器（2026-11-20 进右侧图标组）：高级档入口，门控与数据页
-       底部那两颗按钮同口径——未解锁点击弹能力位文案，不偷开页。实时判 canUseCapability，
-       解锁后不必重绘即可进。两处入口（图标 + 数据页底部按钮）各绑各的节点。 */
-    container.querySelectorAll('[data-act="books"]').forEach((el) => el.addEventListener('click', () => {
-      if (!canUseCapability('bookReport')) {
-        notice(capabilityBlock('bookReport').message, 'warning');
-        return;
-      }
-      go('books');
-    }));
-    container.querySelectorAll('[data-act="manager"]').forEach((el) => el.addEventListener('click', () => {
-      if (!canUseCapability('cardManager')) {
-        notice(capabilityBlock('cardManager').message, 'warning');
-        return;
-      }
-      go('manager');
-    }));
-    /* 成就入口在底栏（头行图标要与 Reader 嵌入动作栏对齐，走同一份 panelHeadBtnsHtml） */
-    container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
-    container.querySelector('[data-act="arch"]')?.addEventListener('click', () => go('arch'));
-    /* trash 有两处入口（头行那颗图标 + 底栏「已移出 N 条」）：querySelector 只会绑到
-       头行那颗，底栏那颗就成了纯装饰。这里两处都绑同一个动作。 */
+    /* 菜单里的四项：基础版功能，无门控（entitlement.canUseCapability 恒 true）。
+       querySelectorAll 覆盖面板头 + 嵌入外置动作栏两套 DOM。 */
+    container.querySelectorAll('[data-act="books"]').forEach((el) => el.addEventListener('click', () => go('books')));
+    container.querySelectorAll('[data-act="manager"]').forEach((el) => el.addEventListener('click', () => go('manager')));
+    container.querySelectorAll('[data-act="arch"]').forEach((el) => el.addEventListener('click', () => go('arch')));
+    /* trash 有两处入口（菜单项 + 底栏「已移出 N 条」）：两处都绑同一动作。 */
     container.querySelectorAll('[data-act="trash"]').forEach((el) => el.addEventListener('click', () => go('trash')));
+    /* 成就入口在底栏（走同一份 panelHeadBtnsHtml 体系） */
+    container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
+    /* 「更多」按钮：开合下拉菜单。一次只开一个——重绘/嵌入两处 DOM 都先关再切。 */
+    container.querySelectorAll<HTMLElement>('[data-act="more"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menu = btn.parentElement?.querySelector<HTMLElement>('.bzrv-more-menu');
+        if (!menu) return;
+        const willOpen = menu.hidden;
+        this.closeMoreMenu();
+        if (willOpen) {
+          menu.hidden = false;
+          btn.addClass('is-open');
+          this.moreMenuEl = menu;
+        }
+      });
+    });
     container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
+      this.closeMoreMenu();
       /* 点搜索图标恒定展开搜索面板（FILTER_CLICK_STATE）：从内置页点也回主列表并打开，
          连点不再 toggle 收起、更不清掉已输入的条件——清条件是筛选区「清除」那颗的事。 */
       this.page = FILTER_CLICK_STATE.page;
@@ -1295,6 +1273,33 @@ export class UIManager {
       this.keepFilterFocus = true;
       void this.refreshPanel();
     });
+    /* 点菜单外任意处关闭：挂一次 document 监听，靠数据集去重避免每次重绘叠层。
+       延迟到下一个 tick 注册，避开本次 click 刚冒泡的目标判定。 */
+    if (!this.moreOutsideBound) {
+      this.moreOutsideBound = true;
+      window.setTimeout(() => {
+        document.addEventListener('click', this.onDocClickCloseMore, true);
+      }, 0);
+    }
+  }
+
+  /** document 捕获阶段：点「更多」按钮/菜单以外的任何地方都收起菜单。
+   *  路径里含 .bzrv-more-btn 或 .bzrv-more-menu 的不关（交给各自的 click 处理）。 */
+  private onDocClickCloseMore = (e: MouseEvent): void => {
+    const t = e.target;
+    if (t instanceof Element && (t.closest('.bzrv-more-menu') || t.closest('.bzrv-more-btn'))) return;
+    this.closeMoreMenu();
+  };
+
+  /** 收起当前打开的「更多」菜单（幂等）。重绘 / 切页 / ESC / 点外部统一走这里。 */
+  private closeMoreMenu(): void {
+    if (this.moreMenuEl) {
+      this.moreMenuEl.hidden = true;
+      this.moreMenuEl = null;
+    }
+    /* 重绘后旧节点已不在 DOM，但 is-open 残留在被替换掉的节点上无害；这里顺手把
+       当前 DOM 里所有开着的 more 按钮也复位，覆盖嵌入态外置动作栏那一份。 */
+    document.querySelectorAll<HTMLElement>('.bzrv-more-btn.is-open').forEach((b) => b.removeClass('is-open'));
   }
 
   // ================= 队列事件 =================
