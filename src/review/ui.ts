@@ -1243,7 +1243,24 @@ export class UIManager {
     container.querySelector('[data-act="home"]')?.addEventListener('click', () => go('home'));
     container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
     container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
-    /* 成就入口在底栏（头行四颗图标要与 Reader 嵌入动作栏对齐，不能再加） */
+    /* 按书档案 / 卡片管理器（2026-11-20 进右侧图标组）：高级档入口，门控与数据页
+       底部那两颗按钮同口径——未解锁点击弹能力位文案，不偷开页。实时判 canUseCapability，
+       解锁后不必重绘即可进。两处入口（图标 + 数据页底部按钮）各绑各的节点。 */
+    container.querySelectorAll('[data-act="books"]').forEach((el) => el.addEventListener('click', () => {
+      if (!canUseCapability('bookReport')) {
+        notice(capabilityBlock('bookReport').message, 'warning');
+        return;
+      }
+      go('books');
+    }));
+    container.querySelectorAll('[data-act="manager"]').forEach((el) => el.addEventListener('click', () => {
+      if (!canUseCapability('cardManager')) {
+        notice(capabilityBlock('cardManager').message, 'warning');
+        return;
+      }
+      go('manager');
+    }));
+    /* 成就入口在底栏（头行图标要与 Reader 嵌入动作栏对齐，走同一份 panelHeadBtnsHtml） */
     container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
     container.querySelector('[data-act="arch"]')?.addEventListener('click', () => go('arch'));
     /* trash 有两处入口（头行那颗图标 + 底栏「已移出 N 条」）：querySelector 只会绑到
