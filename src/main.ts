@@ -32,6 +32,7 @@ import {
   uiManager,
 } from './review';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
+import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
 import { ReviewPanelView } from './review/panel-view';
@@ -45,6 +46,15 @@ import { t } from './i18n';
 import { installScopeGuard, markOwned } from './core/scope';
 import { notice, setNoticeEmbedded } from './core/notice';
 import { DEFAULT_REVIEW_DIR, LEGACY_REVIEW_DIR, startupStorageDir } from './core/storage-dir';
+
+/** 取 localStorage；隐私模式 / 移动端 WebView 可能抛错，退回 null（镜像降级，主流程照旧） */
+function localStorageOf(): CodeStorage | null {
+  try {
+    return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null;
+  } catch {
+    return null;
+  }
+}
 
 export default class ReviewPlugin extends Plugin {
   settings: BzSettings;
@@ -450,6 +460,15 @@ export default class ReviewPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const loaded: unknown = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded && typeof loaded === 'object' ? loaded : {});
+    /* data.json 被清掉 / 删目录重装时从 localStorage 镜像把码拿回来。
+       镜像里只有码原文，启动时仍走 refreshLicense 真验签——塞假码没用。 */
+    if (!this.settings.licenseKey) {
+      const mirrored = readLicenseMirror(localStorageOf());
+      if (mirrored) {
+        this.settings.licenseKey = mirrored;
+        await this.saveData(this.settings); // 顺手写回 data.json，下次不必再借镜像
+      }
+    }
     /* 老用户的复习数据在 CONFIG/REVIEW，新装才用 bz-review/storage。
        新目录空、老目录有数据时自动指回老目录，避免升级后一看「今日已清空」。 */
     const hasData = async (dir: string): Promise<boolean> => {
@@ -475,19 +494,21 @@ export default class ReviewPlugin extends Plugin {
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+    writeLicenseMirror(localStorageOf(), this.settings.licenseKey);
     resetAIProviderCache();
   }
 
-  /** 设置页「激活」按钮 */
+  /** 设置页「激活」按钮：失败不动当前授权，也不写盘——真码要留着 */
   async activateLicense(code: string): Promise<{ ok: boolean; message: string }> {
-    const state = await refreshLicense(code);
+    const state = await refreshLicense(code, false);
+    if (!state.paid) {
+      return { ok: false, message: '激活码无效或已过期，原来的激活码已保留。' };
+    }
     this.settings.licenseKey = code.trim();
     await this.saveSettings();
     return {
-      ok: state.paid,
-      message: state.paid
-        ? `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`
-        : '激活码无效或已过期。',
+      ok: true,
+      message: `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`,
     };
   }
 
