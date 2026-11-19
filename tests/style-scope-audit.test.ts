@@ -13,6 +13,10 @@ const STYLE_SOURCES = [
   'src/core/ui/components.css',
   'src/review/styles.css',
   'src/review/analysis/styles.css',
+  'src/review/ui/styles/settings-page.css',
+  'src/review/ui/styles/changelog.css',
+  'src/review/ui/styles/changelog-roadmap.css',
+  'src/review/ui/styles/support.css',
 ];
 
 function walkTs(dir: string, out: string[] = []): string[] {
