@@ -21,7 +21,6 @@ import {
   openReviewReport,
   openReviewBooks,
   openReviewCardManager,
-  openReviewAnalysis,
   openQuizPractice,
   reviewAddCurrent,
   reviewAddSelection,
@@ -312,11 +311,6 @@ export default class ReviewPlugin extends Plugin {
           notifyActionError(e, '导出按书报告');
         }
       }),
-    });
-    this.addCommand({
-      id: 'review-analysis',
-      name: t('记忆分析', 'Memory analysis'),
-      callback: withReview((app) => openReviewAnalysis(app)),
     });
     this.addCommand({
       id: 'review-quiz',
