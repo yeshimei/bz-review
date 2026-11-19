@@ -174,22 +174,34 @@ export function licenseSummary(): string {
   return `高级版已激活${who}：${until}，数量不限、所有功能可用。`;
 }
 
+/** 当前真正生效的码（上次验签通过的那枚）。激活失败时用它恢复输入框与落盘值。 */
+export function currentLicenseCode(): string {
+  return cachedCode;
+}
+
 /**
  * 用一枚码刷新授权状态（启动时与用户点「激活」时都走这里）。
  * 验签结论缓存进内存；码原文由调用方存 data.json。
+ *
+ * `commitFailure=false` 给「用户正在试填新码」的入口用：码不认就只回报
+ * 「这枚不行」，不动当前授权（与 Reader 的 activateLicense 同口径）。否则
+ * 输错一次就把真码的运行期结论冲掉——重启虽能恢复，当前会话已经掉级。
+ * 空码是显式清码，任何情况下都提交。
  */
-export async function refreshLicense(code: string): Promise<LicenseState> {
+export async function refreshLicense(code: string, commitFailure = true): Promise<LicenseState> {
   if (!code || !code.trim()) {
     state = EMPTY;
     cachedCode = '';
     return state;
   }
   const r = await verifyLicense(code);
-  cachedCode = code;
   if (!r.ok || !r.payload) {
+    if (!commitFailure) return { paid: false, checkedAt: Date.now() };
+    cachedCode = code;
     state = { paid: false, checkedAt: Date.now() };
     return state;
   }
+  cachedCode = code;
   state = {
     paid: true,
     name: r.payload.name,

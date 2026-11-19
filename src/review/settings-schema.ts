@@ -34,7 +34,13 @@ import { openModelPicker } from '../core/settings-model-picker';
 import { tryGetSettings } from '../core/settings-provider';
 import type { ReviewDataManager } from './data';
 import { getReviewFilePath, getReviewMetaPath } from './data';
-import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
+import {
+  GROUP_ID,
+  PURCHASE_URL,
+  licenseSummary,
+  refreshLicense,
+  currentLicenseCode,
+} from '../data/entitlement';
 import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
 import { isBzPluginEnabled } from '../core/plugin-path';
 import { panelModeOf } from './panel-mode';
@@ -42,6 +48,13 @@ import { DEFAULT_W } from './fsrs';
 import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
 import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
 import type { TtsConfig } from '../core/tts-client';
+
+/**
+ * 激活码输入框的草稿：输入只改这里，不碰 settings、不触发通用 text 行的
+ * 800ms 防抖落盘。只有点「激活」验签通过才写回 settings.licenseKey；
+ * 失败恢复成当前生效码——输错一次不该把真码冲掉。
+ */
+let licenseDraft = '';
 
 /* ── AI 设置：照 bz 主仓的 18 家注册表驱动（不再硬编码 5 家） ── */
 
@@ -318,22 +331,43 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             name: '激活码',
             desc: '填激活码解锁不限数量。赞助人 / 专属定制码两款插件通用；普通高级版码各插件独立。离线验签，不联网。',
             placeholder: 'BZP2.… 或 BZR2.…（赞助人 / 专属码）',
-            binding: { key: 'licenseKey' },
+            /* 外部 binding：输入只进草稿、不落盘。通用 text 行 800ms 防抖就会
+               saveSettings，直绑 licenseKey 的话输错一次就把真码冲掉了。 */
+            binding: {
+              get: () => licenseDraft || currentLicenseCode(),
+              set: (v: string) => {
+                licenseDraft = v;
+              },
+              save: () => {
+                /* 输入本身不落盘：只有点「激活」验签通过才写 settings */
+              },
+            },
             actions: [
               {
                 text: '激活',
                 cta: true,
                 onClick: async () => {
-                  // 文本行的输入先写内存再防抖落盘，这里读内存值即可
-                  const code = String((getSettings()).licenseKey || '').trim();
-                  const state = await refreshLicense(code);
-                  await saveSettings();
-                  notice(
-                    state.paid
-                      ? `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`
-                      : '激活码无效或已过期。',
-                    state.paid ? 'success' : 'warning'
+                  const code = licenseDraft.trim();
+                  const state = await refreshLicense(code, false);
+                  if (state.paid) {
+                    licenseDraft = '';
+                    getSettings().licenseKey = code;
+                    await saveSettings();
+                    notice(
+                      `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`,
+                      'success'
+                    );
+                    return;
+                  }
+                  /* 失败：授权状态和落盘码都没被这枚错码碰过，把输入框也回显回生效码。
+                     激活码输入框的 placeholder 是全局唯一的，靠它定位。 */
+                  const effective = currentLicenseCode();
+                  licenseDraft = '';
+                  const input = document.querySelector<HTMLInputElement>(
+                    'input[placeholder^="BZP2"]'
                   );
+                  if (input) input.value = effective;
+                  notice('激活码无效或已过期，原来的激活码已保留。', 'warning');
                 },
               },
             ],

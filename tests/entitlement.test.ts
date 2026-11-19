@@ -8,6 +8,8 @@ import {
   quotaBlock,
   quotaInfo,
   refreshLicense,
+  currentLicenseCode,
+  getLicenseState,
   remainingCards,
   remainingNotes,
 } from '../src/data/entitlement';
@@ -107,6 +109,28 @@ describe('高级版', () => {
     expect(state.name).toBe('Pomodorinettina');
     expect(canAddNote(9999)).toBe(true);
     expect(licenseSummary()).toContain('Pomodorinettina');
+  });
+
+  it.runIf(HAS_KEYS)('试填错码不掉级、不覆盖真码', async () => {
+    const good = signCode({ id: 'REV-2026-0300', name: '原码' });
+    await refreshLicense(good);
+    expect(getLicenseState().paid).toBe(true);
+    expect(currentLicenseCode()).toBe(good);
+
+    const r = await refreshLicense('这不是码', false);
+    expect(r.paid).toBe(false);
+    /* 这枚码不认，但运行期授权、生效码、状态文案都还是原来那枚 */
+    expect(getLicenseState().paid).toBe(true);
+    expect(currentLicenseCode()).toBe(good);
+    expect(licenseSummary()).toContain('原码');
+  });
+
+  it.runIf(HAS_KEYS)('启动验签（默认）遇到坏码仍按未激活处理', async () => {
+    const good = signCode({ id: 'REV-2026-0301', name: '原码' });
+    await refreshLicense(good);
+    const r = await refreshLicense('这不是码');
+    expect(r.paid).toBe(false);
+    expect(getLicenseState().paid).toBe(false);
   });
 
   it('填错码只降级，不抛错', async () => {
