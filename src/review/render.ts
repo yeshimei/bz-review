@@ -122,16 +122,20 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 
 // ==================== 三区队列视图 ====================
 
-/** 头行入口图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
+/** 头行常驻图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
  *  不然两处各写一份，迟早出现「一边叫数据、一边叫统计」或顺序漂移。
- *  trash（已移出）排在与它同源的 arch（已完成）后面：都是「另一份名单」的入口。
- *  books（按书档案）/ manager（卡片管理器）跟 data 同属高级档数据入口，排在 data 后、
- *  settings 前（2026-11-20 用户口径：这两个功能也进右侧图标组）。 */
-export const PANEL_HEAD_ACTS = ['filter', 'arch', 'trash', 'data', 'books', 'manager', 'settings'] as const;
+ *  2026-11-20 用户口径：右侧只留工具三两颗，arch/trash/books/manager 这四个入口收进
+ *  「更多」下拉菜单（MORE_MENU_ACTS），头行从 7 颗瘦到 filter/data/more/settings 4 颗。 */
+export const PANEL_HEAD_ACTS = ['filter', 'data', 'more', 'settings'] as const;
 export type PanelHeadAct = (typeof PANEL_HEAD_ACTS)[number];
 
-/** data-act → 对应内置页；filter 是就地展开开关，没有「当前页」概念 */
-const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct, string>>> = {
+/** 「更多」菜单里的入口：复习记录（arch/trash）+ 数据洞察（books/manager）。
+ *  顺序即菜单里的呈现顺序；高亮仍走 panelActIsOn（与头行图标同一口径）。 */
+export const MORE_MENU_ACTS = ['arch', 'trash', 'books', 'manager'] as const;
+export type MoreMenuAct = (typeof MORE_MENU_ACTS)[number];
+
+/** data-act → 对应内置页；filter/more 是就地开关，没有「当前页」概念 */
+const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct | MoreMenuAct, string>>> = {
   arch: 'arch',
   trash: 'trash',
   data: 'stats',
@@ -140,26 +144,41 @@ const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct, string>>> = {
   settings: 'settings',
 };
 
-/** 某颗图标此刻是否高亮。纯函数：外置动作栏的高亮同步复用同一口径，不另写一套 if。 */
-export function panelActIsOn(act: PanelHeadAct, activePage?: string | null): boolean {
+/** 某颗图标此刻是否高亮。纯函数：外置动作栏与菜单项的高亮同步复用同一口径，不另写一套 if。 */
+export function panelActIsOn(act: PanelHeadAct | MoreMenuAct, activePage?: string | null): boolean {
   const page = ACT_PAGE[act];
   return !!page && page === activePage;
+}
+
+/** 下拉菜单里的一项：图标 + 标题 + 一句话说明，全部可读信息走真实文本节点 */
+function moreMenuItem(act: MoreMenuAct, title: string, sub: string, icon: string, activePage?: string | null): string {
+  return `<button type="button" class="bzrv-more-item${panelActIsOn(act, activePage) ? ' is-on' : ''}" data-act="${act}">${iconSpan(icon, 'bzrv-more-item-ic')}<span class="bzrv-more-item-txt"><span class="bzrv-more-item-title">${title}</span><span class="bzrv-more-item-sub">${sub}</span></span></button>`;
+}
+
+/** 「更多」下拉菜单的内容（分组 + 四项）。挂在 .bzrv-panel-head-btns 内、more 按钮旁，
+ *  开合由 ui.bindPanelHead 管；默认 hidden，纯 HTML 不碰 DOM。 */
+export function panelMoreMenuHtml(activePage?: string | null): string {
+  return `<div class="bzrv-more-menu" hidden>
+  <div class="bzrv-more-group">复习记录</div>
+  ${moreMenuItem('arch', '已完成', '复习过的条目', 'folder-check', activePage)}
+  ${moreMenuItem('trash', '已移出', '可从回收站找回', 'archive-restore', activePage)}
+  <div class="bzrv-more-sep"></div>
+  <div class="bzrv-more-group">数据洞察</div>
+  ${moreMenuItem('books', '按书档案', '按书名汇总报告', 'book-open', activePage)}
+  ${moreMenuItem('manager', '卡片管理器', '挂起 / 排期 / 筛选', 'layout-grid', activePage)}
+</div>`;
 }
 
 /**
  * 只生成头行图标按钮（不含 .bzrv-panel-head-btns 外壳），给面板头与嵌入门面复用。
  * 可读名只用 sr-only，绝不写 aria-label / title——Obsidian 会把它们变成悬停气泡。
- * books / manager 是高级档入口（2026-11-20 进右侧图标组），门控在 ui.bindPanelHead 里：
- * 未解锁点击弹能力位文案，不偷偷开页。
+ * 头行 4 颗工具 + more 按钮 + 默认隐藏的下拉菜单（含四个次级入口）。
  */
 export function panelHeadBtnsHtml(activePage?: string | null): string {
   const on = (act: PanelHeadAct): string => (panelActIsOn(act, activePage) ? ' is-on' : '');
   return `<button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
-<button data-act="arch" class="bzrv-icon-btn${on('arch')}"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
-<button data-act="trash" class="bzrv-icon-btn${on('trash')}"><span class="bzrv-sr-only">已移出（从计划里移走的条目，可以找回）</span>${iconSpan('archive-restore', 'bzrv-q-ic')}</button>
 <button data-act="data" class="bzrv-icon-btn${on('data')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
-<button data-act="books" class="bzrv-icon-btn${on('books')}"><span class="bzrv-sr-only">按书档案</span>${iconSpan('book-open', 'bzrv-q-ic')}</button>
-<button data-act="manager" class="bzrv-icon-btn${on('manager')}"><span class="bzrv-sr-only">卡片管理器</span>${iconSpan('layout-grid', 'bzrv-q-ic')}</button>
+<button data-act="more" class="bzrv-icon-btn bzrv-more-btn${on('more')}"><span class="bzrv-sr-only">更多（已完成 / 已移出 / 按书档案 / 卡片管理器）</span>${iconSpan('more-vertical', 'bzrv-q-ic')}</button>${panelMoreMenuHtml(activePage)}
 <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>`;
 }
 
@@ -289,7 +308,7 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
 function cardsOf(items: ReviewItem[], ctx: QueueViewCtx): string {
   // 呈报#19-R13：列内空态统一 uiEmpty 小图标口径（emptyHtmlStr 与 core uiEmpty 同 markup 单源，
   // 渲染后由 ui.renderEntries 的 mountIcons 兑现 inbox 图标；原纯文本 .bzrv-q-hint 第三形制退役）
-  if (!items.length) return emptyHtmlStr('inbox', '没有条目');
+  if (!items.length) return emptyHtmlStr('inbox', '这一档暂时没有');
   return items.map((it) => cardHtml(it, ctx)).join('');
 }
 
@@ -326,12 +345,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
   if (!items.length) {
     /* 一条都没有的时候说「今日已清空」是骗人的——第一次装、刚清空计划都落在这里，
        用户会以为自己今天已经复习完了。这里只说事实 + 下一步能做什么。 */
-    const strip = `
-      <div class="bzrv-q-strip">
-        <span class="bzrv-q-strip-dot muted"></span>
-        <strong>还没有复习条目</strong>
-        <span class="bzrv-q-strip-txt">加一篇笔记或一条划线，这里就有东西了</span>
-      </div>`;
+    const strip = '';
     /* 空计划 + 已移出里有东西 = 刚把最后几条删掉。这时候不给入口，用户就只剩
        「去设置里翻」一条路——把入口留在空态下面。 */
     const emptyFooter =
@@ -366,8 +380,8 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : !hasOverdue
         ? `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot ok"></span>
-        <strong>暂无逾期</strong>
-        <span class="bzrv-q-strip-txt">有逾期才能开始本轮，今天到期的 ${col.today.length} 条先记着</span>
+        <strong>今天没有到期复习</strong>
+        <span class="bzrv-q-strip-txt">本轮只收逾期条目，今天的 ${col.today.length} 条到明天逾期后会自动进来</span>
       </div>`
         : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
@@ -481,7 +495,7 @@ export function booksViewHtml(summaries: readonly BookSummary[], ctx: BooksViewC
   const dnow = new Date(ctx.now ?? Date.now());
   const day = `${dnow.getFullYear()}-${String(dnow.getMonth() + 1).padStart(2, '0')}-${String(dnow.getDate()).padStart(2, '0')}`;
   if (!summaries.length) {
-    return `<div class="bzrv-book-view"><div class="bzrv-book-empty">还没有复习数据：加一篇笔记或一条划线，这里就会按书汇总。</div></div>`;
+    return `<div class="bzrv-book-view"><div class="bzrv-book-empty">还没有可汇总的复习条目。把笔记或划线加入计划后，这里会按书和文件夹显示卡片数、留存率、最容易忘的点；可回复习页添加。</div></div>`;
   }
   const collator = new Intl.Collator('zh-CN');
   const sorted = summaries.slice().sort(
@@ -553,10 +567,10 @@ export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCt
     </div>`;
   const hint = `<div class="bzrv-mgr-hint">挂起 / 埋藏只影响进不进本轮，排期不变；移出后进回收站，可以撤销。</div>`;
   if (!items.length) {
-    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">还没有卡片或笔记，先加入复习条目再来管理。</div></div>`;
+    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">还没有卡片或笔记。先看视频教程了解怎么把内容加进复习计划，再回来管理。</div><div class="bzrv-btn-row bzrv-btn-row--center"><button class="bzrv-btn bzrv-btn--primary" data-act="mgr-go-add">去添加条目</button></div></div>`;
   }
   if (!shown.length) {
-    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">没有符合筛选的条目，换个条件试试。</div></div>`;
+    return `<div class="bzrv-mgr-view">${bar}<div class="bzrv-mgr-empty">当前筛选没有匹配到条目，清除后看全部。</div><div class="bzrv-btn-row bzrv-btn-row--center"><button class="bzrv-btn bzrv-btn--ghost" data-act="mgr-filter-clear">清除筛选</button></div></div>`;
   }
   const rows = shown
     .map((it) => {
@@ -822,10 +836,10 @@ export function sprintSummaryHtml(p: { total: number; passed: number; failed: nu
   const none = p.total === 0;
   return `
       <div class="bzrv-summary">
-        <div class="bzrv-summary-title">${none ? '这一轮没有做成任何一篇' : '本轮复习完成'}</div>
+        <div class="bzrv-summary-title">${none ? '这一轮没出成题' : '本轮复习完成'}</div>
         ${
           none
-            ? '<div class="bzrv-summary-stats"><div class="st"><b>0</b><span>篇（都没出成题）</span></div></div>'
+            ? '<div class="bzrv-summary-stats"><div class="st"><b>0</b><span>篇（AI 没配好或笔记太短）</span></div><div class="bzrv-summary-hint">检查 AI 设置后可再来一轮</div></div>'
             : `<div class="bzrv-summary-stats">
           <div class="st"><b>${p.total}</b><span>复习篇数</span></div>
           <div class="st"><b>${p.passed}</b><span>通过</span></div>
@@ -906,7 +920,7 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
           ? ''
           : ctx.bankCount > 0
             ? `当前范围现有 <b>${ctx.bankCount}</b> 题`
-            : '当前范围还没有题目，开始后会自动出题';
+            : '当前范围还没有题目，开始后会自动出题（需先配置 AI）';
   return `
     <div class="bzrv-qp-view">
       <div class="bzrv-panel-head">

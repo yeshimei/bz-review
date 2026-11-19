@@ -62,7 +62,7 @@ function sectionHTML(title: string, icon: string, body: string): string {
 }
 
 function emptyHTML(): string {
-  return '<div class="bzrv-stats-empty"><i data-lucide="inbox" class="bzrv-ic bzrv-stats-empty-ic"></i><span>暂无数据</span></div>';
+  return '<div class="bzrv-stats-empty"><i data-lucide="inbox" class="bzrv-ic bzrv-stats-empty-ic"></i></div><div class="bzrv-stats-hint">还没有复习数据，完成一次复习后这里会有统计</div>';
 }
 
 /** 水平条形行（cinema bar-row 形制；默认走强调色 token，color 仅在数据驱动的评级色时内联） */
@@ -167,7 +167,7 @@ function rankRowHTML(rows: Array<{ name: string; meta: string; sub?: string }>):
 
 /** 环比文案：上周 0 时不显示百分比（除以 0 只会得到「+∞」这种没有意义的东西） */
 function deltaText(cur: number, prev: number): string {
-  if (prev <= 0) return cur > 0 ? '上周没有记录' : '上周也没有记录';
+  if (prev <= 0) return '上周无记录，暂无环比';
   const d = Math.round(((cur - prev) / prev) * 100);
   if (d === 0) return '与上周持平';
   return `环比 ${d > 0 ? '+' : ''}${d}%`;
@@ -507,7 +507,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   if (!history.length) {
     const empty = createDiv();
     empty.className = 'bzrv-review-history-empty';
-    empty.textContent = '暂无复习记录';
+    empty.textContent = '完成一次复习后，这里会记下每次评级、留存率 R 和稳定性 S';
     body.appendChild(empty);
     histEsc = escManager.register('bzrv-review-history', { isVisible: () => !!histMask && histMask.style.display === 'block', close: closeTimeline });
     return;

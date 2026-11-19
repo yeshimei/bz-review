@@ -27,14 +27,15 @@ export interface CardModeMeta {
 export const CARD_MODE_META: readonly CardModeMeta[] = [
   { value: 'flashcard', label: 'AI 抽认卡', hint: '先给一句不能照抄原文的问句，想不起来再看原文', icon: '◆', tone: 'purple' },
   { value: 'quiz', label: 'AI 做题', hint: '按内容生成四选一，每轮只抽其中一部分', icon: '◇', tone: 'orange' },
-  { value: 'cloze', label: 'AI 填空', hint: '把关键短语挖掉，自己填回去', icon: '▣', tone: 'blue', hidden: true },
+  { value: 'cloze', label: '挖空卡（Cloze）', hint: '把关键短语挖掉，自己填回去（社区正名 Cloze，读作「克洛兹」）', icon: '▣', tone: 'blue' },
   { value: 'context', label: '上下文', hint: '只给前后几句，回忆被藏起来的那段', icon: '▤', tone: 'green', hidden: true },
   { value: 'plain', label: '展开全文', hint: '不调用 AI，直接摆出原文，自己评难度', icon: '▬', tone: 'gray', hidden: true },
 ];
 
 /**
- * 制卡界面/设置里可选的入口：过滤掉 hidden 的三种（填空 / 上下文 / 展开全文）。
- * 2026-11-20 用户拍板：界面暂时不提供这三种，代码与老卡行为全部保留。
+ * 制卡界面/设置里可选的入口：过滤掉 hidden 的方式。
+ * 2026-11-20 挖空（Cloze）解锁——社区正名、Anki 通用写法，归到「探索」组介绍；
+ * 上下文 / 展开全文仍保持隐藏，代码与老卡行为全部保留。
  */
 export const CARD_MODE_LABELS: ReadonlyArray<{ value: CardMode; label: string; hint: string }> =
   CARD_MODE_META.filter((m) => !m.hidden).map(({ value, label, hint }) => ({ value, label, hint }));

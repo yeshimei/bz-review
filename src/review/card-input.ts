@@ -74,6 +74,12 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
     const a = String(input?.qa?.a ?? '').trim() || text;
     card.qa = { q, a, at: now };
   }
+  /* 阅读器交来已出好的做题卡：题目落进独立题库，卡上回填第一题题干当
+     列表短标题（题目在别处、cardTitleOf 读不到，只能在这里写进来）。mode
+     可能在盖章阶段才定，所以这里只看有没有题目，不依赖 mode 已就位。 */
+  const questions = normalizeQuestions(input.questions);
+  const firstQ = String(questions[0]?.question ?? '').trim();
+  if (firstQ) card.displayTitle = firstQ;
   return card;
 }
 
