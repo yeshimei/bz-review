@@ -257,7 +257,7 @@ button.news-close-btn {
 }
 .bzrv-notice--warning .bzrv-notice-icon { color: var(--color-orange); }
 .bzrv-notice--error .bzrv-notice-icon { color: var(--color-red); }
-.bzrv-notice--info .bzrv-notice-icon { color: var(--interactive-accent); }
+.bzrv-notice--info .bzrv-notice-icon { color: var(--bzrv-accent); }
 .bzrv-notice--success .bzrv-notice-icon { color: var(--color-green); }
 .bzrv-notice--pause .bzrv-notice-icon { color: var(--text-muted); }
 .bzrv-notice--accept .bzrv-notice-icon { color: var(--color-purple); }
@@ -266,7 +266,7 @@ button.news-close-btn {
 .bzrv-notice--restore .bzrv-notice-icon { color: var(--color-cyan); }
 .bzrv-notice--skip .bzrv-notice-icon { color: var(--color-orange); }
 .bzrv-notice--archive .bzrv-notice-icon { color: var(--color-blue); }
-.bzrv-notice--progress .bzrv-notice-icon { color: var(--interactive-accent); }
+.bzrv-notice--progress .bzrv-notice-icon { color: var(--bzrv-accent); }
 .bzrv-notice--progress .bzrv-notice-icon svg {
   animation: bzrvNoticeSpin 1s linear infinite;
 }
@@ -295,7 +295,7 @@ button.news-close-btn {
   border-radius: var(--bzrv-radius-xs);
   border: 1px solid transparent;
   background: transparent;
-  color: var(--interactive-accent);
+  color: var(--bzrv-accent);
   font-size: var(--bzrv-font-meta);
   font-weight: 500;
   line-height: 1;
@@ -314,7 +314,7 @@ button.news-close-btn {
   bottom: 0;
   height: 3px;
   width: 0;
-  background: var(--interactive-accent);
+  background: var(--bzrv-accent);
   background-image: linear-gradient(
     45deg,
     rgba(255, 255, 255, 0.25) 25%,
@@ -958,7 +958,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
   background: var(--input-bg, var(--background-primary));
   color: var(--text-normal);
 }
-.bzrv-path-picker-search:focus { outline: none; border-color: var(--interactive-accent); }
+.bzrv-path-picker-search:focus { outline: none; border-color: var(--bzrv-accent); }
 .bzrv-path-picker-list {
   flex: 1;
   min-height: 120px;
@@ -980,7 +980,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
 
 .bzrv-path-picker-row:hover { background: var(--background-modifier-hover); }
 }
-.bzrv-path-picker-row--sel { background: var(--background-modifier-hover); color: var(--interactive-accent); font-weight: 600; }
+.bzrv-path-picker-row--sel { background: var(--background-modifier-hover); color: var(--bzrv-accent); font-weight: 600; }
 .bzrv-path-picker-check {
   flex: 0 0 auto;
   width: 18px;
@@ -993,7 +993,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
   font-size: var(--bzrv-font-meta);
   color: var(--text-on-accent);
 }
-.bzrv-path-picker-row--sel .bzrv-path-picker-check { background: var(--interactive-accent); border-color: var(--interactive-accent); }
+.bzrv-path-picker-row--sel .bzrv-path-picker-check { background: var(--bzrv-accent); border-color: var(--bzrv-accent); }
 .bzrv-path-picker-name {
   flex: 1;
   min-width: 0;
@@ -1043,7 +1043,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
 }
 .bzrv-path-picker-btn--primary {
   border: none;
-  background: var(--interactive-accent);
+  background: var(--bzrv-accent);
   color: var(--text-on-accent);
 }@media (hover: hover) {
 
@@ -1068,7 +1068,7 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
 /* 已选 chip 文本可点重开选择器（ticket 133）：指针 + 悬停强调；✕ 保持独立按钮语义 */
 .bzrv-path-picker-chip--click .bzrv-path-picker-chip-name { cursor: pointer; }@media (hover: hover) {
 
-.bzrv-path-picker-chip--click .bzrv-path-picker-chip-name:hover { color: var(--interactive-accent); }
+.bzrv-path-picker-chip--click .bzrv-path-picker-chip-name:hover { color: var(--bzrv-accent); }
 }
 
 /* 已选 chips（设置行控件区内与选择器共用；随控件区 flex-wrap 自动折行） */
@@ -1266,10 +1266,10 @@ button.bzrv-rowbtn--fail {
 .bzrv-dev-replay .counter { position: relative; font-family: Consolas, 'Cascadia Code', monospace; flex-shrink: 0; }
 .bzrv-dev-replay .lcd {
   font-size: 15px; font-weight: 700; letter-spacing: 2px;
-  color: var(--interactive-accent);
+  color: var(--bzrv-accent);
   background: color-mix(in srgb, var(--bzrv-surface-1) 72%, black);
   border: 1px solid var(--bzrv-border); border-radius: 8px; padding: 5px 12px;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.25), 0 0 0 1px color-mix(in srgb, var(--bzrv-accent) 14%, transparent);
 }
 .bzrv-dev-replay .lcd small { color: var(--bzrv-text-3); font-size: 10px; letter-spacing: 1px; margin-right: 8px; }
 .bzrv-dev-replay .floater {
@@ -1290,10 +1290,10 @@ button.bzrv-rowbtn--fail {
   color: var(--bzrv-text-3); flex-shrink: 0;
 }
 .bzrv-dev-replay .floater .fi.on {
-  background: color-mix(in srgb, var(--interactive-accent) 14%, transparent);
+  background: color-mix(in srgb, var(--bzrv-accent) 14%, transparent);
   color: var(--bzrv-text-1);
 }
-.bzrv-dev-replay .floater .fi.on .n { color: var(--interactive-accent); font-weight: 700; }
+.bzrv-dev-replay .floater .fi.on .n { color: var(--bzrv-accent); font-weight: 700; }
 .bzrv-dev-replay .floater .fi.done { color: var(--bzrv-text-3); }
 .bzrv-dev-replay .floater .fi.done .n { color: var(--color-green); }
 /* 分段胶带：每段弹性能缩（min 4px），步数再多只往横向挤、始终一条 4px 线 */
@@ -1302,14 +1302,14 @@ button.bzrv-rowbtn--fail {
   flex: 1 1 0; min-width: 5px; height: 6px; border-radius: 3px;
   background: var(--bzrv-border-strong); position: relative; overflow: hidden;
 }
-.bzrv-dev-replay .seg.done { background: color-mix(in srgb, var(--interactive-accent) 82%, transparent); }
+.bzrv-dev-replay .seg.done { background: color-mix(in srgb, var(--bzrv-accent) 82%, transparent); }
 /* 没走完的步骤：红一格——「第 N 步卡住了」在条带上就该看得见，不用回去翻日志 */
 .bzrv-dev-replay .seg.bad { background: var(--color-red); }
 .bzrv-dev-replay .floater .fi.bad { color: var(--color-red); }
-.bzrv-dev-replay .seg.cur { background: var(--bzrv-surface-3); box-shadow: 0 0 0 1px color-mix(in srgb, var(--interactive-accent) 45%, transparent); }
+.bzrv-dev-replay .seg.cur { background: var(--bzrv-surface-3); box-shadow: 0 0 0 1px color-mix(in srgb, var(--bzrv-accent) 45%, transparent); }
 .bzrv-dev-replay .seg.cur::after {
   content: ''; position: absolute; inset: 0; transform-origin: left;
-  background: linear-gradient(90deg, var(--interactive-accent), color-mix(in srgb, var(--interactive-accent) 60%, white));
+  background: linear-gradient(90deg, var(--bzrv-accent), color-mix(in srgb, var(--bzrv-accent) 60%, white));
   animation: bzrv-dev-seg-fill 1.5s linear infinite;
 }
 @keyframes bzrv-dev-seg-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
@@ -1324,7 +1324,7 @@ button.bzrv-rowbtn--fail {
 .bzrv-dev-replay .lbl small { display: block; font-size: 10px; color: var(--bzrv-text-3); font-weight: 400; }
 .bzrv-dev-replay .transport { display: flex; gap: 6px; flex-shrink: 0; margin-left: auto; }
 .bzrv-dev-replay .transport .bzrv-btn { width: 32px; height: 32px; padding: 0; justify-content: center; display: inline-flex; align-items: center; }
-.bzrv-dev-replay .transport .bzrv-btn--primary { box-shadow: 0 2px 10px color-mix(in srgb, var(--interactive-accent) 45%, transparent); }
+.bzrv-dev-replay .transport .bzrv-btn--primary { box-shadow: 0 2px 10px color-mix(in srgb, var(--bzrv-accent) 45%, transparent); }
 .bzrv-dev-replay .transport .bzrv-btn .svg-icon { --icon-size: 15px; }
 
 /* 合集面板（uiModal 皮）：命令面板式，按域折叠收纳 */
@@ -1372,10 +1372,10 @@ button.bzrv-rowbtn--fail {
 
 @media (hover: hover) {
   .bzrv-dev-panel .grp-head:hover { color: var(--bzrv-text-2); }
-  .bzrv-dev-panel .pitem:hover { background: color-mix(in srgb, var(--interactive-accent) 8%, transparent); }
+  .bzrv-dev-panel .pitem:hover { background: color-mix(in srgb, var(--bzrv-accent) 8%, transparent); }
   .bzrv-dev-panel .pitem:hover .num {
-    background: linear-gradient(135deg, var(--interactive-accent), color-mix(in srgb, var(--interactive-accent) 60%, white));
+    background: linear-gradient(135deg, var(--bzrv-accent), color-mix(in srgb, var(--bzrv-accent) 60%, white));
     color: #fff;
   }
-  .bzrv-dev-panel .pitem:hover .go { color: var(--interactive-accent); transform: translateX(3px); }
+  .bzrv-dev-panel .pitem:hover .go { color: var(--bzrv-accent); transform: translateX(3px); }
 }

@@ -221,7 +221,7 @@
   --cc-ink:var(--text-normal,#1f1f23);
   --cc-ink-2:var(--text-muted,#5a5a63);
   --cc-line:var(--background-modifier-border,rgba(0,0,0,.12));
-  --cc-accent:var(--interactive-accent,var(--text-accent,#7856d6));
+  --cc-accent:var(--bzrv-accent,#9a7434);
   --cc-accent-soft:color-mix(in srgb,var(--cc-accent) 12%,transparent);
   position:fixed;inset:0;z-index:300;display:grid;place-items:center;
   background:rgba(0,0,0,.5);font-family:-apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;

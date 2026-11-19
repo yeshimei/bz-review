@@ -14,9 +14,12 @@ export type AccentMode = 'auto' | 'copper' | 'indigo' | 'moss';
 
 const ACCENT_MODES: AccentMode[] = ['auto', 'copper', 'indigo', 'moss'];
 
-/** 非法/历史遗留值一律回落 auto，别把脏档位写到 body 上 */
+/** 强调色默认档：与 bz Reader 对齐的铜金（2026-11-19 定），新装不再跟着宿主主题色跑 */
+export const DEFAULT_ACCENT: AccentMode = 'copper';
+
+/** 非法/历史遗留值一律回落铜金，别把脏档位写到 body 上 */
 export function normalizeAccent(v: unknown): AccentMode {
-  return ACCENT_MODES.includes(v as AccentMode) ? (v as AccentMode) : 'auto';
+  return ACCENT_MODES.includes(v as AccentMode) ? (v as AccentMode) : DEFAULT_ACCENT;
 }
 
 /** 把强调色档位挂到 body，CSS 按 body[data-bzaccent] + .theme-light/.theme-dark 选色。 */
@@ -152,7 +155,7 @@ export const DEFAULT_SETTINGS: BzSettings = {
      两个插件同时装也不会抢同一个 review.json。 */
   storagePath: DEFAULT_REVIEW_DIR,
   language: 'auto',
-  accent: 'auto',
+  accent: DEFAULT_ACCENT,
   licenseKey: '',
 
   enableAutoNotify: true,

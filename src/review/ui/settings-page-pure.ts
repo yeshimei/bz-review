@@ -22,9 +22,30 @@ export const GROUP_SUBTITLES: Record<string, string> = {
   朗读: 'Audio',
 };
 
-/** 原型左列五组、右列其余；朗读是原型之后新增的组，跟在 AI 后面不丢 */
-export function groupColumns(names: readonly string[]): [string[], string[]] {
-  return [names.slice(0, 5), names.slice(5)];
+/**
+ * 两列分栏：按每组的体量（行数）贪心装进当前更矮的一列。
+ *
+ * 以前写死「前五组左、其余右」，复习节奏/朗读这些长卡片一多，左列就空出半屏。
+ * 现在只保证「同组不拆」和「列内保持原顺序」，两列总高度尽量齐平；编号由
+ * CSS 计数器按 DOM 顺序（左列到底、再右列）自动出，所以左列编号在前。
+ * weights 缺省时按组数均分（纯测试与无 schema 场景用）。
+ */
+export function groupColumns(names: readonly string[], weights: readonly number[] = []): [string[], string[]] {
+  const left: string[] = [];
+  const right: string[] = [];
+  let leftWeight = 0;
+  let rightWeight = 0;
+  names.forEach((name, i) => {
+    const w = Math.max(1, Number(weights[i]) || 1);
+    if (leftWeight <= rightWeight) {
+      left.push(name);
+      leftWeight += w;
+    } else {
+      right.push(name);
+      rightWeight += w;
+    }
+  });
+  return [left, right];
 }
 
 const GITHUB_SVG =

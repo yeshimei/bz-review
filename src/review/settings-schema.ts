@@ -14,7 +14,7 @@ import { Setting } from 'obsidian';
 import { notice } from '../core/notice';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
-import { applyAccent } from '../settings';
+import { DEFAULT_ACCENT, applyAccent } from '../settings';
 import { diskReadText, jsonFileStore } from '../core/storage';
 import { openFlowDialog } from '../core/flow-dialog';
 import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
@@ -474,8 +474,8 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               withSrText(seg, ACCENT_NAME);
               const btns: HTMLButtonElement[] = [];
               const current = (): string => {
-                const v = String((getSettings()).accent || 'auto');
-                return modes.some((m) => m.value === v) ? v : 'auto';
+                const v = String((getSettings()).accent || DEFAULT_ACCENT);
+                return modes.some((m) => m.value === v) ? v : DEFAULT_ACCENT;
               };
               const paint = (): void => {
                 const cur = current();
