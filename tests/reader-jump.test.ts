@@ -39,4 +39,12 @@ describe('跳回原文链接兜底', () => {
   it('既没 backlink 也不是 Reader 卡，返回空串让按钮不显示', () => {
     expect(backlinkOfCard({ key: 'CONFIG/note.md', text: '原文' }, build)).toBe('');
   });
+
+  it('笔记选段卡：按出处拼回原文链接，按钮照常显示', () => {
+    const url = backlinkOfCard(
+      { key: 'note:笔记/围城.md:12:34', text: '原文', sourceNote: { path: '笔记/围城.md', from: 12, to: 34 } },
+      build,
+    );
+    expect(url).toBe(`obsidian://open?path=${encodeURIComponent('笔记/围城.md')}`);
+  });
 });

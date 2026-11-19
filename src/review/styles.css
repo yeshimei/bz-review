@@ -1,4 +1,4 @@
-/* ==================== 复习计划域样式（src/review/styles.css） ====================
+/* ==================== 复习域样式（src/review/styles.css） ====================
  * 2026-09-04 拍板形态：三区队列面板 + 整窗做题冲刺（非弹窗）。
  * 面板容器 / 难度弹窗 / watch·exclude 设置行 / 统计·历史弹窗为既有保留块；
  * bz-q-*（三区队列）/ bz-sprint-*（冲刺）为新增视觉，对齐 rp1x 原型评审。
@@ -17,7 +17,7 @@
   /* 移动端全屏（issue 254 迭代）：钉满视口，不受内容高度收缩（原 max-height:100% 短内容时缩成悬浮卡） */
   #bzrv-popup { animation: none ; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
 }
-/* 左栏：固定一项「复习计划」，与 bz Reader 的书库/笔记栏同形制；嵌入书架时让位给宿主页签 */
+/* 左栏：固定一项「复习」，与 bz Reader 的书库/笔记栏同形制；嵌入书架时让位给宿主页签 */
 #bzrv-popup.bzrv-main-panel { flex-direction: row; }
 .bzrv-rail-host { width: 172px; flex: 0 0 172px; border-right: 1px solid var(--bzrv-border); background: var(--bzrv-surface-1); padding: 12px 8px; overflow-y: auto; min-height: 0; }
 #bzrv-popup.bzrv-embed .bzrv-rail-host { display: none; }
@@ -555,7 +555,7 @@
    手机上整体偏小。本段按**视觉层级**定标放大（先例 src/diary/styles.css 六档体系：
    一层级一定值，不用一刀切倍数），档间保持单调、各层只差一档：
 
-     L1 面板/整屏题   复习计划 · 做题冲刺 · 本轮复习完成        20~22
+     L1 面板/整屏题   复习 · 做题冲刺 · 本轮复习完成        20~22
      L2 区块题/大数字 列头计数 · 结果篇名 · 结算大数字           18~26
      L3 卡片题        队列卡标题 · 题面 · 选项文本               16~17.5
      L4 正文/辅助     开始本轮条 · 解析 · 队列条目 · 底部信息行  14~15

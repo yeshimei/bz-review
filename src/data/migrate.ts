@@ -1,7 +1,7 @@
 /**
  * 从 bz 导入复习数据（src/data/migrate.ts）
  *
- * bz 里的复习计划存在 `CONFIG/STORAGE/review.json`，本插件默认写
+ * bz 里的复习存在 `CONFIG/STORAGE/review.json`，本插件默认写
  * `CONFIG/REVIEW/review.json`——两个插件同时装也不会互相覆盖。
  *
  * 迁移只做一次、只读源文件、目标非空就不动：迁移失败最多是「没导进来」，
@@ -240,7 +240,7 @@ export async function importFromBzWithConfirm(app: App, settings: BzSettings): P
   }
   const { openFlowDialog } = await import('../core/flow-dialog');
   const choice = await openFlowDialog({
-    title: '从 bz 导入复习计划？',
+    title: '从 bz 导入复习？',
     message:
       `检测到 bz 里有 ${stats.notes} 条复习笔记，其中 ${stats.due} 条已到期，累计复习 ${stats.reviews} 次。\n` +
       '导入只复制，不改变 bz 的数据；目标已有复习数据时不覆盖。',

@@ -22,7 +22,7 @@ export class ReviewPanelView extends ItemView {
   }
 
   getDisplayText(): string {
-    return t('复习计划', 'Review');
+    return t('复习', 'Review');
   }
 
   getIcon(): string {

@@ -1,5 +1,5 @@
 /**
- * 复习计划核心应用（ticket 16 修正版：对齐源码 App，含 quizReviewLoop/reviewLoop）
+ * 复习核心应用（ticket 16 修正版：对齐源码 App，含 quizReviewLoop/reviewLoop）
  */
 import { TFile, type App } from 'obsidian';
 import { notice, notify, notifyUndo } from '../core/notice';
@@ -71,7 +71,7 @@ let quizAiWarned = false;
 function warnQuizAiOnce(): void {
   if (quizAiWarned) return;
   quizAiWarned = true;
-  notify('没配 AI，这次按普通复习走（设置 → 复习计划 → AI 里可配）', {
+  notify('没配 AI，这次按普通复习走（设置 → 复习 → AI 里可配）', {
     type: 'warning',
     dedupeKey: 'review-quiz-ai',
   });
@@ -1002,7 +1002,7 @@ export const reviewApp = {
     live.reviewVacationUntil = '';
     live.reviewVacationFrom = '';
     void saveSettings();
-    notice(`休假结束，复习计划整体顺延 ${Math.round(shift / 86400000)} 天`, 'success');
+    notice(`休假结束，复习整体顺延 ${Math.round(shift / 86400000)} 天`, 'success');
     if (shift > 0) {
       try {
         const { uiManager } = await import('./index');
@@ -1036,7 +1036,7 @@ export const reviewApp = {
     return true;
   },
 
-  /** 加入当前笔记到复习计划 */
+  /** 加入当前笔记到复习 */
   async addCurrentToReview(file: TFile): Promise<void> {
     this.ensure(getApp());
     const dm = this.dataManager!;
@@ -1045,10 +1045,10 @@ export const reviewApp = {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       /* 「已经在计划里」和「免费版额度到顶」都不是失败，只是这一次不用加。
-         让它们冒充异常会拼出「加入复习计划失败：…，请重试」——而这两种情况
+         让它们冒充异常会拼出「加入复习失败：…，请重试」——而这两种情况
          重试一百次还是这个结果，用户只会以为坏了。 */
-      if (msg.includes('已在复习计划中')) {
-        notice('这篇已经在复习计划里了', 'info');
+      if (msg.includes('已在复习中')) {
+        notice('这篇已经在复习里了', 'info');
         return;
       }
       if (msg.includes('基础版最多')) {
@@ -1057,8 +1057,8 @@ export const reviewApp = {
       }
       throw e;
     }
-    notice('已加入复习计划，首次复习：1分钟后', 'success');
-    // 行为流（issue 261）：加入复习计划入小橘行为流（review:added）
+    notice('已加入复习，首次复习：1分钟后', 'success');
+    // 行为流（issue 261）：加入复习入小橘行为流（review:added）
     emitDomainEvent('review', { kind: 'added', title: file.basename });
   },
 
@@ -1271,7 +1271,7 @@ export const reviewApp = {
         this._overdueNotice = null;
       }
     } catch (e) {
-      console.error('复习计划检查出错:', e);
+      console.error('复习检查出错:', e);
     }
   },
 

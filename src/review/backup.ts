@@ -43,7 +43,7 @@ export function parseBackup(raw: unknown): BackupParse {
   if (Array.isArray(raw)) return { ok: true, items: raw as ReviewItem[] };
   if (raw && typeof raw === 'object') {
     const obj = raw as { items?: unknown; plugin?: unknown; schema?: unknown };
-    if (obj.plugin && obj.plugin !== 'bz-review') return { ok: false, error: '这不是复习计划导出的备份' };
+    if (obj.plugin && obj.plugin !== 'bz-review') return { ok: false, error: '这不是复习导出的备份' };
     if (Array.isArray(obj.items)) return { ok: true, items: obj.items as ReviewItem[] };
   }
   return { ok: false, error: '文件里没有复习数据' };

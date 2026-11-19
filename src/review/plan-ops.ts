@@ -1,5 +1,5 @@
 /**
- * 复习计划对外操作（bz-reader 门面背后的纯逻辑，不碰界面、不碰全局单例）。
+ * 复习对外操作（bz-reader 门面背后的纯逻辑，不碰界面、不碰全局单例）。
  *
  * 为什么要单独一层：复习条目的钥匙是**笔记文件的路径**（review.json 里存
  * filePath，复习时直接打开那篇笔记），所以「加一张卡片」在数据上就是
@@ -32,7 +32,7 @@ function nameOf(path: string): string {
   return stripMdExt(path.split('/').pop() || '') || path;
 }
 
-/** 这篇笔记在不在复习计划里 */
+/** 这篇笔记在不在复习里 */
 export async function hasNote(dm: ReviewDataManager, path: string): Promise<boolean> {
   const p = cleanPath(path);
   if (!p) return false;
@@ -53,7 +53,7 @@ export async function addNote(dm: ReviewDataManager, app: App, path: string): Pr
     await dm.addItem(p, nameOf(p));
   } catch (e) {
     /* 查重判定到落盘之间被另一条路径抢先插入：同样按「已在计划里」处理 */
-    if (e instanceof Error && e.message.includes('已在复习计划中')) return { added: false, reason: 'exists' };
+    if (e instanceof Error && e.message.includes('已在复习中')) return { added: false, reason: 'exists' };
     throw e;
   }
   return { added: true };
@@ -105,7 +105,7 @@ export async function addNotes(dm: ReviewDataManager, app: App, paths: readonly 
   return out;
 }
 
-/** 移出一篇笔记；本来就不在返回 false（调用方据此说「它不在复习计划里」） */
+/** 移出一篇笔记；本来就不在返回 false（调用方据此说「它不在复习里」） */
 export async function removeNote(dm: ReviewDataManager, path: string): Promise<boolean> {
   const p = cleanPath(path);
   if (!p) return false;
