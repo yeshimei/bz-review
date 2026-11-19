@@ -401,6 +401,9 @@
 .bzrv-stats-body .hc.l2 { background: color-mix(in srgb, var(--bzrv-accent) 46%, transparent); }
 .bzrv-stats-body .hc.l3 { background: color-mix(in srgb, var(--bzrv-accent) 70%, transparent); }
 .bzrv-stats-body .hc.l4 { background: var(--bzrv-accent); }
+/* 成就单列页：顶部一句说明，徽章网格沿用 .badges */
+.bzrv-stats-body .achv-head { padding: 14px 16px 2px; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); line-height: 1.5; }
+.bzrv-stats-body .achv-head b { color: var(--bzrv-accent); font-variant-numeric: tabular-nums; }
 .bzrv-stats-body .badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .bzrv-stats-body .badge { display: flex; flex-direction: column; gap: 4px; padding: 9px 10px; border: 1px dashed var(--bzrv-border); border-radius: 9px; }
 .bzrv-stats-body .badge.is-got { border-style: solid; border-color: var(--bzrv-accent-line); background: var(--bzrv-accent-soft); }

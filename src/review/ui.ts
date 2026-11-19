@@ -189,7 +189,7 @@ export class UIManager {
   /* 内置页（批 8 起）：数据 / 设置 / 已完成 / 已移出。同一内容区、同一行图标入口，
      不再各开一套弹窗（用户 2026-11-15 口径：全部内置到面板，入口在右上角；
      2026-11-19 追加「已移出」，移走的条目要在一个页面里找回来）。 */
-  private page: 'stats' | 'settings' | 'arch' | 'books' | 'manager' | 'trash' | null = null;
+  private page: 'stats' | 'achv' | 'settings' | 'arch' | 'books' | 'manager' | 'trash' | null = null;
   /** 卡片管理器自己的筛选（与队列筛选互不干扰） */
   private mgrFilter: ItemFilter = {};
   /** 管理器搜索框重绘后要把光标放回去 */
@@ -569,7 +569,9 @@ export class UIManager {
   private renderPage(container: HTMLElement, items: ReviewItem[]): void {
     const title = this.page === 'stats'
       ? '数据'
-      : this.page === 'arch'
+      : this.page === 'achv'
+        ? '成就'
+        : this.page === 'arch'
         ? '已完成'
         : this.page === 'trash'
           ? '已移出'
@@ -594,6 +596,22 @@ export class UIManager {
 
   /** 填内置页内容（动态 import：统计/设置都不在主包里） */
   private async fillPage(body: HTMLElement, items: ReviewItem[]): Promise<void> {
+    if (this.page === 'achv') {
+      const { paintAchievementsInto } = await import('./stats-ui');
+      if (this.page !== 'achv' || !body.isConnected) return;
+      const holder = createDiv();
+      /* 借 .bzrv-stats-body 的徽章样式，但内容只有成就——统计与成就各占一页 */
+      holder.className = 'bzrv-stats-body bzrv-achv-body';
+      body.appendChild(holder);
+      let w: number[] | undefined;
+      try {
+        w = (await import('./app')).reviewApp.currentW();
+      } catch {
+        w = undefined;
+      }
+      paintAchievementsInto(holder, items, w);
+      return;
+    }
     if (this.page === 'arch') {
       this.fillArchPage(body, items);
       return;
@@ -1151,6 +1169,13 @@ export class UIManager {
     await this.refreshPanel();
   }
 
+  /** 打开「成就」内置页（徽章单列，不混在统计里） */
+  async openAchievements(): Promise<void> {
+    this.page = 'achv';
+    void this.showMain();
+    await this.refreshPanel();
+  }
+
   /** 打开「已完成」内置页 */
   async openArchive(): Promise<void> {
     this.page = 'arch';
@@ -1177,12 +1202,14 @@ export class UIManager {
    * 主队列与内置页共用 panelHeadHtml，所以绑定也共用这一份，不再各写一套。
    */
   private bindPanelHead(container: HTMLElement): void {
-    const go = (page: 'settings' | 'stats' | 'arch' | 'trash'): void => {
+    const go = (page: 'settings' | 'stats' | 'achv' | 'arch' | 'trash'): void => {
       this.page = this.page === page || this.page ? null : page;
       void this.refreshPanel();
     };
     container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
     container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
+    /* 成就入口在底栏（头行四颗图标要与 Reader 嵌入动作栏对齐，不能再加） */
+    container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
     container.querySelector('[data-act="arch"]')?.addEventListener('click', () => go('arch'));
     /* trash 有两处入口（头行那颗图标 + 底栏「已移出 N 条」）：querySelector 只会绑到
        头行那颗，底栏那颗就成了纯装饰。这里两处都绑同一个动作。 */
