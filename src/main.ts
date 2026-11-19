@@ -41,7 +41,7 @@ import { importFromBzWithConfirm } from './data/migrate';
 import { isBzPluginEnabled } from './core/plugin-path';
 import { t } from './i18n';
 import { installScopeGuard, markOwned } from './core/scope';
-import { notice } from './core/notice';
+import { notice, setNoticeEmbedded } from './core/notice';
 import { DEFAULT_REVIEW_DIR, LEGACY_REVIEW_DIR, startupStorageDir } from './core/storage-dir';
 
 export default class ReviewPlugin extends Plugin {
@@ -104,6 +104,9 @@ export default class ReviewPlugin extends Plugin {
       /* 登记嵌入宿主：轮询据此认为「面板在眼前」，不再弹常驻逾期通知压住宿主图标。
          必须在 showMain 之前登记，首次刷新就要生效。 */
       reviewApp.embeddedHost = host;
+      /* 嵌入形态下通知让位到右下角（2026-11-19）：右上角是宿主头栏的页签
+         与四颗图标，进度通知压上去会挡住点击。 */
+      setNoticeEmbedded(true);
       /* 面板自己的右上角就有那四颗图标，常驻的逾期通知会正压在上面
          （z 更高、点击落在通知上）——与原生页 onOpen 同口径，进面板先收掉。 */
       reviewApp.hideOverdueNotice();
@@ -119,6 +122,7 @@ export default class ReviewPlugin extends Plugin {
         ui.clearEmbed();
         /* 先解除「嵌入在眼前」登记：否则离开复习页后轮询仍以为面板开着，逾期通知再也不弹。 */
         if (reviewApp.embeddedHost === host) reviewApp.embeddedHost = null;
+        setNoticeEmbedded(false);
         // releaseView 先清 onRequestClose 再 detachToBody + 隐藏，避开 hostedInView 下
         // hideMain → onRequestClose → cleanup → hideMain 的递归（与原生页 onClose 同路）。
         ui.releaseView();
@@ -143,9 +147,11 @@ export default class ReviewPlugin extends Plugin {
     /* 域代码里「去设置」的出口（核心只认「有人能开面板」，开哪页由这里定）。
        设置不再注册成原生设置页，而是主面板里的设置弹层——与 bz Reader 同形制：
        用户在哪儿用这个插件，就在哪儿改它的设置。 */
-    setSettingsPanelOpener(() => {
+    /* anchorKey 2026-11-19 起生效：「去设置 AI」要直接落到 AI 那一组，
+       而不是只把设置页打开让用户自己往下翻。 */
+    setSettingsPanelOpener((_domainId, anchorKey) => {
       ensureReview(this.app);
-      void uiManager?.openSettings();
+      void uiManager?.openSettings(anchorKey);
     });
 
     // 启动时静默验一次码（离线，不发网络请求）

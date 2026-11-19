@@ -97,6 +97,9 @@ export async function renderReviewSettingsPage(
   groups.forEach((g, i) => {
     const name = schema.groups[i]?.name ?? '';
     g.classList.add('bzs-setgrp');
+    /* 「去设置 AI」这类跳转的落点（2026-11-19）：按组名打标，openSettings(anchor)
+       据此滚到对应卡片。组名是这里唯一的稳定标识，别另造一套 id。 */
+    g.setAttribute('data-group', name);
     const head = g.querySelector<HTMLElement>('.bzrv-settings-group-head');
     if (head) {
       head.replaceChildren();

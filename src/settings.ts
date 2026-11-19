@@ -132,6 +132,13 @@ export default interface BzSettings {
   aiModelOverrides: Record<string, string>;
   aiMaxTokensOverrides: Record<string, number>;
   aiThinkingOverrides: Record<string, string>;
+  /**
+   * 共享 bz Reader 的 AI 配置（2026-11-19）：自己没配时借用对方填好那份。
+   *
+   * 默认**开**，且只在真的借到「能发请求」的配置时才生效；借来的配置只活在
+   * 内存里，不写回本插件、不改对方文件。关掉即各用各的。
+   */
+  aiShareReader: boolean;
   /** 第二大脑的本地 Ollama 地址（向量化拉模型列表用） */
   secondBrainOllamaUrl: string;
   /** 第二大脑在移动端的远程 Ollama 地址 */
@@ -207,6 +214,8 @@ export const DEFAULT_SETTINGS: BzSettings = {
   aiModelOverrides: {},
   aiMaxTokensOverrides: {},
   aiThinkingOverrides: {},
+  /* 默认共享：新手多半只在一边填过 AI，另一边不该让他再抄一遍密钥 */
+  aiShareReader: true,
   secondBrainOllamaUrl: '',
   secondBrainRemoteOllamaUrl: '',
 

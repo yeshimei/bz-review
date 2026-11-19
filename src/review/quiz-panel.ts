@@ -23,8 +23,7 @@ import { markOwned } from '../core/scope';
 import { trapPanelFocus } from '../core/ui/focus-trap';
 import { topifyZ } from '../core/z-order';
 import { emitDomainEvent } from '../core/domain-bus';
-import { requestSettingsPanel } from '../core/settings-provider';
-import { openFlowDialog } from '../core/flow-dialog';
+import { aiReadyOrGuide } from './ai-guide';
 import { openPathPicker } from '../core/path-picker';
 import { mountIcons, uiSuggest } from '../core/ui';
 import { ensureQuiz, quizUI } from './quiz-core';
@@ -50,16 +49,6 @@ const CSS_DISPLAY_NONE = 'none';
 const CSS_DISPLAY_BLOCK = 'block';
 const CSS_DISPLAY_FLEX = 'flex';
 
-/** 从未知异常取人话消息（catch 变量收窄为 unknown，不再用 any） */
-function errMessage(e: unknown): string {
-  if (e instanceof Error) return e.message;
-  if (typeof e === 'object' && e !== null && 'message' in e) {
-    const m = (e as { message?: unknown }).message;
-    return typeof m === 'string' ? m : '';
-  }
-  return '';
-}
-
 /** HTML 字符串落到容器：DOMParser 解析后逐节点 importNode 装入，语义同 innerHTML 赋值，
  *  但不直接写 innerHTML/outerHTML（避开 no-unsanitized 与 sdl/no-inner-html）。 */
 function setMarkup(el: HTMLElement, html: string): void {
@@ -74,29 +63,8 @@ const DEFAULT_BATCH = 20;
  *  循环驱动，批间汇报进度。 */
 const ENSURE_BATCH = 10;
 
-/** AI 就绪检查：getAIProvider 是「已配置」的唯一权威（缺密钥即抛人话错误）。
- *  未就绪 → 流程框引导去设置面板（不出题不崩），返回 false。 */
-async function aiReadyOrGuide(): Promise<boolean> {
-  const { getAIProvider } = await import('../core/ai');
-  try {
-    await getAIProvider();
-    return true;
-  } catch (e: unknown) {
-    void openFlowDialog({
-      title: 'AI 还没配置',
-      message: `${errMessage(e) || '还没配置 AI 服务'}。做题练习靠 AI 出题，配好后回来就能开刷。`,
-      actions: [
-        { label: '去设置', value: 'settings', cta: true },
-        { label: '稍后再说', value: 'cancel' },
-      ],
-    }).then((v) => {
-      if (v !== 'settings') return;
-      /* 独立插件：不再绕 bz 的设置面板，直接请求打开本插件的设置页（main.ts 注入） */
-      requestSettingsPanel('review');
-    });
-    return false;
-  }
-}
+/* AI 就绪检查 2026-11-19 收敛到 ./ai-guide：做题练习 / 重新生成 / 其它 AI 入口
+   共用同一句文案与同一个「去设置 AI」出口，不再各写一份。 */
 
 class QuizPracticePanel {
   private app: App;
