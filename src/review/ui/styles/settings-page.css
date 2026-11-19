@@ -275,6 +275,33 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
 }
 
+/* 强调色行（2026-11-20 真机反馈）：4 档横排在右列 ~340px 里，
+   「跟随 Obsidian」+ 色点会被挤破卡片右缘。标签独占一行、控件吃满整宽；
+   档位按格子下限自动定列（窄屏 2 列、宽屏 4 列），绝不让文字硬挤出去。
+   同 reader 的 .bzs-setrow.is-stack + .bzs-seg-wrap 口径。 */
+.bzrv-settings-content .setting-item.bzrv-accent-row {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.bzrv-settings-content .setting-item.bzrv-accent-row > .setting-item-info {
+  flex: 1 1 100%;
+  max-width: none;
+}
+.bzrv-settings-content .setting-item.bzrv-accent-row > .setting-item-control {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.bzrv-settings-content .bzrv-accent-seg {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(88px, 100%), 1fr));
+  flex: 1 1 100%;
+}
+.bzrv-settings-content .bzrv-accent-seg button {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
 /* 开关：38×21 胶囊（Obsidian 的 .checkbox-container 自带一颗 ::after 旋钮，
    这里整颗接管，别在 input 上再画一颗，否则真机会出现上下两枚圆点） */
 .bzrv-settings-content .bzs-setgrp .checkbox-container {
@@ -298,6 +325,10 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   border-radius: 50%;
   background: var(--bzsp-t3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
+  /* 宿主原生 .checkbox-container::after 用 transform: translateX(...) 推旋钮，
+     这里改用 left 定位；若不清零，开态 left:19px 会再叠加宿主的 translateX，
+     把圆点顶出胶囊右缘（2026-11-20 真机反馈）。两条 ::after 都要清零。 */
+  transform: none;
   transition: left .16s var(--bzsp-ease), background .16s var(--bzsp-ease);
 }
 .bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled {
@@ -307,6 +338,7 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
 .bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled::after {
   left: 19px;
   background: #fff;
+  transform: none;
 }
 .bzrv-settings-content .bzs-setgrp .checkbox-container input {
   appearance: none;

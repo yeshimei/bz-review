@@ -473,6 +473,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             help: ACCENT_HELP,
             render: (body: HTMLElement) => {
               const setting = new Setting(body).setName(ACCENT_NAME).setDesc(ACCENT_DESC);
+              /* 整行让标签独占一行、控件吃满整宽（同 Reader 的 is-stack）：4 档横排
+                 在右列 ~340px 里会把「跟随 Obsidian」挤破卡片右缘（2026-11-20 真机反馈）。 */
+              setting.settingEl.classList.add('bzrv-accent-row');
               const nameEl = (setting as unknown as { nameEl?: HTMLElement }).nameEl;
               if (nameEl) attachHelpTip(nameEl, { text: ACCENT_HELP });
               const modes = [

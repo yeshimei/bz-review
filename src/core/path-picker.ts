@@ -20,8 +20,7 @@
  */
 import { Setting } from 'obsidian';
 import { getApp } from './app';
-import { createOverlay } from './dom';
-import { escManager, type EscHandle } from './esc-manager';
+import { pickFolderNative } from './folder-pick';
 import { notifySaveError, notifyActionError } from './notice';
 import { uiChip } from './ui/chip';
 
@@ -355,308 +354,37 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
   return { refresh, settingEl: setting.settingEl };
 }
 
-/* ==================== 卡片弹窗 ==================== */
-
-/** 显隐 / 几何是运行时值，不是主题静态样式（与 core/dom.ts 的 DISPLAY_NONE 同款）：
- *  值经变量承载，避免 obsidianmd/no-static-styles-assignment 把字面量误判成静态样式硬编码。 */
-const DISPLAY_BLOCK = 'block';
-const DISPLAY_FLEX = 'flex';
+/* ==================== 目录选择器（Obsidian 原生，2026-11-20 起） ====================
+ * 原来这里是一张自绘卡片弹窗（搜索框 + 列表 + 新建文件夹 + 确定 / 取消）。
+ * 2026-11-20 反馈：换成 Obsidian 自己的快速选择器（FuzzySuggestModal），与 bz-reader 同款
+ * 手感——搜索、键盘上下、Esc 全走宿主原生。Modal 本体在 folder-pick.ts（依赖宿主，真机验），
+ * 纯口径在 folder-pick-logic.ts（node 单测）。
+ *
+ * 显隐是运行时值：系统文件夹选择器（本文件下半）仍用 DISPLAY_NONE，避免静态样式误判。 */
 const DISPLAY_NONE = 'none';
-const PICKER_HEIGHT = 'min(560px, 82vh)';
 
-let currentMask: HTMLElement | null = null;
-let currentPopup: HTMLElement | null = null;
-let currentHandle: EscHandle | null = null;
-let focusTimer: number | null = null;
-/** R7：打开前焦点快照，关闭时还原（键盘用户关选择器后落回触发处，不再落到 body） */
-let focusRestore: HTMLElement | null = null;
+/** 关闭当前选择器。原生 FuzzySuggestModal 由宿主按 Esc 自行关闭，无需插件清浮层；
+ *  保留这个导出兼容可能的外部 import（当前仓库内无调用）。 */
+export function closePathPicker(): void { /* no-op：原生 modal 自管生命周期 */ }
 
-/** 关闭当前选择器（无则静默）；取消语义：不回调 onConfirm。
- *  mask 与 popup 是 body 下两个独立兄弟节点（createOverlay 分别 append），必须都移除，
- *  否则孤儿 popup 残留在 DOM（同名 id 会被后续 getElementById 误命中）。 */
-export function closePathPicker(): void {
-  if (currentMask) {
-    currentMask.remove();
-    currentMask = null;
-  }
-  if (currentPopup) {
-    currentPopup.remove();
-    currentPopup = null;
-  }
-  if (currentHandle) {
-    currentHandle.unregister();
-    currentHandle = null;
-  }
-  if (focusTimer !== null) {
-    window.clearTimeout(focusTimer);
-    focusTimer = null;
-  }
-  // R7：还原打开前焦点（元素仍连接时；被外部清理时跳过）
-  if (focusRestore) {
-    const el = focusRestore;
-    focusRestore = null;
-    if (el.isConnected) el.focus();
-  }
+/** 两次选择是否同一集合（顺序无关） */
+function sameSelection(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((x) => b.includes(x));
 }
 
-/** 打开目录选择器（幂等：已开先关） */
+/** 打开目录选择器（原生）：单选选一项即回；多选连续选、按 Esc 提交已选集合。
+ *  签名保持不变，设置面板数据目录 / 监听文件夹 / 出题文件夹三个调用点无需改动。 */
 export function openPathPicker(opts: PathPickerOptions): void {
-  closePathPicker(); // 旧实例先关（其焦点还原先行，本实例快照取还原后的落点）
-  focusRestore = document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const app = getApp();
-  const mode = opts.mode || 'single';
-  const selected = new Set(normalizePicked(opts.selected || []));
-  // ticket 133：已选置顶的定格快照——只在打开时按初始已选定序一次，点击勾选/取消不重排（防移动端点错）
-  const pinnedAtOpen = [...selected];
-
-  const { mask, popup } = createOverlay({
-    maskId: 'bz-path-picker-mask',
-    popupId: 'bz-path-picker-popup',
-    // ticket 133：桌面/移动端统一一张居中卡——左右各 16px 外边距，宽视口封顶 440px（不分两套样式）
-    width: 'min(calc(100vw - 32px), 440px)',
-    maxWidth: 440,
-    onMaskClick: () => closePathPicker(),
+  const mode: 'single' | 'multi' = opts.mode === 'multi' ? 'multi' : 'single';
+  const current = normalizePicked(opts.selected || []);
+  void pickFolderNative(app, { title: opts.title, mode, selected: current }).then((list) => {
+    const picked = normalizePicked(list);
+    if (mode === 'single' && picked.length === 0) return; // 单选取消 = 不回调（沿用原语义）
+    if (sameSelection(picked, current)) return;           // 没变化就不打扰（多选 Esc 直接退出）
+    opts.onConfirm(picked);
   });
-  currentMask = mask;
-  currentPopup = popup;
-  // 宿主皮肤类同时挂 mask 与 popup（body 下两个兄弟节点，各自作用域独立）——皮肤类自带的
-  // token 声明因此对两者都生效（遮罩底色 tint 与弹窗材质同皮）
-  const skinClasses = (opts.skinClassName || '').split(/\s+/).filter(Boolean);
-  if (skinClasses.length) {
-    mask.classList.add(...skinClasses);
-    popup.classList.add(...skinClasses);
-  }
-  popup.classList.add('bzrv-path-picker');
-  popup.style.height = PICKER_HEIGHT; // 功能性几何（铁律 8：显隐/动态计算内联，视觉样式收敛 CSS）
-
-  // 头部：标题 + （可选）说明；无关闭按钮
-  const head = createDiv();
-  head.className = 'bzrv-path-picker-head';
-  const title = createEl('h3');
-  title.className = 'bzrv-path-picker-title';
-  title.textContent = opts.title || '选择文件夹';
-  head.appendChild(title);
-  if (opts.desc) {
-    const desc = createDiv();
-    desc.className = 'bzrv-path-picker-desc';
-    desc.textContent = opts.desc;
-    head.appendChild(desc);
-  }
-
-  // 搜索框（聚焦不遮列表：弹窗定高 flex 布局，列表 flex:1 恒可见）
-  const search = createEl('input');
-  search.type = 'text';
-  search.className = 'bzrv-path-picker-search';
-  search.placeholder = '搜索目录…';
-  search.spellcheck = false;
-  const searchLabel = createEl('label');
-  searchLabel.className = 'bzrv-sr-only';
-  searchLabel.htmlFor = 'bzrv-path-picker-search';
-  searchLabel.textContent = '搜索目录';
-  search.id = 'bzrv-path-picker-search';
-  search.setAttribute('aria-labelledby', searchLabel.id);
-
-  // 目录列表（滚动）
-  const listEl = createDiv();
-  listEl.className = 'bzrv-path-picker-list';
-  const state: { folders: string[]; q: string } = { folders: [], q: '' };
-
-  // 底部：已选信息 + 清空(多选) + 确定
-  const foot = createDiv();
-  foot.className = 'bzrv-path-picker-foot';
-  const selinfo = createSpan();
-  selinfo.className = 'bzrv-path-picker-selinfo';
-  const btns = createDiv();
-  btns.className = 'bzrv-path-picker-foot-btns';
-  foot.appendChild(selinfo);
-  foot.appendChild(btns);
-
-  const mkBtn = (label: string, primary: boolean, onclick: () => void): HTMLButtonElement => {
-    const b = createEl('button');
-    b.textContent = label;
-    b.className = 'bzrv-path-picker-btn' + (primary ? ' bzrv-path-picker-btn--primary' : '');
-    b.onclick = onclick;
-    btns.appendChild(b);
-    return b;
-  };
-  if (mode === 'multi') mkBtn('清空', false, () => { selected.clear(); renderList(); updateSel(); });
-  // 效率#11：确定提交收口成 submit（搜索框 Enter 单选直提复用）
-  const submit = (): void => {
-    const list = normalizePicked([...selected]);
-    closePathPicker();
-    opts.onConfirm(list);
-  };
-  // 效率#10：新建文件夹——选不到「还不存在的目录」时就地补建（以当前搜索词为名，建在
-  // 选中目录/库根下；vault.createFolder 逐级补齐父目录），成功后刷新列表并自动勾选。
-  // 搜索词为空时禁用（无名字可建）
-  const newBtn = mkBtn('新建文件夹', false, () => {
-    const name = state.q.trim().replace(/^\/+|\/+$/g, '');
-    if (!name) return;
-    const parent = [...selected][0] ?? '';
-    const full = parent ? `${parent}/${name}` : name;
-    void (async () => {
-      if (!state.folders.includes(full)) {
-        await app.vault.createFolder(full);
-        // 手动并入列表（后台聚合是慢速路径，不等它）；已存在则只勾选
-        if (!state.folders.includes(full)) state.folders.push(full);
-      }
-      if (mode === 'single') selected.clear();
-      selected.add(full);
-      renderList();
-      updateSel();
-    })().catch((e) => notifyActionError(e, `新建文件夹 ${full}`));
-  });
-  newBtn.disabled = !state.q.trim();
-  mkBtn(opts.okText || '下一步', true, submit);
-
-  // ticket 133 排序：已选置顶（pinnedAtOpen 快照）→ 库根第二梯队 → 其余整体反转（中文在前、英文在后）
-  function orderedList(): string[] {
-    const pinned: string[] = [];
-    const rest: string[] = [];
-    const pinSet = new Set(pinnedAtOpen);
-    for (const f of state.folders) {
-      if (pinSet.has(f)) pinned.push(f);
-      else rest.push(f);
-    }
-    const rootIdx = rest.indexOf('');
-    const root = rootIdx >= 0 ? rest.splice(rootIdx, 1)[0] : null;
-    rest.reverse();
-    return [...pinned, ...(root === null ? [] : [root]), ...rest];
-  }
-
-  function renderList(): void {
-    listEl.innerHTML = '';
-    const q = state.q.trim().toLowerCase();
-    // 输入恰好等于某目录 → 视为「已选中」，显示完整列表（预填已选时不把列表滤掉）
-    const exact = !!q && state.folders.includes(q);
-    // 渲染上限（ticket 128 性能修复）：大 vault 全量数千目录时逐条建 DOM 会卡死交互——
-    // 只渲染前 LIMIT 条，超出显示「输入关键词缩小范围」提示（计数不受限，提示给全量）
-    const LIMIT = 300;
-    let n = 0;
-    let total = 0;
-    for (const folder of orderedList()) {
-      if (q && !exact && !folder.toLowerCase().includes(q)) continue;
-      total++;
-      if (n >= LIMIT) continue;
-      n++;
-      const on = selected.has(folder);
-      const row = createDiv();
-      row.className = 'bzrv-path-picker-row' + (on ? ' bzrv-path-picker-row--sel' : '');
-      row.dataset.path = folder;
-      row.setAttribute('role', mode === 'multi' ? 'checkbox' : 'option');
-      row.setAttribute('aria-checked', on ? 'true' : 'false');
-      const box = createSpan();
-      box.className = 'bzrv-path-picker-check';
-      box.textContent = on ? '✓' : '';
-      const name = createSpan();
-      name.className = 'bzrv-path-picker-name';
-      name.textContent = folder === '' ? '（库根目录）' : folder;
-      row.appendChild(box);
-      row.appendChild(name);
-      row.onclick = () => {
-        if (mode === 'single') {
-          selected.clear();
-          selected.add(folder);
-        } else if (selected.has(folder)) {
-          selected.delete(folder);
-        } else {
-          selected.add(folder);
-        }
-        renderList();
-        updateSel();
-      };
-      // R7：键盘可达——行挂 tabindex，Enter/Space 复用点击（单选此前完全无法用键盘选定）
-      row.tabIndex = 0;
-      row.addEventListener('keydown', (ev) => {
-        if (ev.key === 'Enter' || ev.key === ' ') {
-          ev.preventDefault();
-          row.click();
-        }
-      });
-      if (mode === 'single') {
-        // 效率#11：单选双击直选提交（「搜索 → 双击确认」的目录选择惯例，免第二步点确定）
-        row.ondblclick = () => {
-          row.click();
-          submit();
-        };
-      }
-      listEl.appendChild(row);
-    }
-    if (!total) {
-      const empty = createDiv();
-      empty.className = 'bzrv-path-picker-empty';
-      empty.textContent = '没有匹配的目录';
-      listEl.appendChild(empty);
-    } else if (total > LIMIT) {
-      const more = createDiv();
-      more.className = 'bzrv-path-picker-empty';
-      more.textContent = `已显示前 ${LIMIT} 个（共 ${total} 个匹配目录），请输入关键词缩小范围`;
-      listEl.appendChild(more);
-    }
-  }
-  function updateSel(): void {
-    if (mode === 'single') {
-      const first = [...selected][0];
-      selinfo.textContent = first === undefined ? '未选择' : first === '' ? '已选（库根目录）' : `已选 ${first}`;
-    } else {
-      selinfo.textContent = `已选 ${selected.size} 项`;
-    }
-  }
-
-  search.oninput = () => {
-    state.q = search.value;
-    newBtn.disabled = !state.q.trim(); // 效率#10：搜索词为名，空词不可建
-    renderList();
-  };
-  // 效率#11：Enter = 选中当前可见首行（single 直选提交；multi 勾选不关）——键盘闭环免伸手拿鼠标
-  search.addEventListener('keydown', (ev) => {
-    if (ev.key !== 'Enter') return;
-    const first = listEl.querySelector<HTMLElement>('.bzrv-path-picker-row');
-    if (!first) return;
-    ev.preventDefault();
-    first.click();
-    if (mode === 'single') submit();
-  });
-
-  // 快速首渲染（ticket 128 性能修复）：文件聚合毫秒级完成，立即显示绝大多数业务目录，
-  // 弹窗打开即可选；adapter 递归补齐（空目录/点前缀目录）在后台完成后合并替换
-  try {
-    const files = ((app?.vault?.getFiles?.() ?? []) as Array<{ path: string }>).map((f) => f.path);
-    state.folders = foldersFromFiles(files);
-  } catch {
-    /* 环境异常静默——等待 adapter 补齐 */
-  }
-
-  // 后台补齐：adapter 递归（含空目录/点前缀目录，环境目录已剪枝）；关闭后迟到的聚合直接丢弃。
-  // 补齐合并完成后在 popup 挂 data-ready="1"——测试/调用方可据此区分「快速首渲染」与「全量聚合完成」
-  void collectVaultFolders(app).then((folders) => {
-    if (!mask.isConnected) return;
-    state.folders = folders;
-    popup.dataset.ready = '1';
-    renderList();
-  });
-
-  renderList();
-  updateSel();
-  popup.append(head, searchLabel, search, listEl, foot);
-  markOwned(mask);
-  document.body.appendChild(mask);
-  markOwned(popup);
-  document.body.appendChild(popup);
-  mask.style.display = DISPLAY_BLOCK;
-  popup.style.display = DISPLAY_FLEX;
-
-  currentHandle = escManager.register('bzrv-path-picker', {
-    isVisible: () => !!currentMask,
-    close: () => closePathPicker(),
-  });
-  // 打开聚焦搜索框（30ms 等 DOM 挂载；聚焦不遮列表——定高布局列表恒可见）
-  focusTimer = window.setTimeout(() => {
-    focusTimer = null;
-    if (mask.isConnected) search.focus();
-  }, 30);
 }
-
 /* ==================== 系统文件夹选择器（vault 外，issue 457） ==================== */
 
 /**
