@@ -31,6 +31,10 @@ export { DEFAULT_AI_PROVIDER };
 
 export interface AISettingsLike {
   aiProvider?: string;
+  /** 新增服务商的密钥表（键 = 注册表 id），老三家继续用各自旧键 */
+  aiApiKeys?: Record<string, string>;
+  /** 自定义服务商报文协议（openai / anthropic） */
+  aiCustomProtocol?: string;
   /** 🔑 DeepSeek 密钥（留空则回退读外部配置） */
   deepseekApiKey?: string;
   /** 🔑 智谱 Plan（Coding 套餐）密钥 */
@@ -158,8 +162,8 @@ export interface AIProviderDescriptor {
    * 故 deepseek 这类「默认模型名留空、实际模型由调用方传」的通道也必须显式填上。
    */
   maxOutputCap?: number;
-  /** 密钥在 AISettingsLike 的键名 */
-  apiKeyKey: keyof AISettingsLike;
+  /** 老三家的密钥键名；新增服务商走 aiApiKeys[id]，这里留空 */
+  apiKeyKey?: keyof AISettingsLike;
   /** 设置页密钥行标题（注册表驱动生成密钥行；ticket 171 策略模式完整化） */
   apiKeyLabel: string;
   /** 密钥行描述（设置页；约 20 字自然句，ticket 100 文案规范） */
@@ -247,6 +251,146 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
         { ...THINK_HIGH, body: { reasoning_effort: 'high' } },
       ],
     },
+  },
+  /* 以下新增服务商与 bz 主仓注册表同源（models.dev 抓取，2026-11-12），
+     端点与默认模型照抄；密钥统一存 aiApiKeys[id]，不新增设置键。 */
+  {
+    id: 'zhipu',
+    label: '智谱 GLM',
+    endpoint: 'https://open.bigmodel.cn/api/paas/v4',
+    model: 'glm-5.3-flash',
+    defaultMaxTokens: 131072,
+    maxOutputCap: 131072,
+    apiKeyLabel: '智谱 GLM 密钥',
+    apiKeyDesc: '智谱开放平台的接口密钥',
+  },
+  {
+    id: 'qwen',
+    label: '通义千问',
+    endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    model: 'qwen3.8-flash',
+    defaultMaxTokens: 131072,
+    maxOutputCap: 131072,
+    apiKeyLabel: '通义千问密钥',
+    apiKeyDesc: '阿里云百炼的接口密钥',
+  },
+  {
+    id: 'kimi',
+    label: 'Kimi',
+    endpoint: 'https://api.moonshot.cn/v1',
+    model: 'kimi-k3',
+    defaultMaxTokens: 32768,
+    maxOutputCap: 1048576,
+    apiKeyLabel: 'Kimi 密钥',
+    apiKeyDesc: '月之暗面开放平台的接口密钥',
+  },
+  {
+    id: 'siliconflow',
+    label: '硅基流动',
+    endpoint: 'https://api.siliconflow.cn/v1',
+    model: 'zai-org/GLM-5.3-Flash',
+    defaultMaxTokens: 131072,
+    maxOutputCap: 131072,
+    apiKeyLabel: '硅基流动密钥',
+    apiKeyDesc: '硅基流动的接口密钥',
+  },
+  {
+    id: 'volcengine',
+    label: '火山方舟',
+    endpoint: 'https://ark.cn-beijing.volces.com/api/v3',
+    model: 'doubao-seed-2-1-pro-260628',
+    defaultMaxTokens: 32768,
+    maxOutputCap: 256000,
+    apiKeyLabel: '火山方舟密钥',
+    apiKeyDesc: '火山引擎方舟的接口密钥',
+  },
+  {
+    id: 'stepfun',
+    label: '阶跃星辰',
+    endpoint: 'https://api.stepfun.com/v1',
+    model: 'step-3.7-flash',
+    defaultMaxTokens: 32768,
+    maxOutputCap: 256000,
+    apiKeyLabel: '阶跃星辰密钥',
+    apiKeyDesc: '阶跃星辰开放平台的接口密钥',
+  },
+  {
+    id: 'openai',
+    label: 'OpenAI',
+    endpoint: 'https://api.openai.com/v1',
+    model: 'gpt-6-luna',
+    defaultMaxTokens: 128000,
+    maxOutputCap: 128000,
+    apiKeyLabel: 'OpenAI 密钥',
+    apiKeyDesc: 'OpenAI 官方平台的接口密钥',
+  },
+  {
+    id: 'anthropic',
+    label: 'Claude（Anthropic）',
+    endpoint: 'https://api.anthropic.com/v1',
+    model: 'claude-haiku-5-5',
+    defaultMaxTokens: 128000,
+    maxOutputCap: 128000,
+    apiKeyLabel: 'Claude 密钥',
+    apiKeyDesc: 'Anthropic 官方平台的接口密钥',
+  },
+  {
+    id: 'google',
+    label: 'Google Gemini',
+    endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    model: 'gemini-3.8-flash',
+    defaultMaxTokens: 65536,
+    maxOutputCap: 65536,
+    apiKeyLabel: 'Gemini 密钥',
+    apiKeyDesc: 'Google AI Studio 的接口密钥',
+  },
+  {
+    id: 'xai',
+    label: 'xAI Grok',
+    endpoint: 'https://api.x.ai/v1',
+    model: 'grok-4.7',
+    defaultMaxTokens: 32768,
+    maxOutputCap: 500000,
+    apiKeyLabel: 'xAI 密钥',
+    apiKeyDesc: 'xAI 控制台的接口密钥',
+  },
+  {
+    id: 'mistral',
+    label: 'Mistral',
+    endpoint: 'https://api.mistral.ai/v1',
+    model: 'mistral-large-4',
+    defaultMaxTokens: 32768,
+    maxOutputCap: 262144,
+    apiKeyLabel: 'Mistral 密钥',
+    apiKeyDesc: 'Mistral 控制台的接口密钥',
+  },
+  {
+    id: 'groq',
+    label: 'Groq',
+    endpoint: 'https://api.groq.com/openai/v1',
+    model: 'qwen/qwen3.8-27b',
+    defaultMaxTokens: 16384,
+    maxOutputCap: 16384,
+    apiKeyLabel: 'Groq 密钥',
+    apiKeyDesc: 'Groq 控制台的接口密钥',
+  },
+  {
+    id: 'openrouter',
+    label: 'OpenRouter',
+    endpoint: 'https://openrouter.ai/api/v1',
+    model: '',
+    defaultMaxTokens: 8192,
+    apiKeyLabel: 'OpenRouter 密钥',
+    apiKeyDesc: 'OpenRouter 开放平台的密钥',
+  },
+  {
+    id: 'lmstudio',
+    label: 'LM Studio（本地）',
+    endpoint: 'http://127.0.0.1:1234/v1',
+    model: '',
+    defaultMaxTokens: 8192,
+    apiKeyLabel: 'LM Studio 密钥',
+    apiKeyDesc: '本地服务无需密钥',
   },
   {
     /**
@@ -404,7 +548,8 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
       defaultMaxTokens,
     });
   }
-  const key = s[desc.apiKeyKey];
+  const legacyKey = desc.apiKeyKey ? s[desc.apiKeyKey] : undefined;
+  const key = (typeof legacyKey === 'string' && legacyKey ? legacyKey : s.aiApiKeys?.[desc.id]) || '';
   if (!key && name === 'deepseek') {
     // deepseek 兼容兜底：settings 缺 key 时读 QuickAdd data.json（legacy，无 UI）
     try {
@@ -450,7 +595,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
   return cachePut({
     id: name,
     endpoint: desc.endpoint,
-    apiKey: (key as string) || '',
+    apiKey: key || '',
     model: effModel || undefined,
     defaultMaxTokens,
   });

@@ -20,6 +20,7 @@ describe('复习设置页 · 两列骨架与关于条', () => {
     expect(html).toContain('>Review<');
     expect(html).toContain('v1.0.0');
     expect(html).toContain('基础版');
+    expect(html).not.toContain('tagline');
   });
 
   it('关于条不挂悬停气泡属性（仓库禁令）', () => {
@@ -49,5 +50,13 @@ describe('复习设置页 · 两列骨架与关于条', () => {
     expect(page).toContain('openReviewChangelog');
     expect(page).toContain('openReviewSupportDialog');
     expect(page).toContain('copyReviewGroupId');
+  });
+
+  it('授权组有高级功能对照弹窗入口', () => {
+    const schema = read('src/review/settings-schema.ts');
+    expect(schema).toContain("name: '高级版功能'");
+    expect(schema).toContain('openReviewUnlockDialog');
+    const build = read('scripts/build-css.mjs');
+    expect(build).toContain('unlock.css');
   });
 });

@@ -17,24 +17,255 @@ import { withSrText } from '../core/ui/sr-text';
 import { applyAccent } from '../settings';
 import { diskReadText, jsonFileStore } from '../core/storage';
 import { openFlowDialog } from '../core/flow-dialog';
+import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
 import { getSettings, saveSettings } from '../core/settings-provider';
-import type { SettingsSchema } from '../core/settings-schema';
+import type { SettingsSchema, SettingsRow } from '../core/settings-schema';
+import {
+  AI_PROVIDER_REGISTRY,
+  DEFAULT_AI_PROVIDER,
+  getProviderDescriptor,
+  maxOutputCapOf,
+  testAIConnectivity,
+  thinkingLevelsOf,
+} from '../core/ai';
+import { fetchProviderModels, providerDescriptorOf } from '../core/ai-models';
+import { openModelPicker } from '../core/settings-model-picker';
+import { tryGetSettings } from '../core/settings-provider';
 import type { ReviewDataManager } from './data';
 import { getReviewFilePath, getReviewMetaPath } from './data';
 import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
-import { copyReviewData, migrateFromBz } from '../data/migrate';
+import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
+import { isBzPluginEnabled } from '../core/plugin-path';
 import { panelModeOf } from './panel-mode';
 import { DEFAULT_W } from './fsrs';
 import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
 import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
 import type { TtsConfig } from '../core/tts-client';
 
+/* ── AI 设置：照 bz 主仓的 18 家注册表驱动（不再硬编码 5 家） ── */
+
+type OverrideMapKey = 'aiModelOverrides' | 'aiMaxTokensOverrides';
+
+function currentProviderId(): string {
+  const s = tryGetSettings() as { aiProvider?: string } | null;
+  return String(s?.aiProvider || DEFAULT_AI_PROVIDER);
+}
+
+function providerValue(kind: 'model' | 'maxTokens'): string {
+  const id = currentProviderId();
+  const s = tryGetSettings() as unknown as Record<string, Record<string, unknown> | undefined>;
+  const mapKey: OverrideMapKey = kind === 'model' ? 'aiModelOverrides' : 'aiMaxTokensOverrides';
+  const over = s?.[mapKey]?.[id];
+  if (typeof over === 'string' && over !== '') return over;
+  if (typeof over === 'number' && Number.isFinite(over)) return String(over);
+  const d = getProviderDescriptor(id);
+  if (kind === 'model') return d.model || '';
+  const cap = maxOutputCapOf(id, undefined);
+  return String(cap ?? d.defaultMaxTokens);
+}
+
+function providerMaxOutputCap(): number | undefined {
+  const id = currentProviderId();
+  const s = tryGetSettings() as unknown as { aiModelOverrides?: Record<string, string> } | null;
+  const over = s?.aiModelOverrides?.[id] || undefined;
+  return maxOutputCapOf(id, over);
+}
+
+function providerThinkingValue(): string {
+  const id = currentProviderId();
+  const s = tryGetSettings() as unknown as { aiThinkingOverrides?: Record<string, string> } | null;
+  const v = String(s?.aiThinkingOverrides?.[id] ?? '');
+  return thinkingLevelsOf(id).some((l) => l.value === v) ? v : 'auto';
+}
+
+function setProviderThinkingValue(v: string): void {
+  const id = currentProviderId();
+  const s = tryGetSettings() as unknown as { aiThinkingOverrides?: Record<string, string> } | null;
+  if (!s) return;
+  if (!s.aiThinkingOverrides || typeof s.aiThinkingOverrides !== 'object') s.aiThinkingOverrides = {};
+  const map = s.aiThinkingOverrides;
+  if (v === 'auto' || v === '') delete map[id];
+  else map[id] = v;
+  void saveSettings();
+}
+
+function setProviderValue(mapKey: OverrideMapKey, raw: string): void {
+  const id = currentProviderId();
+  const s = tryGetSettings() as unknown as Record<string, Record<string, unknown> | undefined> | null;
+  if (!s) return;
+  const v = raw.trim();
+  if (!s[mapKey] || typeof s[mapKey] !== 'object') s[mapKey] = {};
+  const map = s[mapKey] as Record<string, unknown>;
+  if (v === '' || v === '0') delete map[id];
+  else map[id] = mapKey === 'aiModelOverrides' ? v : Number(v);
+  void saveSettings();
+}
+
+function providerModelRow(): SettingsRow {
+  return {
+    type: 'text',
+    name: '模型名称',
+    desc: 'AI 生成使用的模型，按服务商分别保存',
+    help: '留空用注册表默认模型。「获取模型名」从当前服务商拉真实模型列表；切服务商后需重新获取。',
+    placeholder: '默认模型',
+    binding: {
+      get: () => providerValue('model'),
+      set: (v) => setProviderValue('aiModelOverrides', v),
+      save: () => {},
+    },
+    refreshKey: () => providerValue('model'),
+    actions: [
+      {
+        text: '获取模型名',
+        onClick: async (_value, ctx) => {
+          try {
+            await saveSettings();
+            const providerId = currentProviderId();
+            const desc = providerDescriptorOf(providerId);
+            const models = await fetchProviderModels(providerId);
+            if (currentProviderId() !== providerId) {
+              notice('服务商已切换，请重新获取', 'warning');
+              return;
+            }
+            await new Promise<void>((resolve) => {
+              openModelPicker({
+                providerLabel: desc.label,
+                current: providerValue('model'),
+                models,
+                onPick: (m) => {
+                  setProviderValue('aiModelOverrides', m.id);
+                  ctx.refreshVisibility();
+                  notice(`模型已设为 ${m.id}`, 'success');
+                },
+                onClose: () => resolve(),
+              });
+            });
+          } catch (e) {
+            notice(e instanceof Error ? e.message : String(e), 'error');
+          }
+        },
+      },
+    ],
+  };
+}
+
+function providerMaxTokensRow(): SettingsRow {
+  return {
+    type: 'number',
+    name: '最大输出 token',
+    desc: '单次回复的长度上限，按服务商分别保存',
+    help: '封顶值，不是每次都消耗这么多。留空或 0 = 用该模型的官方最大档。',
+    min: 0,
+    max: () => providerMaxOutputCap(),
+    binding: {
+      get: () => {
+        const n = Number(providerValue('maxTokens'));
+        return Number.isFinite(n) ? n : 0;
+      },
+      set: (v: number) => setProviderValue('aiMaxTokensOverrides', String(v)),
+      save: () => saveSettings(),
+    },
+    refreshKey: () => providerValue('maxTokens'),
+    placeholder: '默认上限',
+  };
+}
+
+function providerThinkingRow(): SettingsRow {
+  return {
+    type: 'select',
+    name: '思考 reasoning',
+    desc: '思考档位，随服务商不同',
+    help: '档位表按服务商分别存；「跟随」＝不注入参数。自定义没有固定口径，这一行不显示。',
+    binding: {
+      get: () => providerThinkingValue(),
+      set: (v) => setProviderThinkingValue(v),
+      save: () => {},
+    },
+    options: (snap) =>
+      thinkingLevelsOf(String((snap as { aiProvider?: string }).aiProvider || DEFAULT_AI_PROVIDER)).map((l) => ({
+        value: l.value,
+        label: l.label,
+      })),
+    visibleWhen: (snap) =>
+      thinkingLevelsOf(String((snap as { aiProvider?: string }).aiProvider || DEFAULT_AI_PROVIDER)).length > 0,
+    refreshKey: () => providerThinkingValue(),
+  };
+}
+
+/** 18 家注册表 + 模型配置，整套照 bz 的 LLM 组 */
+export function reviewLlmRows(): SettingsRow[] {
+  const rows: SettingsRow[] = [
+    {
+      type: 'select',
+      name: 'AI 服务商',
+      desc: '当前使用的 AI 服务商（18 家在册，未列出的走自定义）',
+      binding: { key: 'aiProvider' },
+      options: AI_PROVIDER_REGISTRY.map((p) => ({ value: p.id, label: p.label })),
+    },
+    {
+      type: 'text',
+      name: '自定义 API 地址',
+      desc: 'OpenAI 兼容服务的完整接口地址，填到 /v1 为止',
+      binding: { key: 'aiCustomEndpoint' },
+      placeholder: 'https://api.example.com/v1',
+      inputMode: 'url',
+      visibleWhen: (snapshot) => snapshot.aiProvider === 'custom',
+    },
+    {
+      type: 'select',
+      name: '自定义协议',
+      desc: '自定义服务用哪种报文',
+      binding: { key: 'aiCustomProtocol' },
+      options: [
+        { value: 'openai', label: 'OpenAI 兼容' },
+        { value: 'anthropic', label: 'Anthropic（Claude）' },
+      ],
+      visibleWhen: (snapshot) => snapshot.aiProvider === 'custom',
+    },
+  ];
+  for (const p of AI_PROVIDER_REGISTRY) {
+    rows.push({
+      type: 'secret',
+      name: p.apiKeyLabel,
+      desc: p.apiKeyDesc,
+      binding: p.apiKeyKey
+        ? { key: p.apiKeyKey as never }
+        : {
+            get: () => String((tryGetSettings() as unknown as { aiApiKeys?: Record<string, string> })?.aiApiKeys?.[p.id] ?? ''),
+            set: (v: string) => {
+              const s = tryGetSettings() as unknown as { aiApiKeys?: Record<string, string> } | null;
+              if (!s) return;
+              if (!s.aiApiKeys || typeof s.aiApiKeys !== 'object') s.aiApiKeys = {};
+              const trimmed = String(v ?? '');
+              if (trimmed) s.aiApiKeys[p.id] = trimmed;
+              else delete s.aiApiKeys[p.id];
+              void saveSettings();
+            },
+            save: () => {},
+          },
+      placeholder: '粘贴密钥',
+      visibleWhen: (snapshot) => snapshot.aiProvider === p.id,
+      actions: [
+        {
+          text: '测试',
+          stateful: true,
+          onClick: async () => {
+            await saveSettings();
+            await testAIConnectivity(p.id);
+          },
+        },
+      ],
+    });
+  }
+  rows.push(providerModelRow(), providerMaxTokensRow(), providerThinkingRow());
+  return rows;
+}
+
 export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataManager }): SettingsSchema {
   // enableAutoNotify 常驻轮询在 main.ts onload 注册、运行时按设置实时读值（app.ts checkOverdueAndNotify
   // 门控），设置弹窗 toggle 只需落盘，渲染器键直绑自动完成，无需额外副作用回调。
-  /** 数据目录迁移：上一次已生效的目录（防抖窗口里连续输入只搬一次） */
-  let dirTimer: number | null = null;
-  let lastDir = String((getSettings()).storagePath || 'CONFIG/REVIEW');
+  /** 数据目录迁移：上一次已生效的目录（取消迁移时回退到这里） */
+  let lastDir = String((getSettings()).storagePath || DEFAULT_REVIEW_DIR);
   const ACCENT_NAME = '强调色';
   const ACCENT_DESC = '跟随 Obsidian / 铜金 / 黛蓝 / 苔青；换色后全插件交互色一起变';
   const ACCENT_HELP =
@@ -57,6 +288,17 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               { text: '打开店铺', onClick: () => { window.open(PURCHASE_URL, '_blank'); } },
               { text: '交流群', onClick: () => { window.open(`https://qm.qq.com/q/${GROUP_ID}`, '_blank'); } },
             ],
+          },
+          {
+            /* 和 bz Reader 一样，授权组里给一颗「看看包含什么」的入口。
+               弹窗按需加载，只有点开才付那一份 DOM/CSS 的代价。 */
+            type: 'button',
+            name: '高级版功能',
+            desc: '两版功能完全一样，只有数量上限不同。点开看对照表。',
+            buttonText: '查看',
+            onClick: () => {
+              void import('./ui/unlock-dialog').then((m) => m.openReviewUnlockDialog());
+            },
           },
           {
             type: 'text',
@@ -90,48 +332,60 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '数据',
         rows: [
           {
-            type: 'text',
+            type: 'path',
+            mode: 'single',
             name: '数据目录',
-            desc: '复习数据存在这个目录下的 review.json。默认 CONFIG/REVIEW，与 bz 的 CONFIG/STORAGE 分开。',
-            placeholder: 'CONFIG/REVIEW',
+            desc: '复习数据存在这个目录下的 review.json。换目录会先确认，再把数据复制过去。',
+            pickerTitle: '选择复习数据目录',
+            pickerDesc: '建议用库根目录下单独的文件夹，方便同步与备份。',
+            emptyText: DEFAULT_REVIEW_DIR,
+            fallbackValue: () => DEFAULT_REVIEW_DIR,
             binding: { key: 'storagePath' },
-            /* 换目录必须把已有数据带过去。原来只改字段、什么也不搬——面板下一秒变成
-               「今日已清空」，18 条全不见，零提示，用户只会以为数据丢了。
-               落盘有 800ms 防抖，这里等 900ms 再看最终值，避免逐字符搬目录。
-               复制而不是移动：旧目录原样留着，搬错了改回去就自愈。 */
-            onChange: () => {
-              if (dirTimer) window.clearTimeout(dirTimer);
-              dirTimer = window.setTimeout(() => {
-                dirTimer = null;
-                const prev = lastDir;
-                const next = String((getSettings()).storagePath || 'CONFIG/REVIEW').trim() || 'CONFIG/REVIEW';
-                if (next === prev) return;
+            /* 二次确认 + 复制不移动：目录是可逆操作，旧目录原样留着，搬错改回去就自愈。
+               path 行的 onChange 返回清单即否决口径，取消时把 chips 与落盘值一起退回。 */
+            onChange: async (list) => {
+              const next = String(list[0] || '').trim().replace(/^\/+|\/+$/g, '');
+              const prev = lastDir;
+              if (!next || next === prev) return [prev];
+              const ok = await openFlowDialog({
+                title: '迁移数据目录？',
+                message: `会把「${prev}」里的复习数据复制到「${next}」。旧目录保留，搬错了改回去就能自愈；新目录已有数据时不覆盖。`,
+                actions: [
+                  { label: '取消', value: 'cancel' },
+                  { label: '确认迁移', value: 'ok', cta: true },
+                ],
+              });
+              if (ok !== 'ok') {
+                notice('已取消，数据目录没变', 'info');
+                return [prev];
+              }
+              try {
+                const { copied, kept } = await copyReviewData(deps.app, prev, next);
                 lastDir = next;
-                void (async () => {
-                  try {
-                    const { copied, kept } = await copyReviewData(deps.app, prev, next);
-                    if (copied.length) {
-                      notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
-                    } else if (kept.length) {
-                      notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
-                    }
-                  } catch {
-                    notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
-                  }
-                })();
-              }, 900);
+                if (copied.length) {
+                  notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
+                } else if (kept.length) {
+                  notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
+                } else {
+                  notice(`已切到 ${next}，旧目录没有需要迁移的数据`, 'info');
+                }
+                return [next];
+              } catch {
+                notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
+                return [prev];
+              }
             },
           },
           {
+            /* 只有 bz 真的装了并加载了才显示——没装却摆一颗按钮，点了只能得到
+               「没找到数据」，用户会以为插件坏了。 */
             type: 'button',
             name: '从 bz 导入',
-            desc: '把 bz 里已有的复习计划搬过来。只导一次，目标已有数据就不覆盖，bz 那边不动。',
+            desc: '检测到 bz 后才显示。先看统计、再确认导入；只复制不改动 bz，目标已有数据就不覆盖。',
             buttonText: '导入',
+            visibleWhen: () => isBzPluginEnabled(deps.app),
             onClick: () => {
-              void (async () => {
-                const res = await migrateFromBz(deps.app, getSettings());
-                notice(res.message, res.ok ? 'success' : 'warning');
-              })();
+              void importFromBzWithConfirm(deps.app, getSettings());
             },
           },
           {
@@ -643,67 +897,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
       {
         icon: 'sparkles',
         name: 'AI',
-        rows: [
-          {
-            type: 'select',
-            name: '服务商',
-            desc: '抽认卡与做题要用。没有也能复习，只是不会有 AI 内容。',
-            binding: { key: 'aiProvider' },
-            options: [
-              { value: '', label: '不启用' },
-              { value: 'deepseek', label: 'DeepSeek' },
-              { value: 'zhipu-plan', label: '智谱 Plan' },
-              { value: 'ollama', label: 'Ollama' },
-              { value: 'custom', label: '自定义' },
-            ],
-          },
-          /* 密钥按服务商分开存（切服务商不会把上一家的 key 带过去），所以这里按当前
-             服务商只露一行——比「一个框跟着下拉换值」少一类「这家的 key 到底填没填」的
-             错位状态。密钥一律走 secret 行：密码框 + 眼睛切明文，截图/投屏不泄。 */
-          {
-            type: 'secret', name: 'DeepSeek API Key', desc: 'sk- 开头，在 DeepSeek 开放平台创建。',
-            placeholder: 'sk-…', binding: { key: 'deepseekApiKey' },
-            visibleWhen: (s) => s.aiProvider === 'deepseek',
-          },
-          {
-            type: 'secret', name: '智谱 API Key', desc: '填智谱开放平台的 Key。',
-            placeholder: '…', binding: { key: 'zhipuPlanApiKey' },
-            visibleWhen: (s) => s.aiProvider === 'zhipu-plan',
-          },
-          {
-            type: 'secret', name: 'Ollama API Key', desc: '本地 Ollama 通常不用填；远程实例才需要。',
-            placeholder: '可留空', binding: { key: 'ollamaApiKey' },
-            visibleWhen: (s) => s.aiProvider === 'ollama',
-          },
-          {
-            type: 'text', name: '自定义服务商地址', desc: '兼容 OpenAI 格式的接口地址，含 /v1。',
-            placeholder: 'https://example.com/v1', binding: { key: 'aiCustomEndpoint' },
-            visibleWhen: (s) => s.aiProvider === 'custom',
-          },
-          {
-            type: 'secret', name: '自定义 API Key', desc: '上面那家服务商的密钥。',
-            placeholder: 'sk-…', binding: { key: 'aiCustomApiKey' },
-            visibleWhen: (s) => s.aiProvider === 'custom',
-          },
-          {
-            type: 'button',
-            name: '测试连接',
-            desc: '发一次最小的真实请求，确认密钥和服务商可用。',
-            buttonText: '测试',
-            visibleWhen: (s) => !!s.aiProvider,
-            onClick: () => {
-              void (async () => {
-                try {
-                  const { testAIConnectivity } = await import('../core/ai');
-                  const res = await testAIConnectivity();
-                  notice(`连接正常：${res.label} · ${res.model}（${res.ms}ms）`, 'success');
-                } catch (e) {
-                  notice(`连接失败：${e instanceof Error ? e.message : String(e)}`, 'error');
-                }
-              })();
-            },
-          },
-        ],
+        rows: reviewLlmRows(),
       },
       {
         /* 朗读（听卡片）：自建 OpenAI 兼容本地 TTS 客户端，与 AI 服务商分开配。

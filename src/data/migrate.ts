@@ -11,6 +11,7 @@ import type { App } from 'obsidian';
 import { jsonFileStore, storageFile } from '../core/storage';
 import { parseBzReviewJson } from './migrate-parse';
 import { FREE_CARD_LIMIT, FREE_NOTE_LIMIT } from './entitlement';
+import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
 
 /** 复习域自己产出的数据文件（换数据目录时要跟着走） */
 export const REVIEW_DATA_FILES = ['review.json', 'review-quiz.json', 'review-fit.json'] as const;
@@ -99,6 +100,50 @@ export { parseBzReviewJson } from './migrate-parse';
 /** bz 的复习数据位置（固定，不跟它的设置走——移植时宁可找不到，也不猜错） */
 export const BZ_REVIEW_PATH = 'CONFIG/STORAGE/review.json';
 
+export interface BzImportStats {
+  /** 复习笔记条目数（bz 主仓没有划线卡概念，别显示「卡片数」） */
+  notes: number;
+  /** 已到期未完成的条目数 */
+  due: number;
+  /** 累计复习次数 */
+  reviews: number;
+}
+
+/**
+ * 从 bz 的复习条目里算导入前简要统计。纯函数，坏字段按 0 算。
+ */
+export function bzStatsOfItems(items: readonly unknown[]): BzImportStats {
+  const today = new Date().toISOString().slice(0, 10);
+  let due = 0;
+  let reviews = 0;
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue;
+    const it = raw as {
+      completed?: unknown;
+      nextReviewDate?: unknown;
+      totalReviews?: unknown;
+      reviewHistory?: unknown;
+    };
+    const date = typeof it.nextReviewDate === 'string' ? it.nextReviewDate.slice(0, 10) : '';
+    if (it.completed !== true && date && date <= today) due += 1;
+    const n = typeof it.totalReviews === 'number' && Number.isFinite(it.totalReviews) ? it.totalReviews : 0;
+    reviews += n > 0 ? n : Array.isArray(it.reviewHistory) ? it.reviewHistory.length : 0;
+  }
+  return { notes: items.length, due, reviews };
+}
+
+/** 只读地看一眼 bz 的数据，拿不到 / 解析失败都返回 null */
+export async function peekBzImport(app: App): Promise<BzImportStats | null> {
+  try {
+    const raw = await app.vault.adapter.read(BZ_REVIEW_PATH);
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    return bzStatsOfItems(parsed);
+  } catch {
+    return null;
+  }
+}
+
 export interface MigrateResult {
   ok: boolean;
   message: string;
@@ -106,7 +151,7 @@ export interface MigrateResult {
 }
 
 export async function migrateFromBz(app: App, settings: BzSettings): Promise<MigrateResult> {
-  const dstPath = storageFile('review.json', (settings.storagePath || 'CONFIG/REVIEW').trim());
+  const dstPath = storageFile('review.json', (settings.storagePath || DEFAULT_REVIEW_DIR).trim());
 
   const exists = async (p: string): Promise<boolean> => {
     try {
@@ -180,4 +225,34 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
       (overPart ? ` 其中 ${overPart}超出免费版上限——已有数据不会删，但免费版不能再加新的。` : ''),
     imported: items.length,
   };
+}
+
+/**
+ * 导入的统一动线：先看统计 → 二次确认 → 才复制。
+ * 入口有两个（设置页按钮 / 命令面板），都走这一条，别各写一份确认。
+ */
+export async function importFromBzWithConfirm(app: App, settings: BzSettings): Promise<void> {
+  const { notice } = await import('../core/notice');
+  const stats = await peekBzImport(app);
+  if (!stats) {
+    notice('没找到可导入的 bz 复习数据（CONFIG/STORAGE/review.json）', 'warning');
+    return;
+  }
+  const { openFlowDialog } = await import('../core/flow-dialog');
+  const choice = await openFlowDialog({
+    title: '从 bz 导入复习计划？',
+    message:
+      `检测到 bz 里有 ${stats.notes} 条复习笔记，其中 ${stats.due} 条已到期，累计复习 ${stats.reviews} 次。\n` +
+      '导入只复制，不改变 bz 的数据；目标已有复习数据时不覆盖。',
+    actions: [
+      { label: '取消', value: 'cancel' },
+      { label: '确认导入', value: 'ok', cta: true },
+    ],
+  });
+  if (choice !== 'ok') {
+    notice('已取消导入', 'info');
+    return;
+  }
+  const res = await migrateFromBz(app, settings);
+  notice(res.message, res.ok ? 'success' : 'warning');
 }
