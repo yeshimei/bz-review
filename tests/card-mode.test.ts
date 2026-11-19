@@ -11,6 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { cardModeOf, defaultCardMethod, isCardMode, modeOfCard, stampCardModes } from '../src/review/card-mode';
+import { CARD_MODE_LABELS, CARD_MODE_META, modeMetaOf } from '../src/review/card-mode-meta';
 import type { ReviewCard } from '../src/review/data';
 
 function card(over: Partial<ReviewCard> = {}): ReviewCard {
@@ -84,5 +85,20 @@ describe('批量落库前补默认方式', () => {
     const src = card();
     stampCardModes([src], { reviewCardDefaultMethod: 'quiz' });
     expect(src.mode).toBeUndefined();
+  });
+});
+
+describe('界面只提供两种制卡方式（2026-11-20）', () => {
+  it('可选入口去掉填空 / 上下文 / 展开全文', () => {
+    expect(CARD_MODE_LABELS.map((m) => m.value)).toEqual(['flashcard', 'quiz']);
+  });
+
+  it('全量元数据仍保留五种，老卡照常显示自己的名字', () => {
+    expect(CARD_MODE_META.map((m) => m.value)).toEqual([
+      'flashcard', 'quiz', 'cloze', 'context', 'plain',
+    ]);
+    expect(modeMetaOf('cloze').label).toBe('AI 填空');
+    expect(modeMetaOf('context').label).toBe('上下文');
+    expect(modeMetaOf('plain').label).toBe('展开全文');
   });
 });

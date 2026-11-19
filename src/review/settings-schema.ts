@@ -563,8 +563,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
       },
       {
         /* 划线卡（2026-11-11）：一条划线就是一张卡，复习时不开任何文件。
-           三档方式由复习计划这边定：AI 抽认卡（问句当提示面）、AI 做题
-           （四选一，每轮抽三分之一）、展开全文（不碰 AI，自己评难度）。 */
+           方式由复习计划这边定：AI 抽认卡（问句当提示面）、AI 做题
+           （四选一，每轮抽三分之一）。填空 / 上下文 / 展开全文的代码与老卡行为
+           全部保留，但 2026-11-20 起界面不再提供这三种新入口。 */
         icon: 'layers',
         name: '划线卡',
         rows: [
@@ -577,7 +578,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             desc: '加卡时用哪种方式制卡；选「每次问我」就每张都问一遍',
             help:
               '这张卡做成什么形式，在「加入复习计划那一刻」定下来，之后复习就按它走，' +
-              '同一份计划里抽认卡、填空题、做题卡可以并存。\n' +
+              '同一份计划里抽认卡、做题卡可以并存。\n' +
               '选「每次问我」：每次加卡都弹一个选择框（里面可以勾「以后别再问」）；' +
               '选了具体方式：加卡不再打扰，直接按它制。\n' +
               '已经建好的老卡不受影响，换方式请在复习面板里右键那张卡点「重新生成」。',
@@ -591,13 +592,12 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               },
               save: () => saveSettings(),
             },
+            /* 2026-11-20 界面不再提供填空 / 上下文 / 展开全文三种新入口；
+               上面 set 校验的合法值仍保留这三种，老卡数据与存量设置照常生效。 */
             options: [
               { value: 'manual', label: '每次问我（默认）' },
               { value: 'flashcard', label: 'AI 抽认卡' },
-              { value: 'cloze', label: 'AI 填空' },
-              { value: 'context', label: '上下文' },
               { value: 'quiz', label: 'AI 做题' },
-              { value: 'plain', label: '展开全文（不用 AI）' },
             ],
           },
           {

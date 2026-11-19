@@ -18,20 +18,56 @@ const YES = '✓';
 
 const GROUPS: Array<{ title: string; rows: PlanRow[] }> = [
   {
-    title: '数量',
+    title: '数量上限 · 唯一差异',
     rows: [
-      { label: '复习笔记', free: '20 篇', pro: '不限', note: '基础版' },
-      { label: '划线卡', free: '50 条', pro: '不限', note: '基础版' },
+      { label: '复习笔记', free: '20 篇', pro: '不限' },
+      { label: '划线卡', free: '50 条', pro: '不限' },
     ],
   },
   {
-    title: '复习功能',
+    title: '加入与复习方式',
     rows: [
-      { label: '抽认卡 / 做题 / 填空 / 上下文 / 展开全文', free: YES, pro: YES },
-      { label: 'FSRS 排期与参数自动拟合', free: YES, pro: YES },
-      { label: '做题家（题量、难度、多选、乱序）', free: YES, pro: YES },
-      { label: '按书档案、卡片管理器、数据统计', free: YES, pro: YES },
-      { label: '快照备份与回滚', free: YES, pro: YES },
+      { label: '选中文字加入复习', free: YES, pro: YES },
+      { label: '划线一键复习', free: YES, pro: YES },
+      { label: '整本书批量加入：按划线 / 重点 / 章节选范围', free: YES, pro: YES },
+      { label: '全文回忆', free: YES, pro: YES },
+      { label: '抽认卡', free: YES, pro: YES },
+      { label: '做题', free: YES, pro: YES },
+    ],
+  },
+  {
+    title: '卡片制作',
+    rows: [
+      { label: '卡片正面可改', free: YES, pro: YES },
+      { label: 'AI 重新生成卡片', free: YES, pro: YES },
+      { label: '做题删题补题', free: YES, pro: YES },
+    ],
+  },
+  {
+    title: '复习与排期',
+    rows: [
+      { label: '抽认卡复习', free: YES, pro: YES },
+      { label: '做题原样考', free: YES, pro: YES },
+      { label: 'FSRS 科学排期', free: YES, pro: YES },
+      { label: 'FSRS 参数自动拟合', free: YES, pro: YES },
+      { label: '按书档案', free: YES, pro: YES },
+      { label: '卡片管理器', free: YES, pro: YES },
+    ],
+  },
+  {
+    title: '出题玩法',
+    rows: [
+      { label: '题量与难度自定义', free: YES, pro: YES },
+      { label: '多选题', free: YES, pro: YES },
+      { label: '乱序出题', free: YES, pro: YES },
+    ],
+  },
+  {
+    title: '数据与备份',
+    rows: [
+      { label: '数据统计', free: YES, pro: YES },
+      { label: '快照备份', free: YES, pro: YES },
+      { label: '一键回滚', free: YES, pro: YES },
     ],
   },
   {
@@ -40,7 +76,6 @@ const GROUPS: Array<{ title: string; rows: PlanRow[] }> = [
       { label: '18 家 AI 服务商与模型选择', free: YES, pro: YES },
       { label: '本地 TTS 听卡片', free: YES, pro: YES },
       { label: '文件夹监听与自动加入', free: YES, pro: YES },
-      { label: '更新日志与支持作者', free: YES, pro: YES },
     ],
   },
 ];
@@ -70,7 +105,7 @@ export function unlockDialogHtml(paid: boolean): string {
     '<div class="bzs-unlock-hd"><h2>高级版功能</h2><p>两版功能完全一样，只差数量上限。</p></div>' +
     '<div class="bzs-plan-head"><span>功能</span><i class="c">基础版<small>免费不限时</small></i><i class="c pro">高级版<small>一次买断</small></i></div>' +
     `<div class="bzs-plan">${body}</div>` +
-    `<div class="bzs-plan-row is-total"><span>合计 ${total} 项，${different} 项数量不同</span>${cell('', false)}${cell('', true)}</div>` +
+    `<div class="bzs-plan-row is-total"><span>合计 ${total - different} 项功能 · 功能完全一致，仅 ${different} 项数量不同</span>${cell('', false)}${cell('', true)}</div>` +
     `<div class="bzs-unlock-foot">${
       paid ? '' : '<button class="bzs-btn pri" type="button" data-act="unlockbuy">去购买</button>'
     }<button class="bzs-btn" type="button" data-act="unlockgroup">交流群 ${esc(GROUP_ID)}</button></div>` +
