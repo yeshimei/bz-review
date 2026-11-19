@@ -1473,9 +1473,24 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   --bzrv-icon-btn-h: 26px;
   --bzrv-icon-btn-lg: 32px;  /* 触控档 */
 
-  /* 面板头行高度（影院式整宽头行） */
-  --bzrv-head-h: 44px;
+  /* 面板头行高度（整宽头行）。54 = 顶留白 12 + 内容行 41 + 底线 1；
+     内容行再拆成「按钮 32 + 距底 9」，与 bz Reader 书架头行同一套算式。 */
+  --bzrv-head-h: 54px;
   --bzrv-head-h-lg: 50px;    /* 高档：剪藏本 */
+
+  /* ── 头行度量（以 bz Reader 书架头行为唯一基准，2026-11-19）──
+     对应 Reader 的 src/shell/styles/study.css：.bzs-stuhead（顶留白 12 /
+     左右 32，≤820px 变 16）、.bzs-stuacts（按钮 34×32、组距底 9）。
+     嵌入 Reader「复习」页签时，四颗图标就住在那条动作栏里，数字对不上就会
+     「一切页大小就跳」。改这里必须同步 Reader 那边，反之亦然。 */
+  --bzrv-head-pad-t: 12px;
+  --bzrv-head-pad-x: 32px;
+  --bzrv-head-act-gap: 4px;   /* 组内间距：Reader 定稿 4，四颗才像一组 */
+  --bzrv-head-act-pb: 9px;    /* 组距底线 */
+  --bzrv-head-act-w: 34px;    /* 按钮（含 1px 透明描边） */
+  --bzrv-head-act-h: 32px;
+  --bzrv-head-act-ic: 18px;   /* 图标本体 */
+  --bzrv-radius-ctl: 6px;     /* 图标钮圆角，对齐 Reader 的 --r-ctl */
 
   /* 阴影三档（透明黑、表达抬升） */
   --bzrv-shadow-sm:
@@ -1544,6 +1559,23 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   --bzrv-accent-dot-copper: #9a7434;
   --bzrv-accent-dot-indigo: #3f5b8f;
   --bzrv-accent-dot-moss: #4c6b52;
+}
+
+/* 窄屏头行：Reader 在 ≤820px 收边距、动作栏距底归零（mobile.css 的
+   .bzs-stuhead / .bzs-stuacts 段），这里同口径。只改变量，不碰选择器。 */
+@media (max-width: 820px) {
+  :root {
+    --bzrv-head-h: 49px;      /* 12 + 内容行 36 + 底线 1 */
+    --bzrv-head-pad-x: 16px;
+    --bzrv-head-act-pb: 0;
+  }
+}
+/* 真机（触摸）上 Reader 的页签抬到 16px，行高把内容行撑到 44，
+   头行因此是 57 —— 这里补同一档，别让「手机上少 8px」成为新的不一致。 */
+@media (max-width: 820px) {
+  body.is-mobile {
+    --bzrv-head-h: 57px;      /* 12 + 内容行 44 + 底线 1 */
+  }
 }
 
 /* ── 暗色（默认）── */
@@ -2641,19 +2673,34 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
 }
 
 /* ═══════════ B. 窗口头行 .bzrv-panel-head ═══════════
-   影院式整宽头行：品牌块/标题/竖线副题 + 右侧钮组，高 44px。
-   现状：cinema/bookshelf/favorites/belongings 四份逐字 + clipbook(50px) 变体。 */
+   整宽头行：品牌块/标题/竖线副题 + 右侧钮组。
+   几何以 bz Reader 书架头行为基准（tokens.css 的 --bzrv-head-*）：
+   顶留白 12、左右 32（≤820px 16）、内容行 41（按钮 32 + 距底 9），
+   底线贴着内容行。嵌入 Reader「复习」页签时四颗图标住进那条动作栏，
+   两边数字必须一样，否则切页会跳。 */
 .bzrv-panel-head:is([data-bzrv], [data-bzrv] *) {
   display: flex;
-  align-items: center;
+  /* 贴底对齐：右侧按钮组按「距底 9px」落座，文字按页签基线落座 */
+  align-items: flex-end;
   gap: var(--bzrv-space-sm);
-  padding: 0 var(--bzrv-space-lg);
-  height: var(--bzrv-head-h, 44px);
+  /* 高度含内边距与底线：54 = 顶留白 12 + 内容行 41 + 底线 1 */
+  box-sizing: border-box;
+  height: var(--bzrv-head-h, 54px);
+  padding: var(--bzrv-head-pad-t) var(--bzrv-head-pad-x) 0;
   flex-shrink: 0;
   border-bottom: 1px solid var(--bzrv-border);
 }
+/* 左侧文字簇与 Reader 页签文字同一条基线：页签内边距是 8 上 / 12 下，
+   这里补同样的距底 12，标题、副题、竖线一起落在同一条线上 */
+.bzrv-panel-head .bzrv-panel-brand:is([data-bzrv], [data-bzrv] *),
+.bzrv-panel-head .bzrv-panel-title:is([data-bzrv], [data-bzrv] *),
+.bzrv-panel-head .bzrv-panel-head-pipe:is([data-bzrv], [data-bzrv] *),
+.bzrv-panel-head .bzrv-panel-head-sub:is([data-bzrv], [data-bzrv] *) {
+  padding-bottom: 12px;
+}
 .bzrv-panel-title:is([data-bzrv], [data-bzrv] *) {
-  font-size: var(--bzrv-font-label);
+  /* 与 Reader 页签同一档（14px），字号对齐才算「同一行东西」 */
+  font-size: var(--bzrv-font-body);
   font-weight: var(--bzrv-weight-semibold);
   color: var(--bzrv-text-1);
 }
@@ -2673,7 +2720,51 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
 .bzrv-panel-head-pipe:is([data-bzrv], [data-bzrv] *) { width: 1px; height: 14px; background: var(--bzrv-border); flex-shrink: 0; }
 .bzrv-panel-head-sub:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-panel-head-sp:is([data-bzrv], [data-bzrv] *) { flex: 1; }
-.bzrv-panel-head-btns:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); }
+.bzrv-panel-head-btns:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-head-act-gap); }
+/* 头行钮组离底线 9px：Reader 的动作栏就是这么落的座 */
+.bzrv-panel-head .bzrv-panel-head-btns:is([data-bzrv], [data-bzrv] *) { padding-bottom: var(--bzrv-head-act-pb); }
+
+/* ── 头行四颗图标钮（面板里 / 嵌进 bz-reader 的动作栏里，同一套尺寸）──
+   34×32 的方块、18px 图标、1px 透明描边（悬停时才显形），
+   与 Reader 的 .bzs-stuacts .bzs-cbtn 逐项对齐。 */
+.bzrv-panel-head .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *),
+.bzrv-embed-acts .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *) {
+  width: var(--bzrv-head-act-w);
+  height: var(--bzrv-head-act-h);
+  border: 1px solid transparent;
+  border-radius: var(--bzrv-radius-ctl);
+  color: var(--bzrv-text-2);
+}
+.bzrv-panel-head .bzrv-icon-btn .bzrv-ic:is([data-bzrv], [data-bzrv] *),
+.bzrv-embed-acts .bzrv-icon-btn .bzrv-ic:is([data-bzrv], [data-bzrv] *) {
+  width: var(--bzrv-head-act-ic);
+  height: var(--bzrv-head-act-ic);
+}
+@media (hover: hover) {
+  .bzrv-panel-head .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *):hover,
+  .bzrv-embed-acts .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *):hover {
+    color: var(--bzrv-accent);
+    background: var(--bzrv-accent-soft);
+    border-color: var(--bzrv-border-hover);
+  }
+}
+/* 选中只留强调色：Reader 的口径是「这颗是当前页」，不铺底也不描边 */
+.bzrv-panel-head .bzrv-icon-btn.is-on:is([data-bzrv], [data-bzrv] *),
+.bzrv-embed-acts .bzrv-icon-btn.is-on:is([data-bzrv], [data-bzrv] *) {
+  color: var(--bzrv-accent);
+  background: none;
+  border-color: transparent;
+}
+.bzrv-panel-head .bzrv-icon-btn.is-on:is([data-bzrv], [data-bzrv] *):hover,
+.bzrv-embed-acts .bzrv-icon-btn.is-on:is([data-bzrv], [data-bzrv] *):hover {
+  color: var(--bzrv-accent);
+  background: none;
+  border-color: transparent;
+}
+
+/* 嵌入 bz-reader 时这组按钮住在宿主动作栏里：间距、贴边、离底线都交给宿主
+   （.bzs-review-acts），这里只排横队，别在宿主的留白上再垫一层。 */
+.bzrv-embed-acts:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-head-act-gap); padding: 0; }
 
 /* ═══════════ C. 主头行 .bzrv-main-head ═══════════
    内容区主头行：当前分组标题(16px) + 计数 + spacer + 主按钮(30px)。
@@ -5591,6 +5682,21 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   animation: none;
 }
 
+/* ==================== bz-reader 嵌入态（reviewApi.embedInto） ====================
+   头栏文字由 bz-reader 自己的「复习」页签画，Review 这边只把四颗图标外置到宿主的动作栏。
+   bzrv-embed 由 embedInto 挂到 #bzrv-popup；这里按 #bzrv- 根选择器写（不进 scopeCss 作用域）。 */
+/* 重绘会在面板里再生一套按钮，外置那套已在宿主动作栏，面板内这套必须一起藏掉 */
+#bzrv-popup.bzrv-embed .bzrv-panel-head-brand,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-title,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-pipe,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-sub,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-sp,
+#bzrv-popup.bzrv-embed .bzrv-panel-head-btns { display: none; }
+/* 子元素全藏后头行只剩一条底线和一格高度，整行收起，内容区从顶开始 */
+#bzrv-popup.bzrv-embed .bzrv-panel-head { height: 0; padding: 0; border: none; overflow: hidden; }
+/* 外置那套（.bzrv-embed-acts）的尺寸与间距在 core 组件的头行段统一给：
+   34×32 / 图标 18 / 间距 4，贴边与距底交给 Reader 的动作栏，切页不跳。 */
+
 /* 队列/冲刺滚动条隐藏由 core 界面级单源规则接管（ADR-0122 / issue 277，
    #bzrv-entries 在册），域内不再重复定义 */
 
@@ -5919,6 +6025,39 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-stats-body .bar-fill:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); }
 .bzrv-stats-body .soft-fill:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent-soft); }
 
+/* ── 统计加厚层（2026-11-20）：小标题 / 迷你柱列 / 年热力 / 徽章 / 不可点排行 ──
+   柱高与徽章进度是数据驱动，保留行内 height/width（与 bar-fill 同一套做法）；
+   颜色一律走 --bzrv-accent 派生，切强调色时整块跟着变。 */
+.bzrv-stats-body .sub-h:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); margin: 11px 0 6px; letter-spacing: .06em; }
+.bzrv-stats-body .sub-h:is([data-bzrv], [data-bzrv] *):first-child { margin-top: 0; }
+.bzrv-stats-body .strip:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 4px; }
+.bzrv-stats-body .strip-cols:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: flex-end; gap: 2px; height: 52px; }
+.bzrv-stats-body .strip-c:is([data-bzrv], [data-bzrv] *) { flex: 1; min-height: 2px; background: var(--bzrv-surface-3); border-radius: 2px 2px 0 0; }
+.bzrv-stats-body .strip-c.has:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); opacity: .85; }
+.bzrv-stats-body .strip-xs:is([data-bzrv], [data-bzrv] *) { display: flex; gap: 2px; font-size: 9px; line-height: 1.2; color: var(--bzrv-text-3); }
+.bzrv-stats-body .strip-xs span:is([data-bzrv], [data-bzrv] *) { flex: 1; text-align: center; white-space: nowrap; }
+.bzrv-stats-body .heat:is([data-bzrv], [data-bzrv] *) { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); grid-auto-columns: 1fr; gap: 2px; margin-top: 10px; }
+.bzrv-stats-body .hc:is([data-bzrv], [data-bzrv] *) { display: block; aspect-ratio: 1; border-radius: 2px; background: var(--bzrv-surface-3); }
+.bzrv-stats-body .hc.l1:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-accent) 24%, transparent); }
+.bzrv-stats-body .hc.l2:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-accent) 46%, transparent); }
+.bzrv-stats-body .hc.l3:is([data-bzrv], [data-bzrv] *) { background: color-mix(in srgb, var(--bzrv-accent) 70%, transparent); }
+.bzrv-stats-body .hc.l4:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); }
+.bzrv-stats-body .badges:is([data-bzrv], [data-bzrv] *) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bzrv-stats-body .badge:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 4px; padding: 9px 10px; border: 1px dashed var(--bzrv-border); border-radius: 9px; }
+.bzrv-stats-body .badge.is-got:is([data-bzrv], [data-bzrv] *) { border-style: solid; border-color: var(--bzrv-accent-line); background: var(--bzrv-accent-soft); }
+.bzrv-stats-body .badge .bd:is([data-bzrv], [data-bzrv] *) { width: 14px; height: 14px; color: var(--bzrv-text-3); }
+.bzrv-stats-body .badge.is-got .bd:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); }
+.bzrv-stats-body .badge .bn:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); line-height: 1.25; }
+.bzrv-stats-body .badge.is-got .bn:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-1); }
+.bzrv-stats-body .badge .bp:is([data-bzrv], [data-bzrv] *) { display: block; height: 3px; border-radius: 99px; background: var(--bzrv-surface-3); overflow: hidden; }
+.bzrv-stats-body .badge .bp i:is([data-bzrv], [data-bzrv] *) { display: block; height: 100%; background: var(--bzrv-accent); }
+.bzrv-stats-body .badge .bv:is([data-bzrv], [data-bzrv] *) { font-size: 9px; color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; }
+.bzrv-stats-body .rank-row:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 9px; padding: 5px 2px; border-bottom: 1px dashed var(--bzrv-border); font-size: var(--bzrv-font-meta); }
+.bzrv-stats-body .rank-row:is([data-bzrv], [data-bzrv] *):last-of-type { border-bottom: 0; }
+.bzrv-stats-body .rank-row .rn:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; color: var(--bzrv-text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bzrv-stats-body .rank-row .rs:is([data-bzrv], [data-bzrv] *) { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
+.bzrv-stats-body .rank-row .rv:is([data-bzrv], [data-bzrv] *) { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); font-variant-numeric: tabular-nums; }
+
 /* ==================== 复习历史时间线（issue 270：时间轴竖线式内联收编） ====================
    圆点/评级字色为 RATING_COLORS 数据驱动动态色，保留行内 background/color。 */
 .bzrv-review-history-status:is([data-bzrv], [data-bzrv] *) { padding: 16px 18px 10px; }
@@ -6052,31 +6191,31 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
      L5 控件          面板内 .bzrv-btn（40px 高）· 评级条按钮       15
      L6 角标          到期/阶段 tag · 阶段号 · 日期副题 · 统计小字 13
 
-   控件尺寸随同级文字抬档（设计手册 §8.2）：头行图标钮 40×44、选项行 ≥44、评级条
-   按钮 ≥44、面板内主钮 40。本段置于文件末尾——媒体查询不增特异性，靠「后写者赢」
+   控件尺寸随同级文字抬档（设计手册 §8.2）：选项行 ≥44、评级条按钮 ≥44、面板内主钮
+   40；头行那四颗例外，跟 bz Reader 的动作栏同档（34×32），见下方 L5 段。
+   本段置于文件末尾——媒体查询不增特异性，靠「后写者赢」
    压过上方基础规则（域内既有移动端块只改布局，字号单归本段）。
    桌面 >768px 逐像素不变。 */
 @media (max-width: 768px) {
   /* ---- L1 面板题 ---- */
-  #bzrv-popup .bzrv-panel-head { height: 52px; padding: 0 14px; gap: 6px; }
-  /* 窄屏头行：标题不折行；日期整条收起。
-     算过账——品牌 28 + 标题 80 + 三颗图标 136 + 间距，390 宽里只剩 39px 给日期，
-     「11月15日 周日」只能显示「11月…」，既没信息量又难看；卡片上本来就带着日期。 */
-  #bzrv-popup .bzrv-panel-title { font-size: 20px; white-space: nowrap; flex-shrink: 0; }
+  /* 头行几何不再在这里定：≤820px 已由 tokens 收成 Reader 的窄屏档
+     （顶 12 / 左右 16 / 按钮 34×32 / 距底 0）。这里只定字。 */
+  #bzrv-popup .bzrv-panel-title { font-size: 16px; white-space: nowrap; flex-shrink: 0; }
+  /* 窄屏头行：日期整条收起——品牌 24 + 标题 + 四颗图标，390 宽里没地方给它，
+     卡片上本来就带着日期。 */
   #bzrv-popup .bzrv-panel-head-sub,
   #bzrv-popup .bzrv-panel-head-pipe { display: none; }
-  #bzrv-popup .bzrv-panel-head-sub { font-size: 13px; }
-  #bzrv-popup .bzrv-panel-brand { width: 28px; height: 28px; }
-  #bzrv-popup .bzrv-panel-brand .bzrv-ic { width: 16px; height: 16px; }
-  #bzrv-popup .bzrv-panel-head-pipe { height: 16px; }
   .bzrv-sprint-title:is([data-bzrv], [data-bzrv] *) { font-size: 20px; }
   .bzrv-sprint-sub:is([data-bzrv], [data-bzrv] *) { font-size: 13px; }
   .bzrv-summary-title:is([data-bzrv], [data-bzrv] *) { font-size: 22px; }
 
-  /* ---- L5 控件：面板内主钮 + 头行图标钮（唯一关闭入口，抬到触控档） ---- */
+  /* ---- L5 控件：面板内主钮抬到触控档；头行那四颗是例外 ----
+     Reader 动作栏里就是 34×32，Review 的窄屏档跟着它——两边切页时图标不跳。 */
   #bzrv-popup .bzrv-btn { height: 40px; padding: 0 18px; font-size: 15px; }
   #bzrv-popup .bzrv-icon-btn { width: 40px; height: 44px; }
   #bzrv-popup .bzrv-icon-btn .bzrv-ic { width: 18px; height: 18px; }
+  #bzrv-popup .bzrv-panel-head .bzrv-icon-btn { width: var(--bzrv-head-act-w); height: var(--bzrv-head-act-h); }
+  #bzrv-popup .bzrv-panel-head .bzrv-icon-btn .bzrv-ic { width: var(--bzrv-head-act-ic); height: var(--bzrv-head-act-ic); }
 
   /* ---- 开始本轮条：字号抬档后一行放不下 → 信息一行、主钮独占一行（满宽 40px 靶） ---- */
   .bzrv-q-strip:is([data-bzrv], [data-bzrv] *) { flex-wrap: wrap; }
@@ -6422,10 +6561,8 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
     min-height: 44px;
     min-width: 44px;
   }
-  .bzrv-panel-head-btns .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *) {
-    min-width: 40px;
-    min-height: 40px;
-  }
+  /* 头行四颗不再垫 40×40 的最小热区：Reader 动作栏里就是 34×32，
+     放大反而比旁边几页的图标大一圈（两边必须同尺寸）。 */
   .bzrv-q-strip:is([data-bzrv], [data-bzrv] *) {
     flex-wrap: wrap;
     gap: 6px;
@@ -6515,6 +6652,57 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 }
 .bzrv-arch-name:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ==================== 已移出内置页（2026-11-19） ====================
+   形制对齐 bz-reader 的「笔记」页：左缘一条强调色竖线、引文、出处行、右下动作。
+   页面不写大标题（位置由页签 / 头行图标说明），顶部只留一条期限说明，
+   滚动交给 .bzrv-page-body，这里不再套一层滚动区。 */
+.bzrv-trash-view:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--bzrv-space-sm);
+  padding: var(--bzrv-space-md) var(--bzrv-space-lg) var(--bzrv-space-lg);
+}
+.bzrv-trash-note:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-space-sm); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-trash-note-txt:is([data-bzrv], [data-bzrv] *) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-trash-note .bzrv-btn:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 10px; font-size: var(--bzrv-font-caption); }
+.bzrv-trash-sp:is([data-bzrv], [data-bzrv] *) { flex: 1; }
+.bzrv-trash-list:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 8px; }
+.bzrv-trash-card:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid var(--bzrv-border);
+  border-left: 3px solid var(--bzrv-accent-line);
+  border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-1);
+}
+.bzrv-trash-card-top:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bzrv-trash-card-title:is([data-bzrv], [data-bzrv] *) { flex: 1; min-width: 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-trash-tag:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  font-size: var(--bzrv-font-caption);
+  color: var(--bzrv-text-3);
+  border: 1px solid var(--bzrv-border);
+  border-radius: 999px;
+  padding: 0 7px;
+}
+.bzrv-trash-card-quote:is([data-bzrv], [data-bzrv] *) {
+  margin: 0;
+  font-size: var(--bzrv-font-meta);
+  line-height: 1.55;
+  color: var(--bzrv-text-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.bzrv-trash-card-foot:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; min-width: 0; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-trash-src:is([data-bzrv], [data-bzrv] *) { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bzrv-text-2); }
+.bzrv-trash-when:is([data-bzrv], [data-bzrv] *) { flex: none; }
+.bzrv-trash-card-foot .bzrv-btn:is([data-bzrv], [data-bzrv] *) { flex: none; height: 26px; padding: 0 12px; font-size: var(--bzrv-font-caption); }
+.bzrv-trash-empty-host:is([data-bzrv], [data-bzrv] *) { padding: 24px 12px; }
+
 /* ==================== 按书档案 / 卡片管理器（高级档，2026-11-18） ====================
    两个新的内置页，样式只消费 --bzrv-* token，构建时统一挂 [data-bzrv] 作用域。 */
 .bzrv-book-view:is([data-bzrv], [data-bzrv] *), .bzrv-mgr-view:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 12px; padding: var(--bzrv-space-md) var(--bzrv-space-lg); }
@@ -6552,11 +6740,13 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 
 /* ==================== 2026-11-19 移动端布局收口 ==================== */
 
-/* 头行图标高亮：点一下进页，再点一下回主列表 */
+/* 头行图标高亮：点一下进页，再点一下回主列表。
+   画法与 bz Reader 的动作栏一致：只把图标染成强调色，不铺底、不加内描边——
+   嵌入后这几颗就在那条动作栏里，画法不同一眼就看出是两个插件。 */
 .bzrv-panel-head-btns .bzrv-icon-btn.is-on:is([data-bzrv], [data-bzrv] *) {
   color: var(--bzrv-accent);
-  background: color-mix(in srgb, var(--bzrv-accent) 14%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bzrv-accent) 30%, transparent);
+  background: none;
+  border-color: transparent;
 }
 
 /* 编辑这张卡：不再用 Obsidian Setting 的左右排布，手机上输入框占满宽 */
@@ -6917,3 +7107,2186 @@ canvas:is([data-bzrv], [data-bzrv] *) { display: block; }
   border: 1px solid rgba(var(--ra-ink-rgb), .2);
   cursor: default;
 }
+/* ============================================================
+ * 复习设置页 · 1:1 复刻 prototypes/settings-page.html 的内页布局
+ * 只作用于 ⚙️ 内置页容器 .bzrv-settings-content；构建期自动收进 [data-bzrv]。
+ * 视觉令牌沿用原型（明暗两套），变量名加 bzsp- 前缀避免碰宿主 / reader。
+ * ============================================================ */
+.bzrv-settings-content.bzs-set-page:is([data-bzrv], [data-bzrv] *) {
+  --bzsp-ui: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --bzsp-serif: Georgia, "Times New Roman", "STZhongsong", "Songti SC", serif;
+  --bzsp-fs-caption: 11px;
+  --bzsp-fs-mini: 12px;
+  --bzsp-fs-strong: 15px;
+  --bzsp-r-ctl: 6px;
+  --bzsp-r-card: 12px;
+  --bzsp-r-pill: 999px;
+  --bzsp-sp-1: 4px;
+  --bzsp-sp-2: 8px;
+  --bzsp-sp-3: 12px;
+  --bzsp-sp-4: 16px;
+  --bzsp-dur: .16s;
+  --bzsp-ease: cubic-bezier(.2, .8, .2, 1);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 26px 20px 64px;
+  container-type: inline-size;
+  container-name: bzs-set;
+  counter-reset: bzsp-grp;
+  background: transparent;
+  max-height: none;
+  overflow: visible;
+}
+
+body.theme-dark .bzrv-settings-content.bzs-set-page {
+  --bzsp-bg: #1b1b21;
+  --bzsp-bg-2: #23232b;
+  --bzsp-sunken: #191920;
+  --bzsp-surface: #23232b;
+  --bzsp-line: rgba(255, 255, 255, .11);
+  --bzsp-line-2: rgba(255, 255, 255, .19);
+  --bzsp-t1: #ececf0;
+  --bzsp-t2: #a2a2ad;
+  --bzsp-t3: #71717d;
+  --bzsp-accent: var(--interactive-accent, #c8a464);
+  --bzsp-sheen: rgba(255, 255, 255, .04);
+}
+
+body.theme-light .bzrv-settings-content.bzs-set-page {
+  --bzsp-bg: #faf8f2;
+  --bzsp-bg-2: #fff;
+  --bzsp-sunken: #f3f1ea;
+  --bzsp-surface: #fff;
+  --bzsp-line: rgba(23, 21, 18, .11);
+  --bzsp-line-2: rgba(23, 21, 18, .2);
+  --bzsp-t1: #16140f;
+  --bzsp-t2: #5c564b;
+  --bzsp-t3: #918a79;
+  --bzsp-accent: var(--interactive-accent, #9a7434);
+  --bzsp-sheen: rgba(255, 255, 255, .7);
+}
+
+.bzrv-settings-content.bzs-set-page *:is([data-bzrv], [data-bzrv] *) {
+  box-sizing: border-box;
+}
+
+.bzrv-settings-content .bzs-set-grid:is([data-bzrv], [data-bzrv] *) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.bzrv-settings-content .bzs-set-col:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+@container bzs-set (max-width: 880px) {
+  .bzrv-settings-content .bzs-set-grid:is([data-bzrv], [data-bzrv] *) { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 820px) {
+  .bzrv-settings-content .bzs-set-grid:is([data-bzrv], [data-bzrv] *) { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* ── 分组卡片：顶部一道强调色细线 + hover 抬升 ── */
+.bzrv-settings-content .bzs-setgrp:is([data-bzrv], [data-bzrv] *) {
+  position: relative;
+  counter-increment: bzsp-grp;
+  overflow: hidden;
+  border: 1px solid var(--bzsp-line);
+  border-radius: var(--bzsp-r-card);
+  background: linear-gradient(180deg, var(--bzsp-sheen), transparent 46px), var(--bzsp-surface);
+  padding: 18px 20px 16px;
+  min-width: 0;
+  margin: 0;
+  color: var(--bzsp-t1);
+  transition: border-color .22s var(--bzsp-ease);
+}
+.bzrv-settings-content .bzs-setgrp:is([data-bzrv], [data-bzrv] *)::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--bzsp-accent), color-mix(in srgb, var(--bzsp-accent) 10%, transparent) 82%);
+  opacity: .42;
+  transition: opacity .22s;
+}
+.bzrv-settings-content .bzs-setgrp:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzsp-line-2); }
+.bzrv-settings-content .bzs-setgrp:is([data-bzrv], [data-bzrv] *):hover::before { opacity: 1; }
+.bzrv-settings-content .bzs-setgrp.wide:is([data-bzrv], [data-bzrv] *) { grid-column: 1 / -1; }
+
+.bzrv-settings-content .bzs-setgrp h3:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--bzsp-serif);
+  font-size: var(--bzsp-fs-strong);
+  font-weight: 500;
+  letter-spacing: .12em;
+  margin: 0 0 2px;
+  color: var(--bzsp-t1);
+}
+.bzrv-settings-content .bzs-setgrp:not(.bzs-about) h3:is([data-bzrv], [data-bzrv] *)::before {
+  content: counter(bzsp-grp, decimal-leading-zero);
+  font: 600 10px var(--bzsp-ui);
+  letter-spacing: .04em;
+  color: var(--bzsp-accent);
+  border: 1px solid color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--bzsp-accent) 12%, transparent);
+  border-radius: var(--bzsp-r-ctl);
+  padding: 2px 5px;
+  line-height: 1;
+}
+.bzrv-settings-content .bzs-setgrp:not(.bzs-about) h3:is([data-bzrv], [data-bzrv] *)::after {
+  content: attr(data-en);
+  margin-left: auto;
+  font: 400 9px var(--bzsp-ui);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--bzsp-t3);
+}
+.bzrv-settings-content .bzrv-settings-group-head:is([data-bzrv], [data-bzrv] *) {
+  display: block;
+  padding: 0;
+  border: 0;
+  margin: 0 0 2px;
+}
+
+/* ── 设置行：原生 .setting-item 映射成原型 .bzs-setrow ── */
+.bzrv-settings-content .bzs-setgrp .setting-item:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--bzsp-line);
+  border-bottom: 0;
+  border-radius: 0;
+  margin: 0;
+  background: none;
+  font-size: var(--bzsp-fs-mini);
+  min-height: 0;
+}
+/* 两列布局把 .setting-item 显式改成 flex，必须给隐藏行留一条更具体的规则，
+   否则 visibleWhen 只挂类不隐藏（没装 bz 时「从 bz 导入」会露出来）。 */
+.bzrv-settings-content .bzs-setgrp .setting-item.bzrv-setting-hidden:is([data-bzrv], [data-bzrv] *),
+.bzrv-settings-content .bzs-setgrp.bzrv-setting-hidden:is([data-bzrv], [data-bzrv] *) { display: none; }
+.bzrv-settings-content .bzs-setgrp .setting-item:is([data-bzrv], [data-bzrv] *):first-child { border-top: 0; }
+.bzrv-settings-content .bzs-setgrp .setting-item:is([data-bzrv], [data-bzrv] *):hover { background: none; }
+.bzrv-settings-content .bzs-setgrp .setting-item-info:is([data-bzrv], [data-bzrv] *) { min-width: 86px; flex: 0 1 auto; max-width: 44%; gap: 3px; }
+.bzrv-settings-content .bzs-setgrp .setting-item-name:is([data-bzrv], [data-bzrv] *) {
+  color: var(--bzsp-t1);
+  font-size: var(--bzsp-fs-mini);
+  font-weight: 500;
+  letter-spacing: .01em;
+  line-height: 1.5;
+}
+.bzrv-settings-content .bzs-setgrp .setting-item-description:is([data-bzrv], [data-bzrv] *) {
+  color: var(--bzsp-t3);
+  font-size: var(--bzsp-fs-caption);
+  line-height: 1.65;
+  margin-top: 0;
+}
+.bzrv-settings-content .bzs-setgrp .setting-item:hover .setting-item-name:is([data-bzrv], [data-bzrv] *) { color: var(--bzsp-accent); }
+.bzrv-settings-content .bzs-setgrp .setting-item-control:is([data-bzrv], [data-bzrv] *) {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
+.bzrv-settings-content .bzs-setgrp .setting-item-control input:is([data-bzrv], [data-bzrv] *),
+.bzrv-settings-content .bzs-setgrp .setting-item-control select:is([data-bzrv], [data-bzrv] *),
+.bzrv-settings-content .bzs-setgrp .setting-item-control textarea:is([data-bzrv], [data-bzrv] *) {
+  background: var(--bzsp-sunken);
+  border: 1px solid var(--bzsp-line);
+  border-radius: var(--bzsp-r-ctl);
+  color: var(--bzsp-t1);
+  padding: 7px 10px;
+  font: var(--bzsp-fs-mini) var(--bzsp-ui);
+  min-width: 0;
+}
+.bzrv-settings-content .bzs-setgrp .setting-item-control input:is([data-bzrv], [data-bzrv] *):focus,
+.bzrv-settings-content .bzs-setgrp .setting-item-control textarea:is([data-bzrv], [data-bzrv] *):focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bzsp-accent) 12%, transparent);
+}
+.bzrv-settings-content .bzs-setgrp .setting-item-control button:is([data-bzrv], [data-bzrv] *) {
+  border: 1px solid var(--bzsp-line-2);
+  background: var(--bzsp-bg-2);
+  color: var(--bzsp-t2);
+  border-radius: var(--bzsp-r-ctl);
+  padding: 6px 12px;
+  font-size: var(--bzsp-fs-caption);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bzrv-settings-content .bzs-setgrp .setting-item-control button:is([data-bzrv], [data-bzrv] *):hover {
+  color: var(--bzsp-accent);
+  border-color: color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--bzsp-accent) 12%, transparent);
+}
+.bzrv-settings-content .bzs-setgrp .setting-item-control button.mod-cta:is([data-bzrv], [data-bzrv] *) {
+  color: #fff;
+  border-color: var(--bzsp-accent);
+  background: var(--bzsp-accent);
+  font-weight: 600;
+}
+
+/* 分段控件（原型 .bzs-seg，对应现有 .bzrv-segmented） */
+.bzrv-settings-content .bzrv-segmented:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--bzsp-line);
+  border-radius: var(--bzsp-r-ctl);
+  background: var(--bzsp-sunken);
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.bzrv-settings-content .bzrv-segmented button:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  color: var(--bzsp-t3);
+  font-size: var(--bzsp-fs-mini);
+  padding: 6px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.bzrv-settings-content .bzrv-segmented button.is-active:is([data-bzrv], [data-bzrv] *),
+.bzrv-settings-content .bzrv-segmented button[aria-selected="true"]:is([data-bzrv], [data-bzrv] *) {
+  background: var(--bzsp-bg-2);
+  color: var(--bzsp-accent);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+}
+
+/* 开关：38×21 胶囊（Obsidian 的 .checkbox-container 自带一颗 ::after 旋钮，
+   这里整颗接管，别在 input 上再画一颗，否则真机会出现上下两枚圆点） */
+.bzrv-settings-content .bzs-setgrp .checkbox-container:is([data-bzrv], [data-bzrv] *) {
+  width: 38px;
+  height: 21px;
+  border-radius: var(--bzsp-r-pill);
+  border: 1px solid var(--bzsp-line-2);
+  background: var(--bzsp-sunken);
+  position: relative;
+  flex-shrink: 0;
+  cursor: pointer;
+  margin: 0;
+}
+.bzrv-settings-content .bzs-setgrp .checkbox-container:is([data-bzrv], [data-bzrv] *)::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 2px;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: var(--bzsp-t3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
+  transition: left .16s var(--bzsp-ease), background .16s var(--bzsp-ease);
+}
+.bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled:is([data-bzrv], [data-bzrv] *) {
+  background: var(--bzsp-accent);
+  border-color: var(--bzsp-accent);
+}
+.bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled:is([data-bzrv], [data-bzrv] *)::after {
+  left: 19px;
+  background: #fff;
+}
+.bzrv-settings-content .bzs-setgrp .checkbox-container input:is([data-bzrv], [data-bzrv] *) {
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ── 关于栏（品牌化，通栏） ── */
+.bzrv-settings-content .bzs-about:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding: 12px 18px;
+  border-top: 0;
+  background: none;
+}
+.bzrv-settings-content .bzs-about:is([data-bzrv], [data-bzrv] *)::before,
+.bzrv-settings-content .bzs-about:is([data-bzrv], [data-bzrv] *)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--bzsp-line);
+  pointer-events: none;
+}
+.bzrv-settings-content .bzs-about:is([data-bzrv], [data-bzrv] *)::before { top: 0; }
+.bzrv-settings-content .bzs-about:is([data-bzrv], [data-bzrv] *)::after { bottom: 0; }
+.bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *) {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  background: linear-gradient(145deg, var(--bzsp-accent), color-mix(in srgb, var(--bzsp-accent) 62%, #000));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--bzsp-serif);
+  font-size: 21px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
+}
+body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *) { color: #1a1408; }
+.bzrv-settings-content .bzs-brand-txt:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 2px; }
+.bzrv-settings-content .bzs-brand-txt h3:is([data-bzrv], [data-bzrv] *) { font-size: 15px; letter-spacing: .06em; }
+.bzrv-settings-content .bzs-brand-txt h3:is([data-bzrv], [data-bzrv] *)::before,
+.bzrv-settings-content .bzs-brand-txt h3:is([data-bzrv], [data-bzrv] *)::after { content: none; }
+.bzrv-settings-content .bzs-brand-txt .tagline:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzsp-fs-caption); color: var(--bzsp-t3); letter-spacing: .04em; }
+.bzrv-settings-content .bzs-about-meta:is([data-bzrv], [data-bzrv] *) { display: inline-flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.bzrv-settings-content .bzs-about-ver:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzsp-fs-caption); color: var(--bzsp-t3); letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+.bzrv-settings-content .bzs-about-badge:is([data-bzrv], [data-bzrv] *) {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 11px 0 9px;
+  border-radius: var(--bzsp-r-pill);
+  font-size: var(--bzsp-fs-caption);
+  line-height: 1;
+  letter-spacing: .08em;
+  white-space: nowrap;
+  border: 1px solid color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--bzsp-accent) 12%, transparent);
+  color: var(--bzsp-accent);
+  font-weight: 600;
+}
+.bzrv-settings-content .bzs-about-badge.is-base:is([data-bzrv], [data-bzrv] *) {
+  padding: 0 9px;
+  border-color: var(--bzsp-line-2);
+  background: none;
+  color: var(--bzsp-t3);
+}
+/* 桌面端标题左、五个出口右；窄屏由 flex-wrap 自然换行，和 bz-reader 一致 */
+.bzrv-settings-content .bzs-about .sp:is([data-bzrv], [data-bzrv] *) { flex: 1; }
+.bzrv-settings-content .bzs-about .dot:is([data-bzrv], [data-bzrv] *) { width: 3px; height: 3px; background: var(--bzsp-t3); opacity: .5; flex-shrink: 0; border-radius: 50%; }
+.bzrv-settings-content .bzs-about-link:is([data-bzrv], [data-bzrv] *) {
+  appearance: none;
+  border: 0;
+  background: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 2px 0;
+  color: var(--bzsp-t2);
+  letter-spacing: .04em;
+  white-space: nowrap;
+  cursor: pointer;
+  position: relative;
+  transition: color .16s var(--bzsp-ease);
+}
+.bzrv-settings-content .bzs-about-link b:is([data-bzrv], [data-bzrv] *) { font-weight: 500; font-size: var(--bzsp-fs-mini); color: var(--bzsp-t1); letter-spacing: .05em; }
+.bzrv-settings-content .bzs-about-link i:is([data-bzrv], [data-bzrv] *) { font-style: normal; font-size: var(--bzsp-fs-caption); color: var(--bzsp-t3); }
+.bzrv-settings-content .bzs-about-link .ic:is([data-bzrv], [data-bzrv] *) { width: 15px; height: 15px; color: var(--bzsp-t3); flex-shrink: 0; transition: color .16s; }
+.bzrv-settings-content .bzs-about-link:hover b:is([data-bzrv], [data-bzrv] *),
+.bzrv-settings-content .bzs-about-link:hover .ic:is([data-bzrv], [data-bzrv] *) { color: var(--bzsp-accent); }
+.bzrv-settings-content .bzs-about-link:is([data-bzrv], [data-bzrv] *)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--bzsp-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .22s var(--bzsp-ease);
+}
+.bzrv-settings-content .bzs-about-link:is([data-bzrv], [data-bzrv] *):hover::after { transform: none; }
+@media (max-width: 820px) {
+  .bzrv-settings-content .bzs-about .sp:is([data-bzrv], [data-bzrv] *),
+  .bzrv-settings-content .bzs-about .dot:is([data-bzrv], [data-bzrv] *) { display: none; }
+}
+
+/* ── 快捷键通栏 ── */
+.bzrv-settings-content .bzs-keys:is([data-bzrv], [data-bzrv] *) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  gap: 6px 24px;
+  margin-top: 10px;
+}
+.bzrv-settings-content .bzs-keyrow:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed var(--bzsp-line);
+  padding: 8px 0;
+  color: var(--bzsp-t1);
+  font: var(--bzsp-fs-mini) var(--bzsp-ui);
+  cursor: pointer;
+  text-align: left;
+}
+.bzrv-settings-content .bzs-keyrow:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzsp-accent); }
+.bzrv-settings-content .bzs-keyrow kbd:is([data-bzrv], [data-bzrv] *) {
+  font: 500 10px ui-monospace, Consolas, monospace;
+  color: var(--bzsp-t2);
+  background: linear-gradient(180deg, var(--bzsp-bg-2), var(--bzsp-sunken));
+  border: 1px solid var(--bzsp-line-2);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 3px 8px;
+}
+
+/* 视觉隐藏文本（读屏名字，不触发悬停气泡） */
+.bzrv-settings-content.bzs-set-page .bzs-sr-only:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bzrv-settings-content.bzs-set-page *:is([data-bzrv], [data-bzrv] *) { transition: none; }
+}
+/* ==========================================================
+   更新日志弹窗（shell/changelog-note.ts）
+
+   版式照 bz 插件的更新日志小窗：桌面 214px 版本时间轴 + 右侧单版正文，
+   手机不设版本栏、整篇文档流。两端是同一份 DOM，靠这里的媒体查询切换。
+
+   作用域：弹窗挂在 body 上（uiModal），**不在 .bzs-shell 里**，所以颜色
+   不能吃壳层的 --t1 / --copper 那套（只定义在 .bzs-shell 内）。这里在
+   .bzs-chgn 上立一组 --chg-* 局部令牌，直接读宿主的主题变量——换主题、
+   切明暗都跟着走，也不会污染宿主。
+
+   选择器一律以 .bzs- 开头：构建时壳层样式会被加 .bzs-shell 前缀，只有
+   .bzs- 开头的选择器会原样保留（见 esbuild.config.mjs 的 scopeShellStyles）。
+   ========================================================== */
+
+/* 读屏文本：reader 的壳层 common.css 里有，这里弹窗挂 body 不吃那份，
+   自己补一份（作用域锚点由构建期保证，只命中本插件的 DOM）。 */
+[data-bzrv] .bzs-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 局部令牌 + 基础字体（弹窗不在 .bzs-shell 里，这一层自己给） */
+.bzs-chgn:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m:is([data-bzrv], [data-bzrv] *) {
+  /* 与支持作者弹窗同一口径：优先吃壳层读来的 --bzs-accent（用户选的那一档），
+     读不到才退回宿主 accent——两个弹窗挨着打开时不能一个铜一个紫。 */
+  --chg-accent: var(--bzs-accent, var(--interactive-accent, var(--text-accent, #7856d6)));
+  --chg-accent-soft: color-mix(in srgb, var(--chg-accent) 12%, transparent);
+  --chg-panel: var(--background-primary, #ffffff);
+  --chg-ink: var(--text-normal, #1f1f23);
+  --chg-ink-2: var(--text-muted, #5a5a63);
+  --chg-ink-3: var(--text-faint, #93939c);
+  --chg-line: var(--background-modifier-border, rgba(0, 0, 0, 0.1));
+  --chg-line-soft: color-mix(in srgb, var(--background-modifier-border, rgba(0, 0, 0, 0.1)) 55%, transparent);
+  --chg-mono: "Cascadia Code", Consolas, monospace;
+
+  font-family: -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--chg-ink);
+}
+
+/* ── 弹窗外壳 ──
+   盖掉 .bzr-overlay-popup 的默认尺寸：那个是给 400px 窄弹窗定的。
+   2026-11-18：720×560 太窄——顶部那条工具条（三颗统计 + 三个入口）会被折成
+   两行，正文也挤；放大到 1040×720，工具条一行放得下。 */
+.bzs-chgn-dialog:is([data-bzrv], [data-bzrv] *) {
+  width: min(1040px, calc(100vw - 32px));
+  height: min(720px, calc(100vh - 32px));
+  max-width: none;
+  max-height: none;
+  padding: 0;
+  background: var(--chg-panel);
+  border: 1px solid var(--chg-line);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: bzs-chgn-pop 0.18s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@keyframes bzs-chgn-pop {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.988);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bzs-chgn-dialog:is([data-bzrv], [data-bzrv] *) {
+    animation: none;
+  }
+}
+
+/* uiModal 的正文层：卡片自己排版，这层不留内边距、不滚 */
+.bzs-chgn-dialog .bzr-dialog-body:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+/* 弹窗里的按钮从零开始：宿主给 button 的底色 / 边框 / 行高在这里全是噪音。
+   2026-11-11：宿主 `button` 还带着 `height: var(--input-height)`（默认 30px），
+   版本行里是「版本号 + N 处改动」两行字，被卡进 30px 后第二行溢出、压住下一版
+   （用户截图为证）。这里统一把高度放开，按钮各按内容撑开；需要固定高度的
+   （关闭钮、页脚图标、支持作者）都在下面自己写了 height。 */
+.bzs-chgn button:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m button:is([data-bzrv], [data-bzrv] *) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  height: auto;
+}
+
+/* ── 桌面：时间轴 + 单版正文 ── */
+.bzs-chgn:is([data-bzrv], [data-bzrv] *) {
+  position: relative;
+  display: grid;
+  grid-template-columns: 214px 1fr;
+  grid-template-rows: 1fr auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  background: var(--chg-panel);
+}
+
+.bzs-chgn-rail:is([data-bzrv], [data-bzrv] *) {
+  grid-row: 1 / span 2;
+  grid-column: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--chg-line-soft);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--chg-ink) 4%, var(--chg-panel)),
+    var(--chg-panel) 46%
+  );
+}
+
+.bzs-chgn-rail-hd:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 24px 18px 14px 22px;
+}
+
+.bzs-chgn-rail-hd b:is([data-bzrv], [data-bzrv] *) {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--chg-ink-3);
+}
+
+.bzs-chgn-rail-hd span:is([data-bzrv], [data-bzrv] *) {
+  font-family: var(--chg-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--chg-ink-3);
+}
+
+.bzs-chgn-rail-list:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 2px 10px 20px 20px;
+  scrollbar-width: none;
+}
+
+.bzs-chgn-rail-list:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar {
+  display: none;
+}
+
+/* 版本行：一根细线串起所有版本，每个版本在线上一个点（当前版实心 + 光晕）。
+   2026-11-10：行距从 10 放到 13——选中项下面还要多一行「N 处改动」，
+   10 的上下内边距会让 v0.4.1 / 4 处改动 / v0.4.0 三行糊成一团。
+   2026-11-11：再补 height: auto——宿主的按钮固定高会压扁这行（见上面 reset
+   的注释），光靠内边距解决不了；这行必须由内容撑开。 */
+.bzs-chgn .bzs-chgn-v:is([data-bzrv], [data-bzrv] *) {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 8px;
+  width: 100%;
+  height: auto;
+  padding: 13px 8px 13px 22px;
+}
+
+.bzs-chgn .bzs-chgn-v:is([data-bzrv], [data-bzrv] *)::after {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--chg-line-soft);
+}
+
+.bzs-chgn .bzs-chgn-v:is([data-bzrv], [data-bzrv] *):first-child::after {
+  top: 19px;
+}
+
+.bzs-chgn .bzs-chgn-v:is([data-bzrv], [data-bzrv] *):last-child::after {
+  bottom: calc(100% - 26px);
+}
+
+.bzs-chgn .bzs-chgn-v:is([data-bzrv], [data-bzrv] *)::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--chg-panel);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chg-ink-3) 55%, transparent);
+  transition: box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.bzs-chgn .bzs-chgn-v.on:is([data-bzrv], [data-bzrv] *)::before {
+  background: var(--chg-accent);
+  box-shadow: 0 0 0 3px var(--chg-accent-soft);
+}
+
+.bzs-chgn-v .v:is([data-bzrv], [data-bzrv] *) {
+  font-family: var(--chg-mono);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  color: var(--chg-ink-2);
+  transition: color 0.14s ease;
+}
+
+.bzs-chgn .bzs-chgn-v.on .v:is([data-bzrv], [data-bzrv] *) {
+  color: var(--chg-ink);
+  font-weight: 600;
+}
+
+.bzs-chgn-v .d:is([data-bzrv], [data-bzrv] *) {
+  margin-left: auto;
+  font-family: var(--chg-mono);
+  font-size: 10px;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  color: var(--chg-ink-3);
+}
+
+/* 改动条数平时不露头，悬停 / 选中才淡入——列表静下来才像时间轴。
+   2026-11-10：上下各让出几像素，让它和版本号分开一档、也不贴住下一版。 */
+.bzs-chgn-v .n:is([data-bzrv], [data-bzrv] *) {
+  flex-basis: 100%;
+  margin: 5px 0 4px;
+  font-size: 10.5px;
+  line-height: 1.4;
+  color: var(--chg-ink-3);
+  opacity: 0;
+  transition: opacity 0.16s ease;
+}
+
+.bzs-chgn .bzs-chgn-v.on .n:is([data-bzrv], [data-bzrv] *) {
+  opacity: 1;
+}
+
+@media (hover: hover) {
+  .bzs-chgn .bzs-chgn-v:hover .v:is([data-bzrv], [data-bzrv] *) {
+    color: var(--chg-ink);
+  }
+
+  .bzs-chgn .bzs-chgn-v:hover .n:is([data-bzrv], [data-bzrv] *) {
+    opacity: 1;
+  }
+
+  .bzs-chgn .bzs-chgn-v:is([data-bzrv], [data-bzrv] *):hover::before {
+    box-shadow: inset 0 0 0 1px var(--chg-ink-2);
+  }
+}
+
+.bzs-chgn-pane:is([data-bzrv], [data-bzrv] *) {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  position: relative;
+}
+
+.bzs-chgn-hd:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  padding: 26px 32px 18px;
+  position: relative;
+  border-bottom: 1px solid var(--chg-line-soft);
+}
+
+.bzs-chgn-eyebrow:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  color: var(--chg-accent);
+}
+
+/* 眉标前一小段短线：眼睛先落这儿，再往下读版本号 */
+.bzs-chgn-eyebrow:is([data-bzrv], [data-bzrv] *)::before {
+  content: "";
+  width: 15px;
+  height: 1px;
+  flex: none;
+  background: currentColor;
+  opacity: 0.55;
+}
+
+.bzs-chgn-ver:is([data-bzrv], [data-bzrv] *) {
+  margin: 0;
+  font-family: var(--chg-mono);
+  font-size: 26px;
+  font-weight: 500;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--chg-ink);
+}
+
+.bzs-chgn-ver small:is([data-bzrv], [data-bzrv] *) {
+  margin-left: 12px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--chg-ink-3);
+}
+
+.bzs-chgn-meta:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  font-family: var(--chg-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  color: var(--chg-ink-3);
+}
+
+.bzs-chgn-sep:is([data-bzrv], [data-bzrv] *) {
+  width: 1px;
+  height: 8px;
+  background: var(--chg-line);
+}
+
+/* 关闭钮：桌面靠右上这颗 / 「知道了」/ 遮罩 / ESC 四路都能关 */
+.bzs-chgn .bzs-chgn-close:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 7px;
+  color: var(--chg-ink-3);
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+@media (hover: hover) {
+  .bzs-chgn .bzs-chgn-close:is([data-bzrv], [data-bzrv] *):hover {
+    background: color-mix(in srgb, var(--chg-ink) 6%, transparent);
+    color: var(--chg-ink);
+  }
+}
+
+/* 正文：滚动条藏掉，上下渐隐负责「还有内容」的提示 */
+.bzs-chgn-wrap:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+}
+
+.bzs-chgn-body:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 32px 12px;
+  scrollbar-width: none;
+}
+
+.bzs-chgn-body:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar {
+  display: none;
+}
+
+.bzs-chgn-fade-top:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-fade-bot:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 20px;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bzs-chgn-fade-top:is([data-bzrv], [data-bzrv] *) {
+  top: 0;
+  background: linear-gradient(var(--chg-panel), transparent);
+}
+
+.bzs-chgn-fade-bot:is([data-bzrv], [data-bzrv] *) {
+  bottom: 0;
+  background: linear-gradient(transparent, var(--chg-panel));
+}
+
+.bzs-chgn-fade-top.show:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-fade-bot.show:is([data-bzrv], [data-bzrv] *) {
+  opacity: 1;
+}
+
+.bzs-chgn-grp:is([data-bzrv], [data-bzrv] *) {
+  padding-top: 20px;
+}
+
+.bzs-chgn-grp + .bzs-chgn-grp:is([data-bzrv], [data-bzrv] *) {
+  margin-top: 10px;
+  border-top: 1px solid var(--chg-line-soft);
+}
+
+.bzs-chgn-grp-hd:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 6px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--chg-ink-2);
+}
+
+.bzs-chgn-grp-hd i:is([data-bzrv], [data-bzrv] *) {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+}
+
+.bzs-chgn-grp-cnt:is([data-bzrv], [data-bzrv] *) {
+  margin-left: auto;
+  font-family: var(--chg-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--chg-ink-3);
+}
+
+.bzs-chgn-g-add:is([data-bzrv], [data-bzrv] *) {
+  background: var(--chg-accent);
+}
+
+.bzs-chgn-g-imp:is([data-bzrv], [data-bzrv] *) {
+  background: color-mix(in srgb, var(--chg-accent) 45%, var(--chg-ink-3));
+}
+
+.bzs-chgn-g-fix:is([data-bzrv], [data-bzrv] *) {
+  background: var(--chg-ink-3);
+}
+
+/* 域名左对齐成一窄列，描述从同一条竖线起 */
+.bzs-chgn-row:is([data-bzrv], [data-bzrv] *) {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  gap: 16px;
+  align-items: start;
+  margin: 0 -8px;
+  padding: 10px 8px;
+  border-radius: 7px;
+  transition: background 0.14s ease;
+}
+
+@media (hover: hover) {
+  .bzs-chgn .bzs-chgn-row:is([data-bzrv], [data-bzrv] *):hover {
+    background: var(--chg-accent-soft);
+  }
+}
+
+.bzs-chgn-k:is([data-bzrv], [data-bzrv] *) {
+  padding-top: 2px;
+  font-size: 10.5px;
+  line-height: 1.68;
+  letter-spacing: 0.02em;
+  color: var(--chg-ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bzs-chgn-t:is([data-bzrv], [data-bzrv] *) {
+  font-size: 13.5px;
+  line-height: 1.68;
+  color: var(--chg-ink);
+}
+
+.bzs-chgn-empty:is([data-bzrv], [data-bzrv] *) {
+  padding: 30px 0;
+  font-size: 12.5px;
+  color: var(--chg-ink-3);
+}
+
+/* 页脚：一排纯图标整组靠右，最后是带文字的「支持作者」胶囊。
+   2026-11-10 照 bz 的更新日志小窗改：入口不再带文字，也不再放「知道了」——
+   关窗只走右上角 × / 点遮罩 / ESC。 */
+.bzs-chgn-ft:is([data-bzrv], [data-bzrv] *) {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 12px 16px 12px 32px;
+  border-top: 1px solid var(--chg-line-soft);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--chg-panel) 60%, var(--chg-line-soft))
+  );
+}
+
+/* 入口图标：30px 方块、裸图标不描边——加了框就变成四颗按钮，重一档。
+   选择器带 .bzs-chgn 前缀是为了压过上面的按钮 reset
+   （`.bzs-chgn button` 的特异性是 0,1,1，单类选择器比不过）。 */
+.bzs-chgn .bzs-chgn-link:is([data-bzrv], [data-bzrv] *) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--chg-ink-3);
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+@media (hover: hover) {
+  .bzs-chgn .bzs-chgn-link:is([data-bzrv], [data-bzrv] *):hover {
+    background: color-mix(in srgb, var(--chg-ink) 5%, transparent);
+    color: var(--chg-ink);
+  }
+}
+
+.bzs-chgn .bzs-chgn-link svg:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+}
+
+/* 支持作者（2026-11-10 照 bz）：这一行唯一带文字、带底色的一枚——
+   它要人看见；右上角挂「+人数」角标。选择器带 .bzs-chgn / .bzs-chgn-m
+   前缀，压过上面的按钮 reset。 */
+.bzs-chgn .bzs-chgn-support:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m .bzs-chgn-support:is([data-bzrv], [data-bzrv] *) {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  color: var(--chg-accent);
+  background: var(--chg-accent-soft);
+  transition: filter 0.14s ease;
+}
+
+/* 心形图标自带 15px 尺寸（与 bz 同一枚、同一描边），这里只负责不被压扁 */
+.bzs-chgn .bzs-chgn-support svg:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m .bzs-chgn-support svg:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+}
+
+@media (hover: hover) {
+  /* 悬停只提一点亮度，不换成实心底：这一组里它已经是最重的一个了 */
+  .bzs-chgn .bzs-chgn-support:is([data-bzrv], [data-bzrv] *):hover,
+  .bzs-chgn-m .bzs-chgn-support:is([data-bzrv], [data-bzrv] *):hover {
+    filter: brightness(1.06);
+  }
+}
+
+/* 角标：+人数。15px 圆点里 9px 字，是这排按钮上唯一的彩色实心块，再大就抢戏。
+   两位数自己撑成小胶囊（min-width + padding 一起长），99 位以上文案封顶成
+   99+（见 changelog-note.ts）。字与描边都取面板底色，做出「从按钮上挖掉一角」
+   的观感；pointer-events 交给按钮本体，点角标也算点按钮。 */
+.bzs-chgn .bzs-chgn-count:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m .bzs-chgn-count:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--chg-accent);
+  /* 字与 2px 描边同取面板底色：浅色主题白字、暗色主题深字。这里不能用壳层的
+     --bg —— 弹窗挂在 body 上，那组令牌只定义在 .bzs-shell 里，取不到会退回
+     继承色（父级铜色），与铜底同色，数字整颗隐形。 */
+  color: var(--chg-panel);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  border: 2px solid var(--chg-panel);
+  box-sizing: content-box;
+  pointer-events: none;
+}
+
+/* ── 手机：整篇文档流（不设版本栏） ── */
+.bzs-chgn-m:is([data-bzrv], [data-bzrv] *) {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  /* 遮罩贴底、去内边距——与壳层 .bzs-scrim 的底部抽屉同口径 */
+  .bzs-chgn-mask:is([data-bzrv], [data-bzrv] *) {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .bzs-chgn-dialog:is([data-bzrv], [data-bzrv] *) {
+    width: 100%;
+    /* 给确定高度：抽屉里的 .bzs-chgn-m 靠 height:100% 拿高度，auto 高度下
+       里面的滚动区撑不开也收不住（内容一多就顶出 max-height）。 */
+    height: 92%;
+    max-width: 100%;
+    max-height: 92%;
+    border-radius: 10px 10px 0 0;
+    border-bottom: 0;
+    animation: bzs-chgn-sheet 0.2s cubic-bezier(0.33, 1, 0.68, 1) both;
+  }
+
+  .bzs-chgn:is([data-bzrv], [data-bzrv] *) {
+    display: none;
+  }
+
+  .bzs-chgn-m:is([data-bzrv], [data-bzrv] *) {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    background: var(--chg-panel);
+  }
+
+  .bzs-chgn-mbar:is([data-bzrv], [data-bzrv] *) {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 47px;
+    padding: 0 10px 0 20px;
+    border-bottom: 1px solid var(--chg-line-soft);
+  }
+
+  .bzs-chgn-mtitle:is([data-bzrv], [data-bzrv] *) {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--chg-ink);
+  }
+
+  .bzs-chgn-mtitle svg:is([data-bzrv], [data-bzrv] *) {
+    width: 17px;
+    height: 17px;
+    color: var(--chg-accent);
+  }
+
+  .bzs-chgn-m .bzs-chgn-close:is([data-bzrv], [data-bzrv] *) {
+    margin-left: auto;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    color: var(--chg-ink-3);
+  }
+
+  .bzs-chgn-mpage:is([data-bzrv], [data-bzrv] *) {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    /* 底距让给右下角浮条：条高 52 + 离地 36 = 88，再留一口气 */
+    padding: 18px 22px 96px;
+    scrollbar-width: none;
+  }
+
+  .bzs-chgn-mpage:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 版本之间一条实线分隔，靠间距造节奏——不折叠、不做导航 */
+  .bzs-chgn-mrel + .bzs-chgn-mrel:is([data-bzrv], [data-bzrv] *) {
+    margin-top: 26px;
+    padding-top: 22px;
+    border-top: 1px solid var(--chg-line);
+  }
+
+  .bzs-chgn-mrel-hd:is([data-bzrv], [data-bzrv] *) {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .bzs-chgn-mver:is([data-bzrv], [data-bzrv] *) {
+    font-family: var(--chg-mono);
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--chg-ink);
+  }
+
+  .bzs-chgn-mcur:is([data-bzrv], [data-bzrv] *) {
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    color: var(--chg-accent);
+    background: var(--chg-accent-soft);
+  }
+
+  .bzs-chgn-mdate:is([data-bzrv], [data-bzrv] *) {
+    margin-left: auto;
+    font-family: var(--chg-mono);
+    font-size: 12px;
+    color: var(--chg-ink-3);
+  }
+
+  .bzs-chgn-mblk:is([data-bzrv], [data-bzrv] *) {
+    margin-top: 16px;
+  }
+
+  .bzs-chgn-mblk-t:is([data-bzrv], [data-bzrv] *) {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--chg-line);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: var(--chg-ink-2);
+  }
+
+  .bzs-chgn-mblk-t i:is([data-bzrv], [data-bzrv] *) {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 2px;
+  }
+
+  .bzs-chgn-mcnt:is([data-bzrv], [data-bzrv] *) {
+    margin-left: auto;
+    font-family: var(--chg-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--chg-ink-3);
+  }
+
+  .bzs-chgn-mit:is([data-bzrv], [data-bzrv] *) {
+    display: flex;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid var(--chg-line-soft);
+  }
+
+  .bzs-chgn-mit:is([data-bzrv], [data-bzrv] *):last-child {
+    border-bottom: 0;
+  }
+
+  .bzs-chgn-mdom:is([data-bzrv], [data-bzrv] *) {
+    flex: none;
+    width: 70px;
+    padding-top: 1px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--chg-ink-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bzs-chgn-mtxt:is([data-bzrv], [data-bzrv] *) {
+    flex: 1;
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--chg-ink);
+  }
+
+  /* 入口条：手机上一滚页脚就没了。照 bz（2026-11-10）从贴底整条改成
+     右下角浮起的小玻璃条——它不占正文高度，滚到哪都在。
+     底距必须抬出系统手势区：只算 16px 时整条压在 Android 手势导航 /
+     iOS home indicator 上，触摸会被系统先吃掉（bz 那边真机踩过）。 */
+  .bzs-chgn-mtools:is([data-bzrv], [data-bzrv] *) {
+    position: absolute;
+    right: 16px;
+    bottom: calc(20px + max(16px, env(safe-area-inset-bottom, 0px)));
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid var(--chg-line);
+    border-radius: 13px;
+    background: color-mix(in srgb, var(--chg-panel) 90%, transparent);
+    box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.5);
+  }
+
+  /* 40px 视觉 + ::after 外扩 2px 补到 44px 触控档（与壳层 .bz-touch-target
+     同口径）。桌面页脚那版是 30px —— 手机端反过来更小正是「按不准」的
+     一半原因。 */
+  .bzs-chgn-mtools .bzs-chgn-link:is([data-bzrv], [data-bzrv] *) {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .bzs-chgn-mtools .bzs-chgn-link:is([data-bzrv], [data-bzrv] *)::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+  }
+
+  .bzs-chgn-mtools .bzs-chgn-link svg:is([data-bzrv], [data-bzrv] *) {
+    width: 19px;
+    height: 19px;
+  }
+
+  /* 带文字的「支持作者」必须 width:auto —— 上面那条同为 (0,2,0)，
+     会把它按 40px 卡死成竖排。 */
+  .bzs-chgn-mtools .bzs-chgn-support:is([data-bzrv], [data-bzrv] *) {
+    width: auto;
+    height: 40px;
+    gap: 7px;
+    padding: 0 14px;
+    font-size: 12.5px;
+    border-radius: 10px;
+  }
+
+  /* 角标跟按钮一起放大一档：40px 按钮上挂 15px 的角标会显得缩水 */
+  .bzs-chgn-mtools .bzs-chgn-count:is([data-bzrv], [data-bzrv] *) {
+    top: -6px;
+    right: -7px;
+    min-width: 16px;
+    height: 16px;
+  }
+}
+
+@keyframes bzs-chgn-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+/* ==========================================================
+   更新日志 · 正文内视图（日志 / 路线图 / 功能建议 / 问题反馈）· 确认弹窗
+   ----------------------------------------------------------
+   挂在同一棵弹窗 DOM 上（shell/changelog-note.ts），颜色沿用 --chg-*。
+   选择器一律 .bzs- 开头：构建时壳层样式会加 .bzs-shell 前缀，只有 .bzs-
+   开头的原样保留（见 esbuild.config.mjs 的 scopeShellStyles）。
+
+   路线图不再是侧边栏 / 手机全屏：顶部一条工具条放三个入口，点开就在
+   正文区换页（容器上的 data-view 驱动），桌面与手机同一套标记。
+   ========================================================== */
+
+/* ── 正文顶部：一条轻工具条（左统计 + 右视图入口） ──
+   按钮本体必须带 .bzs-chgn / .bzs-chgn-m 前缀：changelog.css 里那条
+   「.bzs-chgn button { font: inherit; background: none }」是 0,1,1，
+   光写 .bzs-chgn-xxx 会被它按字重、字号、底色压掉。 */
+.bzs-chgn-topbar:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-mtop:is([data-bzrv], [data-bzrv] *){flex:none;padding:7px 30px;border-bottom:1px solid var(--chg-line-soft)}
+.bzs-chgn-mtop:is([data-bzrv], [data-bzrv] *){padding:7px 22px}
+.bzs-chgn-toolbar:is([data-bzrv], [data-bzrv] *){display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* 三颗统计 = 图标卡（图标 + 数字 + 标签 + 右侧 ›）：一眼看得出是能点的按钮 */
+.bzs-chgn-mini:is([data-bzrv], [data-bzrv] *){display:flex;align-items:center;gap:8px;min-width:0}
+.bzs-chgn .bzs-chgn-mini-stat:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m .bzs-chgn-mini-stat:is([data-bzrv], [data-bzrv] *){
+  display:inline-flex;align-items:center;gap:6px;padding:3px 8px;
+  border:1px solid var(--chg-line-soft);border-radius:8px;background:var(--chg-panel);
+  font-size:10.5px;color:var(--chg-ink-2);white-space:nowrap;
+}
+.bzs-chgn-mini-stat svg:is([data-bzrv], [data-bzrv] *){width:14px;height:14px;flex:none;color:var(--chg-accent)}
+.bzs-chgn-mini-stat.reward svg:is([data-bzrv], [data-bzrv] *){color:#d62f6c}
+.bzs-chgn-mini-stat.sponsor svg:is([data-bzrv], [data-bzrv] *){color:#a9763f}
+.bzs-chgn-mini-stat b:is([data-bzrv], [data-bzrv] *){font-family:var(--chg-mono);font-size:13px;font-weight:700;color:var(--chg-accent)}
+.bzs-chgn-mini-stat.reward b:is([data-bzrv], [data-bzrv] *){color:#d62f6c}
+.bzs-chgn-mini-stat.sponsor b:is([data-bzrv], [data-bzrv] *){color:#a9763f}
+.bzs-chgn-mini-chev:is([data-bzrv], [data-bzrv] *){font-style:normal;font-size:12px;line-height:1;color:var(--chg-ink-3);margin-left:1px}
+.bzs-chgn-mini-stat:is([data-bzrv], [data-bzrv] *):hover{background:var(--chg-accent-soft);border-color:color-mix(in srgb,var(--chg-accent) 40%,transparent)}
+.bzs-chgn-mini-stat:hover .bzs-chgn-mini-chev:is([data-bzrv], [data-bzrv] *){color:var(--chg-accent)}
+.bzs-chgn-mini-stat:is([data-bzrv], [data-bzrv] *):active{transform:translateY(1px)}
+.bzs-chgn-tools:is([data-bzrv], [data-bzrv] *){margin-left:auto;display:flex;gap:6px}
+.bzs-chgn .bzs-chgn-toolbtn:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m .bzs-chgn-toolbtn:is([data-bzrv], [data-bzrv] *){display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border:1px solid var(--chg-line-soft);border-radius:7px;background:var(--chg-panel);font-size:11px;font-weight:600;color:var(--chg-ink-2);white-space:nowrap}
+.bzs-chgn-toolbtn:is([data-bzrv], [data-bzrv] *):hover{background:var(--chg-accent-soft);border-color:color-mix(in srgb,var(--chg-accent) 35%,transparent)}
+.bzs-chgn-toolbtn.on:is([data-bzrv], [data-bzrv] *){background:var(--chg-accent-soft);border-color:color-mix(in srgb,var(--chg-accent) 45%,transparent);color:var(--chg-accent)}
+.bzs-chgn-toolbtn svg:is([data-bzrv], [data-bzrv] *){width:15px;height:15px}
+.bzs-chgn-rm-roadmap svg:is([data-bzrv], [data-bzrv] *){color:#a9763f}
+.bzs-chgn-rm-feature svg:is([data-bzrv], [data-bzrv] *){color:#2f9e6e}
+.bzs-chgn-rm-bug svg:is([data-bzrv], [data-bzrv] *){color:#d64545}
+.bzs-chgn-tooln:is([data-bzrv], [data-bzrv] *){font-family:var(--chg-mono);font-size:9px;font-weight:700;line-height:1;padding:1px 5px;border-radius:999px;background:color-mix(in srgb,var(--chg-ink-3) 14%,transparent);color:var(--chg-ink-3)}
+.bzs-chgn-toolbtn.on .bzs-chgn-tooln:is([data-bzrv], [data-bzrv] *){background:var(--chg-panel);color:var(--chg-accent)}
+
+/* 手机：两组各占一整行、内部等分铺满整行宽度（2026-11-19 作者要求） */
+.bzs-chgn-m .bzs-chgn-toolbar:is([data-bzrv], [data-bzrv] *){gap:6px}
+.bzs-chgn-m .bzs-chgn-mini:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m .bzs-chgn-tools:is([data-bzrv], [data-bzrv] *){
+  flex:1 1 100%;min-width:0;display:grid;gap:4px;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+.bzs-chgn-m .bzs-chgn-tools:is([data-bzrv], [data-bzrv] *){margin-left:0}
+.bzs-chgn-m .bzs-chgn-mini-stat:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m .bzs-chgn-toolbtn:is([data-bzrv], [data-bzrv] *){
+  justify-content:center;min-width:0;width:100%;gap:5px;padding:2px 4px;
+  overflow:hidden;text-overflow:ellipsis;
+}
+.bzs-chgn-m .bzs-chgn-mini-stat svg:is([data-bzrv], [data-bzrv] *){width:13px;height:13px}
+/* 窄屏先把那个小箭头让出来，卡片外形本身已经够像按钮 */
+.bzs-chgn-m .bzs-chgn-mini-chev:is([data-bzrv], [data-bzrv] *){display:none}
+.bzs-chgn-m .bzs-chgn-toolbtn:is([data-bzrv], [data-bzrv] *){height:26px;font-size:10.5px}
+
+/* ── 正文内视图切换：日志 / 路线图 / 功能建议 / 问题反馈 ── */
+.bzs-chgn-views:is([data-bzrv], [data-bzrv] *){flex:1;min-height:0;display:none;flex-direction:column}
+.bzs-chgn-view:is([data-bzrv], [data-bzrv] *){display:none;flex:1;min-height:0;flex-direction:column}
+.bzs-chgn[data-view="roadmap"] .bzs-chgn-views:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn[data-view="feature"] .bzs-chgn-views:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn[data-view="bug"] .bzs-chgn-views:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="roadmap"] .bzs-chgn-views:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="feature"] .bzs-chgn-views:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="bug"] .bzs-chgn-views:is([data-bzrv], [data-bzrv] *){display:flex}
+.bzs-chgn[data-view="roadmap"] .bzs-chgn-wrap:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn[data-view="feature"] .bzs-chgn-wrap:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn[data-view="bug"] .bzs-chgn-wrap:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="roadmap"] .bzs-chgn-mpage:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="feature"] .bzs-chgn-mpage:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="bug"] .bzs-chgn-mpage:is([data-bzrv], [data-bzrv] *){display:none}
+.bzs-chgn[data-view="roadmap"] .bzs-chgn-view[data-view-page="roadmap"]:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn[data-view="feature"] .bzs-chgn-view[data-view-page="feature"]:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn[data-view="bug"] .bzs-chgn-view[data-view-page="bug"]:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="roadmap"] .bzs-chgn-view[data-view-page="roadmap"]:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="feature"] .bzs-chgn-view[data-view-page="feature"]:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-m[data-view="bug"] .bzs-chgn-view[data-view-page="bug"]:is([data-bzrv], [data-bzrv] *){display:flex}
+
+/* 条目尾部的 #N 链接 */
+.bzs-chgn-issue:is([data-bzrv], [data-bzrv] *){
+  margin-left:6px;font-family:var(--chg-mono);font-size:10.5px;font-weight:700;
+  color:var(--chg-accent);text-decoration:none;white-space:nowrap;
+}
+.bzs-chgn-issue:is([data-bzrv], [data-bzrv] *):hover{text-decoration:underline}
+
+/* 条目尾部的 QQ 频道帖子链接（与 #N 同款，仅色相区分） */
+.bzs-chgn-qq:is([data-bzrv], [data-bzrv] *){
+  margin-left:6px;font-family:var(--chg-mono);font-size:10.5px;font-weight:700;
+  color:var(--chg-accent);text-decoration:none;white-space:nowrap;
+}
+.bzs-chgn-qq:is([data-bzrv], [data-bzrv] *):hover{text-decoration:underline}
+
+/* ── 小图标 ── */
+.bzs-chgn-svg:is([data-bzrv], [data-bzrv] *){width:12px;height:12px;flex:none}
+.bzs-chgn-ext:is([data-bzrv], [data-bzrv] *){width:9px;height:9px;flex:none}
+
+/* ── 反馈列表：双列卡片网格（2026-11-18 作者选「双列网格」）──
+   卡片自己是一列 flex：标题 → 描述 → meta，meta 用 margin-top:auto 落底，
+   同一行的卡片底边与标签行齐平，不会一高一低。 */
+.bzs-chgn-fblist:is([data-bzrv], [data-bzrv] *){
+  flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;min-width:0;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:8px;align-content:start;padding:10px 16px 20px;
+}
+.bzs-chgn-fblist:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar{display:none}
+.bzs-chgn-fbit:is([data-bzrv], [data-bzrv] *){
+  display:flex;flex-direction:column;min-width:0;padding:10px 11px;
+  border:1px solid var(--chg-line-soft);border-radius:10px;background:var(--chg-panel);
+  transition:border-color .14s,box-shadow .14s;
+}
+.bzs-chgn-fbit:is([data-bzrv], [data-bzrv] *):hover{border-color:color-mix(in srgb,var(--chg-accent) 40%,transparent);box-shadow:0 3px 12px -8px rgba(0,0,0,.5)}
+/* 状态点与标题同一个 flex 行、垂直居中。
+   以前 grid 两列 + 点上 margin-top:4px 目测对位，差几个像素肉眼就看得出来。 */
+.bzs-chgn-fbhd:is([data-bzrv], [data-bzrv] *){display:flex;align-items:center;gap:7px;min-width:0}
+.bzs-chgn-fbdot:is([data-bzrv], [data-bzrv] *){width:8px;height:8px;border-radius:50%;flex:none}
+.bzs-chgn-fbdot.todo:is([data-bzrv], [data-bzrv] *){background:var(--chg-panel);box-shadow:inset 0 0 0 1.5px var(--chg-ink-3)}
+.bzs-chgn-fbdot.done:is([data-bzrv], [data-bzrv] *){background:var(--green,#1a7f37);box-shadow:0 0 0 3px color-mix(in srgb,var(--green,#1a7f37) 14%,transparent)}
+/* 否决：红点 —— 作者看过但不做，和「已完成」的绿点必须一眼分开 */
+.bzs-chgn-fbdot.rejected:is([data-bzrv], [data-bzrv] *){background:#d64545;box-shadow:0 0 0 3px rgba(214,69,69,.14)}
+.bzs-chgn-fbdot.accepted:is([data-bzrv], [data-bzrv] *){background:#1477a8;box-shadow:0 0 0 3px rgba(20,119,168,.14)}
+.bzs-chgn-fbdot.doing:is([data-bzrv], [data-bzrv] *){background:#d98a1f;box-shadow:0 0 0 3px rgba(217,138,31,.16)}
+.bzs-chgn-fbdot.invalid:is([data-bzrv], [data-bzrv] *){background:var(--chg-ink-3);opacity:.65}
+.bzs-chgn-fbtitle:is([data-bzrv], [data-bzrv] *){flex:1;min-width:0;font-size:12.5px;font-weight:600;line-height:1.45}
+/* 归属徽标：bz 带功能域，bz reader 只有插件名；跟在状态点后面 */
+.bzs-chgn-fbplugin:is([data-bzrv], [data-bzrv] *){flex:none;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:600;line-height:1.5;color:var(--chg-accent);background:var(--chg-accent-soft);white-space:nowrap}
+/* 描述截 3 行：卡片并排时高度可控，长描述不至于把整行撑成两屏 */
+.bzs-chgn-fbdesc:is([data-bzrv], [data-bzrv] *){
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;
+  font-size:11px;line-height:1.55;color:var(--chg-ink-3);margin-top:3px;
+}
+/* 作者回复截 2 行：聊天气话不必全摊开，卡片高度可控 */
+.bzs-chgn-fbreply:is([data-bzrv], [data-bzrv] *){
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+  font-size:11px;line-height:1.55;color:var(--chg-ink-2);margin-top:3px;
+}
+.bzs-chgn-fbrelease:is([data-bzrv], [data-bzrv] *){padding:1px 6px;border-radius:4px;font-weight:600;color:var(--green,#1a7f37);background:color-mix(in srgb,var(--green,#1a7f37) 12%,transparent)}
+.bzs-chgn-fbmeta:is([data-bzrv], [data-bzrv] *){display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:7px;font-size:9.5px;color:var(--chg-ink-3)}
+.bzs-chgn-fbsrc:is([data-bzrv], [data-bzrv] *){display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:4px;font-weight:600;text-decoration:none;color:var(--chg-ink-2);background:color-mix(in srgb,var(--chg-ink-3) 12%,transparent)}
+.bzs-chgn-fbsrc.github-issue:is([data-bzrv], [data-bzrv] *){background:var(--chg-accent-soft);color:var(--chg-accent)}
+.bzs-chgn-fbsrc.bili-dm:is([data-bzrv], [data-bzrv] *){background:rgba(251,114,153,.13);color:#d62f6c}
+.bzs-chgn-fbsrc.qq-group:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-fbsrc.qq-channel:is([data-bzrv], [data-bzrv] *),
+.bzs-chgn-fbsrc.qq-friend:is([data-bzrv], [data-bzrv] *){background:rgba(30,160,220,.13);color:#1477a8}
+.bzs-chgn-fbstate:is([data-bzrv], [data-bzrv] *){margin-left:auto;padding:1px 6px;border-radius:4px;font-weight:600}
+.bzs-chgn-fbstate.todo:is([data-bzrv], [data-bzrv] *){background:color-mix(in srgb,var(--chg-ink-3) 12%,transparent);color:var(--chg-ink-2)}
+.bzs-chgn-fbstate.done:is([data-bzrv], [data-bzrv] *){background:color-mix(in srgb,var(--green,#1a7f37) 14%,transparent);color:var(--green,#1a7f37)}
+.bzs-chgn-fbstate.rejected:is([data-bzrv], [data-bzrv] *){background:rgba(214,69,69,.14);color:#d64545}
+.bzs-chgn-fbstate.accepted:is([data-bzrv], [data-bzrv] *){background:rgba(20,119,168,.14);color:#1477a8}
+.bzs-chgn-fbstate.doing:is([data-bzrv], [data-bzrv] *){background:rgba(217,138,31,.16);color:#b16f10}
+.bzs-chgn-fbstate.invalid:is([data-bzrv], [data-bzrv] *){background:color-mix(in srgb,var(--chg-ink-3) 14%,transparent);color:var(--chg-ink-2)}
+/* Git 提交短 id：等宽字 + 强调色，和可点来源徽标同排 */
+.bzs-chgn-fbcommit:is([data-bzrv], [data-bzrv] *){font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-decoration:none;color:var(--chg-accent);font-weight:600}
+.bzs-chgn-fbcommit:is([data-bzrv], [data-bzrv] *):hover{text-decoration:underline}
+.bzs-chgn-fbempty:is([data-bzrv], [data-bzrv] *){grid-column:1/-1;padding:26px 0;text-align:center;font-size:11px;color:var(--chg-ink-3)}
+
+/* ── 路线图两级：主题是卡片，条目在里面（2026-11-18 作者选定）──
+   主题标题行做成卡片头（浅底 + 分隔线），条目在卡内逐行排。
+   2026-11-19 作者要求普通平铺、不折叠：分组恒展开，长分组按内容自然撑高，
+   溢出交给外层 .bzs-chgn-rmlist 滚动，不再被 flex 压扁裁掉条目。 */
+.bzs-chgn-rmlist:is([data-bzrv], [data-bzrv] *){
+  flex:1;min-height:0;overflow-y:auto;scrollbar-width:none;min-width:0;
+  display:flex;flex-direction:column;gap:10px;padding:10px 16px 20px;
+}
+.bzs-chgn-rmlist:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar{display:none}
+.bzs-chgn-rmtheme:is([data-bzrv], [data-bzrv] *){flex:none;border:1px solid var(--chg-line-soft);border-radius:11px;overflow:hidden;background:var(--chg-panel)}
+.bzs-chgn-rmthemehd:is([data-bzrv], [data-bzrv] *){
+  display:flex;align-items:center;gap:8px;padding:9px 11px;user-select:none;
+  background:color-mix(in srgb,var(--chg-ink-3) 6%,transparent);
+}
+.bzs-chgn-bar:is([data-bzrv], [data-bzrv] *){width:3px;height:12px;border-radius:2px;flex:none}
+.bzs-chgn-rmthemehd b:is([data-bzrv], [data-bzrv] *){font-size:12.5px;font-weight:600}
+.bzs-chgn-prog:is([data-bzrv], [data-bzrv] *){margin-left:auto;display:flex;align-items:center;gap:5px}
+.bzs-chgn-track:is([data-bzrv], [data-bzrv] *){width:34px;height:3px;border-radius:2px;background:var(--chg-line);overflow:hidden;display:block}
+.bzs-chgn-track i:is([data-bzrv], [data-bzrv] *){display:block;height:100%;background:var(--green,#1a7f37)}
+.bzs-chgn-prog small:is([data-bzrv], [data-bzrv] *){font-family:var(--chg-mono);font-size:9px;color:var(--chg-ink-3)}
+.bzs-chgn-rmitems:is([data-bzrv], [data-bzrv] *){padding:4px}
+.bzs-chgn-rmitem:is([data-bzrv], [data-bzrv] *){display:flex;flex-direction:column;padding:7px;border-radius:7px;transition:background .14s}
+.bzs-chgn-rmitem:is([data-bzrv], [data-bzrv] *):hover{background:color-mix(in srgb,var(--chg-ink-3) 7%,transparent)}
+/* 状态点与标题同一个 flex 行、垂直居中（同反馈卡：不再用 margin-top 目测） */
+.bzs-chgn-rmhd:is([data-bzrv], [data-bzrv] *){display:flex;align-items:center;gap:7px;min-width:0}
+.bzs-chgn-dot:is([data-bzrv], [data-bzrv] *){width:8px;height:8px;border-radius:50%;flex:none}
+.bzs-chgn-dot.plan:is([data-bzrv], [data-bzrv] *){background:var(--chg-panel);box-shadow:inset 0 0 0 1.5px var(--chg-ink-3)}
+.bzs-chgn-dot.doing:is([data-bzrv], [data-bzrv] *){background:var(--amber,#b26a00);box-shadow:0 0 0 3px rgba(178,106,0,.13)}
+.bzs-chgn-dot.done:is([data-bzrv], [data-bzrv] *){background:var(--green,#1a7f37);box-shadow:0 0 0 3px color-mix(in srgb,var(--green,#1a7f37) 14%,transparent)}
+.bzs-chgn-rmtitle:is([data-bzrv], [data-bzrv] *){flex:1;min-width:0;font-size:12.5px;line-height:1.5}
+/* meta 缩进 15px = 点 8 + 间距 7：落在标题文字下面，不贴卡片左缘 */
+.bzs-chgn-rmmeta:is([data-bzrv], [data-bzrv] *){display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;padding-left:15px;font-size:9.5px;color:var(--chg-ink-3)}
+.bzs-chgn-src:is([data-bzrv], [data-bzrv] *){padding:1px 6px;border-radius:4px;font-weight:600}
+.bzs-chgn-src.builtin:is([data-bzrv], [data-bzrv] *){background:color-mix(in srgb,var(--chg-ink-3) 12%,transparent);color:var(--chg-ink-2)}
+.bzs-chgn-src.github:is([data-bzrv], [data-bzrv] *){background:var(--chg-accent-soft);color:var(--chg-accent)}
+.bzs-chgn-fb:is([data-bzrv], [data-bzrv] *){display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:4px;font-weight:600;font-size:9.5px;text-decoration:none;white-space:nowrap}
+.bzs-chgn-fb.issue:is([data-bzrv], [data-bzrv] *){background:var(--chg-accent-soft);color:var(--chg-accent)}
+.bzs-chgn-fb.bili:is([data-bzrv], [data-bzrv] *){background:rgba(251,114,153,.13);color:#d62f6c}
+.bzs-chgn-fb.qq:is([data-bzrv], [data-bzrv] *){background:rgba(30,160,220,.13);color:#1477a8}
+.bzs-chgn-fb.afdian:is([data-bzrv], [data-bzrv] *){background:rgba(255,140,60,.14);color:#c2661a}
+.bzs-chgn-rmempty:is([data-bzrv], [data-bzrv] *){padding:26px 0;text-align:center;font-size:11px;color:var(--chg-ink-3)}
+
+/* ── 手机：视图页跟正文同一套左右留白，底部让给浮条 ──
+   卡片 / 网格的内边距由桌面那套自己管，这里只改外层的左右与底部。 */
+.bzs-chgn-m .bzs-chgn-rmlist:is([data-bzrv], [data-bzrv] *){padding:8px 16px 140px}
+.bzs-chgn-m .bzs-chgn-fblist:is([data-bzrv], [data-bzrv] *){padding:8px 16px 140px}
+
+/* ── 二次确认弹窗（购买 / 支持）─────────────────────────────
+   这层挂 body，不在 .bzs-chgn 内，取不到 --chg-*；自带 --cc-* 令牌。
+   1:1 照原型：半透明黑遮罩 + 白色圆角卡片 + 圆角图标 + 两颗等宽按钮。
+   层级在弹出时由 JS 用 allocZAbove(主窗遮罩) 现取（写死会被主窗压住，2026-11-18
+   真机踩过），这里的 z-index 只是没走 JS 时的兜底。 */
+.bzs-chgn-confirm:is([data-bzrv], [data-bzrv] *){
+  --cc-panel:var(--background-primary,#fff);
+  --cc-ink:var(--text-normal,#1f1f23);
+  --cc-ink-2:var(--text-muted,#5a5a63);
+  --cc-line:var(--background-modifier-border,rgba(0,0,0,.12));
+  --cc-accent:var(--interactive-accent,var(--text-accent,#7856d6));
+  --cc-accent-soft:color-mix(in srgb,var(--cc-accent) 12%,transparent);
+  position:fixed;inset:0;z-index:300;display:grid;place-items:center;
+  background:rgba(0,0,0,.5);font-family:-apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+.bzs-chgn-confirm[hidden]:is([data-bzrv], [data-bzrv] *){display:none}
+.bzs-chgn-confirm-box:is([data-bzrv], [data-bzrv] *){
+  width:min(340px,86vw);padding:22px;border-radius:14px;background:var(--cc-panel);color:var(--cc-ink);
+  box-shadow:0 24px 70px rgba(0,0,0,.4);text-align:center;
+}
+.bzs-chgn-confirm-icon:is([data-bzrv], [data-bzrv] *){
+  width:44px;height:44px;margin:0 auto 12px;border-radius:12px;display:grid;place-items:center;
+  background:var(--cc-accent-soft);color:var(--cc-accent);font-size:22px;line-height:1;
+}
+.bzs-chgn-confirm-box h3:is([data-bzrv], [data-bzrv] *){margin:0 0 8px;font-size:15px;font-weight:600;line-height:1.4}
+.bzs-chgn-confirm-box p:is([data-bzrv], [data-bzrv] *){margin:0 0 18px;font-size:11.5px;line-height:1.6;color:var(--cc-ink-2)}
+.bzs-chgn-confirm-acts:is([data-bzrv], [data-bzrv] *){display:flex;gap:8px}
+.bzs-chgn-confirm-acts button:is([data-bzrv], [data-bzrv] *){
+  margin:0;padding:0;flex:1;height:36px;line-height:34px;border:1px solid var(--cc-line);
+  border-radius:8px;background:none;box-shadow:none;font:inherit;font-size:12px;font-weight:600;
+  color:var(--cc-ink-2);cursor:pointer;text-align:center;
+}
+.bzs-chgn-confirm-acts button.primary:is([data-bzrv], [data-bzrv] *){color:#fff;background:var(--cc-accent);border-color:var(--cc-accent)}
+/* ==========================================================
+   支持作者弹窗（shell/support-dialog.ts）
+
+   版式**跟更新日志弹窗同一族**：宿主主题色、系统无衬线字、14px 圆角、
+   顶上一道强调色眉标，手机上从底部升起成抽屉。bz 那张米白描金纸不搬过来
+   ——那是一个免费插件的气质，这边是「插件的一部分」。
+
+   作用域：弹窗挂在 body 上（uiModal），**不在 .bzs-shell 里**，所以吃不到
+   壳层的 --t1 / --copper 那套（只定义在 .bzs-shell 内）。这里在
+   .bzs-sup-dialog / .bzs-sup 上立一组 --sup-* 局部令牌，直接读宿主的主题
+   变量——换主题、切明暗都跟着走，也不污染宿主。
+
+   选择器一律 .bzs- 开头：壳层样式构建时会被加 .bzs-shell 前缀，只有
+   .bzs- 开头的选择器原样保留（见 esbuild.config.mjs 的 scopeShellStyles）。
+   ========================================================== */
+
+.bzs-sup-dialog:is([data-bzrv], [data-bzrv] *),
+.bzs-sup:is([data-bzrv], [data-bzrv] *) {
+  /* 强调色优先吃打开弹窗时从壳层读来的 --bzs-accent（用户选的档位，见
+     shell/theme-accent.ts）；读不到才退回宿主 accent。 */
+  --sup-accent: var(--bzs-accent, var(--interactive-accent, var(--text-accent, #7856d6)));
+  --sup-accent-soft: color-mix(in srgb, var(--sup-accent) 12%, transparent);
+  --sup-panel: var(--background-primary, #ffffff);
+  --sup-ink: var(--text-normal, #1f1f23);
+  --sup-ink-2: var(--text-muted, #5a5a63);
+  --sup-ink-3: var(--text-faint, #93939c);
+  --sup-line: var(--background-modifier-border, rgba(0, 0, 0, 0.1));
+  --sup-line-soft: color-mix(in srgb, var(--background-modifier-border, rgba(0, 0, 0, 0.1)) 55%, transparent);
+  --sup-mono: "Cascadia Code", Consolas, monospace;
+
+  font-family: -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  color: var(--sup-ink);
+}
+
+/* ── 弹窗外壳 ──
+   盖掉 .bzr-overlay-popup 的默认尺寸（那个是给 400px 窄弹窗定的）。 */
+.bzs-sup-dialog:is([data-bzrv], [data-bzrv] *) {
+  width: min(460px, calc(100vw - 32px));
+  height: auto;
+  max-width: none;
+  max-height: min(720px, calc(100vh - 32px));
+  padding: 0;
+  background: var(--sup-panel);
+  border: 1px solid var(--sup-line);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: bzs-sup-pop 0.18s cubic-bezier(0.33, 1, 0.68, 1) both;
+}
+
+@keyframes bzs-sup-pop {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.988);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bzs-sup-dialog:is([data-bzrv], [data-bzrv] *) {
+    animation: none;
+  }
+}
+
+/* uiModal 的正文层：卡片自己排版，这层不留内边距、不滚 */
+.bzs-sup-dialog .bzr-dialog-body:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+/* 弹窗里的按钮从零开始：宿主给 button 的底色 / 边框 / 行高在这里全是噪音。
+   2026-11-11：宿主的 `button` 还带 `height: var(--input-height)`（默认 30px），
+   这里统一放开；原本靠这个默认高撑着的文字链接与「重试」在下面自己写了 30px，
+   外观不变。 */
+.bzs-sup button:is([data-bzrv], [data-bzrv] *) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  height: auto;
+}
+
+/* ── 纸面 ── */
+.bzs-sup:is([data-bzrv], [data-bzrv] *) {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--sup-panel);
+}
+
+/* 关闭钮：桌面右上角；手机见窄屏段，距顶让出安全区 */
+.bzs-sup .bzs-sup-close:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  color: var(--sup-ink-3);
+  transition: background 0.14s ease, color 0.14s ease;
+}
+
+@media (hover: hover) {
+  .bzs-sup .bzs-sup-close:is([data-bzrv], [data-bzrv] *):hover {
+    background: color-mix(in srgb, var(--sup-ink) 6%, transparent);
+    color: var(--sup-ink);
+  }
+}
+
+/* ── 抬头 ── */
+.bzs-sup-hd:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  padding: 26px 30px 0;
+  text-align: center;
+}
+
+/* 眉标：两侧短线夹一个宽字距的词，与更新日志的眉标同一种手势 */
+.bzs-sup-kicker:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 13px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  color: var(--sup-accent);
+}
+
+.bzs-sup-kicker:is([data-bzrv], [data-bzrv] *)::before,
+.bzs-sup-kicker:is([data-bzrv], [data-bzrv] *)::after {
+  content: "";
+  width: 16px;
+  height: 1px;
+  flex: none;
+  background: currentColor;
+  opacity: 0.45;
+}
+
+.bzs-sup-lead:is([data-bzrv], [data-bzrv] *) {
+  margin: 0 auto;
+  max-width: 340px;
+  font-size: 13px;
+  line-height: 1.85;
+  letter-spacing: 0.02em;
+  color: var(--sup-ink-2);
+}
+
+/* ── 码 ── */
+.bzs-sup-code:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 30px 14px;
+}
+
+.bzs-sup-code-box:is([data-bzrv], [data-bzrv] *) {
+  width: 148px;
+  height: 148px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid var(--sup-line);
+  box-shadow: 0 12px 26px -14px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* 码外面再围一圈淡强调色：与授权徽章的内环是同一种「压一道边」 */
+.bzs-sup-code-box:is([data-bzrv], [data-bzrv] *)::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border: 1px solid var(--sup-accent-soft);
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+.bzs-sup-code-box img:is([data-bzrv], [data-bzrv] *) {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  border-radius: 10px;
+}
+
+.bzs-sup-ways:is([data-bzrv], [data-bzrv] *) {
+  margin: 18px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--sup-ink-3);
+}
+
+.bzs-sup-ways:is([data-bzrv], [data-bzrv] *)::before,
+.bzs-sup-ways:is([data-bzrv], [data-bzrv] *)::after {
+  content: "";
+  width: 14px;
+  height: 1px;
+  background: var(--sup-line);
+}
+
+/* 码下面一行出口（2026-11-11 用户拍板把原来两行并成一行）：
+   「成为赞助人 · 给个 Star」——两条并列的支持路径，各点各的：赞助商店 / GitHub 仓库。
+   两个同款小字链接，中间一个不可点的间隔点；中点颜色比链接淡一档。
+   长得像链接、点起来走 window.open（裸 <a> 在 Obsidian 里会被阅读视图接管）。 */
+.bzs-sup-exits:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 11px;
+}
+
+.bzs-sup .bzs-sup-sponsor:is([data-bzrv], [data-bzrv] *),
+.bzs-sup .bzs-sup-star:is([data-bzrv], [data-bzrv] *) {
+  height: 30px;
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--sup-accent-soft);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+  color: var(--sup-accent);
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.bzs-sup .bzs-sup-exit-sep:is([data-bzrv], [data-bzrv] *) {
+  font-size: 11.5px;
+  line-height: 1;
+  color: var(--sup-ink-3);
+}
+
+@media (hover: hover) {
+  .bzs-sup .bzs-sup-sponsor:is([data-bzrv], [data-bzrv] *):hover,
+  .bzs-sup .bzs-sup-star:is([data-bzrv], [data-bzrv] *):hover {
+    border-bottom-color: var(--sup-accent);
+    opacity: 0.86;
+  }
+}
+
+/* ── 名单 ── */
+.bzs-sup-list:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 30px;
+  border-top: 1px solid var(--sup-line-soft);
+}
+
+.bzs-sup-list-hd:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 13px 0 9px;
+}
+
+.bzs-sup-list-hd b:is([data-bzrv], [data-bzrv] *) {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--sup-ink-2);
+  /* 标题吃掉剩余空间，人数贴右边（2026-11-11 去掉刷新钮后仍是这条：
+     名单只在打开弹窗时自动拉一次，不再给手动刷新入口） */
+  margin-right: auto;
+}
+
+.bzs-sup-list-hd span:is([data-bzrv], [data-bzrv] *) {
+  font-family: var(--sup-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--sup-ink-3);
+}
+
+/* 名单自己滚：弹窗高度可预测，长名单不会把「知道了」顶出屏幕 */
+.bzs-sup-list-body:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-height: 0;
+  max-height: 212px;
+  overflow-y: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+
+.bzs-sup-list-body:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar {
+  display: none;
+}
+
+.bzs-sup-names:is([data-bzrv], [data-bzrv] *) {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bzs-sup-item:is([data-bzrv], [data-bzrv] *) {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  padding: 9px 0 8px;
+  border-bottom: 1px solid var(--sup-line-soft);
+}
+
+.bzs-sup-item:is([data-bzrv], [data-bzrv] *):last-child {
+  border-bottom: 0;
+}
+
+.bzs-sup-no:is([data-bzrv], [data-bzrv] *) {
+  font-family: var(--sup-mono);
+  font-size: 10.5px;
+  color: var(--sup-ink-3);
+  padding-top: 2px;
+}
+
+.bzs-sup-who-col:is([data-bzrv], [data-bzrv] *) {
+  min-width: 0;
+}
+
+.bzs-sup-who-row:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bzs-sup-who:is([data-bzrv], [data-bzrv] *) {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--sup-ink);
+}
+
+.bzs-sup-meta:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.bzs-sup-amt:is([data-bzrv], [data-bzrv] *) {
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--sup-accent);
+}
+
+.bzs-sup-when:is([data-bzrv], [data-bzrv] *) {
+  font-family: var(--sup-mono);
+  font-size: 10px;
+  color: var(--sup-ink-3);
+}
+
+.bzs-sup-msg:is([data-bzrv], [data-bzrv] *) {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--sup-ink-2);
+}
+
+/* 空态：一行小字，不画一张假的信笺 */
+.bzs-sup-empty:is([data-bzrv], [data-bzrv] *) {
+  padding: 18px 0 22px;
+  text-align: center;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--sup-ink-3);
+}
+
+/* 拉失败的空态：一句实话 + 一个「重试」；不给重试等于让人只能关窗再开 */
+.bzs-sup-empty-failed:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.bzs-sup-retry:is([data-bzrv], [data-bzrv] *) {
+  height: 30px;
+  padding: 2px 8px;
+  border: 1px solid var(--sup-line-soft);
+  border-radius: 999px;
+  background: none;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--sup-ink-2);
+  cursor: pointer;
+}
+
+.bzs-sup-retry:is([data-bzrv], [data-bzrv] *):hover {
+  background: var(--sup-line-soft);
+}
+
+.bzs-sup-retry:is([data-bzrv], [data-bzrv] *):focus-visible {
+  outline: 2px solid var(--sup-accent, var(--bzs-accent, #b8924a));
+  outline-offset: 1px;
+}
+
+/* ── 页脚 ── */
+.bzs-sup-ft:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 18px 11px 30px;
+  border-top: 1px solid var(--sup-line-soft);
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--sup-panel) 60%, var(--sup-line-soft))
+  );
+}
+
+.bzs-sup-note:is([data-bzrv], [data-bzrv] *) {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--sup-ink-3);
+}
+
+.bzs-sup .bzs-sup-done:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--sup-accent);
+  /* 铜色底（尤其深色主题下的浅铜档）上 --text-on-accent 仍是白，会白字浅底；
+     用 --bg：亮主题白字压深铜、暗主题深字压浅铜，两档都够对比（同 overlay 主按钮）。 */
+  color: var(--bg);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (hover: hover) {
+  .bzs-sup .bzs-sup-done:is([data-bzrv], [data-bzrv] *):hover {
+    filter: brightness(1.06);
+  }
+}
+
+.bzs-sup .bzs-sup-close:is([data-bzrv], [data-bzrv] *):focus-visible,
+.bzs-sup .bzs-sup-sponsor:is([data-bzrv], [data-bzrv] *):focus-visible,
+.bzs-sup .bzs-sup-star:is([data-bzrv], [data-bzrv] *):focus-visible,
+.bzs-sup .bzs-sup-done:is([data-bzrv], [data-bzrv] *):focus-visible {
+  outline: 2px solid var(--sup-accent);
+  outline-offset: 2px;
+}
+
+/* ── 手机：底部抽屉（与更新日志弹窗同一个断点与手势） ── */
+@media (max-width: 820px) {
+  /* 遮罩贴底、去内边距——壳层 .bzs-scrim 与更新日志弹窗都是这个口径。
+     不加这条，uiModal 的 flex 居中会把它变成一张悬在半空的卡片。 */
+  .bzs-sup-mask:is([data-bzrv], [data-bzrv] *) {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .bzs-sup-dialog:is([data-bzrv], [data-bzrv] *) {
+    width: 100%;
+    max-width: 100%;
+    max-height: min(88%, calc(100vh - 40px));
+    border-radius: 14px 14px 0 0;
+    border-bottom: 0;
+  }
+
+  .bzs-sup-hd:is([data-bzrv], [data-bzrv] *) {
+    /* 抽屉不是全屏：顶边落在屏幕中间，不需要让状态栏的安全距，
+       只留一段正常留白（全屏窗才要 max(44px, env(...))）。 */
+    padding: 20px 22px 0;
+  }
+
+  .bzs-sup .bzs-sup-close:is([data-bzrv], [data-bzrv] *) {
+    top: 14px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+  }
+
+  .bzs-sup-code:is([data-bzrv], [data-bzrv] *) {
+    padding: 16px 22px 12px;
+  }
+
+  .bzs-sup-code-box:is([data-bzrv], [data-bzrv] *) {
+    width: 132px;
+    height: 132px;
+  }
+
+  .bzs-sup-list:is([data-bzrv], [data-bzrv] *) {
+    margin: 0 22px;
+  }
+
+  .bzs-sup-list-body:is([data-bzrv], [data-bzrv] *) {
+    max-height: 34vh;
+  }
+
+  .bzs-sup-ft:is([data-bzrv], [data-bzrv] *) {
+    gap: 10px;
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)) 22px;
+  }
+
+  .bzs-sup-note:is([data-bzrv], [data-bzrv] *) {
+    font-size: 10.5px;
+  }
+
+  .bzs-sup .bzs-sup-done:is([data-bzrv], [data-bzrv] *) {
+    height: 36px;
+    padding: 0 18px;
+  }
+}
+/* 高级功能对照弹窗：照 bz-reader 解锁层口径，两列勾位 + 高级版淡底 */
+.bzs-unlock:is([data-bzrv], [data-bzrv] *) {
+  --un-line: var(--background-modifier-border, rgba(128, 128, 128, .3));
+  --un-ink: var(--text-normal, #222);
+  --un-muted: var(--text-muted, #777);
+  --un-accent: var(--interactive-accent, #9a7434);
+  --un-tint: color-mix(in srgb, var(--un-accent) 8%, transparent);
+  --pcol: 92px;
+  display: block;
+  color: var(--un-ink);
+  font-size: 12.5px;
+}
+.bzs-unlock-hd:is([data-bzrv], [data-bzrv] *) { padding: 18px 20px 12px; border-bottom: 1px solid var(--un-line); }
+.bzs-unlock-hd h2:is([data-bzrv], [data-bzrv] *) {
+  margin: 0 0 4px;
+  font-family: Georgia, "Times New Roman", "STZhongsong", serif;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: .08em;
+}
+.bzs-unlock-hd p:is([data-bzrv], [data-bzrv] *) { margin: 0; color: var(--un-muted); font-size: 11px; }
+.bzs-plan-head:is([data-bzrv], [data-bzrv] *),
+.bzs-plan-row:is([data-bzrv], [data-bzrv] *) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--pcol) var(--pcol);
+  align-items: stretch;
+}
+.bzs-plan-head:is([data-bzrv], [data-bzrv] *) {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--background-primary, #fff);
+  border-bottom: 2px solid var(--un-line);
+}
+.bzs-plan-head > span:is([data-bzrv], [data-bzrv] *),
+.bzs-plan-head > i:is([data-bzrv], [data-bzrv] *),
+.bzs-plan-row > span:is([data-bzrv], [data-bzrv] *),
+.bzs-plan-row > i:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  padding: 6px 8px;
+  font-style: normal;
+  text-align: center;
+}
+.bzs-plan-head > span:is([data-bzrv], [data-bzrv] *),
+.bzs-plan-row > span:is([data-bzrv], [data-bzrv] *) { justify-content: flex-start; padding-left: 14px; text-align: left; }
+.bzs-plan-head small:is([data-bzrv], [data-bzrv] *) { display: block; font-size: 9px; color: var(--un-muted); font-weight: 400; }
+.bzs-plan-row:is([data-bzrv], [data-bzrv] *) { border-bottom: 1px solid color-mix(in srgb, var(--un-line) 60%, transparent); }
+.bzs-plan-row > .c.pro:is([data-bzrv], [data-bzrv] *),
+.bzs-plan-head > .c.pro:is([data-bzrv], [data-bzrv] *) { background: var(--un-tint); }
+.bzs-plan-row > .c.y:is([data-bzrv], [data-bzrv] *) { color: var(--un-accent); font-weight: 700; }
+.bzs-plan-row > span em:is([data-bzrv], [data-bzrv] *) { margin-left: 6px; font-size: 10px; color: var(--un-muted); font-style: normal; }
+.bzs-plan-row.is-group > span:is([data-bzrv], [data-bzrv] *) {
+  font-weight: 600;
+  letter-spacing: .08em;
+  background: color-mix(in srgb, var(--un-line) 18%, transparent);
+}
+.bzs-plan-row.is-total:is([data-bzrv], [data-bzrv] *) { border-top: 2px solid var(--un-line); border-bottom: 0; font-weight: 600; }
+.bzs-unlock-foot:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 18px 18px;
+  border-top: 1px solid var(--un-line);
+}
+.bzs-btn:is([data-bzrv], [data-bzrv] *) {
+  border: 1px solid var(--un-line);
+  background: var(--background-secondary, transparent);
+  color: var(--un-ink);
+  border-radius: 6px;
+  padding: 7px 14px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.bzs-btn:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--un-accent); color: var(--un-accent); }
+.bzs-btn.pri:is([data-bzrv], [data-bzrv] *) { background: var(--un-accent); border-color: var(--un-accent); color: #fff; font-weight: 600; }
