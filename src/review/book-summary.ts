@@ -164,7 +164,7 @@ export function bookReportMarkdown(
   const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const lines = ['# 复习档案', '', `> 导出于 ${day}，共 ${summaries.length} 组`, ''];
   if (!summaries.length) {
-    lines.push('还没有复习数据。', '');
+    lines.push('还没有复习数据，先加入条目并完成一次复习。', '');
     return lines.join('\n');
   }
   for (const s of summaries) {

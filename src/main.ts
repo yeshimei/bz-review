@@ -308,6 +308,16 @@ export default class ReviewPlugin extends Plugin {
         void reviewApp.refreshPanel();
       }),
     });
+    this.addCommand({
+      id: 'review-import-anki',
+      name: t('从 Anki 文件导入卡片（探索）', 'Import cards from Anki file (explore)'),
+      callback: withReview(async (app) => {
+        const { importAnkiFromActiveFile } = await import('./review/anki-import');
+        const { reviewApp } = await import('./review/app');
+        reviewApp.ensure(app);
+        await importAnkiFromActiveFile(app, reviewApp.dataManager!);
+      }),
+    });
     for (const [id, label, kind] of [
       ['review-export', t('导出备份（JSON）', 'Export backup (JSON)'), 'json'],
       ['review-export-csv', t('导出表格（CSV）', 'Export spreadsheet (CSV)'), 'csv'],
@@ -415,7 +425,7 @@ export default class ReviewPlugin extends Plugin {
           reviewApp.ensure(app);
           const items = await reviewApp.dataManager!.loadItems();
           const path = await exportBookReportMarkdown(app, items);
-          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，没有可导出的按书报告。', path ? 'success' : 'warning');
+          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，先加入条目并完成一次复习。', path ? 'success' : 'warning');
         } catch (e) {
           const { notifyActionError } = await import('./core/notice');
           notifyActionError(e, '导出按书报告');

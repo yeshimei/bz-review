@@ -67,7 +67,7 @@ export function cardsToMarkdown(items: readonly ReviewItem[], now: Date = new Da
 /** 负荷预测的纯文字版（弹窗与导出共用） */
 export function forecastToText(points: readonly LoadPoint[], limit = 14): string {
   const head = points.slice(0, Math.max(1, limit)).filter((p) => p.count > 0);
-  if (!head.length) return '未来这些天没有安排复习。';
+  if (!head.length) return '未来这些天没有安排复习。可以在「复习节奏」里调间隔缩放，或用「休假到」压后。';
   /* 峰值要在全部 points 里找：total 算的是全部天数，若只在显示的 head（前 N 天）里
      找 peak，points 超过 N 天时会漏掉真正最忙的那天，报出一个偏小的假峰值。 */
   const peak = points.reduce((a, b) => (b.count > a.count ? b : a));
