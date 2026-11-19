@@ -427,11 +427,26 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
     rankRowHTML(rich.top.map((t) => ({ name: stripTitleMarks(t.name), meta: `${t.n} 次` }))) +
     '<div class="bzrv-stats-hint">上面的「复习时间线」点一条，可看它的完整历史</div>');
 
-  const badgeSec = sectionHTML('成就', 'trophy', badgesHTML(rich.badges));
+  /* 徽章墙不在这里：它有自己的「成就」页，统计页只管统计 */
 
   return cards + fitChips + ledgerHTML + rhythmHTML + streakHTML + compareHTML +
     ratingHTML + stageHTML + memHTML + loadHTML + kindHTML + topHTML +
-    timelineHTML + weekHTML + badgeSec;
+    timelineHTML + weekHTML;
+}
+
+/**
+ * 单独的「成就」页（2026-11-20 用户拍板：徽章不放统计下面）。
+ * 与统计页共用同一份 computeRichStats，所以两个数绝不会打架；
+ * 徽章仍然实时算、不落盘。
+ */
+export function paintAchievementsInto(body: HTMLElement, items: ReviewItem[], w?: number[]): void {
+  const rich = computeRichStats(items, { w });
+  const got = rich.badges.filter((b) => b.got).length;
+  setMarkup(body,
+    `<div class="achv-head">已解锁 <b>${got}</b> / ${rich.badges.length} 枚 · 全部按当前记录实时算，清空数据也不会留下空徽章</div>` +
+    sectionHTML('成就', 'trophy', badgesHTML(rich.badges)));
+  mountIcons(body);
+  motionStats(body);
 }
 
 // ======================= 复习历史独立弹窗 =======================
