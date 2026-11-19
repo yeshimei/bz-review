@@ -42,7 +42,9 @@ body.theme-dark .bzrv-settings-content.bzs-set-page {
   --bzsp-t1: #ececf0;
   --bzsp-t2: #a2a2ad;
   --bzsp-t3: #71717d;
-  --bzsp-accent: var(--interactive-accent, #c8a464);
+  /* 交互色必须跟着插件的强调色档位走（body[data-bzaccent]），不是宿主主题色；
+     这一层以前单开了一条宿主 accent 的线，导致换色后整页不动。 */
+  --bzsp-accent: var(--bzrv-accent, #c8a464);
   --bzsp-sheen: rgba(255, 255, 255, .04);
 }
 
@@ -56,7 +58,7 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   --bzsp-t1: #16140f;
   --bzsp-t2: #5c564b;
   --bzsp-t3: #918a79;
-  --bzsp-accent: var(--interactive-accent, #9a7434);
+  --bzsp-accent: var(--bzrv-accent, #9a7434);
   --bzsp-sheen: rgba(255, 255, 255, .7);
 }
 
@@ -247,18 +249,25 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
 .bzrv-settings-content .bzrv-segmented button {
   flex: 1;
   min-width: 0;
+  /* 色点与文字同排：按钮自己是 inline 流时圆点会掉到下一行 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   border: 0;
   background: none;
   color: var(--bzsp-t3);
   font-size: var(--bzsp-fs-mini);
-  padding: 6px 5px;
+  padding: 6px 8px;
   border-radius: 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   cursor: pointer;
 }
+.bzrv-settings-content .bzrv-segmented button.is-on,
 .bzrv-settings-content .bzrv-segmented button.is-active,
+.bzrv-settings-content .bzrv-segmented button[aria-checked="true"],
 .bzrv-settings-content .bzrv-segmented button[aria-selected="true"] {
   background: var(--bzsp-bg-2);
   color: var(--bzsp-accent);

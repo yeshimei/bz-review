@@ -430,7 +430,9 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 
 .bzrv-choice-btn.is-on:hover { background: var(--bzrv-brand-hover) ; }
 }
-.bzrv-choice-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+/* 色点：flex 容器里本来是 flex item，落在普通按钮里时必须显式 inline-block，
+   否则宽高被 inline 流吃掉、整颗点塌成 0（强调色 swatch 就是踩在这里）。 */
+.bzrv-choice-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 /* 浮岛 segmented（float: true，issue 199 组件化；issue 200 拍板：视觉 = .bzrv-segmented
    同款取值，仅加白卡滑动指示器（choice.ts 量位 transform/width 200ms）。
    白卡 = .bzrv-choice-seg（surface-2 + 分段阴影）；未选中项透底灰字，选中加重。 */
@@ -2598,8 +2600,8 @@ a.bzrv-crumb:hover, button.bzrv-crumb:hover { color: var(--bzrv-text-1); }
  */
 .bzrv-lockscreen {
   /* 各域可覆盖：--ls-accent / --ls-accent-soft / --ls-seal-radius */
-  --ls-accent: var(--interactive-accent, var(--bzrv-brand));
-  --ls-accent-soft: var(--interactive-accent, var(--bzrv-brand));
+  --ls-accent: var(--bzrv-brand);
+  --ls-accent-soft: var(--bzrv-brand-soft);
   --ls-seal-radius: 22px;
   /* 弹层挂 body，够不着域作用域 token —— 一律引宿主主题变量并写兜底链（ADR-0122 同款教训） */
   --ls-bg: var(--background-secondary, var(--background-primary, #1e1e1e));
@@ -2838,8 +2840,8 @@ a.bzrv-crumb:hover, button.bzrv-crumb:hover { color: var(--bzrv-text-1); }
  * surface 输入框 + accent 整行主按钮 + 描边次按钮。变量名沿用 --su-*。
  */
 .bzrv-su {
-  --su-accent: var(--interactive-accent, var(--bzrv-brand));
-  --su-accent-soft: var(--interactive-accent, var(--bzrv-brand));
+  --su-accent: var(--bzrv-brand);
+  --su-accent-soft: var(--bzrv-brand-soft);
   /* 弹层挂 body，够不着域作用域 token —— 一律引宿主主题变量并写兜底链（同 .bzrv-lockscreen） */
   --su-bg: var(--background-secondary, var(--background-primary, #1e1e1e));
   --su-surface: var(--background-primary, var(--background-secondary, #262626));
