@@ -124,8 +124,10 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 
 /** 头行入口图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
  *  不然两处各写一份，迟早出现「一边叫数据、一边叫统计」或顺序漂移。
- *  trash（已移出）排在与它同源的 arch（已完成）后面：都是「另一份名单」的入口。 */
-export const PANEL_HEAD_ACTS = ['filter', 'arch', 'trash', 'data', 'settings'] as const;
+ *  trash（已移出）排在与它同源的 arch（已完成）后面：都是「另一份名单」的入口。
+ *  books（按书档案）/ manager（卡片管理器）跟 data 同属高级档数据入口，排在 data 后、
+ *  settings 前（2026-11-20 用户口径：这两个功能也进右侧图标组）。 */
+export const PANEL_HEAD_ACTS = ['filter', 'arch', 'trash', 'data', 'books', 'manager', 'settings'] as const;
 export type PanelHeadAct = (typeof PANEL_HEAD_ACTS)[number];
 
 /** data-act → 对应内置页；filter 是就地展开开关，没有「当前页」概念 */
@@ -133,6 +135,8 @@ const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct, string>>> = {
   arch: 'arch',
   trash: 'trash',
   data: 'stats',
+  books: 'books',
+  manager: 'manager',
   settings: 'settings',
 };
 
@@ -143,8 +147,10 @@ export function panelActIsOn(act: PanelHeadAct, activePage?: string | null): boo
 }
 
 /**
- * 只生成四颗图标按钮（不含 .bzrv-panel-head-btns 外壳），给面板头与嵌入门面复用。
+ * 只生成头行图标按钮（不含 .bzrv-panel-head-btns 外壳），给面板头与嵌入门面复用。
  * 可读名只用 sr-only，绝不写 aria-label / title——Obsidian 会把它们变成悬停气泡。
+ * books / manager 是高级档入口（2026-11-20 进右侧图标组），门控在 ui.bindPanelHead 里：
+ * 未解锁点击弹能力位文案，不偷偷开页。
  */
 export function panelHeadBtnsHtml(activePage?: string | null): string {
   const on = (act: PanelHeadAct): string => (panelActIsOn(act, activePage) ? ' is-on' : '');
@@ -152,6 +158,8 @@ export function panelHeadBtnsHtml(activePage?: string | null): string {
 <button data-act="arch" class="bzrv-icon-btn${on('arch')}"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
 <button data-act="trash" class="bzrv-icon-btn${on('trash')}"><span class="bzrv-sr-only">已移出（从计划里移走的条目，可以找回）</span>${iconSpan('archive-restore', 'bzrv-q-ic')}</button>
 <button data-act="data" class="bzrv-icon-btn${on('data')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
+<button data-act="books" class="bzrv-icon-btn${on('books')}"><span class="bzrv-sr-only">按书档案</span>${iconSpan('book-open', 'bzrv-q-ic')}</button>
+<button data-act="manager" class="bzrv-icon-btn${on('manager')}"><span class="bzrv-sr-only">卡片管理器</span>${iconSpan('layout-grid', 'bzrv-q-ic')}</button>
 <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>`;
 }
 
