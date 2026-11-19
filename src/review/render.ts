@@ -122,16 +122,20 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 
 // ==================== 三区队列视图 ====================
 
-/** 头行入口图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
+/** 头行常驻图标的身份。抽成单源：面板头与 bz-reader 嵌入的外置动作栏共用，
  *  不然两处各写一份，迟早出现「一边叫数据、一边叫统计」或顺序漂移。
- *  trash（已移出）排在与它同源的 arch（已完成）后面：都是「另一份名单」的入口。
- *  books（按书档案）/ manager（卡片管理器）跟 data 同属高级档数据入口，排在 data 后、
- *  settings 前（2026-11-20 用户口径：这两个功能也进右侧图标组）。 */
-export const PANEL_HEAD_ACTS = ['filter', 'arch', 'trash', 'data', 'books', 'manager', 'settings'] as const;
+ *  2026-11-20 用户口径：右侧只留工具三两颗，arch/trash/books/manager 这四个入口收进
+ *  「更多」下拉菜单（MORE_MENU_ACTS），头行从 7 颗瘦到 filter/data/more/settings 4 颗。 */
+export const PANEL_HEAD_ACTS = ['filter', 'data', 'more', 'settings'] as const;
 export type PanelHeadAct = (typeof PANEL_HEAD_ACTS)[number];
 
-/** data-act → 对应内置页；filter 是就地展开开关，没有「当前页」概念 */
-const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct, string>>> = {
+/** 「更多」菜单里的入口：复习记录（arch/trash）+ 数据洞察（books/manager）。
+ *  顺序即菜单里的呈现顺序；高亮仍走 panelActIsOn（与头行图标同一口径）。 */
+export const MORE_MENU_ACTS = ['arch', 'trash', 'books', 'manager'] as const;
+export type MoreMenuAct = (typeof MORE_MENU_ACTS)[number];
+
+/** data-act → 对应内置页；filter/more 是就地开关，没有「当前页」概念 */
+const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct | MoreMenuAct, string>>> = {
   arch: 'arch',
   trash: 'trash',
   data: 'stats',
@@ -140,26 +144,41 @@ const ACT_PAGE: Readonly<Partial<Record<PanelHeadAct, string>>> = {
   settings: 'settings',
 };
 
-/** 某颗图标此刻是否高亮。纯函数：外置动作栏的高亮同步复用同一口径，不另写一套 if。 */
-export function panelActIsOn(act: PanelHeadAct, activePage?: string | null): boolean {
+/** 某颗图标此刻是否高亮。纯函数：外置动作栏与菜单项的高亮同步复用同一口径，不另写一套 if。 */
+export function panelActIsOn(act: PanelHeadAct | MoreMenuAct, activePage?: string | null): boolean {
   const page = ACT_PAGE[act];
   return !!page && page === activePage;
+}
+
+/** 下拉菜单里的一项：图标 + 标题 + 一句话说明，全部可读信息走真实文本节点 */
+function moreMenuItem(act: MoreMenuAct, title: string, sub: string, icon: string, activePage?: string | null): string {
+  return `<button type="button" class="bzrv-more-item${panelActIsOn(act, activePage) ? ' is-on' : ''}" data-act="${act}">${iconSpan(icon, 'bzrv-more-item-ic')}<span class="bzrv-more-item-txt"><span class="bzrv-more-item-title">${title}</span><span class="bzrv-more-item-sub">${sub}</span></span></button>`;
+}
+
+/** 「更多」下拉菜单的内容（分组 + 四项）。挂在 .bzrv-panel-head-btns 内、more 按钮旁，
+ *  开合由 ui.bindPanelHead 管；默认 hidden，纯 HTML 不碰 DOM。 */
+export function panelMoreMenuHtml(activePage?: string | null): string {
+  return `<div class="bzrv-more-menu" hidden>
+  <div class="bzrv-more-group">复习记录</div>
+  ${moreMenuItem('arch', '已完成', '复习过的条目', 'folder-check', activePage)}
+  ${moreMenuItem('trash', '已移出', '可从回收站找回', 'archive-restore', activePage)}
+  <div class="bzrv-more-sep"></div>
+  <div class="bzrv-more-group">数据洞察</div>
+  ${moreMenuItem('books', '按书档案', '按书名汇总报告', 'book-open', activePage)}
+  ${moreMenuItem('manager', '卡片管理器', '挂起 / 排期 / 筛选', 'layout-grid', activePage)}
+</div>`;
 }
 
 /**
  * 只生成头行图标按钮（不含 .bzrv-panel-head-btns 外壳），给面板头与嵌入门面复用。
  * 可读名只用 sr-only，绝不写 aria-label / title——Obsidian 会把它们变成悬停气泡。
- * books / manager 是高级档入口（2026-11-20 进右侧图标组），门控在 ui.bindPanelHead 里：
- * 未解锁点击弹能力位文案，不偷偷开页。
+ * 头行 4 颗工具 + more 按钮 + 默认隐藏的下拉菜单（含四个次级入口）。
  */
 export function panelHeadBtnsHtml(activePage?: string | null): string {
   const on = (act: PanelHeadAct): string => (panelActIsOn(act, activePage) ? ' is-on' : '');
   return `<button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
-<button data-act="arch" class="bzrv-icon-btn${on('arch')}"><span class="bzrv-sr-only">已完成（复习过的条目）</span>${iconSpan('folder-check', 'bzrv-q-ic')}</button>
-<button data-act="trash" class="bzrv-icon-btn${on('trash')}"><span class="bzrv-sr-only">已移出（从计划里移走的条目，可以找回）</span>${iconSpan('archive-restore', 'bzrv-q-ic')}</button>
 <button data-act="data" class="bzrv-icon-btn${on('data')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
-<button data-act="books" class="bzrv-icon-btn${on('books')}"><span class="bzrv-sr-only">按书档案</span>${iconSpan('book-open', 'bzrv-q-ic')}</button>
-<button data-act="manager" class="bzrv-icon-btn${on('manager')}"><span class="bzrv-sr-only">卡片管理器</span>${iconSpan('layout-grid', 'bzrv-q-ic')}</button>
+<button data-act="more" class="bzrv-icon-btn bzrv-more-btn${on('more')}"><span class="bzrv-sr-only">更多（已完成 / 已移出 / 按书档案 / 卡片管理器）</span>${iconSpan('more-vertical', 'bzrv-q-ic')}</button>${panelMoreMenuHtml(activePage)}
 <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>`;
 }
 
