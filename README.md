@@ -1,7 +1,8 @@
 <div align="center">
+  <p><img src="logo.png" width="120" alt="Review 图标"></p>
   <h1>Review（复习）</h1>
-  <p><b>把读过的书和笔记，真正记住。</b><br>
-  <sub>到期提醒、按难度评级、阶梯 + FSRS 排期、记忆分析、五种考法；桌面端 + 移动端，数据全部本地。</sub></p>
+  <p><b>bz review 把制卡、整卡交给 AI，让你专注阅读与复习。</b><br>
+  <sub>内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。</sub></p>
 
   <p>
     <a href="https://obsidian.md"><img src="https://img.shields.io/badge/OBSIDIAN-%E2%89%A5%201.8.7-8a6a3a?style=flat-square&logo=obsidian&logoColor=white" alt="Obsidian 1.8.7+"></a>
@@ -16,10 +17,6 @@
 
   <p><sub><b>简体中文</b> · <a href="#english">English</a></sub></p>
 </div>
-
-
-<p align="center"><b>一个插件包、一套功能，付费只解锁数量，功能完全一样</b></p>
-
 
 ## 安装
 
@@ -37,23 +34,36 @@
 
 | 类别 | 功能 | 基础版 | 高级版 |
 |---|---|:---:|:---:|
-| **复习容量** | 复习笔记 | 20 篇 | 不限 |
+| **数量上限 · 唯一差异** | 复习笔记 | 20 篇 | 不限 |
 |  | 划线卡 | 50 条 | 不限 |
-| **排期与记忆** | FSRS 排期与十级阶梯 | ✓ | ✓ |
-|  | 每日上限与复习提醒 | ✓ | ✓ |
-|  | 记忆分析面板 | ✓ | ✓ |
-|  | 统计与成就：年度回顾、热力、徽章与负荷预测 | ✓ | ✓ |
-|  | 抽认卡 / 做题 / 填空 | ✓ | ✓ |
-|  | 上下文 / 展开全文 | ✓ | ✓ |
-|  | 卡片编辑与重新生成 | ✓ | ✓ |
-| **进阶功能** | 听卡片：本地音色朗读 | ✓ | ✓ |
-|  | 回到原文：跳回书里那一句 | ✓ | ✓ |
-|  | 按书档案与报告导出 | ✓ | ✓ |
-|  | 卡片管理器：挂起与埋藏 | ✓ | ✓ |
-| **数据与使用** | 从 bz 导入复习计划 | ✓ | ✓ |
-|  | 导出 Markdown / CSV | ✓ | ✓ |
+| **加入与复习方式** | 选中文字加入复习 | ✓ | ✓ |
+|  | 划线一键复习 | ✓ | ✓ |
+|  | 整本书批量加入：按划线 / 重点 / 章节选范围 | ✓ | ✓ |
+|  | 全文回忆 | ✓ | ✓ |
+|  | 抽认卡 | ✓ | ✓ |
+|  | 做题 | ✓ | ✓ |
+| **卡片制作** | 卡片正面可改 | ✓ | ✓ |
+|  | AI 重新生成卡片 | ✓ | ✓ |
+|  | 做题删题补题 | ✓ | ✓ |
+| **复习与排期** | 抽认卡复习 | ✓ | ✓ |
+|  | 做题原样考 | ✓ | ✓ |
+|  | FSRS 科学排期 | ✓ | ✓ |
+|  | FSRS 参数自动拟合 | ✓ | ✓ |
+|  | 按书档案 | ✓ | ✓ |
+|  | 卡片管理器 | ✓ | ✓ |
+| **出题玩法** | 题量与难度自定义 | ✓ | ✓ |
+|  | 多选题 | ✓ | ✓ |
+|  | 乱序出题 | ✓ | ✓ |
+| **数据与备份** | 数据统计 | ✓ | ✓ |
+|  | 快照备份 | ✓ | ✓ |
+|  | 一键回滚 | ✓ | ✓ |
+| **AI 与自动化** | 18 家 AI 服务商与模型选择 | ✓ | ✓ |
+|  | 本地 TTS 听卡片 | ✓ | ✓ |
+|  | 文件夹监听与自动加入 | ✓ | ✓ |
 
-已有数据超过免费上限不会被删，只是不能再加新的。两版功能完全一致，以后新增的功能也一律两边都有。
+合计 24 项功能，两版完全一致，仅上面 2 项数量不同；以后新增的功能也一律两边都有。已有数据超过免费上限不会被删，只是不能再加新的。
+
+完整的同款对照长图见 [`assets/plan-compare/shots/pro-compare.png`](assets/plan-compare/shots/pro-compare.png)（店铺详情也只放这一张）。
 
 ## 付费说明
 
@@ -64,17 +74,14 @@
 - 桌面端与移动端是同一个包，买一次两边都能用。
 - bz-review 只认自己的激活码，不和 bz Reader 的码混用。
 
-## 五种复习方式
+## 两种复习方式
 
 每张卡在制卡时就定好自己的方式，一轮里可以混排，切到哪张就实时换成哪种题面：
 
 | 方式 | 怎么考 | 要不要 AI |
 |---|---|---|
 | **抽认卡** | 正面一句问句，背面划线原文 | 有 AI 更准，没有就用内置提示 |
-| **填空** | 把划线里一两处挖掉，凭上下文补回来 | 有 AI 挖得更准，没有就按规则挖 |
-| **上下文** | 给划线前后各一段，回忆中间那句 | 不用 AI，但需要 Reader 提供前后文 |
 | **做题** | AI 从划线 / 笔记出选择题，按正确率自动定难度 | 要 AI |
-| **展开全文** | 直接看原文自评 | 不用 AI，完全离线 |
 
 ## 排期是怎么算的
 
@@ -118,15 +125,15 @@
 
 ## 划线从哪来
 
-划线卡由 [bz Reader](https://github.com/yeshimei/bz-reader) 推送：在书里划一句，选「加入复习」，就会出现在排期表里。Reader 一并给出划线前后各一段与一条跳回原文的链接，复习时才能用「上下文」方式或点「回到原文」。
+划线卡由 [bz Reader](https://github.com/yeshimei/bz-reader) 推送：在书里划一句，选「加入复习」，就会出现在排期表里。Reader 一并给出划线前后各一段与一条跳回原文的链接，复习时可以点「回到原文」。
 
-不装 Reader 也能用：笔记可以直接做成抽认卡或填空，从 Markdown 也能批量导入，写法是 `问题 :: 答案` 或 `{{挖空}}`。
+不装 Reader 也能用：笔记可以直接做成抽认卡或做题，从 Markdown 也能批量导入，写法是 `问题 :: 答案` 或 `{{挖空}}`。
 
 ## 网络访问
 
 插件本体不联网、不含任何账号体系。只有两种主动发起的外连：
 
-1. 你配置了 AI 服务商并生成问句、挖空或题目时，那条划线会发给你自己填的服务商；没配 AI 时抽认卡和填空退回内置规则，上下文方式完全离线。
+1. 你配置了 AI 服务商并生成问句或题目时，那条划线会发给你自己填的服务商；没配 AI 时抽认卡退回内置规则，做题需要先配置 AI 服务商。
 2. 你点了「听卡片」并配置了本地 TTS 服务时，卡片文字会发给你自己填的本地服务（如 `http://127.0.0.1:5000`），合成结果缓存在插件目录；没配地址时按钮会提示去设置，不发任何请求。
 
 激活码验签、统计、排期、备份全部离线完成，不上传任何内容。
@@ -138,7 +145,7 @@
 - **超过免费上限会删我的卡吗？** 不会。已有的 20 篇笔记、50 条卡继续照常复习，只是不能再加新的；升级后立即放开。
 - **换电脑怎么办？** 库同步过去，排期和复习历史跟着走；高级版在新设备上重新填一次激活码。
 - **手机上要单独买吗？** 不用，同一个包，桌面与移动都包含在内。
-- **没装 bz Reader 能用吗？** 能。笔记照样能排进计划，五种方式里除「上下文」外都能用。
+- **没装 bz Reader 能用吗？** 能。笔记照样能排进计划，抽认卡和做题两种方式都能用。
 
 ## 插件推荐
 
@@ -169,7 +176,7 @@
 
 ## English
 
-**Review** turns your notes and book highlights into a spaced-repetition plan: due reminders, four-level ratings, a ten-step ladder followed by FSRS scheduling, a memory analysis panel, and five ways to test yourself. Desktop and mobile, all data stored locally in your vault.
+Let AI make and organize your cards — you just read and review. Built on FSRS spaced repetition, it schedules reviews from memory stability and fits its parameters to your own history — so you remember more with fewer reviews. Desktop and mobile, all data stays local in your vault.
 
 It was split out of [bz](https://github.com/yeshimei/bz) — the original copy there stays untouched. It pairs with [bz Reader](https://github.com/yeshimei/bz-reader), which pushes highlights into the queue, but Reader is not required.
 
@@ -189,9 +196,9 @@ The free edition is complete and unlimited in time: 20 review notes and 50 highl
 
 A single build covers desktop and mobile. License keys are verified locally, offline, and are not tied to a device count — re-enter yours on a new machine. Purchase at the [store page](https://wzyp.cn/shop/IFCEI5I3). bz-review does not accept bz Reader license keys.
 
-### Five ways to review
+### Two ways to review
 
-Flashcards, cloze deletion, context recall (needs Reader-supplied surroundings), AI-generated multiple-choice quizzes, and plain full-text self-assessment. Each card keeps its own mode, and a round can mix all five.
+Flashcards and AI-generated multiple-choice quizzes. Each card keeps its own mode, and a round can mix both.
 
 ### Scheduling
 
@@ -205,7 +212,7 @@ Review data lives in `CONFIG/REVIEW/review.json`, separate from bz's. Backup/res
 
 - **Does it conflict with other plugins?** No. Its view is a separate tab, styles are scoped, and data is stored separately.
 - **Do I lose cards when I hit the free limit?** No. They keep reviewing; you just can't add more until you upgrade.
-- **Do I need bz Reader?** No. Notes work on their own; only "context recall" needs surroundings pushed from Reader.
+- **Do I need bz Reader?** No. Notes work on their own; both review modes are available without it.
 - **Do I pay again on mobile?** No. One build covers both.
 
 ### License
