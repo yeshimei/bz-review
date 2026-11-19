@@ -9,11 +9,14 @@ import { join } from 'node:path';
  * 而且它拒绝在密钥不存在时静默继续。测试要的是「能签、能指定过期时间」。
  */
 const KEY_PATH = join(process.cwd(), 'scripts', 'keys', 'private.pem');
+/** bz Reader 的私钥：本地有才跑跨产品测试，别的机器没有就跳过 */
+const READER_KEY_PATH = join(process.cwd(), '..', 'bz-reader', 'scripts', 'keys', 'private.pem');
 
 export interface Payload {
   v?: 1 | 2;
   id?: string;
   name?: string;
+  patron?: boolean;
   plan?: string;
   exp?: number;
 }
@@ -37,17 +40,35 @@ function derToP1363(der: Buffer): Buffer {
 const b64url = (buf: Buffer): string =>
   buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
-export function signCode(payload: Payload, prefix = 'BZP2'): string {
+export function signCodeWith(keyPath: string, payload: Payload, prefix = 'BZP2'): string {
   const bytes = Buffer.from(JSON.stringify({ v: 2, ...payload }), 'utf8');
   const signer = createSign('sha256');
   signer.update(bytes);
-  const der = signer.sign({ key: readFileSync(KEY_PATH), dsaEncoding: 'der' });
+  const der = signer.sign({ key: readFileSync(keyPath), dsaEncoding: 'der' });
   return `${prefix}.${b64url(bytes)}.${b64url(derToP1363(der))}`;
+}
+
+export function signCode(payload: Payload, prefix = 'BZP2'): string {
+  return signCodeWith(KEY_PATH, payload, prefix);
+}
+
+/** Reader 签发的码：赞助人 / 专属定制码带 patron: true */
+export function signReaderCode(payload: Payload, prefix = 'BZR2'): string {
+  return signCodeWith(READER_KEY_PATH, payload, prefix);
 }
 
 export const HAS_KEYS = (() => {
   try {
     readFileSync(KEY_PATH);
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+export const HAS_READER_KEYS = (() => {
+  try {
+    readFileSync(READER_KEY_PATH);
     return true;
   } catch {
     return false;

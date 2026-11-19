@@ -11,7 +11,7 @@ import {
   remainingCards,
   remainingNotes,
 } from '../src/data/entitlement';
-import { HAS_KEYS, signCode } from './helpers/sign';
+import { HAS_KEYS, HAS_READER_KEYS, signCode, signReaderCode } from './helpers/sign';
 
 afterEach(async () => {
   await refreshLicense('');
@@ -93,6 +93,20 @@ describe('高级版', () => {
     expect(state.paid).toBe(false);
     expect(canAddNote(20)).toBe(false);
     expect(licenseSummary()).toContain('已过期');
+  });
+
+  it.runIf(HAS_READER_KEYS)('Reader 的赞助人码在本插件也能解锁数量', async () => {
+    const code = signReaderCode({
+      id: 'BZR-AF-2026-0176',
+      name: 'Pomodorinettina',
+      patron: true,
+      plan: 'lifetime',
+    });
+    const state = await refreshLicense(code);
+    expect(state.paid).toBe(true);
+    expect(state.name).toBe('Pomodorinettina');
+    expect(canAddNote(9999)).toBe(true);
+    expect(licenseSummary()).toContain('Pomodorinettina');
   });
 
   it('填错码只降级，不抛错', async () => {
