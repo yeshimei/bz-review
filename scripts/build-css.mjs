@@ -23,6 +23,7 @@ const SOURCES = [
   "src/review/ui/styles/changelog.css",
   "src/review/ui/styles/changelog-roadmap.css",
   "src/review/ui/styles/support.css",
+  "src/review/ui/styles/unlock.css",
 ];
 
 const HEADER = [

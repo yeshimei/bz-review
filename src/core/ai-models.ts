@@ -74,8 +74,9 @@ function endpointFor(id: string): string {
 function keyFor(id: string): string {
   const s = tryGetSettings();
   const desc = providerDescriptorOf(id);
-  if (desc.id === 'ollama') return '';
-  return asString(s[desc.apiKeyKey]);
+  if (desc.id === 'ollama' || desc.id === 'lmstudio') return '';
+  const legacy = desc.apiKeyKey ? s[desc.apiKeyKey] : undefined;
+  return asString(legacy) || asString(s.aiApiKeys?.[desc.id]);
 }
 
 /** Ollama /api/tags 响应 → 模型 id 列表（Ollama 原生格式，非 OpenAI 兼容面） */

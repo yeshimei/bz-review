@@ -36,9 +36,12 @@ import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
 import { ReviewPanelView } from './review/panel-view';
 import { REVIEW_VIEW_TYPE } from './review/panel-mode';
-import { migrateFromBz } from './data/migrate';
+import { importFromBzWithConfirm } from './data/migrate';
+import { isBzPluginEnabled } from './core/plugin-path';
 import { t } from './i18n';
 import { installScopeGuard } from './core/scope';
+import { notice } from './core/notice';
+import { DEFAULT_REVIEW_DIR, LEGACY_REVIEW_DIR, startupStorageDir } from './core/storage-dir';
 
 export default class ReviewPlugin extends Plugin {
   settings: BzSettings;
@@ -331,15 +334,14 @@ export default class ReviewPlugin extends Plugin {
       });
     }
 
-    this.addCommand({
-      id: 'review-migrate-bz',
-      name: t('从 bz 导入复习计划', 'Import review plan from bz'),
-      callback: async () => {
-        const res = await migrateFromBz(this.app, this.settings);
-        const { notice } = await import('./core/notice');
-        notice(res.message, res.ok ? 'success' : 'warning');
-      },
-    });
+    /* 没装 bz 就不注册命令：命令面板和设置页同一口径，不给人一条点了只会报错的入口 */
+    if (isBzPluginEnabled(this.app)) {
+      this.addCommand({
+        id: 'review-migrate-bz',
+        name: t('从 bz 导入复习计划', 'Import review plan from bz'),
+        callback: () => importFromBzWithConfirm(this.app, this.settings),
+      });
+    }
 
     /* 设置不再走 addSettingTab：插件设置页从「选项 → 第三方插件 → 齿轮」里消失，
        改到主面板右上角的 ⚙️（openSettingsModal），与 bz Reader 一致。 */
@@ -358,6 +360,27 @@ export default class ReviewPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const loaded: unknown = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded && typeof loaded === 'object' ? loaded : {});
+    /* 老用户的复习数据在 CONFIG/REVIEW，新装才用 bz-review/storage。
+       新目录空、老目录有数据时自动指回老目录，避免升级后一看「今日已清空」。 */
+    const hasData = async (dir: string): Promise<boolean> => {
+      try {
+        const raw = await this.app.vault.adapter.read(`${dir}/review.json`);
+        const parsed: unknown = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed.length > 0 : !!parsed && String(raw).trim() !== '[]';
+      } catch {
+        return false;
+      }
+    };
+    const dir = startupStorageDir({
+      configured: this.settings.storagePath,
+      newHasData: await hasData(DEFAULT_REVIEW_DIR),
+      legacyHasData: await hasData(LEGACY_REVIEW_DIR),
+    });
+    if (dir !== this.settings.storagePath) {
+      this.settings.storagePath = dir;
+      await this.saveData(this.settings);
+      notice(`找到老目录 ${LEGACY_REVIEW_DIR} 里的复习数据，已自动指回，数据没动。`, 'info');
+    }
   }
 
   async saveSettings(): Promise<void> {

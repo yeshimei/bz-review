@@ -53,6 +53,18 @@ export function pluginRelDirOf(app: unknown): string {
   return `${configDir || DEFAULT_CONFIG_DIR}/plugins/bz`;
 }
 
+/**
+ * bz 主插件是否真的加载了（不是「manifest 文件躺在插件目录里」）。
+ * 与 bz-reader 的 findReviewApi 同款三道守卫：实例在、manifest 在、对象可用。
+ * 只有它加载了，「从 bz 导入」入口才有意义。
+ */
+export function isBzPluginEnabled(app: unknown): boolean {
+  const plugin = (app as { plugins?: { plugins?: Record<string, unknown> } })?.plugins?.plugins?.bz;
+  if (!plugin || typeof plugin !== 'object') return false;
+  const manifest = (plugin as { manifest?: unknown }).manifest;
+  return !!manifest && typeof manifest === 'object';
+}
+
 /** vault 根的文件系统绝对路径（adapter 提供；拿不到 → 空串） */
 export function vaultBasePathOf(app: unknown): string {
   const adapter = (app as { vault?: { adapter?: { getBasePath?: () => string; basePath?: string } } })?.vault?.adapter;

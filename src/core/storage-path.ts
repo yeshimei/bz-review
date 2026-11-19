@@ -18,12 +18,13 @@
  * 常量里那个 `.obsidian/plugins/bz` 只是「谁都没说」时的答案：真正落盘时调用方都传
  * `initialStorageDir(pluginRelDirOf(app))`，插件文件夹叫什么就落在哪。
  */
+import { DEFAULT_REVIEW_DIR } from './storage-dir';
 
 /** Obsidian 配置目录兜底名（拼接避免硬编码字面量；运行时仍为 .obsidian） */
 const CONFIG_DIR = '.' + 'obsidian';
 
-/** 缺省数据目录（vault 相对）：`<插件目录>/storage`。没有 app 可问的地方拿它兜底 */
-export const DEFAULT_STORAGE_DIR = `${CONFIG_DIR}/plugins/bz/storage`;
+/** 缺省数据目录（vault 相对）：库根 `bz-review/storage`，与 bz-reader 同形制 */
+export const DEFAULT_STORAGE_DIR = DEFAULT_REVIEW_DIR;
 
 /** 数据目录的末段名（小写） */
 export const STORAGE_DIR_NAME = 'storage';

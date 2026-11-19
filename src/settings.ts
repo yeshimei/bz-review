@@ -7,6 +7,7 @@
  * `core/settings-provider.ts` 的 `panelSizePersist` 会拿 `keyof BzSettings` 做
  * 编译期约束，所以字段名必须与 bz 那份逐字一致——改了会让面板尺寸记忆静默失效。
  */
+import { DEFAULT_REVIEW_DIR } from './core/storage-dir';
 
 /** 强调色档位：auto 跟随 Obsidian，其余为固定色板。落盘值，body 挂 data-bzaccent 供 CSS 选档。 */
 export type AccentMode = 'auto' | 'copper' | 'indigo' | 'moss';
@@ -116,6 +117,10 @@ export default interface BzSettings {
 
   // ===== AI（划线卡的抽认卡与出题要用）=====
   aiProvider: string;
+  /** 18 家注册表里除老三家外的密钥（键 = provider id）；老三家仍用各自旧键 */
+  aiApiKeys: Record<string, string>;
+  /** 自定义服务商的报文协议：openai / anthropic */
+  aiCustomProtocol: string;
   deepseekApiKey: string;
   zhipuPlanApiKey: string;
   ollamaApiKey: string;
@@ -145,7 +150,7 @@ export default interface BzSettings {
 export const DEFAULT_SETTINGS: BzSettings = {
   /* 与 bz 的默认值故意不同：bz 用 CONFIG/STORAGE，这里用 CONFIG/REVIEW，
      两个插件同时装也不会抢同一个 review.json。 */
-  storagePath: 'CONFIG/REVIEW',
+  storagePath: DEFAULT_REVIEW_DIR,
   language: 'auto',
   accent: 'auto',
   licenseKey: '',
@@ -189,6 +194,8 @@ export const DEFAULT_SETTINGS: BzSettings = {
   difficulty: 'medium',
 
   aiProvider: '',
+  aiApiKeys: {},
+  aiCustomProtocol: 'openai',
   deepseekApiKey: '',
   zhipuPlanApiKey: '',
   ollamaApiKey: '',
