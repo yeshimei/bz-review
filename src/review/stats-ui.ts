@@ -507,7 +507,7 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   if (!history.length) {
     const empty = createDiv();
     empty.className = 'bzrv-review-history-empty';
-    empty.textContent = '完成一次复习后，这里会记下每次评级、留存率 R 和稳定性 S';
+    empty.textContent = '完成一次复习后，这里会记下每次评级、留存率 r 和稳定性 s';
     body.appendChild(empty);
     histEsc = escManager.register('bzrv-review-history', { isVisible: () => !!histMask && histMask.style.display === 'block', close: closeTimeline });
     return;

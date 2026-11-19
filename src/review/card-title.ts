@@ -26,9 +26,8 @@ function shortTitle(s: string): string {
  */
 export function cardTitleOf(card: ReviewCard): string {
   const mode = card?.mode;
-  if (String(card?.qa?.q ?? '').trim()) {
-    return shortTitle(card!.qa!.q);
-  }
+  const q = card.qa?.q ?? '';
+  if (q.trim()) return shortTitle(q);
   const explicit = shortTitle(card?.displayTitle ?? '');
   if (explicit) return explicit;
   const book = String(card?.bookTitle ?? '').trim();
