@@ -159,7 +159,9 @@ export function bookReportMarkdown(
   summaries: readonly BookSummary[],
   opts?: { now?: number | Date }
 ): string {
-  const day = new Date(opts?.now ?? Date.now()).toISOString().slice(0, 10);
+  /* 本地日期：toISOString() 是 UTC，东八区凌晨导出会写成前一天。 */
+  const d = new Date(opts?.now ?? Date.now());
+  const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const lines = ['# 复习档案', '', `> 导出于 ${day}，共 ${summaries.length} 组`, ''];
   if (!summaries.length) {
     lines.push('还没有复习数据。', '');

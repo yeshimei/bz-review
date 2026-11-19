@@ -20,6 +20,9 @@ function isBatchQuestionShape(v: unknown): v is QuizQuestion {
   if (!isRecord(v)) return false;
   if (typeof v.question !== 'string' || !v.question) return false;
   if (!Array.isArray(v.options) || v.options.length !== 4) return false;
+  /* 选项元素必须是字符串：对象/数字混进来时，session 的 cleanOptionText 会调
+     text.match 而抛错。这里挡住畸形元素，别等渲染时崩。 */
+  if (!v.options.every((o: unknown) => typeof o === 'string')) return false;
   if (!Array.isArray(v.correctIndices)) return false;
   return true;
 }
@@ -51,7 +54,10 @@ export class QuestionGenerator {
     }
     // random 或不合法：不添加难度提示，让 AI 自由决定
 
-    return `根据以下笔记内容，生成若干道四选一的选择题（每题一个正确答案），数量适中，以便复习。请仅返回一个合法的 JSON 对象，结构如下：
+    /* 统领句不能写死「每题一个正确答案」——开了多选时那会和下面的 typeHint 打架，
+       模型收到互相矛盾的指令会一律按单选出，多选题承诺打折。 */
+    const answerHint = enableMultipleChoice ? '正确答案可以是一个或多个' : '每题有且仅有一个正确答案';
+    return `根据以下笔记内容，生成若干道四选一的选择题（${answerHint}），数量适中，以便复习。请仅返回一个合法的 JSON 对象，结构如下：
 {
   "questions": [
     ${structure}
@@ -109,13 +115,16 @@ ${truncated}`;
       if (!raw.question || !Array.isArray(raw.options) || raw.options.length !== 4) {
         throw new Error('题目格式不正确：缺少 question 或 options 不是长度为4的数组');
       }
+      if (!raw.options.every((o: unknown) => typeof o === 'string')) {
+        throw new Error('题目格式不正确：选项必须是字符串');
+      }
       const indices = raw.correctIndices;
       if (!Array.isArray(indices) || indices.length === 0) {
         throw new Error('题目格式不正确：correctIndices 必须是非空数组');
       }
       for (const idx of indices) {
-        if (typeof idx !== 'number' || idx < 0 || idx > 3) {
-          throw new Error('correctIndices 元素必须在 0~3 之间');
+        if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx > 3) {
+          throw new Error('correctIndices 元素必须是 0~3 的整数');
         }
       }
     }
@@ -172,7 +181,7 @@ ${truncated}`;
         if (!isBatchQuestionShape(q)) continue;
         // P2：与单篇 generate 对齐——correctIndices 越界项剔除（须为 0~3 的数字），
         // 剔除后无有效索引则丢弃该题
-        const indices = q.correctIndices.filter((i: unknown): i is number => typeof i === 'number' && i >= 0 && i <= 3);
+        const indices = q.correctIndices.filter((i: unknown): i is number => typeof i === 'number' && Number.isInteger(i) && i >= 0 && i <= 3);
         if (!indices.length) continue;
         valid.push({ ...q, correctIndices: indices });
       }

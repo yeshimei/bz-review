@@ -20,6 +20,14 @@ describe('快照文件名', () => {
     expect(isSnapshotName('review.json')).toBe(false);
     expect(isSnapshotName('review.json.bak')).toBe(false);
   });
+
+  it('同秒连点的 -2/-3 后缀也认，且能参与清理（旧正则漏掉这些孤儿文件）', () => {
+    expect(isSnapshotName('review.20261115-080503-2.json')).toBe(true);
+    expect(snapshotStamp('review.20261115-080503-3.json')).toBe('20261115-080503');
+    expect(pickPrunable(['review.20261101-090000-2.json'], new Date('2026-11-15T10:00:00.000Z'))).toEqual([
+      'review.20261101-090000-2.json',
+    ]);
+  });
 });
 
 describe('保留与清理', () => {

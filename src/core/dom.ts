@@ -1,7 +1,9 @@
 /**
  * DOM 工具（Q3.js window.__utils 移植）：notice/longPress/
- * createSiteIcon/createIconBtn/createOverlay——行为与 Q3 逐字一致。
+ * createIconBtn/createOverlay——行为与 Q3 逐字一致。
  * injectStyles 已随 ticket 60 样式收敛废弃删除（铁律 9：禁运行时注入）。
+ * createSiteIcon（yandex favicon 外连）已从 bz 移植遗留里删除：本仓不产该图标、
+ * 也不该多一个主动外连口子。
  */
 import { bindMaskDismiss } from './mask-dismiss';
 import { notifyFloatClosed } from './home-return';
@@ -97,83 +99,6 @@ export function swallowNextClick(): void {
   };
   document.addEventListener('click', swallow, true);
   document.addEventListener('mousedown', disarm, { capture: true, once: true });
-}
-
-/** DOMAIN_MAP：favicon 域名归一映射（Q3 同款） */
-const DOMAIN_MAP: Record<string, string> = {
-  'guokrapp.guokr.com': 'guokr.com',
-  'daily.zhihu.com': 'zhihu.com',
-};
-
-/**
- * favicon 取图失败负缓存（tombstone，会话内）：取失败的「域名+尺寸」不再重复发网请求——
- * 列表每次重绘都会对同一批失效域名（内网地址/自建服务/拼错 url）原样重发必失败的请求
- * （pv 深审新-14），tombstone 后 createSiteIcon 直接返回 null，调用方走字母回退。
- * 会话级内存集即可：成功缓存走 localStorage 持久化，失败域名网络恢复后重开面板自然重试。
- */
-const faviconFailures = new Set<string>();
-
-/** 测试专用：清空 favicon 失败负缓存（notice __resetNoticeForTests 同范式） */
-export function __resetFaviconFailuresForTests(): void {
-  faviconFailures.clear();
-}
-
-/**
- * createSiteIcon(domain, size=16)：网站 favicon 图标（yandex 取图 + localStorage 缓存）。
- * 高清修复：旧接口 `favicon/<domain>` 恒返 16px 小图，放大到 32/64px 头像位发糊——
- * 改走 v2 接口带 `size` 参数按需取高清源；缓存键升级 `favicon_v2_<domain>_<size>`，
- * 旧 `favicon_<domain>` 糊图缓存自动失效（不迁移、不清理，留待 localStorage 淘汰）。
- */
-export function createSiteIcon(domain: string | null | undefined, size = 16): HTMLImageElement | null {
-  if (!domain) return null;
-  const mappedDomain = DOMAIN_MAP[domain] || domain;
-  const cacheKey = `favicon_v2_${mappedDomain}_${size}`;
-  // 取过失败的「域名+尺寸」（按归一映射后键）直接短路，不再发网请求
-  if (faviconFailures.has(cacheKey)) return null;
-
-  const img = createEl('img');
-  img.className = 'bzrv-site-icon';
-  img.style.cssText = `width:${size}px; height:${size}px;`;
-  img.alt = '';
-  img.crossOrigin = 'anonymous';
-
-  // 1. 从 localStorage 读取缓存
-  try {
-    const cached = window.localStorage.getItem(cacheKey);
-    if (cached) {
-      img.src = cached;
-      return img;
-    }
-  } catch { /* 忽略 */ }
-
-  // 2. 使用网络地址（v2 接口 + size 参数：源图即目标尺寸，避免小图放大发糊）
-  const networkUrl = `https://favicon.yandex.net/favicon/v2/${mappedDomain}?size=${size}`;
-  img.src = networkUrl;
-
-  // 3. 加载完成后缓存为 Base64
-  img.onload = function () {
-    try {
-      const canvas = createEl('canvas');
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      (ctx as CanvasRenderingContext2D).drawImage(img, 0, 0);
-      const dataUrl = canvas.toDataURL('image/png');
-      try {
-        window.localStorage.setItem(cacheKey, dataUrl);
-      } catch { /* 忽略 */ }
-    } catch { /* 忽略 */ }
-    img.onload = null;
-  };
-
-  // 4. 加载失败则隐藏并记 tombstone（会话内同「域名+尺寸」不再重试）
-  img.onerror = function () {
-    img.style.display = DISPLAY_NONE;
-    faviconFailures.add(cacheKey);
-    img.onerror = null;
-  };
-
-  return img;
 }
 
 /** createIconBtn(text, title, onClick, extra)：图标按钮（普通 14px/22×26，关闭 ❌ 13px/21×25 + hover 背景） */

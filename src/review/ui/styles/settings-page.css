@@ -62,7 +62,9 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   --bzsp-sheen: rgba(255, 255, 255, .7);
 }
 
-.bzrv-settings-content.bzs-set-page * {
+/* 用 :where() 把选择器特异性降为 0：box-sizing 仍需对所有后代生效，
+   但不必让整个设置页子树都带上两条类名的特异性（否则子组件很难覆盖、全量匹配也更慢）。 */
+:where(.bzrv-settings-content.bzs-set-page) * {
   box-sizing: border-box;
 }
 

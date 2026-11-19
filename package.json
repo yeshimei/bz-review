@@ -16,7 +16,11 @@
     "build": "node esbuild.config.mjs production",
     "once": "node esbuild.config.mjs once",
     "test": "vitest run",
-    "typecheck": "node node_modules/typescript/bin/tsc --noEmit"
+    "typecheck": "node node_modules/typescript/bin/tsc --noEmit",
+    "lint:css": "node scripts/lint-css.mjs",
+    "lint:tooltip": "node scripts/check-tooltip-attrs.mjs",
+    "lint:obsidian": "node scripts/lint-obsidian.mjs",
+    "lint": "npm run lint:css && npm run lint:tooltip && npm run lint:obsidian"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",

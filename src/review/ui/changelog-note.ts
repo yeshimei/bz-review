@@ -626,8 +626,9 @@ function mobReleaseHtml(release: ChangelogRelease, newest: boolean): string {
  * 三个纯图标入口，顺序与图标都照 bz：GitHub → QQ 群 → B 站。
  *
  * 只给图标是因为这一行最后还要放一枚带文字的「支持作者」胶囊；三段文字
- * 并排会压成字墙。可发现性交给悬停提示与读屏（`title` / `aria-label`），
- * 交流群那枚还要说清点下去是**复制群号**——它不开链接。
+ * 并排会压成字墙。可读名字交给视觉隐藏文本 `.bzrv-sr-only`（读屏读得到、
+ * 不触发悬停气泡；本仓禁止 title / aria-label），交流群那枚还要说清
+ * 点下去是**复制群号**——它不开链接。
  *
  * 行为键带 `chgn` 前缀：这个弹窗不在壳层里，但同一套 `data-act` 口径
  * 容易被全局动作表误认，前缀是给自己留的隔离带。
@@ -643,7 +644,7 @@ function linksHtml(): string {
     .map(
       (l) =>
         `<button class="bzs-chgn-link" type="button" data-act="${l.act}">` +
-        `<span class="bzs-sr-only">${esc(l.label)}</span>${l.icon}</button>`,
+        `<span class="bzrv-sr-only">${esc(l.label)}</span>${l.icon}</button>`,
     )
     .join('');
 }

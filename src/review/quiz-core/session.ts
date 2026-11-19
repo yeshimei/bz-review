@@ -274,7 +274,7 @@ export class QuizMasterUI {
     title.className = 'bzrv-quiz-title';
     // 使用固定的总题数 this.totalQuestions；题号 = 已消费题数 + 1：
     // ticket 141：答对/答错均 splice 出当前题（答错仅移出本轮会话，不落盘删除），
-    // 已消费数 = totalQuestions - 剩余长度——不依赖 correct/wrong 计数（多选计数为已知缺陷）
+    // 已消费数 = totalQuestions - 剩余长度——不依赖 correct/wrong 计数（ticket 098 已修复多选计数，此处仍以剩余长度为准更稳）
     // ticket 099：notePath 判空降级（待重做队列曾缺 notePath → q.notePath!.split 崩溃）
     const noteName = q.notePath ? q.notePath.split('/').pop()!.replace('.md', '') : '';
     const doneCount = this.totalQuestions - this.currentQuestions.length;
@@ -500,8 +500,24 @@ export class QuizMasterUI {
    *  延时期间放弃做题/强制关闭 → 清除延时（回调内再校验会话态，防迟到渲染僵尸弹窗）。 */
   private _answerCorrect(q: QuizQuestion, app: App, onFailRestore: () => void, optionsContainer: HTMLElement): void {
     const hasExplain = String(q.explain ?? '').trim().length > 0;
+    /* 缺 notePath（如卡片题库来源的题）时不能落盘删除，但答对的计数与跳题照常走——
+       原先 q.notePath! 非空断言在这种题上会崩或删错文件。与 showQuestion 的判空降级同口径。 */
+    const notePath = String(q.notePath ?? '').trim();
+    if (!notePath) {
+      this.correctCount++;
+      this.currentQuestions.splice(this.currentIndex, 1);
+      if (hasExplain) this.addNextButton(optionsContainer);
+      else {
+        this._clearJumpTimer();
+        this._jumpTimer = window.setTimeout(() => {
+          this._jumpTimer = null;
+          if (this._sessionActive) this.showQuestion();
+        }, CORRECT_JUMP_DELAY_MS);
+      }
+      return;
+    }
     this.manager
-      .removeQuestion(app, q.notePath!, { question: q.question, options: q.options, correctIndices: q.correctIndices })
+      .removeQuestion(app, notePath, { question: q.question, options: q.options, correctIndices: q.correctIndices })
       .then(() => {
         this.correctCount++;
         this.currentQuestions.splice(this.currentIndex, 1);

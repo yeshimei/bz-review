@@ -12,6 +12,7 @@
 import type { App } from 'obsidian';
 import type { ReviewItem } from './data';
 import { openFlowDialog } from '../core/flow-dialog';
+import { notice } from '../core/notice';
 
 export interface CardEditValues {
   text: string;
@@ -50,8 +51,12 @@ export function openCardEditor(app: App, item: ReviewItem, onSave: (v: CardEditV
   }).then((v) => {
     if (v !== 'ok') return;
     const text = textArea.value.trim();
-    /* 原文清空等于把卡变成空白，复习时无从回忆——挡在保存前，不去改结构 */
-    if (!text) return;
+    /* 原文清空等于把卡变成空白，复习时无从回忆——挡在保存前，并明说原因，
+       不能点了「保存」静默无反应让用户以为已经写回。 */
+    if (!text) {
+      notice('原文不能为空，这张卡没保存。', 'warning');
+      return;
+    }
     void Promise.resolve(onSave({ text, comment: ideaArea.value.trim() }));
   });
 }

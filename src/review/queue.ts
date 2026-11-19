@@ -143,9 +143,13 @@ export function applyRoundLimits(items: ReviewItem[], limits: RoundLimits = {}):
  */
 export function isOnVacation(vacationUntil: string | undefined | null, now: Date = new Date()): boolean {
   if (!vacationUntil) return false;
-  const t = new Date(vacationUntil).getTime();
-  if (!Number.isFinite(t)) return false;
-  return now.getTime() < t;
+  /* 按本地「日」比较，不用毫秒戳：date-only 字符串（2026-11-20）会被 Date 解析成
+     UTC 午夜，东八区当天 08:00 一过 now>t 就提前失效；而且 < 把结束当天排除在假期外，
+     与「结束那天整体顺延」的承诺不符。改成 now 的本地日 ≤ 结束日（含当天）。 */
+  const untilMs = new Date(vacationUntil).getTime();
+  if (!Number.isFinite(untilMs)) return false;
+  const untilKey = dateKey(new Date(vacationUntil));
+  return dateKey(now) <= untilKey;
 }
 
 /**
@@ -208,7 +212,10 @@ export function forecastLoad(items: readonly ReviewItem[], days: number = 30, no
   const buckets = new Map<string, number>();
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   for (let i = 0; i < span; i++) {
-    const d = new Date(start.getTime() + i * 86400000);
+    /* 逐日 setDate 而非 +86400000：夏令时切换那天只有 23/25 小时，固定毫秒会
+       把日期键推到相邻日，造成漏一天或重复一天。 */
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
     buckets.set(dateKey(d), 0);
   }
   for (const it of items) {

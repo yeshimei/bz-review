@@ -877,7 +877,11 @@ export class UIManager {
           const n = await this.dataManager.postponeItems([it.filePath], 7);
           notice(n ? '已顺延 7 天' : '没找到这条', n ? 'success' : 'warning');
         } else if (choice === 'date') {
-          const fallback = it.nextReviewDate ? new Date(it.nextReviewDate).toISOString().slice(0, 10) : '';
+          /* 本地日期默认值：toISOString 是 UTC，东八区会预填前一天。 */
+          const nd = it.nextReviewDate ? new Date(it.nextReviewDate) : null;
+          const fallback = nd && Number.isFinite(nd.getTime())
+            ? `${nd.getFullYear()}-${String(nd.getMonth() + 1).padStart(2, '0')}-${String(nd.getDate()).padStart(2, '0')}`
+            : '';
           const raw = await promptDate(this.app, '下次复习日期（YYYY-MM-DD）：', fallback);
           if (!raw) return;
           const t = Date.parse(raw);

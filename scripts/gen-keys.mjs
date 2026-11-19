@@ -23,11 +23,20 @@ if (existsSync(join(keysDir, 'private.pem'))) {
   console.error(`当前公钥指纹 ${fp}…`);
   process.exit(1);
 }
+/* 私钥丢了但公钥还在：不能静默生成新对——新私钥配旧公钥，签出来的码验不过。
+   明确报错，让人先决定是恢复私钥还是连同公钥一起重置（后者会让旧码作废）。 */
+if (existsSync(join(keysDir, 'public-spki.b64'))) {
+  console.error('检测到 public-spki.b64 存在但 private.pem 缺失：');
+  console.error('请先恢复原私钥；若确实要重置，删除 public-spki.b64 再重跑（已发激活码会全部作废）。');
+  process.exit(1);
+}
 
 const { publicKey, privateKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
 
 mkdirSync(keysDir, { recursive: true });
-writeFileSync(join(keysDir, 'private.pem'), privateKey.export({ type: 'pkcs8', format: 'pem' }));
+/* mode 0o600：类 Unix 上私钥默认 0644 会被同机其他用户读走，这里收紧到仅属主可读写。
+   flag 'wx'：独占创建，万一并发重跑也不会覆盖已存在的私钥。 */
+writeFileSync(join(keysDir, 'private.pem'), privateKey.export({ type: 'pkcs8', format: 'pem' }), { mode: 0o600, flag: 'wx' });
 const spkiB64 = publicKey.export({ type: 'spki', format: 'der' }).toString('base64');
 writeFileSync(join(keysDir, 'public-spki.b64'), spkiB64 + '\n');
 writeFileSync(join(keysDir, 'README.txt'), [

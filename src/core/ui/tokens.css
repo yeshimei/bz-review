@@ -74,6 +74,7 @@
   --bzrv-head-act-w: 34px;    /* 按钮（含 1px 透明描边） */
   --bzrv-head-act-h: 32px;
   --bzrv-head-act-ic: 18px;   /* 图标本体 */
+  --bzrv-head-pipe-h: 14px;   /* 头行「复习 / 日期」之间分隔竖线高度；域内需要更高时覆盖此 token */
   --bzrv-radius-ctl: 6px;     /* 图标钮圆角，对齐 Reader 的 --r-ctl */
 
   /* 阴影三档（透明黑、表达抬升） */

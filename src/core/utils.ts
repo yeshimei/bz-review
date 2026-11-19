@@ -4,7 +4,6 @@
  */
 import { moment } from 'obsidian';
 import { getApp } from './app';
-import { httpGetText, requestUrlAsFetch } from './http';
 import { pad2, relTime as baseRelTime, stripMdExt, localDayKey, stripTitleMarks } from './ui/str';
 import { notice } from './notice';
 
@@ -236,20 +235,6 @@ export function getCurrentNoteInfo(): { path: string; name: string } | null {
 export function getCurrentCursorPosition(): { line: number; ch: number } | null {
   const ed = getApp().workspace.activeEditor?.editor;
   return ed ? { line: ed.getCursor().line, ch: ed.getCursor().ch } : null;
-}
-
-/** fetchPageTitle(url)：抓取页面 <title>（非 2xx/超时/网络错归 null）。
- *  新-2：改走 core/http 单源带 8s 超时——原先 requestUrl 裸发无超时，远端建连后不回包
- *  则 Promise 永不 settle（消费方是 fire-and-forget，标题永不回填且无降级提示）。 */
-export async function fetchPageTitle(url: string): Promise<string | null> {
-  const text = await httpGetText(url, {
-    timeoutMs: 8000,
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
-    fetchImpl: requestUrlAsFetch(),
-  });
-  if (!text) return null;
-  const m = text.match(/<title[^>]*>([^<]*)<\/title>/i);
-  return m && m[1] ? m[1].trim() : null;
 }
 
 /** 字节级比对（Syncthing 冲突止血「写前比对」共用：长度或任一字节不同即不等） */

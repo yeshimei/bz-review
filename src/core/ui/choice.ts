@@ -71,7 +71,8 @@ export function uiChoice<T extends string>(opts: BzChoiceOpts<T>): { el: HTMLDiv
     if (o.dot) {
       const d = createSpan();
       d.className = 'bzrv-choice-dot';
-      d.style.background = o.dot;
+      /* 域内禁内联视觉：颜色值经 CSS 变量交给样式层消费，别直接写 style.background。 */
+      d.style.setProperty('--bzrv-choice-dot', o.dot);
       b.appendChild(d);
     }
     b.appendChild(document.createTextNode(o.label));

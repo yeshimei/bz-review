@@ -46,8 +46,9 @@
 .bzrv-stutab .bzrv-stutab-ic { width: 16px; height: 16px; opacity: .72; flex-shrink: 0; }
 .bzrv-stutab.is-on .bzrv-stutab-ic { opacity: 1; }
 /* 「复习」与日期之间的分隔竖线加长（2026-11-20）：core 默认 14px 比两行文字都矮，
-   看着像一段没画完的短线；抬到 20px 与页签文字行齐平，分隔感才成立。 */
-#bzrv-popup .bzrv-panel-head-pipe { height: 20px; }
+   看着像一段没画完的短线；抬到 20px 与页签文字行齐平，分隔感才成立。
+   走 --bzrv-head-pipe-h token（头行几何不写死数字），在 popup 根上覆盖即可。 */
+#bzrv-popup { --bzrv-head-pipe-h: 20px; }
 /* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动）。
    不再有左栏，内容区独占整宽。 */
 #bzrv-entries { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }

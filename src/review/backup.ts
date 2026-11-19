@@ -39,21 +39,35 @@ export type BackupParse = { ok: true; items: ReviewItem[] } | { ok: false; error
  * 兼容三种形态：本插件导出的、裸数组、带 items 的老壳——都不认就明确报错，
  * 不返回空数组：空数组恢复一次，用户的计划就真的空了。
  */
+/** 只认「非空对象」条目：数字/字符串/null 混进数组时不能当复习条目落盘 */
+function validBackupItem(it: unknown): it is ReviewItem {
+  return !!it && typeof it === 'object' && !Array.isArray(it);
+}
+
 export function parseBackup(raw: unknown): BackupParse {
-  if (Array.isArray(raw)) return { ok: true, items: raw as ReviewItem[] };
+  if (Array.isArray(raw)) {
+    const items = raw.filter(validBackupItem);
+    return items.length ? { ok: true, items } : { ok: false, error: '文件里没有复习数据' };
+  }
   if (raw && typeof raw === 'object') {
     const obj = raw as { items?: unknown; plugin?: unknown; schema?: unknown };
     if (obj.plugin && obj.plugin !== 'bz-review') return { ok: false, error: '这不是复习计划导出的备份' };
-    if (Array.isArray(obj.items)) return { ok: true, items: obj.items as ReviewItem[] };
+    if (Array.isArray(obj.items)) {
+      const items = obj.items.filter(validBackupItem);
+      return items.length ? { ok: true, items } : { ok: false, error: '文件里没有复习数据' };
+    }
   }
   return { ok: false, error: '文件里没有复习数据' };
 }
 
 function csvCell(v: unknown): string {
-  const s: string =
+  let s: string =
     typeof v === 'string' ? v
       : typeof v === 'number' || typeof v === 'boolean' || typeof v === 'bigint' ? String(v)
         : '';
+  /* 防公式注入：以 = + - @ 开头的单元格在 Excel 里会被当公式执行。前置单引号让
+     表格软件当纯文本处理（数字列本来以数字开头，不受影响）。 */
+  if (/^[=+\-@]/.test(s)) s = `'${s}`;
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 

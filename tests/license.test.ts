@@ -11,18 +11,17 @@ describe.runIf(HAS_KEYS)('激活码验签', () => {
     expect(r.payload?.plan).toBe('lifetime');
   });
 
-  it('payload 改一个字符就验不过', async () => {
+  it('签名被改一个字符就验不过（强断言 invalid，确认验签真在工作）', async () => {
     const code = signCode({ id: 'REV-2026-0002', name: '甲' });
     const [p, body, sig] = code.split('.');
-    /* 改 payload 中段的字符：base64 末位可能落在填充位上，改那里解码后字节不变，
-       测不出「内容被改」。中段一位一定改到真实字节。 */
-    const mid = Math.floor(body.length / 2);
-    const tampered = `${p}.${body.slice(0, mid)}${body[mid] === 'A' ? 'B' : 'A'}${body.slice(mid + 1)}.${sig}`;
+    /* 改签名的中段字符：payload 保持合法 JSON，这样不会被格式检查提前拦下，
+       一定走到验签环节。旧测试改 payload 中段，可能先被 JSON 格式检查拦成 format，
+       于是「签名验不过」这条核心路径其实没被验证到。 */
+    const mid = Math.floor(sig.length / 2);
+    const tampered = `${p}.${body}.${sig.slice(0, mid)}${sig[mid] === 'A' ? 'B' : 'A'}${sig.slice(mid + 1)}`;
     const r = await verifyLicense(tampered);
     expect(r.ok).toBe(false);
-    /* 改到 JSON 文本会先被格式检查拦下（format），改到别的字节则到验签（invalid）——
-       两条都算「不认这枚码」，不锁死具体是哪一个环节。 */
-    expect(['format', 'invalid']).toContain(r.reason);
+    expect(r.reason).toBe('invalid');
   });
 
   it('过期的码被拦下，并说清是哪天过期', async () => {

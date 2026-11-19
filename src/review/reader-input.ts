@@ -38,7 +38,7 @@ export function toQuizQuestions(items: readonly QuizInput[]): QuizQuestionOut[] 
   const seen = new Set<string>();
   const list: readonly QuizInput[] = Array.isArray(items) ? items : [];
   for (const raw of list) {
-    const q = String(raw?.q ?? '').trim();
+    const q = textOf(raw?.q).trim();
     const options = Array.isArray(raw?.options)
       ? raw.options.map((o: unknown) => textOf(o).trim()).filter(Boolean)
       : [];
@@ -55,7 +55,7 @@ export function toQuizQuestions(items: readonly QuizInput[]): QuizQuestionOut[] 
       options,
       correctIndices: [...new Set(correct)].sort((a, b) => a - b),
     };
-    const explain = String(raw?.explain ?? '').trim();
+    const explain = textOf(raw?.explain).trim();
     if (explain) item.explain = explain;
     out.push(item);
   }

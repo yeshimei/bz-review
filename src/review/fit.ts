@@ -6,10 +6,12 @@
  *
  * issue 361（2026-09）：目标函数重写为「整条历史回放」——以候选权重 w 从条目首次进入 FSRS 起
  * 前向推演（initS → R → nextInterval），对每次实际评级记二分类对数似然
- * （good/easy=记住 ∝ R，again/hard=遗忘 ∝ 1-R）。旧实现（逐对样本 + 录得的 S/D）的似然与 w
+ * （hard/good/easy=成功回忆 ∝ R，again=遗忘 ∝ 1-R；官方 FSRS 把 hard 当 pass，
+ * 与 nextStab 里 hard 稳定性上升的口径一致）。旧实现（逐对样本 + 录得的 S/D）的似然与 w
  * 无关、梯度恒零（拟合空转回默认），回放式让全部权重真正进入目标：
  *   - 基础档（100~299 条）：拟合 w[0..7] 八参（w[7] 在本插件 v4 模型中不进似然公式，梯度恒零保持初值）
- *   - 全参档（≥300 条）：拟合全部 19 维（w[7]/w[15]/w[16]/w[18] 为 v4 模型未用参数，自动保持初值）
+ *   - 全参档（≥300 条）：拟合全部 19 维（w[7]/w[16]/w[18] 为本变体未用参数，梯度恒零自动保持初值；
+ *     w[15] 现用于 hard 稳定性折扣，随全参拟合更新）
  *
  * 防不收敛拖死（拟合在评级路径 fire-and-forget 后台跑，但仍是主线程 CPU）：
  * 迭代上限 + 停滞早停 + 墙钟时限（默认 800ms）三重护栏，并按迭代分片 await setTimeout
@@ -73,8 +75,8 @@ export function buildReplaySeriesFromItems(
 /**
  * 回放对数似然：给定候选权重，逐条目前向推演并累计「实际评级」的对数似然。
  *  - 起点对齐 scheduleNext enteringFsrs：S0 = initS(initRating)，D0 = again→w[4] / 其余 0.3；
- *  - 每对：R = R(t,S)（遗忘幂律指数 d 固定 DEFAULT_D，与调度同源），good/easy 记 log R、
- *    again/hard 记 log(1-R)；
+ *  - 每对：R = R(t,S)（遗忘幂律指数 d 固定 DEFAULT_D，与调度同源），hard/good/easy 记 log R、
+ *    again 记 log(1-R)（官方口径：hard 是 pass，不是 lapse）；
  *  - 状态推进 nextInterval（nextDiff/nextStab 全走 FSRS 类公式——拟合与调度逐式同源，
  *    拟合出的权重即刻就是调度用的那张记忆曲线）。
  */
@@ -88,7 +90,7 @@ export function replayLogLikelihood(w: number[], series: ReplaySeries[]): number
     let D = fsrs.initD(RATING_NAMES[s.initRating]);
     for (const p of s.pairs) {
       const R = fsrs.R(p.t, S);
-      const remember = p.rating >= 2; // good/easy=记住，again/hard=遗忘
+      const remember = p.rating >= 1; // hard/good/easy=成功回忆(官方 pass)，again=遗忘
       const prob = remember ? R : 1 - R;
       sum += Math.log(Math.max(1e-9, Math.min(1 - 1e-9, prob)));
       const next = fsrs.nextInterval(S, D, RATING_NAMES[p.rating], R);
@@ -122,7 +124,7 @@ const W_BOUNDS: ReadonlyArray<readonly [number, number]> = [
   [0.01, 5], // w12 D 幂
   [0.01, 5], // w13 (S+1) 幂
   [-5, 5], // w14 R 系数
-  [0.01, 10], // w15 （v4 模型未用）
+  [0.01, 10], // w15 hard 稳定性折扣（full-rank 拟合可动；官方 v4 同此角色）
   [0.01, 10], // w16 （v4 模型未用）
   [-5, 5], // w17 easy 奖励系数
   [0.01, 10], // w18 （v4 模型未用）

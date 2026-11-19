@@ -80,6 +80,8 @@ export interface RaData {
   rHist: number[];
   rAbove90: number;
   rBelow50: number;
+  /** 留存率在 50%~90% 之间（「在崖上」）——只统计可算 R 的条目，与 rAbove/rBelow 同源 */
+  rMid: number;
   /** 稳定性分层（<7 天 / 7-30 / 30-90 / ≥90） */
   sBuckets: RaBucket[];
   /** 全库最大稳定性（天；无 FSRS 条目 0） */
@@ -157,8 +159,10 @@ export function deriveAnalysis(
       d: Number(it.difficulty) || 0,
       stage: Math.max(0, Math.min(9, Number(it.stage) || 0)),
       phase: it.phase === 'fsrs' ? 'fsrs' : 'ladder',
-      overdue: !!it.isOverdue,
-      overdueDays: it.isOverdue && dueDays != null ? Math.max(0, -dueDays) : 0,
+      /* 按日期算逾期，不读运行时 isOverdue——后者是别处写入的快照，注入 now 测试时
+         不会更新，导致分析面板与真实现状对不上（与 stats-rich 口径统一）。 */
+      overdue: dueDays != null && dueDays < 0,
+      overdueDays: dueDays != null && dueDays < 0 ? Math.max(0, -dueDays) : 0,
       ageDays: Number.isFinite(lastMs) ? Math.max(0, (nowMs - lastMs) / 86400000) : null,
       dueInDays: dueDays == null || !Number.isFinite(dueDays) ? null : dueDays,
       done: !!(it.completed || it.isCompleted),
@@ -198,8 +202,13 @@ export function deriveAnalysis(
   // 添柴志：最近 14 天（含今天），按评级记录 timestamp 落日（宽松口径不与 stats 拉环）
   const daily14: Array<{ date: string; count: number }> = [];
   const dayIdx = new Map<string, number>();
+  const todayStart = new Date(nowMs);
+  todayStart.setHours(0, 0, 0, 0);
   for (let i = 13; i >= 0; i--) {
-    const d = new Date(nowMs - i * 86400000);
+    /* 逐日 setDate 而非 ±86400000：夏令时切换那天只有 23/25 小时，固定毫秒会把
+       日期键推到相邻日，造成漏一天或重复一天。 */
+    const d = new Date(todayStart);
+    d.setDate(todayStart.getDate() - i);
     const key = dateKey(d);
     dayIdx.set(key, daily14.length);
     daily14.push({ date: key, count: 0 });
@@ -249,7 +258,8 @@ export function deriveAnalysis(
   const next8: Array<{ date: string; label: string; count: number }> = [];
   const tideIdx = new Map<string, number>();
   for (let i = 0; i < 8; i++) {
-    const d = new Date(nowMs + i * 86400000);
+    const d = new Date(todayStart);
+    d.setDate(todayStart.getDate() + i);
     const key = dateKey(d);
     tideIdx.set(key, next8.length);
     next8.push({ date: key, label: i === 0 ? '今' : `+${i}`, count: 0 });
@@ -288,6 +298,7 @@ export function deriveAnalysis(
     rHist,
     rAbove90: rs.filter((v) => v > 0.9).length,
     rBelow50: rs.filter((v) => v < 0.5).length,
+    rMid: rs.filter((v) => v >= 0.5 && v <= 0.9).length,
     sBuckets,
     sMax,
     dBuckets: dBucketsOf(fsrsList.map((e) => e.d)),

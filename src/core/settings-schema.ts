@@ -22,6 +22,7 @@ import { renderPathSettingRow } from './path-picker';
 import { createSettingsGroup, markSettingSplitRows, refreshSettingsGroupCounts } from './settings-modal';
 import { uiCardChoice, uiSetlist, attachHelpTip } from './ui';
 import { notifySaveError } from './notice';
+import { pathListToValue, pathValueChanged } from './path-value';
 
 /** 多行输入框最小高度（运行时赋值，非主题静态样式；同 core/dom.ts 的 DISPLAY_NONE 口径） */
 const TEXTAREA_MIN_HEIGHT = '132px';
@@ -57,6 +58,10 @@ export interface SettingsRowContext {
   /** 触发全部 visibleWhen 重求值 + 徽标刷新 + 两行式重标注（custom 行内部动态增删设置行后调用） */
   refreshVisibility: () => void;
 }
+
+/* path 行的值换算/变更判定在 core/path-value.ts（纯函数、零 obsidian 依赖，单测直接跑），
+   这里转发导出，保持外部引用口径不变。 */
+export { pathListToValue, pathValueChanged } from './path-value';
 
 /** 行公共字段（name 由各具体行按需声明，custom 行可省略） */
 interface RowBase {
@@ -878,9 +883,22 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
           // 空值回落 chip（与设置面板 renderer 同口径）：显示「没单独设时实际存哪」
           fallbackChip: typeof row.fallbackValue === 'function' ? row.fallbackValue() : '',
           onChange: (list) => {
-            const v = multi ? list : (list[0] || '').trim().replace(/^\/+|\/+$/g, '');
+            const v = pathListToValue(multi, list);
             acc.write(v);
             safePersist(() => acc.persist(), row.name);
+            /* 域回调返回「最终清单」即落盘口径（见 PathRow.onChange 契约）。同步分支与异步分支
+               都要在清单被否决/改写时把 binding 与落盘一起修正——原先只回退 chips，data.json
+               仍停在被否决的新值：数据目录取消迁移后 storagePath 已改、重启读空目录看似数据丢失。 */
+            const applyFinal = (finalList: readonly string[]): string[] => {
+              const finalV = pathListToValue(multi, finalList);
+              if (pathValueChanged(multi, v, finalV)) {
+                acc.write(finalV);
+                safePersist(() => acc.persist(), row.name);
+                applied = finalV;
+                reevaluate();
+              }
+              return [...finalList];
+            };
             let res: void | string[] | Promise<void | string[]>;
             try {
               res = row.onChange?.(list, ctx);
@@ -899,17 +917,16 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
                   ? [String(applied)]
                   : [];
             }
-            // 回调在落盘后触发（原口径）；返回清单（含异步解析结果）回传 path 行作 chips 渲染口径——
-            // 异步否决场景的落盘改写由回调自行负责（如外部 binding 自管写盘）
+            // 回调在落盘后触发（原口径）；返回清单（含异步解析结果）回传 path 行作 chips 渲染口径
             applied = v;
             warn.fire(multi ? JSON.stringify(v) : String(v));
             reevaluate();
             if (res && typeof (res as { then?: unknown }).then === 'function') {
               return Promise.resolve(res as Promise<void | string[]>).then(
-                (final) => (Array.isArray(final) ? final : list)
+                (final) => applyFinal(Array.isArray(final) ? final : list)
               );
             }
-            return Array.isArray(res) ? res : undefined;
+            return Array.isArray(res) ? applyFinal(res) : undefined;
           },
         });
         return;

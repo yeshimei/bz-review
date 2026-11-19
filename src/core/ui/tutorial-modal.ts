@@ -99,7 +99,7 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   const ui = uiModal({
     content,
     maxWidth: 360,
-    // 无标题头（字少）：title 只落成 aria-label，读屏仍知道这个框是什么
+    // 无标题头（字少）：title 落成视觉隐藏文本 .bzrv-sr-only，读屏仍知道这个框是什么（不用 aria-label）
     title: '视频教程',
     className: opts.className,
     onClose: () => opts.onClose?.(),

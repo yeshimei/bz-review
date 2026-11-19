@@ -140,14 +140,21 @@ async function fetchModelsJson(
   {
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+    let fetchError: unknown;
     try {
       attempt = await fetchAttempt(controller.signal);
-    } catch {
-      if (controller.signal.aborted) {
-        throw new Error(`${label} 无响应（超过 ${timeoutMs / 1000}s 未应答）`);
+    } catch (e) {
+      fetchError = e;
+      /* CORS/网络失败、以及 fetch 超时都走 requestUrl 兜底（对齐 streamChatCompletions
+         的 fetch→requestUrl fallback 口径）。旧代码 aborted 时直接抛错，与注释承诺不符。 */
+      try {
+        attempt = await requestUrlAttempt();
+      } catch {
+        if (controller.signal.aborted) {
+          throw new Error(`${label} 无响应（超过 ${timeoutMs / 1000}s 未应答）`);
+        }
+        throw fetchError ?? e;
       }
-      // CORS/网络失败 → requestUrl 兜底（对齐 streamChatCompletions 的 fallback 口径）
-      attempt = await requestUrlAttempt();
     } finally {
       window.clearTimeout(timer);
     }
@@ -270,16 +277,6 @@ export function embeddingServiceUrl(): string {
   return isMobileEnv() && remote ? remote : local;
 }
 
-/** 拉取向量化模型列表（AI 面板 Embedding 组的行内按钮）：Ollama 原生 GET {service}/api/tags，
- *  按 embedding 能力过滤；空列表抛错由调用方提示。 */
-export async function fetchEmbeddingModels(deps: ModelsFetchDeps = {}): Promise<ModelOption[]> {
-  const url = `${embeddingServiceUrl().replace(/\/+$/, '')}/api/tags`;
-  const data = await fetchModelsJson(url, {}, OLLAMA_TIMEOUT_MS, 'Ollama', deps);
-  const models = pickEmbeddingModels(data);
-  if (!models.length) throw new Error('Ollama 未返回可用的向量化模型');
-  return models;
-}
-
 /** 重排模型名判定：社区转换版命名五花八门、capabilities 里也没有 rerank 这一档，
  *  只按名字软过滤（硬按能力过滤会把真正的重排模型滤掉）。 */
 const RERANK_NAME_RE = /rerank/i;
@@ -297,11 +294,4 @@ export function pickRerankModels(data: unknown): ModelOption[] {
   return (rerank.length ? rerank : tags).map((t) => ({ id: t.id, detail: t.detail }));
 }
 
-/** 拉取重排模型列表（AI 面板「重排模型」行的行内按钮）：与嵌入侧同一端点，空列表抛错由调用方提示 */
-export async function fetchRerankModels(deps: ModelsFetchDeps = {}): Promise<ModelOption[]> {
-  const url = `${embeddingServiceUrl().replace(/\/+$/, '')}/api/tags`;
-  const data = await fetchModelsJson(url, {}, OLLAMA_TIMEOUT_MS, 'Ollama', deps);
-  const models = pickRerankModels(data);
-  if (!models.length) throw new Error('Ollama 未返回可用的重排模型');
-  return models;
-}
+

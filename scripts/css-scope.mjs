@@ -143,7 +143,6 @@ export function scopeCss(css) {
 
   while (i < n) {
     // 注释与空白原样收集
-    const before = i;
     if (css[i] === '/' && css[i + 1] === '*') {
       const end = skipComment(css, i);
       out.push(css.slice(i, end));
@@ -187,7 +186,6 @@ export function scopeCss(css) {
       k++;
     }
     const body = css.slice(bodyStart, k);
-    const tail = css.slice(k + 1);
     i = k + 1;
 
     const trimmed = prelude.trim();
@@ -199,7 +197,6 @@ export function scopeCss(css) {
       } else {
         out.push(`${prelude}{${scopeCss(body)}}`); // @media / @supports / @layer
       }
-      void tail;
       continue;
     }
 
@@ -209,7 +206,6 @@ export function scopeCss(css) {
     }
 
     out.push(`${scopePrelude(prelude)}{${body}}`);
-    void before;
   }
 
   return out.join('');

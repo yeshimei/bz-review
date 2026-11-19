@@ -37,7 +37,7 @@ export async function exportBackupFile(app: App, items: readonly ReviewItem[], k
 }
 
 /** 恢复前把当前数据留一份，恢复也能反悔 */
-export async function restoreBackupFile(app: App, path: string, dm: ReviewDataManager): Promise<{ ok: boolean; message: string }> {
+export async function restoreBackupFile(app: App, path: string): Promise<{ ok: boolean; message: string }> {
   let raw: string;
   try {
     raw = (await app.vault.adapter.read(path));
@@ -46,7 +46,9 @@ export async function restoreBackupFile(app: App, path: string, dm: ReviewDataMa
   }
   let parsedRaw: unknown;
   try {
-    parsedRaw = JSON.parse(raw);
+    /* 剥 UTF-8 BOM：Windows 记事本另存的 JSON 会带 BOM，JSON.parse 直接报
+       Unexpected token，用户会以为备份坏了。 */
+    parsedRaw = JSON.parse(raw.replace(/^\uFEFF/, ''));
   } catch {
     return { ok: false, message: '这不是一个 JSON 备份文件' };
   }
@@ -56,7 +58,8 @@ export async function restoreBackupFile(app: App, path: string, dm: ReviewDataMa
   const current = await diskReadText(app, getReviewFilePath());
   if (current) await writeSnapshotNow(app, current, new Date());
 
-  /* 备份里可能混着运行时字段：剥一遍再走正常加载口径（isCard/note 都按现有规则补派生） */
+  /* 备份条目已是导出的干净形态，这里只做浅拷贝再落盘；派生字段（isMissing/排期等）
+     由下次 loadItems 从数据层补全，恢复阶段不在这里重复构造，避免两份规则漂移。 */
   const items = parsed.items.map((it) => ({ ...it })) as ReviewItem[];
   await jsonFileStore<unknown>(getReviewFilePath(), { app }).write(serializeReviewItems(items));
   await jsonFileStore<unknown>(getReviewMetaPath(), { app }).write(reviewMeta(new Date()));
@@ -85,7 +88,7 @@ export async function importCardsFromMarkdown(
 /** 备份文件里能读出多少条（弹窗里给个预览，别让用户盲恢复） */
 export function countOfBackup(raw: string): number | null {
   try {
-    const parsed = parseBackup(JSON.parse(raw));
+    const parsed = parseBackup(JSON.parse(raw.replace(/^\uFEFF/, '')));
     return parsed.ok ? parsed.items.length : null;
   } catch {
     return null;

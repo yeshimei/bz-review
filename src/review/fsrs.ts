@@ -24,7 +24,9 @@ export class FSRS {
   /** 初始稳定性 */
   initS(rating: Rating): number {
     const map: Record<Rating, number> = { again: 0, hard: 1, good: 2, easy: 3 };
-    return this.w[map[rating]] || 1;
+    /* ?? 而非 ||：手填 0 不该被静默改成 1（parseWeights 已在入口拒绝 0，
+       这里只兜「缺维」的 undefined/null）。 */
+    return this.w[map[rating]] ?? 1;
   }
 
   /**
@@ -57,12 +59,21 @@ export class FSRS {
   /** 下一稳定性 */
   nextStab(S: number, D: number, rating: Rating, R: number): number {
     if (rating === 'again') {
-      return this.w[11] * Math.pow(D, -this.w[12]) * (Math.pow(S + 1, this.w[13]) - 1) * Math.exp(this.w[14] * R);
+      /* 官方 FSRS：遗忘后 S' = w11·D^-w12·((S+1)^w13 − 1)·exp(w14·(1−R))。
+         原式用 exp(w14·R) 方向反了——R 越大（本该越熟）反而算出更高的遗忘后稳定性，
+         与「忘得越彻底、稳定性掉得越多」相悖。改为 (1−R) 与官方一致。 */
+      return this.w[11] * Math.pow(D, -this.w[12]) * (Math.pow(S + 1, this.w[13]) - 1) * Math.exp(this.w[14] * (1 - R));
     }
+    /* 官方 FSRS：成功回忆（hard/good/easy）后 S' = S·(base·评级系数 + 1)，
+       其中 +1 基线保证 SInc ≥ 1——稳定性不会因成功回忆而下降。
+       原式 hard=S·base、easy=S·base·(exp(w17)+1) 都缺 +1 基线：当 R→1 时 base→0，
+       hard/easy 坍缩到 0 甚至低于 good，四档单调性崩溃（「简单」间隔短于「一般」）。
+       本仓是 19 参数变体：hard 折扣走 w15（默认 0.09，拟合保持初值）、good 系数 1、
+       easy 奖励走 w17（exp(w17)+1）。三者都 ≥ S，且 hard<good<easy 单调成立。 */
     const base = Math.exp(this.w[8]) * (11 - D) * Math.pow(S, -this.w[9]) * (Math.exp(this.w[10] * (1 - R)) - 1);
-    if (rating === 'hard') return S * base;
+    if (rating === 'hard') return S * (base * this.w[15] + 1);
     if (rating === 'good') return S * (base + 1);
-    return S * base * (Math.exp(this.w[17]) + 1); // easy
+    return S * (base * (Math.exp(this.w[17]) + 1) + 1); // easy
   }
 
   /** 下一间隔（天） */
@@ -90,7 +101,9 @@ export const MIN_INTERVAL_DAYS = FSRS_FIRST_INTERVALS[0];
 /** 落盘前钳位：乘缩放系数（只对 FSRS 动态间隔生效，调用方决定传不传）→ 压到 [最短, 上限] */
 export function clampIntervalDays(days: number, scale = 1, capDays = 0): number {
   const k = Number.isFinite(scale) && scale > 0 ? scale : 1;
-  const cap = capDays > 0 ? capDays : Infinity;
+  /* 上限不能低于最短间隔，否则 min 会给出一个比下限还短的间隔（比如上限设 0.0001 天，
+     结果就跌破 1 分钟）。下限优先：cap 先夹到不小于 MIN。 */
+  const cap = capDays > 0 ? Math.max(capDays, MIN_INTERVAL_DAYS) : Infinity;
   return Math.min(Math.max(days * k, MIN_INTERVAL_DAYS), cap);
 }
 
@@ -195,7 +208,11 @@ export function scheduleNext(state: ScheduleState, rating: Rating, now: Date, w:
   const S = state.stability || 1;
   const D = state.difficulty || 0.3;
   const last = state.lastReviewed || state.reviewStart;
-  const t = last ? (now.getTime() - new Date(last).getTime()) / 86400000 : 0;
+  let t = last ? (now.getTime() - new Date(last).getTime()) / 86400000 : 0;
+  /* 无效/未来时间会让 t≤0 或 NaN：Math.pow(1+t/(S·d),-d) 在 t<0 且指数非整数时得 NaN，
+     落盘后 stability/difficulty/days 全成 NaN→Invalid Date，卡片再也不出现。
+     currentR 早已用 t>0 守卫，这里对齐：t≤0 视为「刚复习过」R≈1。 */
+  if (!(t > 0)) t = 0;
   const R = fsrs.R(t, S);
   const result = fsrs.nextInterval(S, D, rating, R);
   return {

@@ -17,6 +17,24 @@ import path from 'node:path';
 
 const SRC = path.join(process.cwd(), 'src');
 
+/** 剥掉一行里的 `//` 行注释，但保留字符串字面量内的（如 URL 里的 http://） */
+function stripLineComment(line) {
+  let quote = null;
+  let escaped = false;
+  for (let i = 0; i < line.length - 1; i += 1) {
+    const c = line[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === quote) quote = null;
+      continue;
+    }
+    if (c === '"' || c === "'" || c === "`") { quote = c; continue; }
+    if (c === "/" && line[i + 1] === "/") return line.slice(0, i);
+  }
+  return line;
+}
+
 /** 给定源码文本，返回违规行号与命中片段。纯函数，供测试直接调用。 */
 export function findTooltipAttrs(code) {
   const hits = [];
@@ -32,10 +50,13 @@ export function findTooltipAttrs(code) {
     { re: /(?<![\w-])(?:aria-label|title)=["'`]/, why: 'HTML tooltip attr' },
   ];
   lines.forEach((line, idx) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
+    /* 先剥掉行尾注释再匹配：注释里写的 `// title="x"` 或文档里的示例不该算违规。
+       剥的时候跳过字符串字面量里的 //（URL http://... 不能当注释起点）。 */
+    const code = stripLineComment(line);
+    const trimmed = code.trim();
+    if (!trimmed || trimmed.startsWith('*') || trimmed.startsWith('/*')) return;
     for (const r of rules) {
-      if (r.re.test(line)) hits.push({ line: idx + 1, why: r.why, text: trimmed });
+      if (r.re.test(code)) hits.push({ line: idx + 1, why: r.why, text: trimmed });
     }
   });
   return hits;
