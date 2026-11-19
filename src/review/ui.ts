@@ -293,11 +293,15 @@ export class UIManager {
    * bz-reader 嵌入门面：把头栏四颗图标渲染进宿主动作栏（面板内那套由 CSS 藏掉）。
    * 只在这里创建一次节点：之后重绘只走 syncEmbedActions 改高亮——重建节点会丢掉
    * bindPanelHead 挂的 click 监听，图标也会退回 <i data-lucide> 空壳。
+   *
+   * 外层另挂 bzrv-embed-acts：这组按钮此刻住在宿主的动作栏里，尺寸与间距要跟
+   * Reader 自己那四颗同档（34×32 / 图标 18 / 间距 4），贴边与距底则交给宿主，
+   * 别在它的留白上再垫一层（见 core components.css 的头行段）。
    */
   mountEmbedActions(actionsHost: HTMLElement): void {
     markOwned(actionsHost);
     this.embedActionsHost = actionsHost;
-    setMarkup(actionsHost, `<div class="bzrv-panel-head-btns">${panelHeadBtnsHtml(this.page)}</div>`);
+    setMarkup(actionsHost, `<div class="bzrv-panel-head-btns bzrv-embed-acts">${panelHeadBtnsHtml(this.page)}</div>`);
     mountIcons(actionsHost);
     // 切页逻辑复用面板头那一份：querySelector('[data-act=…]') 天然支持外置宿主
     this.bindPanelHead(actionsHost);
