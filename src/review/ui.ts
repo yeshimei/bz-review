@@ -975,7 +975,7 @@ export class UIManager {
             await this.dataManager?.updateItem(it.filePath, (entry) => {
               entry.completed = false;
               entry.stage = 0;
-              entry.phase = 'ladder';
+              entry.phase = 'fsrs';
               entry.pendingRedo = false;
               entry.nextReviewDate = new Date().toISOString();
             });

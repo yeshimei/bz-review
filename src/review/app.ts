@@ -7,8 +7,6 @@ import type { NoticeHandle } from '../core/notice';
 import { getApp } from '../core/app';
 import { getSettings, saveSettings } from '../core/settings-provider';
 import {
-  FSRS,
-  FSRS_FIRST_TEXTS,
   clampIntervalDays,
   formatInterval,
   scheduleNext,
@@ -273,29 +271,29 @@ export const reviewApp = {
 
     const now = new Date();
     const rating = selectedDifficulty;
-    // ADR-0077：优先用拟合权重（个人化记忆曲线），回退默认
-    // 满血 FSRS：调度决策收敛到纯函数 scheduleNext（9 级前爬阶梯、9 级后按 S/D/R 动态，
-    // 不再固定 120 天循环、不再重复 initS 重置记忆参数）
+    // FSRS-7 全量调度：三元组 (S_long, S_short, D) + 目标留存率 → 纯函数 scheduleNext。
+    // 留存率取设置 reviewRThreshold（默认 0.9，官方推荐值；越高间隔越短、复习越勤）。
+    const desiredRetention = Number(getSettings().reviewRThreshold) || DEFAULT_R_THRESHOLD;
     const decision = scheduleNext(
       {
         stage: item.stage,
         phase: item.phase,
         stability: item.stability,
+        stabilityShort: item.stabilityShort,
         difficulty: item.difficulty,
         lastReviewed: item.lastReviewed,
         reviewStart: item.reviewStart,
       },
       rating,
       now,
-      this.currentW()
+      this.currentW(),
+      desiredRetention
     );
-    // ticket 100：复习间隔缩放（ADR-0046）——仅 FSRS 动态间隔乘系数；阶梯固定表（含进入点 120d）不受影响
+    // 复习间隔缩放（ADR-0046）：只乘 FSRS 动态间隔。
     const scaleRaw = Number((getSettings()).reviewIntervalScale);
-    const scale = decision.phase === 'fsrs' && !decision.enteringFsrs && scaleRaw > 0 ? scaleRaw : 1;
-    /* 最长间隔上限（批 3）：FSRS 动态间隔在稳定度很高时会算出几千天，
-       实际等于「这条以后再也不会出现」。0 = 不限，其余按天截断。 */
+    const scale = scaleRaw > 0 ? scaleRaw : 1;
+    /* 最长间隔上限：FSRS 高稳定度会算出几千天，实质等于「以后不再出现」。0 = 不限。 */
     const capDays = Number((getSettings()).reviewMaxIntervalDays) || 0;
-    // 下限 = 阶梯表第一档（1 分钟）：以前写死 0.01 天，把「1m 后复习」悄悄拉成 14 分钟
     const scaledDays = clampIntervalDays(decision.intervalDays, scale, capDays);
     const nextDate = new Date(now.getTime() + scaledDays * 86400000);
 
@@ -318,14 +316,14 @@ export const reviewApp = {
         it.stage = decision.stage;
         it.phase = decision.phase;
         if (decision.stability !== null) it.stability = decision.stability;
+        if (decision.stabilityShort !== null) it.stabilityShort = decision.stabilityShort;
         if (decision.difficulty !== null) it.difficulty = decision.difficulty;
         it.lastReviewed = now.toISOString();
         it.lastDifficulty = rating;
         it.totalReviews = (it.totalReviews || 0) + 1;
         if (!it.reviewHistory) it.reviewHistory = [];
         const entry: ReviewHistoryEntry = { timestamp: now.toISOString(), stage: decision.historyStage, rating };
-        // ADR-0077：S/D 记入历史（下游拟合配对依赖上一条含 stability/difficulty）
-        // 二者在 scheduleNext 里总是同步给出（同为null或同为数），故一起收窄
+        // FSRS-7：S_long/S_short/D 记入历史（拟合回放依赖）
         if (decision.historyStability !== null && decision.historyDifficulty !== null) {
           entry.stability = decision.historyStability;
           entry.difficulty = decision.historyDifficulty;
@@ -333,7 +331,6 @@ export const reviewApp = {
         if (decision.R !== null) entry.R = Math.round(decision.R * 100);
         it.reviewHistory.push(entry);
         it.nextReviewDate = nextDate.toISOString();
-        if (decision.enteringFsrs) it.completed = false; // 进入 FSRS 不算完成
 
         // ticket 098：做题会话自动评级未通过/通过联动待重做标记；其余路径 good/easy 清（ADR-0044）
         if (opts?.autoPending) it.pendingRedo = rating === 'again' || rating === 'hard';
@@ -353,15 +350,9 @@ export const reviewApp = {
     if (this._undoStack.length > 20) this._undoStack.shift();
     const undo = (): void => void this.undoLastRating();
 
-    if (decision.enteringFsrs) {
-      notifyUndo(`进入深度复习，${FSRS_FIRST_TEXTS[decision.stage]}后复习`, undo, { type: 'success' });
-    } else if (decision.phase === 'ladder') {
-      notifyUndo(`${FSRS_FIRST_TEXTS[decision.stage]}后复习`, undo, { type: 'success' });
-    } else {
-      const rPct = Math.round((decision.R || 0) * 100);
-      // 说人话：FSRS 动态间隔常在小时级，四舍五入成「1 天」会和实际排期对不上
-      notifyUndo(`R=${rPct}%，下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
-    }
+    // 全量 FSRS：首次评级与后续轮次口径一致，都是「下次复习：X 后」。
+    // 说人话：动态间隔常在小时级，四舍五入成「1 天」会和实际排期对不上。
+    notifyUndo(`下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
     // ADR-0077：评级也累计拟合计数（含阶梯阶段；样本过滤在 fit.ts 内做）。
     // fire-and-forget：计数在入口同步累加，拟合自防重入；不 await 避免大历史时卡评级路径
     void this.maybeRunFit(getApp());
@@ -1103,8 +1094,6 @@ export const reviewApp = {
     }
 
     // R 染色与排期同口径：读拟合权重 currentW()（ADR-0077；默认回退 DEFAULT_W）
-    const fsrs = new FSRS(this.currentW());
-
     for (const path of paths) {
       const el = els.get(path);
       if (!el) {
@@ -1137,10 +1126,11 @@ export const reviewApp = {
       } else if (nextReview && now > nextReview) {
         color = '#ff4757';
         status = 'overdue';
-      } else if (item.phase === 'fsrs' && item.stability && item.lastReviewed) {
-        const t = (now.getTime() - new Date(item.lastReviewed).getTime()) / 86400000;
-        const r = fsrs.R(t, item.stability);
-        if (r >= 0.9) color = '#52c41a';
+      } else if (item.stability && item.lastReviewed) {
+        const r = fsrsCurrentR(item, this.currentW(), now);
+        if (r === null) {
+          color = '#1890ff';
+        } else if (r >= 0.9) color = '#52c41a';
         else if (r >= 0.7) color = '#faad14';
         else color = '#ff9f43';
       } else if (currentStage <= 2) {

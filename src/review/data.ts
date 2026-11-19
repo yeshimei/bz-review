@@ -11,7 +11,7 @@ import { TFile, type App } from 'obsidian';
 import { cardTitleOf } from './card-title';
 import { backupOriginal, diskReadText, enqueueFileTask, jsonFileStore, storageFile } from '../core/storage';
 import { tryGetSettings } from '../core/settings-provider';
-import { FSRS_FIRST_INTERVALS, LADDER_MAX, TOTAL_STAGES } from './fsrs';
+import { FSRS_FIRST_INTERVALS, TOTAL_STAGES } from './fsrs';
 import { clipWToBounds } from './fit';
 import { canAddCard, canAddNote, quotaBlock, type PlanCounts } from '../data/entitlement';
 import {
@@ -123,7 +123,10 @@ export interface ReviewItem {
   reviewStart: string; // ISO
   stage: number;
   phase: 'ladder' | 'fsrs';
+  /** FSRS-7：长期稳定性（= S_long）。字段名沿用 v4，下游语义升级为长期。 */
   stability: number;
+  /** FSRS-7：短期稳定性（= S_short）。可选：老数据/未首次评级的条目没有，调度按 0.8·S_long 回退。 */
+  stabilityShort?: number;
   difficulty: number;
   reviewHistory: ReviewHistoryEntry[];
   totalReviews: number;
@@ -241,8 +244,10 @@ export class ReviewDataManager {
   private finishSchedule(item: ReviewItem): void {
     if (item.stage === undefined) item.stage = (item.reviewStage || 1) - 1;
     if (item.stability === undefined) item.stability = 1;
+    if (item.stabilityShort === undefined && item.stability > 0) item.stabilityShort = 0.8 * item.stability;
     if (item.difficulty === undefined) item.difficulty = 0.3;
-    if (item.phase === undefined) item.phase = item.stage >= LADDER_MAX ? 'fsrs' : 'ladder';
+    // FSRS-7 无阶梯：所有条目按 fsrs 相位处理（老 ladder 数据也走同一套调度）。
+    item.phase = 'fsrs';
     const now = new Date();
     const isCompleted = item.completed || false;
     let nextReview = item.nextReviewDate ? new Date(item.nextReviewDate) : null;
@@ -331,8 +336,9 @@ export class ReviewDataManager {
       id: `review_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
       reviewStart: now.toISOString(),
       stage: 0,
-      phase: 'ladder',
+      phase: 'fsrs',
       stability: 1,
+      stabilityShort: 0.8,
       difficulty: 0.3,
       reviewHistory: [],
       totalReviews: 0,
@@ -621,12 +627,12 @@ export class ReviewDataManager {
   }
 }
 
-/** review-fit.json 契约版本（issue 361）：1=基础八参拟合；2=全 19 参数拟合 */
+/** review-fit.json 契约版本：1=基础八参拟合（v4 历史档）；2=全参数拟合（v4=19 / v7=34） */
 export const FIT_PARAMS_VERSION = { BASIC: 1, FULL: 2 } as const;
 
-/** 拟合参数落盘（ADR-0077：独立存储 review-fit.json，不覆盖 DEFAULT_W、不破坏 review.json 数组结构） */
+/** 拟合参数落盘（独立存储 review-fit.json，不覆盖 DEFAULT_W、不破坏 review.json 数组结构） */
 export interface FittedParams {
-  /** 拟合出的 19 权重（基础档只动 w[0..7]，其余为 DEFAULT_W） */
+  /** 拟合出的权重（FSRS-7 为 34 维；基础档只动 w[0..7]，其余为 DEFAULT_W） */
   w: number[];
   /** 拟合时间戳 ISO */
   fitAt: string;
@@ -652,8 +658,8 @@ export async function loadFittedParams(app: App): Promise<FittedParams | null> {
   const data = raw as { w?: unknown; version?: unknown };
   if (!Array.isArray(data.w) || data.w.length < 8) return null;
   const w = data.w as unknown[];
-  // 全参契约完整性：声称 v2 但权重不足 19 维 → 视为字段不齐（null 回退默认，与 w<8 同口径）
-  if (data.version === FIT_PARAMS_VERSION.FULL && w.length < 19) return null;
+  // 全参契约完整性：声称 v2 但权重不足 34 维 → 视为字段不齐（null 回退默认，与 w<8 同口径）
+  if (data.version === FIT_PARAMS_VERSION.FULL && w.length < 34) return null;
   // 脏值防御（审查修复）：任一维非有限数 → 整文件视为坏档（null 回退默认，防 markReview RangeError /
   // NaN 毒化记忆曲线）；有限值逐维钳进 W_BOUNDS（与拟合落盘同界——手改文件越界值不再直灌调度）
   if (!w.every((x) => typeof x === 'number' && Number.isFinite(x))) return null;
