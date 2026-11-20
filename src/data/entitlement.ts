@@ -4,12 +4,12 @@
  * 与 bz / bz Reader / 归物本同构：一个完整包，运行期由激活码决定数量上限。
  *
  * 产品决策（2026-11-18，2026-11-20 调整）：基础版与高级版功能完全一致，只限数量——
- *   数量：基础版复习笔记 + 划线卡**合计 20 条**（两类不再分开计数），高级版不限；
+ *   数量：基础版复习笔记 + 划线卡**合计 50 条**（两类不再分开计数），高级版不限；
  *   能力：全部放开。现有四项免费可用，未来新增功能同样不对基础版关闭。
  *
  * 「超一次」宽限（2026-11-20）：按**导入后合计**决定——
- *   导入前合计 < 20、这批加完会越过 20：整批放行，但回一个 overLimit 给调用方提醒
- *   「这次还能加，下次要先升级」；一旦合计已达 20，再导入就整批拦。
+ *   导入前合计 < 50、这批加完会越过 50：整批放行，但回一个 overLimit 给调用方提醒
+ *   「这次还能加，下次要先升级」；一旦合计已达 50，再导入就整批拦。
  *   不记额外的「已超一次」状态——合计本身是否已满就是那个状态，重启也不会丢。
  *
  * 能力位保留为登记清单（PRO_CAPABILITIES / CAPABILITY_LABELS），
@@ -23,7 +23,7 @@ export const PURCHASE_URL = 'https://wzyp.cn/shop/IFCEI5I3';
 export const GROUP_ID = '1130883117';
 
 /** 基础版：复习条目合计上限（笔记 + 划线卡） */
-export const FREE_ITEM_LIMIT = 20;
+export const FREE_ITEM_LIMIT = 50;
 
 export interface LicenseState {
   /** 是否已解锁高级版 */
@@ -67,7 +67,7 @@ export function totalOf(counts: PlanCounts): number {
   return counts.notes + counts.cards;
 }
 
-/** 单条能不能再加一条（笔记或卡）：合计没到 20 就行 */
+/** 单条能不能再加一条（笔记或卡）：合计没到 50 就行 */
 export function canAdd(counts: PlanCounts): boolean {
   return isPaid() || totalOf(counts) < FREE_ITEM_LIMIT;
 }
@@ -87,7 +87,7 @@ export function remaining(counts: PlanCounts): number {
  * - 导入前没满、但加完会越过上限：整批放行，`overLimit = true` 让调用方提醒
  *   「这次还能加，下次要先升级」——用户要的「允许超一次」就是这个分支。
  *
- * 整批一致放行或整批一致拒绝，不做「前 20 条进、后面拒」的逐条截断：
+ * 整批一致放行或整批一致拒绝，不做「前 50 条进、后面拒」的逐条截断：
  * 一次导 60 张书卡，要么全进，要么全不进，别让用户拿到半本书。
  */
 export interface BatchQuota {
@@ -114,7 +114,7 @@ export interface QuotaInfo {
 
 /**
  * 合计用量。`used` 照实报——迁移进来的老数据可能早就超过上限，
- * 这里不把它按上限截断，否则用户看到「20/20」却明明有 26 条，只会觉得插件在骗人。
+ * 这里不把它按上限截断，否则用户看到「50/50」却明明有 76 条，只会觉得插件在骗人。
  */
 export function quotaInfo(counts: PlanCounts): QuotaInfo {
   const used = totalOf(counts);
@@ -133,7 +133,7 @@ export function quotaInfo(counts: PlanCounts): QuotaInfo {
  * `counts` 是**当前已存在**的条数：迁移进来的老数据可能早就超过上限，
  * 那种情况一律按「已满」处理——不删用户的东西，只是不能再加新的。
  *
- * 文案刻意写成「已用 20/20」而不是「最多 20 条」：用户要的是自己现在处在
+ * 文案刻意写成「已用 50/50」而不是「最多 50 条」：用户要的是自己现在处在
  * 哪一格，不是再读一遍规则；后面那句「已有数据不会被删」是防恐慌的，
  * 上限提示最容易被误解成「要删我的东西」。
  */

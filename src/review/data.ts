@@ -435,7 +435,7 @@ export class ReviewDataManager {
    *  已存在/空路径跳过不抛错；返回 { added, skipped, rejected, overLimitMessage } 供调用方通知口径。
    *
    *  配额按整批判（2026-11-20「超一次」）：与 addCards 同口径——合计已满就整批拒，
-   *  没满就整批放行（哪怕加完越过 20），overLimitMessage 交给调用方提醒「下次要先升级」。 */
+   *  没满就整批放行（哪怕加完越过 50），overLimitMessage 交给调用方提醒「下次要先升级」。 */
   addItems(
     list: Array<{ filePath: string; fileName?: string }>,
   ): Promise<{ added: number; skipped: number; rejected: number; overLimitMessage: string }> {

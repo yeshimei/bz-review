@@ -3,7 +3,7 @@
  *
  * 能力位保留为登记清单（供界面文案与测试引用），但门控恒放行：
  * 现在四个能力免费可用，未来新增的能力同样不对基础版关闭。
- * 唯一差异是复习笔记 + 划线卡合计 20 条的数量上限。
+ * 唯一差异是复习笔记 + 划线卡合计 50 条的数量上限。
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -40,16 +40,16 @@ describe('能力位 · 全部放开', () => {
     expect(canUseCapability('futureFeature' as ProCapability)).toBe(true);
   });
 
-  it('数量限制不受能力位影响，仍是合计 20 条', () => {
+  it('数量限制不受能力位影响，仍是合计 50 条', () => {
     expect(canAdd({ notes: 0, cards: 0 })).toBe(true);
     expect(canAdd({ notes: FREE_ITEM_LIMIT, cards: 0 })).toBe(false);
-    expect(canAdd({ notes: 5, cards: 15 })).toBe(false);
+    expect(canAdd({ notes: 5, cards: 45 })).toBe(false);
   });
 
   it('授权状态文案只谈数量，不再说功能未解锁', () => {
     const free = licenseSummary();
     expect(free).not.toContain('未解锁');
-    expect(free).toContain('20 条');
+    expect(free).toContain('50 条');
   });
 });
 
