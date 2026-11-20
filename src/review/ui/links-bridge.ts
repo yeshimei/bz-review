@@ -1,4 +1,5 @@
 /* 照搬 reader 的对外链接与外链打开方式，地址换成 bz-review 自己的 */
+import { requestUrl } from 'obsidian';
 import { REPO_SLUG } from '../../core/remote-base';
 import { GROUP_ID } from '../../data/entitlement';
 
@@ -30,4 +31,29 @@ export function openExternalUrl(url: string): void {
     /* 移动端 / 拿不到 electron：走下面的兜底 */
   }
   window.open(url, '_blank', 'noopener,noreferrer');
+}
+
+/**
+ * 打开下载页：GitHub 主线路，连不通自动切码云备份（2026-11-20）。
+ * requestUrl 探测（走宿主网络栈、免 CORS）+ race 超时；对用户就是「点一下开浏览器」。
+ */
+export async function openDownloadWithFallback(primary: string, mirror: string): Promise<void> {
+  const timeoutMs = 5000;
+  let ok = false;
+  try {
+    const probe = requestUrl({ url: primary, method: 'HEAD', throw: false });
+    let timer: number | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+      timer = window.setTimeout(() => reject(new Error('probe timeout')), timeoutMs);
+    });
+    try {
+      const res = await Promise.race([probe, timeout]);
+      ok = Number(res.status) >= 200 && Number(res.status) < 400;
+    } finally {
+      if (timer !== undefined) window.clearTimeout(timer);
+    }
+  } catch {
+    ok = false;
+  }
+  openExternalUrl(ok ? primary : mirror);
 }
