@@ -39,6 +39,8 @@ import { createAI } from '../core/ai';
 import { isMobileEnv } from '../core/mobile';
 import { uiEmpty, mountIcons, uiResizable } from '../core/ui';
 import { openVideoTutorial } from './ui/links-bridge';
+import { pickModeModal } from './mode-picker';
+import { WIZARD_MODES, type WizardMode } from './card-wizard-model';
 import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
@@ -1784,14 +1786,21 @@ export class UIManager {
     const { aiReadyOrGuide } = await import('./ai-guide');
     if (!(await aiReadyOrGuide('重新生成要用 AI'))) return;
 
-    /* 先选题再生成：与「加入复习」同一套三选一流程，取消则一个字节不动。 */
-    const { pickCardMethod } = await import('./card-flow');
-    const picked = await pickCardMethod('regenerate');
-    if (!picked) return;
+    /* 先选题再生成：与「加入复习」同一套四选一卡片，取消则一个字节不动。 */
+    const current = item.card?.mode ?? 'flashcard';
+    const seed = (WIZARD_MODES as readonly string[]).includes(current)
+      ? (current as WizardMode)
+      : 'flashcard';
+    const mode = await pickModeModal({
+      title: '重新生成用哪种方式？',
+      lead: '选一种方式重新出题面；原卡不会动，直到你点「确认修改」。',
+      mode: seed,
+    });
+    if (!mode) return;
 
     const progress = notify('正在按新方式生成…', { type: 'progress' });
     const { generateCardRegenerateDraft, applyCardRegenerateDraft } = await import('./index');
-    const entry = await generateCardRegenerateDraft(item.filePath, picked.mode);
+    const entry = await generateCardRegenerateDraft(item.filePath, mode);
     progress.hide();
     if (!entry) {
       notify('这次没生成出来（看看 AI 配置）', { type: 'warning' });
@@ -1801,11 +1810,11 @@ export class UIManager {
     const { confirmRegenerated } = await import('./card-flow');
     const res = await confirmRegenerated({
       item,
-      mode: picked.mode,
+      mode,
       draft: entry.draft,
       /* 确认页里再点「重新生成」：只换草稿，仍然不写盘 */
       regenerate: async () =>
-        (await generateCardRegenerateDraft(item.filePath, picked.mode))?.draft ?? null,
+        (await generateCardRegenerateDraft(item.filePath, mode))?.draft ?? null,
     });
     if (!res.ok) return;
 

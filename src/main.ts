@@ -8,7 +8,7 @@
  * 数据：自己的 review.json（默认库根 bz-review/storage），与 bz 的 CONFIG/STORAGE
  * 分开存，两个插件同时装也不会互相覆盖。
  */
-import { Plugin } from 'obsidian';
+import { Plugin, TFile, TFolder } from 'obsidian';
 import { DEFAULT_SETTINGS, applyAccent } from './settings';
 import type BzSettings from './settings';
 import { setApp } from './core/app';
@@ -25,13 +25,16 @@ import {
   openQuizPractice,
   reviewAddCurrent,
   reviewAddSelection,
+  reviewAddPath,
   reviewRemoveCurrent,
   reviewJumpOverdue,
   reviewStart,
   reviewMarkDialog,
   reviewMarkRating,
+  openCardWizardForAdd,
   uiManager,
 } from './review';
+import type { CardWizardOptions } from './review/card-wizard';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
 import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
@@ -72,13 +75,25 @@ export default class ReviewPlugin extends Plugin {
    * 就点了「加入复习」，那时域还没初始化、门面是空的。
    */
   readonly reviewApi = {
-    /** 契约版本：v2 quota()；v3 embedInto()；v4 setDefaultCardMethod() / focusCard() */
-    version: 4,
+    /** 契约版本：v2 quota()；v3 embedInto()；v4 setDefaultCardMethod() / focusCard()；
+     *  v5 openCardFlow()——统一制卡流程搬进 Review，Reader 只交来源 */
+    version: 5,
     addCards: async (cards: ReviewCardInput[]): Promise<ReviewAddSummary> => {
       ensureReview(this.app);
       const api = getReviewPlanApi();
       if (!api) return { added: 0, exists: 0, notFound: Array.isArray(cards) ? cards.length : 0 };
       return api.addCards(cards);
+    },
+    /**
+     * 统一制卡流程（契约 v5，2026-11-21）。
+     *
+     * 阅读器不再自己做界面：挑完内容把来源交过来，选方式 / 出题面（含挖空
+     * 手工拖选）/ 确认 / 入库全在 Review 里做。老版本 Reader 仍可继续用
+     * addCards 直接交卡。
+     */
+    openCardFlow: (opts: CardWizardOptions): void => {
+      ensureReview(this.app);
+      openCardWizardForAdd(this.app, opts);
     },
     hasNote: async (path: string): Promise<boolean> => {
       ensureReview(this.app);
@@ -221,6 +236,25 @@ export default class ReviewPlugin extends Plugin {
             .setIcon('plus-with-circle')
             .onClick(() => {
               void reviewAddSelection(this.app, editor);
+            });
+        });
+      }),
+    );
+
+    /* 文件树右键「加入复习」（2026-11-21 用户口径）：只给文件夹与 .md 笔记
+       加这一项，其它文件类型一概不出现；没有单独的批量界面——点一下加一批，
+       结果用一条通知说清。 */
+    this.registerEvent(
+      this.app.workspace.on('file-menu', (menu, file) => {
+        const isNote = file instanceof TFile && file.extension.toLowerCase() === 'md';
+        const isFolder = file instanceof TFolder;
+        if (!isNote && !isFolder) return;
+        menu.addItem((item) => {
+          item
+            .setTitle(t('加入复习', 'Add to review'))
+            .setIcon('plus-with-circle')
+            .onClick(() => {
+              void reviewAddPath(this.app, file.path, isFolder);
             });
         });
       }),

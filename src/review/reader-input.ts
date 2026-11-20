@@ -67,6 +67,7 @@ export interface InputCardLike {
   key?: unknown;
   questions?: unknown;
   qa?: unknown;
+  cloze?: unknown;
 }
 
 /**
@@ -93,7 +94,7 @@ export function quizOf(
   return out;
 }
 
-/** 已经自带题面（qa）或题目（questions）的卡，不需要后台再生成。 */
+/** 已经自带题面（qa）/ 题目（questions）/ 挖空空位（cloze）的卡，不需要后台再生成。 */
 export function withoutPrepared(
   keys: readonly string[],
   cards: readonly InputCardLike[],
@@ -107,7 +108,10 @@ export function withoutPrepared(
       && String((c as { qa: { q?: unknown } }).qa.q).trim();
     const hasQs = Array.isArray((c as { questions?: unknown })?.questions)
       && ((c as { questions: unknown[] }).questions.length > 0);
-    if (hasQa || hasQs) prepared.add(key);
+    const cloze = (c as { cloze?: { text?: unknown; blanks?: unknown } })?.cloze;
+    const hasCloze = !!cloze && typeof cloze.text === 'string'
+      && Array.isArray(cloze.blanks) && cloze.blanks.length > 0;
+    if (hasQa || hasQs || hasCloze) prepared.add(key);
   }
   return (Array.isArray(keys) ? keys : [])
     .map((k) => String(k ?? '').trim())

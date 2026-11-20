@@ -13,6 +13,7 @@ import type { ReviewCard } from './data';
 import type { ReviewCardInput } from './reader-api';
 import type { QuizQuestion } from './quiz-core/manager';
 import { noteSourceOf } from './note-source';
+import { validateCloze } from './cloze';
 
 const CARD_MODES: readonly string[] = ['flashcard', 'quiz', 'cloze', 'media', 'occlusion', 'context', 'plain'];
 
@@ -75,6 +76,13 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
   /* 媒体卡 / 图片遮挡的内容随输入一起交来，原样收下（路径由调用方保证在库内） */
   if (input.media) card.media = input.media;
   if (input.occlusion) card.occlusion = input.occlusion;
+  /* 挖空卡（2026-11-21）：制卡流程里用户手工挖好的空位随卡交来，
+     过了校验就原样存下；没过就不设，退回后台按方式生成，至少不会存一张坏卡。 */
+  if (input.cloze) {
+    const valid = validateCloze(input.cloze, text);
+    /* 时间戳统一走调用方给的 now（与 qa 同口径，测试可注入） */
+    if (valid) card.cloze = { text: valid.text, blanks: valid.blanks, at: now };
+  }
 
   const q = String(input?.qa?.q ?? '').trim();
   if (q) {
