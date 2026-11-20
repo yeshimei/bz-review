@@ -587,6 +587,13 @@ export class UIManager {
         ankiBtn.dataset.act = 'empty-anki-import';
         ankiBtn.textContent = '从 Anki 导入';
         acts.appendChild(ankiBtn);
+        /* 装了 bz Reader 的用户，最顺的落地路是从书里挑——放在空态第二条，
+           不再只给「看视频教程」一颗按钮。 */
+        const readerBtn = createEl('button');
+        readerBtn.className = 'bzrv-btn bzrv-btn--ghost';
+        readerBtn.dataset.act = 'empty-reader-add';
+        readerBtn.textContent = '从阅读器加入复习';
+        acts.appendChild(readerBtn);
         host.appendChild(
           uiEmpty({
             icon: 'inbox',
@@ -1403,6 +1410,13 @@ export class UIManager {
       void (async () => {
         const { importAnkiFromPicker } = await import('./anki-import');
         await importAnkiFromPicker(this.app, this.dataManager);
+      })();
+    });
+    // 空态第三个入口：从阅读器加入复习（选书 / 挑范围 / AI 挑都在 Review 自己的窗口里）
+    container.querySelector('[data-act="empty-reader-add"]')?.addEventListener('click', () => {
+      void (async () => {
+        const { openSourcePicker } = await import('./source-pick-ui');
+        openSourcePicker(this.app);
       })();
     });
     // 筛选（批 8：就地展开，不再弹原生弹窗）的图标绑定已并入 bindPanelHead；
