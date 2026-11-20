@@ -33,4 +33,15 @@ describe('手填调度权重', () => {
   it('回显文本能再解析回去（设置页来回编辑不丢数）', () => {
     expect(parseWeights(weightsToText(DEFAULT_W))).toEqual(DEFAULT_W);
   });
+
+  it('手填脏值（越界/破坏单调）也过官方 clip，防 R 变 NaN 把间隔塌成 1 分钟', () => {
+    const bad = [...DEFAULT_W];
+    bad[0] = 9999;          // 超上界 50
+    bad[25] = 2;            // 超上界 0.95，且 > w[26]
+    bad[26] = 0.01;         // 破坏 w25<=w26 单调
+    const got = parseWeights(bad.join(','))!;
+    expect(got[0]).toBeLessThanOrEqual(50);
+    expect(got[25]).toBeLessThanOrEqual(0.95);
+    expect(got[26]).toBeGreaterThanOrEqual(got[25]);
+  });
 });

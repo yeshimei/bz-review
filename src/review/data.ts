@@ -105,6 +105,7 @@ export interface ReviewHistoryEntry {
   stage?: number;
   rating: string;
   stability?: number;
+  stabilityShort?: number;
   difficulty?: number;
   R?: number;
 }

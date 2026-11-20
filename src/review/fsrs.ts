@@ -24,6 +24,8 @@ export const DEFAULT_W = [
 export const DEFAULT_DESIRED_RETENTION = 0.9;
 
 const S_MIN = 1e-4;
+/** 官方 S_MAX：稳定性上界 36500 天（srs-benchmark/models/fsrs_v7.py 的 S_MAX）。 */
+const S_MAX = 36500;
 const MAX_INTERVAL = 36500; // 100 年，与官方 interval solver 上界一致
 
 const RATING_INDEX: Record<Rating, number> = { again: 0, hard: 1, good: 2, easy: 3 };
@@ -117,7 +119,7 @@ export class FSRS {
   /** 首次评级的初始三元组：S_long=w[G-1]、S_short=0.8·S_long、D=initD(G)。 */
   initState(rating: Rating): { sLong: number; sShort: number; d: number } {
     const idx = RATING_INDEX[rating];
-    const sLong = Math.max(S_MIN, this.w[idx] ?? DEFAULT_W[idx]);
+    const sLong = clamp(this.w[idx] ?? DEFAULT_W[idx], S_MIN, S_MAX);
     return { sLong, sShort: 0.8 * sLong, d: this.initD(rating) };
   }
 
@@ -139,10 +141,10 @@ export class FSRS {
     const easy = g === 4 ? this.w[a + 7] : 1;
     const sFail = this.w[a + 3] * (Math.pow(s + 1, this.w[a + 4]) - 1) * Math.exp((1 - r) * this.w[a + 5]);
     const postLapse = Math.min(s, sFail);
-    if (g === 1) return Math.max(S_MIN, postLapse);
+    if (g === 1) return clamp(postLapse, S_MIN, S_MAX);
     const sinc = Math.exp(this.w[a] - 1.5) * (11 - d) * Math.pow(s, -this.w[a + 1]) *
       (Math.exp((1 - r) * this.w[a + 2]) - 1) * hard * easy + 1;
-    return Math.max(S_MIN, Math.max(postLapse, s * sinc));
+    return clamp(Math.max(postLapse, s * sinc), S_MIN, S_MAX);
   }
 
   /** 更新难度：L=R+0.1(again)，固定 1%/99% 均值回归。 */
@@ -167,7 +169,8 @@ export class FSRS {
   intervalForRetention(sLong: number, sShort: number, d: number, target = DEFAULT_DESIRED_RETENTION): number {
     let lo = 0;
     let hi = MAX_INTERVAL;
-    for (let i = 0; i < 60; i++) {
+    // 40 次二分：上界 36500 天 → 精度 3e-8 天（约 2.6 毫秒），足够且比 60 次省 1/3。
+    for (let i = 0; i < 40; i++) {
       const mid = (lo + hi) / 2;
       if (this.R(mid, sLong, sShort, d) > target) lo = mid;
       else hi = mid;
@@ -190,6 +193,86 @@ export function formatInterval(days: number): string {
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `${hours}h`;
   return `${Math.round(hours / 24)}d`;
+}
+
+/**
+ * 本地日期键 YYYY-MM-DD。
+ *
+ * 排期里 ISO 串是 UTC，但「今天是不是建档那天」必须按用户本地日历算：
+ * 东八区凌晨 0–8 点，ISO 的日期还是昨天。以前拿 toISOString().slice(0,10)
+ * 跟本地 todayKey 比，会把刚建档的新卡误判成跨天、直接跳过学习步骤。
+ */
+export function localDateKey(value: Date | number): string {
+  const d = value instanceof Date ? value : new Date(value);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Anki 复习间隔 fuzz 的抖动幅度（天）。
+ *
+ * 官方规则（rslib/src/scheduler/states/fuzz.rs）：<2.5 天不抖；>=2.5 天从
+ * 「1 天 + 各区间系数×落在区间内的天数」起算：2.5–7 天每天 +0.15，
+ * 7–20 天 +0.10，20 天以上 +0.05。目的不是改记忆模型，而是把同一天到期的卡
+ * 摊到相邻几天，避免「复习高峰扎堆」。
+ */
+export function reviewFuzzDelta(intervalDays: number): number {
+  if (!(intervalDays >= 2.5)) return 0;
+  let delta = 1;
+  // 每一项都要像 Anki 那样先 .max(0)：区间外的贡献不能倒扣基础 1 天。
+  delta += 0.15 * Math.max(0, Math.min(intervalDays, 7) - 2.5);
+  delta += 0.1 * Math.max(0, Math.min(intervalDays, 20) - 7);
+  delta += 0.05 * Math.max(0, intervalDays - 20);
+  return Math.max(0, delta);
+}
+
+/** 稳定伪随机 [0,1)：同一 seed 恒定，跨设备/重装一致（Anki 用 card_id+reps 做种）。 */
+export function fuzzFactor(seed: string): number {
+  let h = 2166136261; // FNV-1a
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h ^= h >>> 16; h = Math.imul(h, 0x7feb352d);
+  h ^= h >>> 15; h = Math.imul(h, 0x846ca68b);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * Anki 学习步骤抖动：在原分钟数上再加 0~25%，最多加 5 分钟（只加不减）。
+ * 源码 anki/rslib/src/scheduler/answering/learning.rs 的 learning_ivl_with_fuzz。
+ */
+export function learningStepFuzzMinutes(minutes: number, fuzz: number): number {
+  if (!(minutes > 0) || !Number.isFinite(fuzz)) return minutes;
+  // Anki 源码以秒计：min(25%, 300 秒)=最多 5 分钟；这里入参是分钟，故封顶 5。
+  const extra = Math.min(minutes * 0.25, 5);
+  return minutes + clamp(fuzz, 0, 1) * extra;
+}
+
+/**
+ * 对 FSRS 间隔施加 Anki 式抖动。
+ * 保留本插件的小数天（Anki 取整到天），抖完仍钳在 [minDays, maxDays] 内。
+ * fuzz ∈ [0,1)，上下界各扩 reviewFuzzDelta(intervalDays)。
+ */
+export function applyReviewFuzz(
+  intervalDays: number,
+  fuzz: number,
+  minDays = MIN_INTERVAL_DAYS,
+  maxDays = Infinity
+): number {
+  if (!(intervalDays > 0) || !Number.isFinite(fuzz)) return intervalDays;
+  const delta = reviewFuzzDelta(intervalDays);
+  if (delta <= 0) return Math.min(Math.max(intervalDays, minDays), maxDays);
+  const lo = Math.max(minDays, intervalDays - delta);
+  const hi = Math.min(maxDays, intervalDays + delta);
+  if (!(hi > lo)) return Math.min(Math.max(intervalDays, minDays), maxDays);
+  const f = clamp(fuzz, 0, 1);
+  return lo + f * (hi - lo);
+}
+
+/** Anki 源码：Easy 毕业间隔必须严格大于 Good（good+1 天作下限）。 */
+function easyAtLeast(goodDays: number, rating: Rating, days: number): number {
+  return rating === 'easy' ? Math.max(days, goodDays + 1) : days;
 }
 
 // ==================== 调度纯函数 ====================
@@ -273,7 +356,10 @@ export function scheduleNext(
     // 步骤期也更新记忆状态（Anki 源码：LearnState.memory_state = fsrs_next_states[评级].memory）。
     // 首次评级 initState，之后 nextState（t 用当前间隔——步骤间隔是分钟级，t 很小）。
     let sl: number, ss: number, dd: number;
-    if (!(state.stability && state.stability > 0)) {
+    // 新卡的 stability=1 / difficulty=0.3 是占位初值，不是真实三元组：
+    // 第一次评级必须 initState(rating)，否则 0.3 会被 nextDifficulty 钳成 1（误判成极简卡）。
+    // 走过至少一步后 lastReviewed 才有值，才按 nextState 推进。
+    if (!state.lastReviewed || !(state.stability && state.stability > 0)) {
       const init = fsrs.initState(rating);
       sl = init.sLong; ss = init.sShort; dd = init.d;
     } else {
@@ -296,7 +382,9 @@ export function scheduleNext(
       const gSs = Math.round(init.sShort * 100) / 100;
       const gD = Math.round(init.d * 100) / 100;
       const fsrsFirst = fsrs.intervalForRetention(init.sLong, init.sShort, init.d, desiredRetention);
-      const gradDays = Math.max(MIN_INTERVAL_DAYS, fsrsFirst, opts.graduatingDays ?? 1);
+      const goodInit = fsrs.initState('good');
+      const goodDays = fsrs.intervalForRetention(goodInit.sLong, goodInit.sShort, goodInit.d, desiredRetention);
+      const gradDays = easyAtLeast(goodDays, rating, Math.max(MIN_INTERVAL_DAYS, fsrsFirst, opts.graduatingDays ?? 1));
       return {
         stage: 0, phase: 'fsrs', stability: gS, stabilityShort: gSs, difficulty: gD,
         intervalDays: gradDays, enteringFsrs: true, graduated: true,
@@ -341,7 +429,12 @@ export function scheduleNext(
     if (graduate) {
       // 重新毕业：间隔用更新后三元组的 FSRS good/easy 首间隔（Anki 口径）
       const fsrsFirst = fsrs.intervalForRetention(nx.sLong, nx.sShort, nx.d, desiredRetention);
-      const gradDays = Math.max(MIN_INTERVAL_DAYS, fsrsFirst, opts.graduatingDays ?? 1);
+      let goodDays = fsrsFirst;
+      if (rating === 'easy') {
+        const g = fsrs.nextState(prevS, prevSs, prevD, t, 'good');
+        goodDays = fsrs.intervalForRetention(g.sLong, g.sShort, g.d, desiredRetention);
+      }
+      const gradDays = easyAtLeast(goodDays, rating, Math.max(MIN_INTERVAL_DAYS, fsrsFirst, opts.graduatingDays ?? 1));
       return {
         stage: 0, phase: 'fsrs', stability: rS, stabilityShort: rSs, difficulty: rD,
         intervalDays: gradDays, enteringFsrs: false, graduated: true,

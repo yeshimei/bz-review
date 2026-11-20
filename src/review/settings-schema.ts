@@ -780,6 +780,18 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             min: 0.1,
             max: 5,
           },
+          {
+            /* Anki fuzz：>=2.5 天的间隔在 ±(1 天 + 比例×天数) 内抖开。
+               不改平均留存，只把扎堆到期的卡摊到相邻几天。 */
+            type: 'toggle',
+            name: '间隔抖动（Anki fuzz）',
+            desc: '长间隔上下浮动、学习步骤略微延长，避免复习扎堆（默认开）',
+            help:
+              '模仿 Anki 的间隔抖动：2.5 天以上的间隔会在一个随机范围内前后挪动，越长的间隔浮动越大；' +
+              '学习步骤（1m/10m）会在原时长上再加 0~25%（最多 5 分钟），避免每次都在同一秒复习同一张卡。' +
+              '它不改变平均复习量，只是把扎堆的卡摊开。随机值由卡片 ID 和复习次数决定，结果稳定可复现。',
+            binding: { key: 'reviewFuzz' },
+          },
           // FSRS-7：目标留存率（desired retention）——既决定排期间隔，也用于提前复习判定。
           // 默认 0.9 是 Anki 官方推荐值（留存与负担的平衡点）。
           {

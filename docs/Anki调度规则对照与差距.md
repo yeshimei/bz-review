@@ -18,23 +18,28 @@ Anki 的 FSRS **就是**我们已实现的 FSRS-7（同 `srs-benchmark` 公式�
 | Again 回第一步 | `remaining_for_failed()` = 全部步数 | 回 idx=0 | ✅ |
 | Hard 第一步 | avg(again, good) 秒 | (1+10)/2=5.5m | ✅ |
 | Hard 其它步 | 重复当前步 | 实现 | ✅ |
-| Easy 任意步毕业 | `states.easy.interval`，且保证 > good | **我们用 FSRS 首次初始化** | ⚠️ 接近但间隔来源不同 |
+| Easy 任意步毕业 | `states.easy.interval`，且 `minimum = good + 1` | 已加 Easy ≥ Good+1 天硬保证（学习、重学两条毕业路径） | ✅ 已修 |
 | 步骤期记忆状态 | **有**：`fsrs_next_states[评级].memory` | 已改为每步更新并写回 S/D（拟合可用） | ✅ 已修 |
-| 步骤期 fuzz | +0~25%（最多5分钟） | 无 | ⚠️ 未做（可选，非核心） |
+| 步骤期 fuzz | +0~25%（最多 5 分钟） | 已实现 `learningStepFuzzMinutes()`，seed 稳定 | ✅ 已补 |
+| 复习间隔 fuzz | ≥2.5 天：±(1 天 + 分段系数×天数) | 已实现 `reviewFuzzDelta()` / `applyReviewFuzz()`，设置项默认开 | ✅ 已补 |
 | 短间隔 (<0.5d) | `fsrs_allow_short_term` 时 LearnState 排当天 | 直接按分钟排 + 跨天强制毕业 | ✅ 等价 |
 | 重新学习步骤 | `relearn_steps`（忘了后再走 1m/10m） | 已实现（relearn phase + 设置项） | ✅ 已补 |
 | 重新学习 Again | `failing_review_interval` + 重置重学步骤 | Again 回第一步、三元组按 FSRS lapse 更新 | ✅ 已补 |
+| 状态数值钳位 | S ≤ 36500、D ∈ [1,10] | 已补 S 上界（原只有下界），防长期极端数据脏 | ✅ 已修 |
+| 权重合法性 | 官方 clipper + 单调约束 | 手填权重也过同一 clipper（原只查非负/个数） | ✅ 已修 |
 
 ## 实施结果与真机验证
 
-已按上表前 3 项修正并落地（fuzz 未做，属可选）：
+上表全部「✅」项均已落地，剩余非零差距只剩** Anki 的负载均衡器（load balancer）**——那是按全局队列把复习量摊到多天的服务端调度，单机插件没有全局队列，用 fuzz 已覆盖其核心目的。
 
 - 学习步骤默认 `1m 10m`、重学步骤默认 `1m 10m`，均可在设置里改/关；
 - 步骤期每次评级更新并写回三元组（拟合可用，解决"短步骤让拟合样本变少"的副作用）；
-- 毕业间隔走 FSRS good/easy 首间隔（90% 留存率真正作用到毕业）；
-- 跨天强制毕业（步骤只在建档当天，避免变成长阶梯）。
+- 毕业间隔走 FSRS good/easy 首间隔（90% 留存率真正作用到毕业），Easy 至少比 Good 多 1 天；
+- 跨天强制毕业（步骤只在建档当天，避免变成长阶梯）；**本地日期判定已修**（原来拿 ISO/UTC 日期跟本地日期比，东八区凌晨会误判跨天）；
+- 步骤 fuzz（+0~25%，≤5 分钟）与复习 fuzz（≥2.5 天分段抖动）都做了，统一开关「间隔抖动（Anki fuzz）」默认开；
+- 稳定性补 S≤36500 上界；手填权重与拟合权重同走官方 clipper。
 
-真机验证（实例 `bzrv-steps2`）：当天新卡首次 Good → `phase=ladder, stage=1, nextReviewDate=10 分钟后`，三元组写入 3.92/3.14/3.5；无 console error。截图 `51-52-*.png`。
+真机验证：见 [FSRS-7-对抗审查与真机验证.md](FSRS-7-对抗审查与真机验证.md)（本轮）。早前实例 `bzrv-steps2` 验证过当天新卡首次 Good → `phase=ladder, stage=1, nextReviewDate≈10 分钟后`，三元组写入 3.92/3.14/3.5；无 console error。截图 `51-52-*.png`。
 
 ## 注：源码许可
 

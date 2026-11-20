@@ -6,6 +6,7 @@
  * 手填是明确意图，不该被后台拟合悄悄覆盖。
  */
 import { DEFAULT_W } from './fsrs';
+import { clipWToBounds } from './fit';
 
 /** FSRS-7 权重固定 34 个 */
 export const WEIGHTS_LENGTH = DEFAULT_W.length;
@@ -32,7 +33,9 @@ export function parseWeights(input: unknown): number[] | null {
   /* FSRS-7 官方默认参数含 0（w[8]=0、w[29]=0），0 必须放行；拒绝负数与非有限数。
      S 在核心计算里有 S_MIN 下界守卫，个别 0 参数不会除零。 */
   if (nums.some((n) => !Number.isFinite(n) || n < 0)) return null;
-  return nums;
+  /* 和拟合落盘同界：手填脏值（越界 / 破坏 w1≤w2≤w3、w25≤w26 单调）会令遗忘曲线
+     出现负底数求幂 → R=NaN → 间隔塌到 1 分钟。这里统一过官方 clipper。 */
+  return clipWToBounds(nums);
 }
 
 /** 实际使用的权重：手填合法就用它，否则用拟合值，再否则默认 */

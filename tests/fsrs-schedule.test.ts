@@ -10,6 +10,11 @@ import {
   parseLearningSteps,
   hardStepMinutes,
   currentR,
+  localDateKey,
+  reviewFuzzDelta,
+  fuzzFactor,
+  applyReviewFuzz,
+  learningStepFuzzMinutes,
 } from '../src/review/fsrs';
 
 const now = new Date('2026-11-15T09:00:00.000Z');
@@ -211,6 +216,13 @@ describe('Anki 式学习步骤', () => {
     expect(d.graduated).toBe(false);
   });
 
+  it('新卡首次评级用 initState，不把占位 difficulty=0.3 当真值钳成 1', () => {
+    for (const g of ['again', 'hard', 'good', 'easy'] as const) {
+      const d = scheduleNext(stepState(0), g, now, DEFAULT_W, 0.9, opts);
+      expect(d.difficulty).toBeCloseTo(Math.round(new FSRS().initD(g) * 100) / 100, 5);
+    }
+  });
+
   it('Again 回第一步；Hard 停在现步', () => {
     expect(scheduleNext(stepState(1), 'again', now, DEFAULT_W, 0.9, opts).stage).toBe(0);
     const hard = scheduleNext(stepState(1), 'hard', now, DEFAULT_W, 0.9, opts);
@@ -281,5 +293,65 @@ describe('Anki 重新学习步骤（relearn）', () => {
   it('关掉重学步骤（relearnStepsMins=null）→ 忘了直接走 FSRS', () => {
     const d = scheduleNext(fsrsState, 'again', now, DEFAULT_W, 0.9, { stepsMins: null, relearnStepsMins: null, sameDay: true });
     expect(d.phase).toBe('fsrs');
+  });
+});
+
+describe('Anki 毕业间隔与稳定性上界（对抗审查修复）', () => {
+  it('Easy 毕业间隔严格大于 Good（Anki minimum = good+1）', () => {
+    const opts = { stepsMins: [1, 10], graduatingDays: 1, sameDay: true };
+    const step = (stage: number) => ({ stage, phase: 'ladder' as const, stability: 1, stabilityShort: 0.8, difficulty: 0.3, lastReviewed: null, reviewStart: '2026-11-20T09:00:00.000Z' });
+    const good = scheduleNext(step(1), 'good', now, DEFAULT_W, 0.9, opts).intervalDays;
+    const easy = scheduleNext(step(0), 'easy', now, DEFAULT_W, 0.9, opts).intervalDays;
+    expect(easy).toBeGreaterThan(good);
+  });
+
+  it('S_long 被钳到官方上界 36500（脏权重不污染长期仿真）', () => {
+    const fsrs = new FSRS(DEFAULT_W.map((v, i) => (i < 4 ? 1e9 : v)));
+    expect(fsrs.initState('good').sLong).toBeLessThanOrEqual(36500);
+  });
+});
+
+describe('Anki fuzz 与本地日期键（对抗审查修复）', () => {
+  it('fuzz 幅度：<2.5 天为 0，2.5 天起 1 天，随间隔增大', () => {
+    expect(reviewFuzzDelta(1)).toBe(0);
+    expect(reviewFuzzDelta(2.49)).toBe(0);
+    expect(reviewFuzzDelta(2.5)).toBeCloseTo(1, 5);
+    expect(reviewFuzzDelta(7)).toBeCloseTo(1 + 0.15 * 4.5, 5);
+    expect(reviewFuzzDelta(20)).toBeCloseTo(1 + 0.15 * 4.5 + 0.1 * 13, 5);
+    expect(reviewFuzzDelta(100)).toBeGreaterThan(reviewFuzzDelta(20));
+  });
+
+  it('fuzzFactor 稳定可复现且落在 [0,1)', () => {
+    expect(fuzzFactor('abc')).toBe(fuzzFactor('abc'));
+    for (const s of ['a', 'review_1:7', '中文', '']) {
+      const f = fuzzFactor(s);
+      expect(f).toBeGreaterThanOrEqual(0);
+      expect(f).toBeLessThan(1);
+    }
+  });
+
+  it('学习步骤 fuzz：只加不减、上限 5 分钟', () => {
+    expect(learningStepFuzzMinutes(10, 0)).toBe(10);
+    expect(learningStepFuzzMinutes(10, 1)).toBeCloseTo(12.5, 5);
+    expect(learningStepFuzzMinutes(60, 1)).toBe(65); // 25% 达 15m，但封顶 +5m
+    expect(learningStepFuzzMinutes(10, 0.5)).toBeGreaterThanOrEqual(10);
+  });
+
+  it('applyReviewFuzz 抖完不越界、短间隔不动、尊重上限', () => {
+    expect(applyReviewFuzz(1, 0.7)).toBe(1); // <2.5 不抖
+    for (const f of [0, 0.25, 0.5, 0.99]) {
+      const v = applyReviewFuzz(20, f, 1, 30);
+      const d = reviewFuzzDelta(20);
+      expect(v).toBeGreaterThanOrEqual(20 - d - 1e-6);
+      expect(v).toBeLessThanOrEqual(20 + d + 1e-6);
+    }
+    expect(applyReviewFuzz(20, 1, 1, 21)).toBeLessThanOrEqual(21);
+  });
+
+  it('localDateKey 用本地日历，不与 UTC 日期混用', () => {
+    // 本地构造 2026-11-20 00:30，ISO(UTC) 已经是 11-19（东八区）
+    const d = new Date(2026, 10, 20, 0, 30, 0);
+    expect(localDateKey(d)).toBe('2026-11-20');
+    expect(localDateKey(d).slice(0, 10)).not.toBe(d.toISOString().slice(0, 10));
   });
 });
