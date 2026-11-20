@@ -28,6 +28,10 @@
 
 审核期间或搜不到时，用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 添加本仓库安装，或手动下载 Release 里的 `main.js`、`manifest.json`、`styles.css`，放进 `<你的库>/.obsidian/plugins/bz-review/` 后启用。
 
+## 视频教程
+
+视频还在制作中，做好后会在这里补上链接；插件里的「看视频教程」按钮也会同步指向它。
+
 ## 功能
 
 基础版免费、不限时，笔记与划线卡合计限 50 条；高级版不限量。两版功能完全一样，以后新增的功能也一样。
@@ -188,6 +192,10 @@ Install from the community directory (visible once the initial review passes):
 3. Enable it — a calendar-check icon appears in the left ribbon.
 
 While the review is pending, or if search doesn't find it, install with [BRAT](https://github.com/TfTHacker/obsidian42-brat), or download `main.js`, `manifest.json`, and `styles.css` from the Release and place them in `<your vault>/.obsidian/plugins/bz-review/`, then enable the plugin.
+
+### Video tutorial
+
+Still in production — the link will be added here and in the plugin's "video tutorial" button once it's ready.
 
 ### Features and pricing
 
