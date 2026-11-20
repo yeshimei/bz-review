@@ -8425,11 +8425,13 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   align-items: center;
   gap: 8px;
   min-width: 0;
-  width: 340px;
-  max-width: 100%;
+  width: 100%;
+  max-width: 340px;
+  box-sizing: border-box;
 }
 .bzrv-settings-content .bzrv-license-code .bzrv-license-input:is([data-bzrv], [data-bzrv] *) {
-  flex: 1 1 auto;
+  flex: 1 1 0;
+  width: 0;
   min-width: 0;
   height: var(--bzrv-control-h);
   font-size: 12px;
