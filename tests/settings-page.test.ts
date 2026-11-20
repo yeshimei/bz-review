@@ -104,12 +104,28 @@ describe('复习设置页 · 两列骨架与关于条', () => {
     expect(build).toContain('unlock.css');
   });
 
-  it('第 21 篇弹同一份对照窗，窗里能直接填激活码', () => {
+  it('数据目录行是 Reader 同款选择钮，不是 chips / 手输框', () => {
+    const schema = read('src/review/settings-schema.ts');
+    const at = schema.indexOf("name: '数据目录'");
+    const dataRow = schema.slice(Math.max(0, at - 120), at + 1800);
+    expect(dataRow).toContain("type: 'custom'");
+    expect(dataRow).toContain('bzs-pickdir');
+    expect(dataRow).toContain('pickFolderNative');
+    expect(dataRow).not.toContain("type: 'path'");
+    expect(schema).toContain('getSettings().storagePath = next');
+    expect(schema).toContain('await saveSettings()');
+    const css = read('src/review/ui/styles/settings-page.css');
+    expect(css).toContain('.bzs-pickdir-path');
+  });
+
+  it('第 21 篇弹同一份对照窗，只引导购买，激活码统一在授权组填', () => {
     const app = read('src/review/app.ts');
     expect(app).toContain('openQuotaUpgradeDialog(e.kind)');
     expect(app).not.toContain("msg.includes('基础版最多')");
     const dlg = read('src/review/ui/unlock-dialog.ts');
-    expect(dlg).toContain('data-act="unlockactivate"');
+    expect(dlg).not.toContain('unlockactivate');
+    expect(dlg).not.toContain('bzs-unlock-code');
+    expect(dlg).toContain('data-act="unlockbuy"');
     expect(dlg).toContain('基础版的 20 篇复习笔记已用完');
     expect(dlg).toContain('已有数据不会被删');
   });
