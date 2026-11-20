@@ -5,11 +5,11 @@
  * 本层的世界观：复习是守着一炉记忆的火。每篇笔记是一粒「忆炭」，余温即留存率 R；
  * 「忘坡」是 FSRS 幂律遗忘曲线——主视觉母题，一切幕都在讲同一件事：坡往下滑，
  * 添柴（复习）让坡变缓。
- *   忆炭 ember    一条在册笔记的记忆余温：R≥70% 青焰 / 40-70% 烛橙 / <40% 将熄 / 阶梯期未入炉为灰青
+ *   忆炭 ember    一条在册笔记的记忆余温：R≥70% 青焰 / 40-70% 烛橙 / <40% 将熄 / 新卡未入炉为灰青
  *   忘坡 slope    遗忘曲线族 R(t,S)=(1+t/S·d)^-d：横轴「龄期/稳定性」，纵轴「留存」
  *   水位 tide     全库平均留存率 = 忆池水位（满水位 = 都记得牢）
  *   欠账 debt     逾期未还的复习（挂绳红欠条；区别于面板动效批的一次性朱批章——这里是持续状态）
- *   阶石 steppath 阶梯十级 + FSRS 自由档：阶段推进的踏脚石
+ *   阶石 steppath 复习次数 5 档的成熟度分布：从新卡到老手的踏脚石
  *   墨晶 crystal  稳定性 S 的结晶：越久不忘晶格越大，下次遗忘来得越慢
  *   矿层 strata   难度 D 分层：越常「忘了」，矿层越沉
  *   添柴 feed     一次复习动作（添柴志 = 每日复习量）
@@ -28,7 +28,7 @@
  *  03 忘坡      曲线描画+落点浮现  常驻：dash 流光 + 指针游标描画（指针驱动）
  *  04 水位      波面涌入          常驻：三层正弦积分；按住池面压水位（spring 积分）
  *  05 欠账      欠条错峰挂绳      常驻：各条悬挂摆（相位差钟摆）；悬停抬起
- *  06 阶石      阶柱错峰生长      常驻：一粒萤火沿阶巡行（确定性路径）
+ *  06 阶石      档柱错峰生长      常驻：一粒萤火沿档巡行（确定性路径）
  *  07 墨晶      晶格点亮          常驻：高光在晶格间巡游 + 指针视差
  *  08 矿层      矿带铺开          常驻：扫描线巡行；悬停读数
  *  09 添柴志    柴束生长          常驻：柴顶火苗呼吸（相位差）；悬停报日
@@ -192,7 +192,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
         hot = nearest(spots, localAt(cv?.el, p), .09);
         if (hot >= 0) {
           const e = embers[hot];
-          const rTxt = e.r == null ? '阶梯期' : `R ${Math.round(e.r * 100)}%`;
+          const rTxt = e.r == null ? '新卡' : `R ${Math.round(e.r * 100)}%`;
           tip(host, `${e.name} · ${rTxt}`, p.cx, p.cy);
         } else tip(host, '');
       },
@@ -360,7 +360,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
           const p = at(t, .6, 2.2);
           S(oncliff, `opacity:${p.toFixed(3)}`);
           /* 「在崖上」= 留存率落在 50%~90% 的可算条目数。旧式用 active（含 R=null 的
-             阶梯项）减两端，既把无 R 的条目算进来、===total 判断又几乎恒假。 */
+             新卡项）减两端，既把新卡算进来、===total 判断又几乎恒假。 */
           T(oncliff, `${data.rMid} 篇`);
         }
       },
@@ -474,7 +474,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
     });
   }
 
-  /* ── 06 阶石：阶柱错峰生长；一粒萤火沿阶常驻巡行；悬停报档 ── */
+  /* ── 06 阶石：档柱错峰生长；一粒萤火沿档常驻巡行；悬停报档 ── */
   {
     const s = scn('steppath') as HTMLElement;
     const steps = qsa(s, '.ra-step');
@@ -499,7 +499,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
           S(el, `opacity:${(at(t, .4, i * .12) * (hotStep >= 0 && !on ? .55 : 1)).toFixed(3)}`);
           T(nums[i], String(Math.round((data.stageDist[i] || 0) * easeOut(p))));
         });
-        // 萤火巡行：沿阶石顶端走（确定性：t 驱动，0..8 级往返）；位置走 --fx/--fy（同 --scan 口径）
+        // 萤火巡行：沿阶石顶端走（确定性：t 驱动，0..4 档往返）；位置走 --fx/--fy（同 --scan 口径）
         if (fly && row) {
           const span = steps.length - 1;
           const u = (Math.sin((t - 1.4) * .55) * .5 + .5) * span; // 往返巡行

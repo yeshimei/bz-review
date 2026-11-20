@@ -353,7 +353,7 @@ export const reviewApp = {
     // 全量 FSRS：首次评级与后续轮次口径一致，都是「下次复习：X 后」。
     // 说人话：动态间隔常在小时级，四舍五入成「1 天」会和实际排期对不上。
     notifyUndo(`下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
-    // ADR-0077：评级也累计拟合计数（含阶梯阶段；样本过滤在 fit.ts 内做）。
+    // ADR-0077：评级也累计拟合计数（含首次评级；样本过滤在 fit.ts 内做）。
     // fire-and-forget：计数在入口同步累加，拟合自防重入；不 await 避免大历史时卡评级路径
     void this.maybeRunFit(getApp());
     // 行为流（issue 261）：评分入小橘行为流（review:rated，域事件总线；未装小橘时订阅端静默）

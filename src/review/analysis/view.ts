@@ -10,6 +10,7 @@
 import { escapeHtml as esc } from '../../core/utils';
 import type { RaData } from './data';
 import { RA_RATING_NAMES, RA_RATING_ORDER } from './data';
+import { MATURITY_LABELS } from '../render';
 
 /** 幕表：编号固定，引擎按顺序翻。name 是底栏短名 */
 export interface RaSceneDef { id: string; name: string }
@@ -80,7 +81,7 @@ export function analysisHtml(data: RaData): string {
           <span><i class="dot tone-hi"></i>余温足（R&gt;70%）</span>
           <span><i class="dot tone-mid"></i>渐凉（40-70%）</span>
           <span><i class="dot tone-low"></i>将熄（&lt;40%）</span>
-          <span><i class="dot tone-off"></i>阶梯期（未入 FSRS）</span>
+          <span><i class="dot tone-off"></i>新卡（未首次复习）</span>
         </div>
       </div>
     </div>`));
@@ -143,13 +144,13 @@ export function analysisHtml(data: RaData): string {
       <div class="ra-debt-total"><b>${data.overdueList.length}</b><span>笔未还 · 最早一笔拖了 ${data.overdueList.length ? Math.round(data.overdueList[0].days) : 0} 天</span></div>
     </div>`));
 
-  /* 06 阶石 —— 阶梯十级（含 FSRS 一档）：每级柱高 = 该级篇数，一粒萤火巡行 */
+  /* 06 阶石 —— 按复习次数分的 5 档成熟度（单源 MATURITY_LABELS）：每档柱高 = 该档篇数，一粒萤火巡行 */
   const stepMax = Math.max(1, ...data.stageDist);
   const steps = data.stageDist.map((n, i) => {
-    const last = i === 9;
-    const label = last ? 'FSRS' : `${i + 1}`;
-    const tip = `${last ? '自由排期' : `第 ${i + 1} 阶`} · ${n} 篇`;
-    return `<div class="ra-step${last ? ' is-fsrs' : ''}${i === data.stagePeak ? ' is-peak' : ''}" data-r="step" data-i="${i}" data-tip="${esc(tip)}">
+    const last = i === data.stageDist.length - 1;
+    const label = MATURITY_LABELS[i] ?? String(i + 1);
+    const tip = `${label} · ${n} 篇`;
+    return `<div class="ra-step${last ? ' is-last' : ''}${i === data.stagePeak ? ' is-peak' : ''}" data-r="step" data-i="${i}" data-tip="${esc(tip)}">
       <span class="ra-step-n" data-r="stepn">${n}</span>
       <span class="ra-step-bar" data-r="stepbar" style="--ph:${(n / stepMax * 100).toFixed(1)}%"></span>
       <span class="ra-step-lb">${label}</span></div>`;
@@ -245,10 +246,10 @@ export function analysisHtml(data: RaData): string {
   }).join('');
   S.push(frame(12, `
     <div class="ra-bedrock">
-      <div class="ra-bedrock-rows" data-r="brows">${bedRows || '<p class="ra-sline">还没进入 FSRS 的数据。完成第一次复习后，这里会显示记忆的基岩与水位变化。</p>'}</div>
+      <div class="ra-bedrock-rows" data-r="brows">${bedRows || '<p class="ra-sline">还没有复习数据。完成第一次复习后，这里会显示记忆的基岩与水位变化。</p>'}</div>
       <div class="ra-bedrock-side">
-        <div class="ra-kv big"><span class="ra-k">FSRS 在册</span><b>${data.fsrsN}<span class="ra-u">篇</span></b></div>
-        <div class="ra-kv"><span class="ra-k">阶梯爬坡</span><b>${data.ladderN}<span class="ra-u">篇</span></b></div>
+        <div class="ra-kv big"><span class="ra-k">已复习在册</span><b>${data.fsrsN}<span class="ra-u">篇</span></b></div>
+        <div class="ra-kv"><span class="ra-k">新卡未复习</span><b>${data.ladderN}<span class="ra-u">篇</span></b></div>
       </div>
     </div>`));
 

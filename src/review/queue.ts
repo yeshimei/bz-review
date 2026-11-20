@@ -155,8 +155,9 @@ export function isOnVacation(vacationUntil: string | undefined | null, now: Date
 /**
  * 今天稍后到点的时刻（批 3）。
  *
- * 阶梯里的 1m / 30m / 6h 是**当天内**的复习步：以前这些条目在列表里只显示「今天到期」，
- * 看不出到底什么时候到点，用户只能一遍遍刷新。返回 HH:MM（本地），不是今天或已经到点返回 null。
+ * FSRS-7 的短间隔（如评「忘了」后 1m、评「困难」后几小时）是**当天内**的复习步：
+ * 这些条目在列表里只显示「今天到期」，看不出到底什么时候到点，用户只能一遍遍刷新。
+ * 返回 HH:MM（本地），不是今天或已经到点返回 null。
  */
 export function dueTimeLabel(item: ReviewItem, now: Date = new Date()): string | null {
   if (!item.nextReviewDate) return null;

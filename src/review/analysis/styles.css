@@ -158,7 +158,7 @@
 .ra-step-bar { width: 100%; max-width: 4.2em; height: var(--ph, 0%); min-height: 2px;
   background: linear-gradient(to top, rgba(var(--ra-indigo-rgb), .85), rgba(var(--ra-indigo-rgb), .35));
   border-radius: 2px 2px 0 0; transform: scaleY(0); transform-origin: bottom center; }
-.ra-step.is-fsrs .ra-step-bar { background: linear-gradient(to top, rgba(var(--ra-jade-rgb), .9), rgba(var(--ra-jade-rgb), .3)); }
+.ra-step.is-last .ra-step-bar { background: linear-gradient(to top, rgba(var(--ra-jade-rgb), .9), rgba(var(--ra-jade-rgb), .3)); }
 .ra-step.is-peak .ra-step-n { color: rgb(var(--ra-jade-rgb)); }
 .ra-step-lb { margin-top: .5em; font-size: .74em; letter-spacing: .06em; color: rgba(var(--ra-ink-rgb), .6);
   border-top: 1px solid rgba(var(--ra-ink-rgb), .25); width: 100%; text-align: center; padding-top: .4em; }

@@ -77,18 +77,28 @@ export function isPlayable(item: ReviewItem, now: number = Date.now()): boolean 
   return new Date(item.nextReviewDate).getTime() <= now || isDueToday(item);
 }
 
-/** FSRS 相位当前保留率 %（与调度排期同权重源；阶梯/无 lastReviewed → null）。A7：公式单源 fsrs.currentR */
+/** 当前保留率 %（与调度排期同权重源；无 lastReviewed 的新卡 → null）。公式单源 fsrs.currentR */
 export function currentRPct(item: ReviewItem, w: number[] = DEFAULT_W, now: number = Date.now()): number | null {
   const R = fsrsCurrentR(item, w, now);
   return R === null ? null : Math.round(R * 100);
 }
 
+/**
+ * 成熟度档位（FSRS-7 无阶梯，按复习次数分 5 档）——全仓单源：
+ * 卡片徽标、分析面板阶石图、统计弹窗阶段分布共用同一套边界，改一处三处同步。
+ */
+export function maturityLevel(reviews: number): number {
+  const n = Number.isFinite(reviews) ? Math.max(0, Math.floor(reviews)) : 0;
+  return n <= 1 ? 1 : n <= 3 ? 2 : n <= 7 ? 3 : n <= 15 ? 4 : 5;
+}
+
+/** 成熟度档位标签（0-based 索引，对应 maturityLevel 的 Lv.1-5）。 */
+export const MATURITY_LABELS = ['新卡 0-1次', '2-3次', '4-7次', '8-15次', '16+次'] as const;
+
 /** 卡片右上阶段号（FSRS-7 无阶梯；按复习次数给一个成熟度档位） */
 export function stageNum(item: ReviewItem): string {
   if (item.isMissing) return '挂起';
-  const n = item.totalReviews || 0;
-  const level = n <= 1 ? 1 : n <= 3 ? 2 : n <= 7 ? 3 : n <= 15 ? 4 : 5;
-  return `FSRS Lv.${level}`;
+  return `FSRS Lv.${maturityLevel(item.totalReviews || (item.reviewHistory || []).length)}`;
 }
 
 /** 阶段标签（FSRS=R% 分档色 / 未首次复习=新卡 / 已完成） */
@@ -102,7 +112,7 @@ export function stageTagHtml(item: ReviewItem, w: number[] = DEFAULT_W, now: num
   return `<span class="bzrv-q-tag is-r">新卡</span>`;
 }
 
-/** 列内排序（V1 拍板：置顶 → R 升序 → 到期时间；阶梯无 R 视为最低优先级靠后。
+/** 列内排序（置顶 → R 升序 → 到期时间；无 R 的新卡视为最低优先级靠后。
  *  G4：R 口径权重与卡片展示同源——queueViewHtml 透传 ctx.w（拟合权重），
  *  硬编码 DEFAULT_W 会让排序与卡片 R=xx% 值对不上） */
 export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: number[] = DEFAULT_W): ReviewItem[] {
@@ -284,8 +294,8 @@ export function cardHtml(item: ReviewItem, ctx: QueueViewCtx = {}): string {
     !item.isMissing && isEarlyDue(item, ctx.rThreshold ?? 0.9, w) ? `<span class="bzrv-q-tag is-early">提前</span>` : '',
     // V1 原型拍板（issue 253）：待重做旗标显性化——挂红 tag 提示「这题忘了要重做」
     item.pendingRedo && !item.isCompleted ? `<span class="bzrv-q-tag is-redo">待重做</span>` : '',
-    /* 阶梯阶段右上角已经写着「3/10」，这里再挂一条「阶段 3/10」是同一句话说两遍。
-       已完成和 FSRS 不重复（FSRS 右上 Lv.n、这里 R%），照旧保留。 */
+    /* 卡片右上角已写「FSRS Lv.n」，这里再挂一条阶段 tag 是同一句话说两遍。
+       已完成显示「已完成」，故只在未完成且非活跃卡时补一条口径说明。 */
     item.completed || item.phase === 'fsrs' ? stageTagHtml(item, w, now) : '',
   ].join('');
   /* 批量选择时左侧出勾选位：点卡片 = 选中/取消，不再打开笔记（否则一碰就跳走，根本选不了） */
