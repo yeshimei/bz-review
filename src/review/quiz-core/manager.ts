@@ -18,7 +18,7 @@ export function emptyQuiz(): { notes: Record<string, QuizQuestion[]> } {
   return { notes: {} };
 }
 
-/** 做题家数据文件路径（与复习计划共用 storagePath，解析口径与 data.getReviewFilePath 同式） */
+/** 做题家数据文件路径（与复习共用 storagePath，解析口径与 data.getReviewFilePath 同式） */
 export function getQuizFilePath(): string {
   const s = tryGetSettings();
   return storageFile('quiz.json', (s && s.storagePath) || 'CONFIG/STORAGE');

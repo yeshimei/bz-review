@@ -1,7 +1,7 @@
 /**
  * Review（复习）插件入口
  *
- * 与 bz 的关系：复习计划从 bz 独立成付费插件，**bz 里那份原样保留不动**。
+ * 与 bz 的关系：复习从 bz 独立成付费插件，**bz 里那份原样保留不动**。
  * 付费形态照 bz Reader / 归物本：一个完整插件包，激活码离线验签；
  * 基础版笔记与划线卡合计 50 条，高级版不限，功能两边完全一致。
  *
@@ -201,13 +201,29 @@ export default class ReviewPlugin extends Plugin {
     // 启动时静默验一次码（离线，不发网络请求）
     await refreshLicense(this.settings.licenseKey);
 
-    this.addRibbonIcon('calendar-check', t('复习计划', 'Review'), () => {
+    this.addRibbonIcon('calendar-check', t('复习', 'Review'), () => {
       ensureReview(this.app);
       void openReviewPanel(this.app);
     });
 
     // 原生页形态（reviewPanelMode = native，默认）：面板住在一个普通标签页里
     this.registerView(REVIEW_VIEW_TYPE, (leaf) => new ReviewPanelView(leaf));
+
+    /* 笔记里选中一段文字 → 右键「加入复习」：独立使用这个插件时的主入口。
+       Obsidian 把当前 editor 作为第二个参数交过来，直接用它取选区范围，
+       不依赖 activeEditor 的时序（右键时它可能还没切换过来）。 */
+    this.registerEvent(
+      this.app.workspace.on('editor-menu', (menu, editor) => {
+        menu.addItem((item) => {
+          item
+            .setTitle(t('加入复习', 'Add to review'))
+            .setIcon('plus-with-circle')
+            .onClick(() => {
+              void reviewAddSelection(this.app, editor);
+            });
+        });
+      }),
+    );
 
     const withReview =
       (fn: (app: typeof this.app) => void | Promise<void>) =>
@@ -218,7 +234,7 @@ export default class ReviewPlugin extends Plugin {
 
     this.addCommand({
       id: 'review-open',
-      name: t('打开复习计划', 'Open review plan'),
+      name: t('打开复习', 'Open review plan'),
       callback: withReview((app) => openReviewPanel(app)),
     });
     this.addCommand({
@@ -228,21 +244,21 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-add',
-      name: t('把当前笔记加入复习计划', 'Add current note to review plan'),
+      name: t('把当前笔记加入复习', 'Add current note to review plan'),
       callback: withReview((app) => reviewAddCurrent(app)),
     });
     /* 选中一段文字就能做成一张卡（2026-11-15）。走 editorCallback：只有在笔记里
        有光标时才可用，菜单里不会出现一颗点了没反应的命令。 */
     this.addCommand({
       id: 'review-add-selection',
-      name: t('把选中内容加入复习计划', 'Add selection to review plan'),
+      name: t('把选中内容加入复习', 'Add selection to review plan'),
       editorCallback: () => {
         void reviewAddSelection(this.app);
       },
     });
     this.addCommand({
       id: 'review-remove',
-      name: t('把当前笔记移出复习计划', 'Remove current note from review plan'),
+      name: t('把当前笔记移出复习', 'Remove current note from review plan'),
       callback: withReview((app) => reviewRemoveCurrent(app)),
     });
     this.addCommand({
@@ -457,7 +473,7 @@ export default class ReviewPlugin extends Plugin {
     if (isBzPluginEnabled(this.app)) {
       this.addCommand({
         id: 'review-migrate-bz',
-        name: t('从 bz 导入复习计划', 'Import review plan from bz'),
+        name: t('从 bz 导入复习', 'Import review plan from bz'),
         callback: () => importFromBzWithConfirm(this.app, this.settings),
       });
     }
