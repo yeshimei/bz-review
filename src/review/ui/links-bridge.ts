@@ -7,13 +7,13 @@ export const REPO_URL = `https://github.com/${REPO_SLUG}`;
 export const VIDEO_TUTORIAL_URL = 'https://www.bilibili.com/video/BV1vNsZ6pE7i/?p=1';
 
 /**
- * 插件组「下载 bz Reader」（2026-11-20）：GitHub Release 取最新版压缩包，
+ * 插件组「下载 bz Reader」（2026-11-20）：GitHub Release 页面直接下载三件套，
  * 码云作备份路线。两条都指向 latest，版本随发布自动跟进。
  */
 export const READER_DOWNLOAD_URL =
-  'https://github.com/yeshimei/bz-reader/releases/latest/download/bz-reader.zip';
+  'https://github.com/yeshimei/bz-reader/releases/latest';
 export const READER_DOWNLOAD_MIRROR =
-  'https://gitee.com/ntbl/bz-reader/releases/latest/download/bz-reader.zip';
+  'https://gitee.com/ntbl/bz-reader/releases/latest';
 export { GROUP_ID };
 
 /** 桌面优先 Electron shell，移动端退回 window.open（与 reader 逐字同口径） */
