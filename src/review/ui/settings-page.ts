@@ -10,11 +10,14 @@ import type { App } from 'obsidian';
 import manifest from '../../../manifest.json';
 import { notice } from '../../core/notice';
 import { getLicenseState } from '../../data/entitlement';
-import { openExternalUrl, VIDEO_TUTORIAL_URL, REPO_URL } from './links-bridge';
+import { openExternalUrl, VIDEO_TUTORIAL_URL, REPO_URL, READER_DOWNLOAD_URL, READER_DOWNLOAD_MIRROR, openDownloadWithFallback } from './links-bridge';
 import { copyReviewGroupId } from './group-bridge';
-import { aboutBarHtml, groupColumns, GROUP_SUBTITLES } from './settings-page-pure';
+import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml } from './settings-page-pure';
 import { setHtml } from './set-html';
 import type { ReviewDataManager } from '../data';
+
+/** 同一个容器可能被多次渲染；事件只绑一次，避免点一次激活处理两遍 */
+const licenseBound = new WeakSet<HTMLElement>();
 
 /** 原型里那一段快捷键（命令 id 与 manifest / main.ts 对齐） */
 const HOTKEYS: Array<[string, string]> = [
@@ -67,7 +70,10 @@ export async function renderReviewSettingsPage(
   ]);
   if (!container.isConnected) return;
 
-  const schema = reviewSettingsSchema(deps);
+  /* 分组顺序在渲染层统一：schema 的声明顺序留给别的消费者，界面只认 GROUP_ORDER。
+     数据目录里的自动收编紧跟数据，实验功能沉到最后，编号读起来才是顺着走的。 */
+  const schema = { ...reviewSettingsSchema(deps) };
+  schema.groups = orderGroups(schema.groups);
   const stage = createDiv();
   renderSettingsInto(stage, schema);
 
@@ -78,13 +84,24 @@ export async function renderReviewSettingsPage(
   const about = createDiv();
   setHtml(about, aboutBarHtml(manifest.version, license.paid, license.name || ''));
   if (about.firstElementChild) container.appendChild(about.firstElementChild);
+  if (!licenseBound.has(container)) {
+    licenseBound.add(container);
+    container.addEventListener('bz-review:license-changed', () => {
+      if (!container.isConnected) return;
+      const current = getLicenseState();
+      const fresh = createDiv();
+      setHtml(fresh, aboutBarHtml(manifest.version, current.paid, current.name || ''));
+      const old = container.querySelector('.bzs-about');
+      if (old && fresh.firstElementChild) old.replaceWith(fresh.firstElementChild);
+    });
+  }
 
   const grid = createDiv();
   grid.className = 'bzs-set-grid';
-  /* 体量 ≈ 行数 + 组头/内边距那点固定高度；长组（复习节奏）不再把左列架空 */
+  /* 权重取真机实测高度：AI 组 24 行里大多按服务商显隐，按行数算会把左列架空 */
   const [leftNames, rightNames] = groupColumns(
     schema.groups.map((g) => g.name),
-    schema.groups.map((g) => (g.rows?.length ?? 0) + 2),
+    schema.groups.map((g) => GROUP_WEIGHTS[g.name] ?? (g.rows?.length ?? 0) * 45 + 80),
   );
   const cols = [leftNames, rightNames].map((names) => {
     const col = createDiv();
@@ -113,6 +130,11 @@ export async function renderReviewSettingsPage(
   });
   container.appendChild(grid);
 
+  /* 插件组（2026-11-20）：通栏，放到两列之下、快捷键之上 */
+  const pluginGrp = createDiv();
+  setHtml(pluginGrp, pluginGroupHtml());
+  if (pluginGrp.firstElementChild) container.appendChild(pluginGrp.firstElementChild);
+
   const keys = createDiv();
   setHtml(keys, shortcutsHtml());
   if (keys.firstElementChild) container.appendChild(keys.firstElementChild);
@@ -139,6 +161,9 @@ export async function renderReviewSettingsPage(
           return;
         case 'changelog':
           void openReviewChangelog();
+          return;
+        case 'readerdownload':
+          void openDownloadWithFallback(READER_DOWNLOAD_URL, READER_DOWNLOAD_MIRROR);
           return;
       }
     }

@@ -6,6 +6,7 @@ import {
   canAddNote,
   licenseSummary,
   quotaBlock,
+  QuotaExceededError,
   quotaInfo,
   refreshLicense,
   currentLicenseCode,
@@ -42,6 +43,13 @@ describe('基础版上限', () => {
     expect(block.ok).toBe(false);
     expect(block.message).toContain('300');
     expect(block.message).not.toContain('删除');
+  });
+
+  it('到顶抛带类型的错误，界面据此弹升级窗而不是当成写盘失败', () => {
+    const err = new QuotaExceededError('note', '已用 20/20 篇复习笔记（基础版上限）。');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.kind).toBe('note');
+    expect(err.message).toContain('20/20');
   });
 
   it('两类各数各的：笔记满了不影响划线卡', () => {

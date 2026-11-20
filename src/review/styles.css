@@ -160,7 +160,6 @@
 
 .bzrv-q-card.no:hover { border-color: var(--bzrv-border); }
 }
-.bzrv-q-card.danger { border-left: 3px solid var(--bzrv-danger); }
 /* 从阅读器「去复习」跳过来的一张：短暂描边，告诉用户是哪条划线 */
 .bzrv-q-card.bzrv-card-jump { border-color: var(--bzrv-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bzrv-accent) 32%, transparent); }
 .bzrv-q-card .bzrv-q-card-top { display: flex; align-items: flex-start; gap: 6px; justify-content: space-between; }

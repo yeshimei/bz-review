@@ -45,8 +45,7 @@ import { importFromBzWithConfirm } from './data/migrate';
 import { isBzPluginEnabled } from './core/plugin-path';
 import { t } from './i18n';
 import { installScopeGuard, markOwned } from './core/scope';
-import { notice, setNoticeEmbedded } from './core/notice';
-import { DEFAULT_REVIEW_DIR, LEGACY_REVIEW_DIR, startupStorageDir } from './core/storage-dir';
+import { setNoticeEmbedded } from './core/notice';
 
 /** 取 localStorage；隐私模式 / 移动端 WebView 可能抛错，退回 null（镜像降级，主流程照旧） */
 function localStorageOf(): CodeStorage | null {
@@ -489,27 +488,6 @@ export default class ReviewPlugin extends Plugin {
         this.settings.licenseKey = mirrored;
         await this.saveData(this.settings); // 顺手写回 data.json，下次不必再借镜像
       }
-    }
-    /* 老用户的复习数据在 CONFIG/REVIEW，新装才用 bz-review/storage。
-       新目录空、老目录有数据时自动指回老目录，避免升级后一看「今日已清空」。 */
-    const hasData = async (dir: string): Promise<boolean> => {
-      try {
-        const raw = await this.app.vault.adapter.read(`${dir}/review.json`);
-        const parsed: unknown = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.length > 0 : !!parsed && String(raw).trim() !== '[]';
-      } catch {
-        return false;
-      }
-    };
-    const dir = startupStorageDir({
-      configured: this.settings.storagePath,
-      newHasData: await hasData(DEFAULT_REVIEW_DIR),
-      legacyHasData: await hasData(LEGACY_REVIEW_DIR),
-    });
-    if (dir !== this.settings.storagePath) {
-      this.settings.storagePath = dir;
-      await this.saveData(this.settings);
-      notice(`找到老目录 ${LEGACY_REVIEW_DIR} 里的复习数据，已自动指回，数据没动。`, 'info');
     }
   }
 
