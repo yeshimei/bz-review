@@ -4,7 +4,7 @@
  */
 import { stripMdExt } from '../core/utils';
 import type { App, EventRef, Events, TFile } from 'obsidian';
-import { notice, notifyUndo, notifySaveError, notifyActionError } from '../core/notice';
+import { notice, notifyUndo, notifySaveError } from '../core/notice';
 import { onDomainEvent, emitDomainEvent } from '../core/domain-bus';
 import { ReviewDataManager, isCardItem } from './data';
 import type { ReviewCard } from './data';
@@ -37,6 +37,7 @@ import {
   type CardPrepareContext,
 } from './card-ai';
 import { openCardWizard, type CardWizardOptions, type CardWizardSource } from './card-wizard';
+import { openAddToReviewFlow } from './add-flow';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { cardQuota, quizOf, withoutPrepared } from './reader-input';
 import { planCounts } from './data';
@@ -428,7 +429,7 @@ export function openQuizPractice(app: App): void {
   void openQuizPanel(app);
 }
 
-/** 加入复习（review-add-current） */
+/** 加入复习（review-add-current）：走统一流程，不再直接写库（2026-11-21） */
 export async function reviewAddCurrent(app: App): Promise<void> {
   ensureReview(app);
   const file = app.workspace.getActiveFile();
@@ -436,14 +437,11 @@ export async function reviewAddCurrent(app: App): Promise<void> {
     notice('请先打开一个笔记');
     return;
   }
-  try {
-    await reviewApp.addCurrentToReview(file);
-    await uiManager!.refreshPanel();
-    await reviewApp.applyReviewStyles(app);
-  } catch (e: unknown) {
-    // C9：动作失败提示走 notifyActionError 单源（白拿 onRetry 挂「重试」出口，效率整改 8）
-    notifyActionError(e, '加入复习', { onRetry: () => void reviewAddCurrent(app) });
+  if (file.extension !== 'md') {
+    notice('只有笔记能加入复习');
+    return;
   }
+  await openAddToReviewFlow(app, { kind: 'note', path: file.path });
 }
 
 /**
@@ -497,43 +495,31 @@ export async function reviewAddSelection(app: App, editorFromMenu?: unknown): Pr
      真实路径会让它在列表里被当成一篇笔记去打开。选段有出处时用稳定钥匙，
      同一篇同一段重复加入不排两次；没出处（老编辑器）退回时间戳口径。 */
   const key = sourceNote ? noteCardKey(sourceNote) : `sel:${file.path}:${Date.now()}`;
-  const source: CardWizardSource = {
-    key,
-    bookTitle: file.basename,
+  /* 2026-11-21：选段也走同一条流程（挑内容这屏跳过，直接选方式 → 出题面 → 确认） */
+  await openAddToReviewFlow(app, {
+    kind: 'selection',
+    path: file.path,
+    title: file.basename,
     text,
+    key,
     ...(sourceNote ? { sourceNote } : {}),
-  };
-  openCardWizardForAdd(app, { sources: [source] });
+  });
 }
 
 /**
  * 文件树右键：笔记 / 文件夹加入复习（2026-11-21）。
  *
  * 只收 `.md`，其它文件类型调用方根本不加菜单项；文件夹递归收里面的笔记。
- * 「批量加入」没有单独界面——菜单就是菜单，点一下加一批，结果用一条通知说清。
+ * 2026-11-21 用户拍板后不再直接写库：单篇直接进统一制卡流程，文件夹先勾
+ * 笔记、再选方式、再确认，一步都不少。
  */
 export async function reviewAddPath(app: App, path: string, isFolder: boolean): Promise<void> {
   ensureReview(app);
-  const api = getReviewPlanApi();
-  if (!api) return;
-  const all = app.vault.getFiles().filter((f) => f.extension === 'md');
-  const prefix = path.endsWith('/') ? path : `${path}/`;
-  const paths = (isFolder ? all.filter((f) => f.path.startsWith(prefix)).map((f) => f.path) : [path])
-    .filter((p) => p.toLowerCase().endsWith('.md'));
-  if (!paths.length) {
-    notice(isFolder ? '这个文件夹里没有笔记' : '只有笔记能加入复习');
+  if (!isFolder && !path.toLowerCase().endsWith('.md')) {
+    notice('只有笔记能加入复习');
     return;
   }
-  try {
-    const res = await api.addNotes(paths);
-    const parts = [`已加入 ${res.added} 篇`];
-    if (res.exists) parts.push(`${res.exists} 篇本来就在计划里`);
-    if (res.rejected) parts.push(`${res.rejected} 篇超出基础版上限`);
-    if (res.notFound) parts.push(`${res.notFound} 篇找不到`);
-    if (res.added || res.exists) notice(parts.join('，'), res.added ? 'success' : 'warning');
-  } catch (e) {
-    notifyActionError(e, '把笔记加入复习', { onRetry: () => void reviewAddPath(app, path, isFolder) });
-  }
+  await openAddToReviewFlow(app, isFolder ? { kind: 'folder', path } : { kind: 'note', path });
 }
 
 /** 移出复习（review-remove-current）：先二次确认（2026-11-19 用户口径，命令面板里

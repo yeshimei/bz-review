@@ -41,6 +41,8 @@ export interface WizardDraft {
   bookTitle: string;
   chapterTitle?: string;
   text: string;
+  /** 只给模型看的节选（整篇笔记才有；缺省用 text） */
+  aiText?: string;
   comment?: string;
   backlink?: string;
   sourceNote?: { path: string; from: number; to: number };
@@ -71,6 +73,7 @@ export function draftToInput(d: WizardDraft): ReviewCardInput {
     mode: d.mode,
   };
   if (d.chapterTitle) p.chapterTitle = d.chapterTitle;
+  if (d.aiText) p.aiText = d.aiText;
   if (d.comment) p.comment = d.comment;
   if (d.backlink) p.backlink = d.backlink;
   if (d.sourceNote) p.sourceNote = d.sourceNote;

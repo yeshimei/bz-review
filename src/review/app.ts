@@ -20,7 +20,6 @@ import {
 } from './fsrs';
 import type { Rating } from './fsrs';
 import type { ReviewItem, ReviewHistoryEntry } from './data';
-import { QuotaExceededError } from '../data/entitlement';
 import type { QuizMasterUI } from './quiz-core';
 import type { QuizQuestion } from './quiz-core/manager';
 import { ReviewDataManager, isCardItem } from './data';
@@ -1071,32 +1070,8 @@ export const reviewApp = {
     return true;
   },
 
-  /** 加入当前笔记到复习 */
-  async addCurrentToReview(file: TFile): Promise<void> {
-    this.ensure(getApp());
-    const dm = this.dataManager!;
-    try {
-      await dm.addItem(file.path, file.basename);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      /* 「已经在计划里」和「免费版额度到顶」都不是失败，只是这一次不用加。
-         让它们冒充异常会拼出「加入复习失败：…，请重试」——而这两种情况
-         重试一百次还是这个结果，用户只会以为坏了。 */
-      if (msg.includes('已在复习中')) {
-        notice('这篇已经在复习里了', 'info');
-        return;
-      }
-      /* 额度到顶不是写盘失败：弹高级功能对照窗，里面能直接填码解锁。 */
-      if (e instanceof QuotaExceededError) {
-        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog());
-        return;
-      }
-      throw e;
-    }
-    notice('已加入复习，首次复习：1分钟后', 'success');
-    // 行为流（issue 261）：加入复习入小橘行为流（review:added）
-    emitDomainEvent('review', { kind: 'added', title: file.basename });
-  },
+  /** 加入当前笔记到复习：2026-11-21 起统一走 add-flow.ts 的 openAddToReviewFlow，
+   *   这个方法不再保留第二套写库路径（删掉是为了让人没法再绕过去）。 */
 
   /** 文件树染色 + 阶段徽标（源码 L719-772 逐字；ticket 100 加「文件树标记」开关；
    *   ticket 48 收敛：不再全库 getMarkdownFiles + 逐路径 querySelector——
