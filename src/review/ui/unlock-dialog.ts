@@ -20,8 +20,7 @@ const GROUPS: Array<{ title: string; rows: PlanRow[] }> = [
   {
     title: '数量上限 · 唯一差异',
     rows: [
-      { label: '复习笔记', free: '20 篇', pro: '不限' },
-      { label: '划线卡', free: '50 条', pro: '不限' },
+      { label: '复习笔记 + 划线卡合计', free: '20 条', pro: '不限' },
     ],
   },
   {

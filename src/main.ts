@@ -3,7 +3,7 @@
  *
  * 与 bz 的关系：复习计划从 bz 独立成付费插件，**bz 里那份原样保留不动**。
  * 付费形态照 bz Reader / 归物本：一个完整插件包，激活码离线验签；
- * 基础版 20 篇笔记 + 50 条划线卡，高级版不限，功能两边完全一致。
+ * 基础版笔记与划线卡合计 20 条，高级版不限，功能两边完全一致。
  *
  * 数据：自己的 review.json（默认 CONFIG/REVIEW），与 bz 的 CONFIG/STORAGE
  * 分开存，两个插件同时装也不会互相覆盖。
@@ -295,11 +295,14 @@ export default class ReviewPlugin extends Plugin {
           return;
         }
         const res = await importCardsFromMarkdown(reviewApp.dataManager!, cards);
+        const detail = res.overLimitMessage
+          ? `。${res.overLimitMessage}`
+          : res.rejected
+            ? '。合计已达基础版上限，这批未加入；升级高级版后可继续'
+            : '';
         notice(
-          `导入 ${res.added} 张${res.skipped ? `，跳过 ${res.skipped} 张（已存在）` : ''}${
-            res.rejected ? `，${res.rejected} 张超出基础版上限` : ''
-          }`,
-          res.added ? 'success' : 'warning'
+          `导入 ${res.added} 张${res.skipped ? `，跳过 ${res.skipped} 张（已存在）` : ''}${detail}`,
+          res.overLimitMessage || res.rejected ? 'warning' : res.added ? 'success' : 'warning'
         );
         void reviewApp.refreshPanel();
       }),

@@ -77,9 +77,9 @@ export async function listBackupFiles(app: App): Promise<string[]> {
 export async function importCardsFromMarkdown(
   dm: ReviewDataManager,
   cards: ReturnType<typeof import('./md-cards').parseMarkdownCards>
-): Promise<{ added: number; skipped: number; rejected: number }> {
+): Promise<{ added: number; skipped: number; rejected: number; overLimitMessage: string }> {
   const res = await dm.addCards(cards.map((c) => c.card));
-  return { added: res.added, skipped: res.skipped, rejected: res.rejected };
+  return { added: res.added, skipped: res.skipped, rejected: res.rejected, overLimitMessage: res.overLimitMessage };
 }
 
 /** 备份文件里能读出多少条（弹窗里给个预览，别让用户盲恢复） */
