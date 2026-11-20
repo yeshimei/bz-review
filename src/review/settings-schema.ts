@@ -37,16 +37,14 @@ import { openModelPicker } from '../core/settings-model-picker';
 import { tryGetSettings } from '../core/settings-provider';
 import type { ReviewDataManager } from './data';
 import {
-  GROUP_ID,
-  PURCHASE_URL,
-  licenseSummary,
+  FREE_ITEM_LIMIT,
+  isPaid,
   refreshLicense,
   currentLicenseCode,
 } from '../data/entitlement';
 import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
 import { isBzPluginEnabled } from '../core/plugin-path';
 import { panelModeOf } from './panel-mode';
-import { DEFAULT_W } from './fsrs';
 import { openBackupHistoryDialog, restoreLatestWithConfirm } from './backup-history-dialog';
 
 /**
@@ -356,70 +354,108 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '授权',
         rows: [
           {
-            type: 'info',
+            /* 2026-11-21：按 bz Reader 的授权组布局排——三行标准设置行，
+               标签在左、控件在右；购买 / 交流群收进「高级版功能」弹窗底部，
+               不再往状态行塞两颗按钮。 */
+            type: 'custom',
             name: '当前状态',
-            desc: licenseSummary(),
-            actions: [
-              { text: '打开店铺', onClick: () => { window.open(PURCHASE_URL, '_blank'); } },
-              { text: '交流群', onClick: () => { window.open(`https://qm.qq.com/q/${GROUP_ID}`, '_blank'); } },
-            ],
-          },
-          {
-            /* 和 bz Reader 一样，授权组里给一颗「看看包含什么」的入口。
-               弹窗按需加载，只有点开才付那一份 DOM/CSS 的代价。 */
-            type: 'button',
-            name: '高级版功能',
-            desc: '两版功能完全一样，只有数量上限不同。点开看对照表。',
-            buttonText: '查看',
-            onClick: () => {
-              void import('./ui/unlock-dialog').then((m) => m.openReviewUnlockDialog());
+            render: (body) => {
+              const setting = new Setting(body).setName('当前状态');
+              /* Reader 的状态行只有「基础版 / 高级版」这么短；把长句收进弹窗和激活提示，
+                 右栏只留一句能一眼读完的状态，避免在窄控制区里折行被裁。 */
+              const state = setting.controlEl.createSpan({ cls: 'bzrv-license-state' });
+              const paint = (): void => {
+                state.textContent = isPaid() ? '高级版 · 不限数量' : `基础版 · ${FREE_ITEM_LIMIT} 条上限`;
+                state.classList.toggle('is-paid', isPaid());
+              };
+              paint();
+              /* 激活码行在自己的 settingEl 上派发事件，状态行是兄弟节点；
+                 监听整组容器才能收到冒泡上来的授权变化。 */
+              body.addEventListener('bz-review:license-changed', paint);
             },
           },
           {
-            type: 'text',
+            type: 'custom',
             name: '激活码',
-            desc: '填激活码解锁不限数量。赞助人 / 专属定制码两款插件通用；普通高级版码各插件独立。离线验签，不联网。',
-            placeholder: 'BZP2.… 或 BZR2.…（赞助人 / 专属码）',
-            /* 外部 binding：输入只进草稿、不落盘。通用 text 行 800ms 防抖就会
-               saveSettings，直绑 licenseKey 的话输错一次就把真码冲掉了。 */
-            binding: {
-              get: () => licenseDraft || currentLicenseCode(),
-              set: (v: string) => {
-                licenseDraft = v;
-              },
-              save: () => {
-                /* 输入本身不落盘：只有点「激活」验签通过才写 settings */
-              },
-            },
-            actions: [
-              {
+            render: (body) => {
+              const setting = new Setting(body).setName('激活码');
+              const wrap = setting.controlEl.createDiv({ cls: 'bzrv-license-code' });
+              const input = wrap.createEl('input', {
+                type: 'text',
+                cls: 'bzrv-license-input',
+                placeholder: 'BZP2.… 或 BZR2.…',
+              });
+              const btn = wrap.createEl('button', {
+                cls: 'bzrv-btn bzrv-btn--primary',
                 text: '激活',
-                cta: true,
-                onClick: async () => {
+                type: 'button',
+              });
+              /* paid + 未点「重新激活」时输入框只读，避免手滑改掉生效码；
+                 点一次「重新激活」才放开编辑。 */
+              let relicense = false;
+              const paint = (): void => {
+                const paid = isPaid();
+                const locked = paid && !relicense;
+                input.readOnly = locked;
+                input.value = locked ? currentLicenseCode() : licenseDraft;
+                btn.setText(locked ? '重新激活' : '激活');
+                wrap.classList.toggle('is-paid', locked);
+              };
+              input.addEventListener('input', () => {
+                licenseDraft = input.value;
+              });
+              btn.addEventListener('click', () => {
+                void (async () => {
+                  if (isPaid() && !relicense) {
+                    relicense = true;
+                    licenseDraft = '';
+                    paint();
+                    input.focus();
+                    return;
+                  }
                   const code = licenseDraft.trim();
+                  if (!code) {
+                    notice('先填激活码再点激活', 'info');
+                    input.focus();
+                    return;
+                  }
+                  btn.disabled = true;
                   const state = await refreshLicense(code, false);
+                  btn.disabled = false;
                   if (state.paid) {
                     licenseDraft = '';
+                    relicense = false;
                     getSettings().licenseKey = code;
                     await saveSettings();
+                    paint();
+                    setting.settingEl.dispatchEvent(
+                      new Event('bz-review:license-changed', { bubbles: true })
+                    );
                     notice(
                       `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`,
                       'success'
                     );
                     return;
                   }
-                  /* 失败：授权状态和落盘码都没被这枚错码碰过，把输入框也回显回生效码。
-                     激活码输入框的 placeholder 是全局唯一的，靠它定位。 */
-                  const effective = currentLicenseCode();
+                  /* 失败：授权状态和落盘码都没被这枚错码碰过，输入框回显生效码。 */
                   licenseDraft = '';
-                  const input = document.querySelector<HTMLInputElement>(
-                    'input[placeholder^="BZP2"]'
-                  );
-                  if (input) input.value = effective;
+                  paint();
                   notice('激活码无效或已过期，原来的激活码已保留。', 'warning');
-                },
-              },
-            ],
+                })();
+              });
+              paint();
+            },
+          },
+          {
+            /* 和 bz Reader 一样，授权组里给一颗「看看包含什么」的入口。
+               弹窗按需加载，只有点开才付那一份 DOM/CSS 的代价。 */
+            type: 'button',
+            name: '高级版功能',
+            desc: '两版功能完全一样，只有数量上限不同。',
+            buttonText: '查看',
+            onClick: () => {
+              void import('./ui/unlock-dialog').then((m) => m.openReviewUnlockDialog());
+            },
           },
         ],
       },
@@ -917,15 +953,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             visibleWhen: (s) => s.reviewEnableFit === true,
             isChild: true,
           },
-          {
-            /* 手填优先于拟合：用户明确写下的意图不能被后台悄悄盖掉。
-               留空即恢复「全自动」，想退回默认把内容清干净就行。 */
-            type: 'textarea',
-            name: '手填调度权重',
-            desc: '34 个数字，逗号分隔；填了就用它，留空 = 用自动拟合的结果',
-            placeholder: DEFAULT_W.join(', '),
-            binding: { key: 'reviewFsrsWeights' },
-          },
+          /* 2026-11-21：手填调度权重整行撤下（技术细节太重），
+             reviewFsrsWeights 的读取 / 解析代码保留，老用户已填的值仍生效。
+             想回自动拟合：清空设置里的 reviewFsrsWeights 即可。 */
         ],
       },
       {
@@ -1009,25 +1039,17 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
       },
       {
         /* 探索组（2026-11-20）：还在打磨的功能先放这里，代码在、暂不铺开给用户。
-           · 朗读听卡：实现有问题，做题界面的按钮与原来的「朗读」设置组都已撤下，
-             功能代码（tts-client / card-audio / card-session.speak）整段保留，成熟后再放回。
-           · 挖空卡（Cloze）：社区正名，读作「克洛兹」，Anki 的 {{c1::答案}} 写法；已解锁为
-             制卡方式之一，见「划线卡」组的新卡默认方式。
-           · Anki 格式导入：兼容 Anki 导出的 TSV / 挖空写法，入口在下方按钮与命令面板。 */
+           2026-11-21 用户要求「去掉入口，保留代码」：
+           · 朗读听卡、挖空卡 Cloze 的说明行整行撤下（tts-client / card-audio /
+             card-session.speak / Cloze 实现都留在代码里）。
+           · 只留 Anki 导入这一颗真实按钮；描述按第 10 项精简成两句，不再讲分隔符与挖空语法。 */
         icon: 'flask-conical',
         name: '探索',
         rows: [
           {
-            type: 'info',
-            name: '还在打磨的功能',
-            desc:
-              '朗读听卡（代码在、暂不显示）、挖空卡 Cloze、Anki 格式导入都放在这里。' +
-              '挖空卡读作「克洛兹」，是 Anki 的 {{c1::答案}} 填空写法；导入的 Anki 卡会自动转成挖空卡。',
-          },
-          {
             type: 'button',
             name: '从 Anki 导入',
-            desc: '打开系统文件框选一份 Anki「笔记纯文本」导出（.txt/.tsv/.csv，库外任意位置都行），先看清进来多少、跳过什么再确认。支持 Tab/逗号分隔、网页格式、{{c1::挖空}} 拆卡与反向卡；导出里引用的图片/音频可再多选文件按文件名补进来，图片遮挡卡按图片+文字导入（遮挡区域随后手动补）；命令面板也可执行。',
+            desc: '选一份 Anki 导出的笔记纯文本（.txt / .tsv / .csv），先看清进来多少、跳过什么再确认。导出里引用的图片和音频可以再选文件补进来。',
             buttonText: '选文件导入',
             onClick: () => {
               void (async () => {

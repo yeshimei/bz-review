@@ -85,6 +85,8 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
 }
 @media (max-width: 820px) {
   .bzrv-settings-content .bzs-set-grid { grid-template-columns: minmax(0, 1fr); }
+  /* 手机底部有 Obsidian 导航条，最后两组（插件 / 快捷键）要能滚到它上面 */
+  .bzrv-settings-content.bzs-set-page { padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px)); }
 }
 
 /* ── 分组卡片：顶部一道强调色细线 + hover 抬升 ── */
@@ -283,6 +285,38 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
     color: var(--bzsp-t1);
     border-color: color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
     background: color-mix(in srgb, var(--bzsp-accent) 10%, transparent);
+  }
+}
+
+/* 监听文件夹等路径行（2026-11-21）：复用上面目录选择钮的同一套变量与形制，
+   每个目录一颗 pill，✕ 单独一颗；不再出现「添加…」小按钮 + chips 的另一套长相。 */
+.bzrv-settings-content .bzs-setgrp .bzrv-path-picker-setting-row .bzrv-path-pick {
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--bzsp-line);
+  border-radius: var(--input-radius);
+  background: var(--bzsp-sunken);
+  color: var(--bzsp-t2);
+  font-family: var(--bzsp-ui);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-path-picker-setting-row .bzrv-path-pick-action {
+  color: var(--bzsp-accent);
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-path-picker-setting-row .bzrv-path-pick-remove {
+  color: var(--bzsp-t2);
+  border-radius: var(--input-radius);
+}
+@media (hover: hover) {
+  .bzrv-settings-content .bzs-setgrp .bzrv-path-picker-setting-row .bzrv-path-pick:hover {
+    color: var(--bzsp-t1);
+    border-color: color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+    background: color-mix(in srgb, var(--bzsp-accent) 10%, transparent);
+  }
+  .bzrv-settings-content .bzs-setgrp .bzrv-path-picker-setting-row .bzrv-path-pick-remove:hover {
+    color: var(--bzsp-danger, var(--bzrv-danger));
+    background: var(--bzsp-hover, var(--bzrv-surface-hover));
   }
 }
 
@@ -520,9 +554,13 @@ body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
 /* ── 快捷键通栏 ── */
 .bzrv-settings-content .bzs-keys {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(250px, 100%), 1fr));
+  /* 四条命令排成 2×2（和原型一致）；窄屏自动落成一列 */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px 24px;
   margin-top: 10px;
+}
+@media (max-width: 640px) {
+  .bzrv-settings-content .bzs-keys { grid-template-columns: minmax(0, 1fr); }
 }
 .bzrv-settings-content .bzs-keyrow {
   display: flex;
@@ -549,6 +587,14 @@ body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
   border-bottom-width: 2px;
   border-radius: 5px;
   padding: 3px 8px;
+}
+.bzrv-settings-content .bzs-keyrow .bzs-keylist { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.bzrv-settings-content .bzs-keyrow kbd.is-empty {
+  color: var(--bzsp-t3);
+  font-weight: 400;
+  background: none;
+  border-style: dashed;
+  border-bottom-width: 1px;
 }
 
 /* 视觉隐藏文本（读屏名字，不触发悬停气泡） */
@@ -674,6 +720,48 @@ body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
 }
 @media (hover: hover) {
   .bzrv-settings-content .bzs-plugin-grp .bzs-capnote a:hover { border-bottom-color: currentColor; }
+}
+
+/* 授权组（2026-11-21）：状态文字在右、激活码输入 + 按钮在右，三行都是标准设置行 */
+.bzrv-settings-content .bzrv-license-state {
+  padding-right: 4px;
+  font-size: 12px;
+  color: var(--bzsp-t2);
+  max-width: 52%;
+  text-align: right;
+  line-height: 1.6;
+}
+.bzrv-settings-content .bzrv-license-state.is-paid { color: var(--bzsp-accent); }
+.bzrv-settings-content .bzrv-license-code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  width: 340px;
+  max-width: 100%;
+}
+.bzrv-settings-content .bzrv-license-code .bzrv-license-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: var(--bzrv-control-h);
+  font-size: 12px;
+}
+.bzrv-settings-content .bzrv-license-code .bzrv-btn { flex: none; }
+/* 设置行通用 button 规则（白底次级）特异性比 .bzrv-btn--primary 高，这里把主按钮肤色还回去 */
+.bzrv-settings-content .bzs-setgrp .setting-item-control button.bzrv-btn--primary {
+  background: var(--bzrv-brand);
+  color: var(--bzrv-on-brand);
+  border-color: transparent;
+}
+@media (hover: hover) {
+  .bzrv-settings-content .bzs-setgrp .setting-item-control button.bzrv-btn--primary:hover {
+    background: var(--bzrv-brand-hover);
+  }
+}
+@media (max-width: 768px) {
+  .bzrv-settings-content .bzrv-license-state { max-width: 100%; }
+  .bzrv-settings-content .bzrv-license-code { width: 100%; flex-direction: column; align-items: stretch; }
+  .bzrv-settings-content .bzrv-license-code .bzrv-btn { width: 100%; min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

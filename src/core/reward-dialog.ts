@@ -30,7 +30,6 @@
 import { uiModal } from './ui/modal';
 import { escapeHtml, openExternalUrl } from './utils';
 import { getApp } from './app';
-import { REPO_SLUG } from './remote-base';
 import { REWARD_NAMES, formatRewardDate, type RewardName } from './reward-names';
 import { SUPPORT_PITCH, SUPPORT_PITCH_REST } from './support-prompt';
 import rewardCodeUrl from './assets/reward-code.png';
@@ -41,7 +40,7 @@ export const SPONSOR_URL = 'https://wzyp.cn/shop/IFCEI5I3';
 
 /** 本仓库（2026-11-10 加、2026-11-11 与赞助并成一行）：不花钱的另一种支持——
  *  打开仓库页，Star 在页面右上角。slug 单源在 core/remote-base，与「关于」组同一处。 */
-export const REPO_URL = `https://github.com/${REPO_SLUG}`;
+export const REPO_URL = 'https://github.com/yeshimei/bz-review';
 
 /** 装载一段受控 HTML（解析规则与 innerHTML 同源，但不直接写 innerHTML/outerHTML） */
 function setMarkup(el: HTMLElement, html: string): void {
