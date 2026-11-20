@@ -17,7 +17,7 @@
  *   · 生成期间「返回」禁用，关窗即丢弃在途结果（不写盘、不弹已加入）；
  *   · 点遮罩与 ESC 都不关：只有右上角 ✕ 与底部按钮能结束，防误触丢题面。
  * ============================================================ */
-import type { App } from 'obsidian';
+import { Platform, type App } from 'obsidian';
 import { notice } from '../core/notice';
 import { uiModal } from '../core/ui/modal';
 import { getSettings, saveSettings } from '../core/settings-provider';
@@ -35,7 +35,14 @@ import { ruleCloze } from './cloze';
 import type { ReviewCard } from './data';
 import type { ReviewAddSummary, ReviewCardInput } from './reader-api';
 import type { QuizQuestion } from './quiz-core/manager';
-import { addSpan, clozeToRanges, rangesToCloze, removeSpan, type ClozeSpan } from './cloze-edit';
+import {
+  addSpan,
+  clozeToRanges,
+  rangesToCloze,
+  removeRangeFromSpans,
+  removeSpan,
+  type ClozeSpan,
+} from './cloze-edit';
 import {
   clipTitle,
   draftToInput,
@@ -84,6 +91,8 @@ interface ClozeEditState {
   preview: boolean;
   history: string[];
   msg: string;
+  /** 触屏点选的粒度：整词 / 单字 */
+  granularity: 'word' | 'char';
 }
 
 const STATE_LABEL: Record<WizardState, string> = {
@@ -131,6 +140,9 @@ class CardWizard {
   private remember = false;
   private cancelled = false;
   private closed = false;
+  /** 挖空卡的滚动位置（点词会重画这一屏） */
+  private clozeScroll = new Map<string, number>();
+  private pickerScroll = new Map<string, number>();
   private errorText = '';
   private listScroll = 0;
   /** 补完一道题要把它滚进视野（增强 3） */
@@ -147,7 +159,7 @@ class CardWizard {
   }
 
   open(): void {
-    const content = createDiv({ cls: 'bzrv-wiz' });
+    const content = createDiv({ cls: 'bzrv-wiz' + (this.touchUI() ? ' is-touch' : '') });
     this.root = content;
     const { close } = uiModal({
       content,
@@ -227,6 +239,15 @@ class CardWizard {
   private render(): void {
     const oldList = this.root.querySelector<HTMLElement>('.bzrv-wiz-list');
     if (oldList) this.listScroll = oldList.scrollTop;
+    /* 点词会整屏重画：记住每张挖空卡自己的滚动位置，别让长文跳回顶部 */
+    this.root.querySelectorAll<HTMLElement>('.bzrv-wiz-cloze-src').forEach((el) => {
+      const key = el.dataset.key;
+      if (key) this.clozeScroll.set(key, el.scrollTop);
+    });
+    this.root.querySelectorAll<HTMLElement>('.bzrv-wiz-picker-list').forEach((el) => {
+      const key = el.dataset.key;
+      if (key) this.pickerScroll.set(key, el.scrollTop);
+    });
     this.root.empty();
     this.root.appendChild(this.renderHead());
     const body = this.root.createDiv({ cls: 'bzrv-wiz-body' });
@@ -240,6 +261,16 @@ class CardWizard {
       requestAnimationFrame(() => {
         const list = this.root.querySelector<HTMLElement>('.bzrv-wiz-list');
         if (list) list.scrollTop = this.listScroll;
+        this.root.querySelectorAll<HTMLElement>('.bzrv-wiz-cloze-src').forEach((el) => {
+          const key = el.dataset.key;
+          const top = key ? this.clozeScroll.get(key) : undefined;
+          if (top != null) el.scrollTop = top;
+        });
+        this.root.querySelectorAll<HTMLElement>('.bzrv-wiz-picker-list').forEach((el) => {
+          const key = el.dataset.key;
+          const top = key ? this.pickerScroll.get(key) : undefined;
+          if (top != null) el.scrollTop = top;
+        });
         const fresh = this.root.querySelector<HTMLElement>('[data-newq="1"]');
         if (fresh) {
           fresh.scrollIntoView({ block: 'nearest' });
@@ -486,7 +517,14 @@ class CardWizard {
     let st = this.clozeStates.get(d.key);
     if (!st) {
       const model = d.cloze ? clozeToRanges(d.cloze.text, d.cloze.blanks) : { plain: d.text, spans: [] };
-      st = { plain: model.plain, spans: model.spans, preview: false, history: [], msg: '' };
+      st = {
+        plain: model.plain,
+        spans: model.spans,
+        preview: false,
+        history: [],
+        msg: '',
+        granularity: 'word',
+      };
       this.clozeStates.set(d.key, st);
     }
     return st;
@@ -516,22 +554,37 @@ class CardWizard {
       this.render();
     });
 
+    const touch = this.touchUI();
     const src = box.createDiv({
-      cls: 'bzrv-wiz-cloze-src' + (st.preview ? ' is-preview' : ''),
+      cls: 'bzrv-wiz-cloze-src'
+        + (st.preview ? ' is-preview' : '')
+        + (touch ? ' is-touch' : ''),
     });
-    this.paintCloze(d, st, src);
-    if (!st.preview) {
-      const onUp = (ev: Event): void => this.onClozeUp(ev, d, src);
-      src.addEventListener('mouseup', onUp);
-      src.addEventListener('touchend', onUp);
+    src.dataset.key = d.key;
+    /* 触屏没有鼠标：正文按词切成可点的单位，点一下挖、再点一下还原；
+       桌面端仍用鼠标拖选（更精确）。 */
+    if (touch) {
+      /* 正文只读；挖 / 还原都在下方大号词块上做 */
+      this.paintCloze(d, st, src);
+      this.paintWordPicker(d, st, box);
+    } else {
+      this.paintCloze(d, st, src);
+      if (!st.preview) {
+        const onUp = (ev: Event): void => this.onClozeUp(ev, d, src);
+        src.addEventListener('mouseup', onUp);
+        src.addEventListener('touchend', onUp);
+      }
     }
 
-    box.createEl('p', {
-      cls: 'bzrv-wiz-hint',
-      text: st.preview
-        ? '复习时长这样：空位藏起来，只留下划线让你回忆。'
-        : '用鼠标拖选要挖掉的文字；拖选（或点一下）紫色空位就能还原。',
-    });
+    /* 触屏的词块条自己带说明，再写一行提示会把词块挤出去 */
+    if (!touch || st.preview) {
+      box.createEl('p', {
+        cls: 'bzrv-wiz-hint',
+        text: st.preview
+          ? '复习时长这样：空位藏起来，只留下划线让你回忆。'
+          : '用鼠标拖选要挖掉的文字；拖选（或点一下）紫色空位就能还原。',
+      });
+    }
     if (st.msg) box.createDiv({ cls: 'bzrv-wiz-note', text: st.msg });
     return box;
   }
@@ -556,28 +609,156 @@ class CardWizard {
       let cur = 0;
       for (const seg of segs) {
         if (seg.s > cur) p.appendChild(document.createTextNode(text.slice(cur, seg.s)));
-        const no = st.spans.findIndex((s) => s.start === seg.gs && s.end === seg.ge) + 1;
-        const mark = p.createSpan({ cls: 'bzrv-wiz-blank' });
-        mark.createSpan({ cls: 'bzrv-wiz-blank-text', text: text.slice(seg.s, seg.e) });
-        mark.createSpan({ cls: 'bzrv-wiz-blank-no', text: String(no) });
-        mark.dataset.start = String(seg.gs);
-        mark.dataset.end = String(seg.ge);
-        if (!st.preview) {
-          mark.addEventListener('click', (ev) => {
-            ev.stopPropagation();
-            if (window.getSelection()?.toString()) return;
-            st.history.push(JSON.stringify(st.spans));
-            st.spans = removeSpan(st.spans, seg.gs, seg.ge);
-            st.msg = '已还原';
-            this.render();
-          });
-        }
-        p.appendChild(mark);
+        /* 触屏下正文里的空位只展示、不可点：取消操作只在下方词块上做，
+           免得手指点偏把已经挖好的空位误还原。 */
+        p.appendChild(this.makeBlank(st, text.slice(seg.s, seg.e), seg.gs, seg.ge, !this.touchUI()));
         cur = seg.e;
       }
       if (cur < text.length) p.appendChild(document.createTextNode(text.slice(cur)));
       base += text.length + 1;
     });
+  }
+
+  /** 触屏（手机 / 平板 / Obsidian 移动端模拟）走点词编辑，不走拖选 */
+  private touchUI(): boolean {
+    if (Platform.isMobile) return true;
+    try {
+      return typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
+    } catch {
+      return false;
+    }
+  }
+
+  /** 一个空位的 DOM（编辑态显示半透明原文，预览态只留下划线） */
+  private makeBlank(
+    st: ClozeEditState,
+    label: string,
+    gs: number,
+    ge: number,
+    interactive = !st.preview,
+  ): HTMLElement {
+    const no = st.spans.findIndex((s) => s.start === gs && s.end === ge) + 1;
+    const mark = createSpan({ cls: 'bzrv-wiz-blank' });
+    mark.createSpan({ cls: 'bzrv-wiz-blank-text', text: label });
+    mark.createSpan({ cls: 'bzrv-wiz-blank-no', text: String(no) });
+    mark.dataset.start = String(gs);
+    mark.dataset.end = String(ge);
+    if (interactive && !st.preview) {
+      mark.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (window.getSelection()?.toString()) return;
+        st.history.push(JSON.stringify(st.spans));
+        st.spans = removeSpan(st.spans, gs, ge);
+        st.msg = '已还原';
+        this.render();
+      });
+    }
+    return mark;
+  }
+
+  /**
+   * 触屏版：正文只读，下方给一排大号词块。
+   *
+   * 不把正文里的字当点击目标——字小、密集，手指必然点偏，还会把已经挖好的
+   * 空位误还原。词块是独立按钮（约 34px 高、6px 间距），点一下挖、再点一下
+   * 只取消这一个词；可切换到「按字」处理分词不合适的句子。
+   */
+  private paintWordPicker(d: WizardDraft, st: ClozeEditState, box: HTMLElement): void {
+    const wrap = box.createDiv({ cls: 'bzrv-wiz-picker' });
+    const bar = wrap.createDiv({ cls: 'bzrv-wiz-picker-bar' });
+    bar.createSpan({ cls: 'bzrv-wiz-picker-label', text: '点词挖空（再点一次取消）' });
+    const grain = bar.createEl('button', {
+      cls: 'bzrv-wiz-mini',
+      text: st.granularity === 'char' ? '按词切' : '按字切',
+    });
+    grain.type = 'button';
+    grain.addEventListener('click', () => {
+      st.granularity = st.granularity === 'word' ? 'char' : 'word';
+      this.render();
+    });
+
+    const list = wrap.createDiv({ cls: 'bzrv-wiz-picker-list' });
+    list.dataset.key = d.key;
+    const paras = st.plain.split('\n');
+    let base = 0;
+    for (const text of paras) {
+      for (const token of this.segment(text, st.granularity)) {
+        if (!token.word) continue;
+        const start = base + token.index;
+        const end = start + token.text.length;
+        const on = st.spans.some((s) => s.start < end && s.end > start);
+        const chip = list.createEl('button', {
+          cls: 'bzrv-wiz-chip' + (on ? ' is-on' : ''),
+          text: token.text,
+        });
+        chip.type = 'button';
+        if (on) chip.appendChild(createSpan({ cls: 'bzrv-sr-only', text: '已挖空' }));
+        chip.addEventListener('click', () => this.toggleChip(d, st, start, end));
+      }
+      base += text.length + 1;
+    }
+  }
+
+  /** 分词：优先 Intl.Segmenter，失败退回「空白 / 单字」；char 模式逐字 */
+  private segment(
+    chunk: string,
+    granularity: 'word' | 'char' = 'word',
+  ): Array<{ text: string; index: number; word: boolean }> {
+    const isWord = (s: string): boolean => /[^\s]/.test(s) && !/^[\p{P}\p{S}]+$/u.test(s);
+    if (granularity === 'char') {
+      const out: Array<{ text: string; index: number; word: boolean }> = [];
+      let index = 0;
+      for (const ch of Array.from(chunk)) {
+        out.push({ text: ch, index, word: isWord(ch) });
+        index += ch.length;
+      }
+      return out;
+    }
+    try {
+      const Seg = (Intl as unknown as { Segmenter?: new (l: string, o: { granularity: string }) => { segment(t: string): Iterable<{ segment: string; index: number }> } }).Segmenter;
+      if (Seg) {
+        const seg = new Seg('zh-CN', { granularity: 'word' });
+        const out: Array<{ text: string; index: number; word: boolean }> = [];
+        for (const part of seg.segment(chunk)) {
+          out.push({ text: part.segment, index: part.index, word: isWord(part.segment) });
+        }
+        return out;
+      }
+    } catch {
+      /* 老 WebView 没分词器：走下面的兜底 */
+    }
+    const out: Array<{ text: string; index: number; word: boolean }> = [];
+    for (const m of chunk.matchAll(/\s+|[^\s]/gu)) {
+      const text = m[0] ?? '';
+      if (!text) continue;
+      out.push({ text, index: m.index ?? 0, word: isWord(text) });
+    }
+    return out;
+  }
+
+  /** 点词：没挖过就挖；已挖空只取消这一个词，不动相邻的空 */
+  private toggleChip(d: WizardDraft, st: ClozeEditState, start: number, end: number): void {
+    void d;
+    const hit = st.spans.some((s) => s.start < end && s.end > start);
+    if (hit) {
+      st.history.push(JSON.stringify(st.spans));
+      st.spans = removeRangeFromSpans(st.spans, start, end);
+      st.msg = '';
+      this.render();
+      return;
+    }
+    const res = addSpan(st.plain, st.spans, start, end);
+    if (res.action === 'rejected') {
+      st.msg = res.reason === 'visible'
+        ? '再挖下去就没有提示了，留一点原文'
+        : '这段没有可挖的文字';
+      this.render();
+      return;
+    }
+    st.history.push(JSON.stringify(st.spans));
+    st.spans = res.spans;
+    st.msg = '';
+    this.render();
   }
 
   private onClozeUp(ev: Event, d: WizardDraft, src: HTMLElement): void {

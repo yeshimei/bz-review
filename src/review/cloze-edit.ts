@@ -98,6 +98,24 @@ export function normalizeSpans(plain: string, spans: readonly ClozeSpan[]): Cloz
   return out;
 }
 
+/**
+ * 把紧挨着的区间并成一个。
+ *
+ * 触屏是「点词」而不是「拖选」：连点两个相邻的词，用户想的是一个空位，
+ * 不该变成两个各答一半的空。只在真正首尾相接（next.start === last.end）
+ * 时合并；中间隔着空格或标点的保持两个空，语义更清楚。
+ */
+export function mergeAdjacentSpans(plain: string, spans: readonly ClozeSpan[]): ClozeSpan[] {
+  const list = normalizeSpans(plain, spans);
+  const out: ClozeSpan[] = [];
+  for (const s of list) {
+    const last = out[out.length - 1];
+    if (last && s.start === last.end) last.end = s.end;
+    else out.push({ start: s.start, end: s.end });
+  }
+  return out;
+}
+
 /** 纯文本 + 区间 → 挖空文本 + 答案（编号从 1 起连续） */
 export function rangesToCloze(plain: string, spans: readonly ClozeSpan[]): { text: string; blanks: string[] } {
   const p = String(plain ?? '');
@@ -190,7 +208,7 @@ export function addSpan(
     return { action: 'rejected', spans: list, reason: 'tooLong' };
   }
 
-  const next = normalizeSpans(p, [...list, ...pieces]);
+  const next = mergeAdjacentSpans(p, [...list, ...pieces]);
   if (visibleLength(p, next) < MIN_VISIBLE) {
     return { action: 'rejected', spans: list, reason: 'visible' };
   }
@@ -200,4 +218,27 @@ export function addSpan(
 /** 点中一个空位 → 还原 */
 export function removeSpan(spans: readonly ClozeSpan[], start: number, end: number): ClozeSpan[] {
   return (Array.isArray(spans) ? spans : []).filter((s) => !(s.start === start && s.end === end));
+}
+
+/**
+ * 从已有空位里精确去掉一小段（触屏点词取消用）。
+ *
+ * 相邻词会合并成一个空位，此时用户点其中一个词想取消的只是那个词：
+ * 把区间切开，左边和右边各自保留，中间那段回原文。
+ */
+export function removeRangeFromSpans(
+  spans: readonly ClozeSpan[],
+  start: number,
+  end: number,
+): ClozeSpan[] {
+  const out: ClozeSpan[] = [];
+  for (const s of Array.isArray(spans) ? spans : []) {
+    if (s.end <= start || s.start >= end) {
+      out.push({ start: s.start, end: s.end });
+      continue;
+    }
+    if (s.start < start) out.push({ start: s.start, end: start });
+    if (s.end > end) out.push({ start: end, end: s.end });
+  }
+  return out;
 }
