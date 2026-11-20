@@ -105,9 +105,6 @@ export function unlockDialogHtml(paid: boolean, reason = ''): string {
     '<div class="bzs-plan-head"><span>功能</span><i class="c">基础版<small>免费不限时</small></i><i class="c pro">高级版<small>一次买断</small></i></div>' +
     `<div class="bzs-plan">${body}</div>` +
     `<div class="bzs-plan-row is-total"><span>合计 ${total - different} 项功能 · 功能完全一致，仅 ${different} 项数量不同</span>${cell('', false)}${cell('', true)}</div>` +
-    `<div class="bzs-unlock-foot">${
-      paid ? '' : '<button class="bzs-btn pri" type="button" data-act="unlockbuy">去购买</button>'
-    }<button class="bzs-btn" type="button" data-act="unlockgroup">交流群 ${esc(GROUP_ID)}</button></div>` +
     '</div>'
   );
 }
@@ -122,8 +119,26 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
     head: true,
     maxWidth: 720,
   });
-  /* uiModal 会把焦点交给弹窗内第一个可交互元素；这张表很长，首个按钮在底部，
-     focus 会把弹窗容器滚下去、把刚加的统一头行推出可视区。打开时拉回顶部。 */
+  /* 照 bz-reader 的 modal：头、可滚表格、底部购买/交流群按钮三段。
+     按钮不塞进滚动内容里，否则长表一滚就看不见，用户不知道去哪买。 */
+  modal.popup.classList.add('bzs-unlock-modal');
+  const foot = document.createElement('div');
+  foot.className = 'bzs-unlock-foot';
+  if (!paid) {
+    const buy = document.createElement('button');
+    buy.className = 'bzs-btn pri';
+    buy.type = 'button';
+    buy.dataset.act = 'unlockbuy';
+    buy.textContent = '去购买';
+    foot.appendChild(buy);
+  }
+  const group = document.createElement('button');
+  group.className = 'bzs-btn';
+  group.type = 'button';
+  group.dataset.act = 'unlockgroup';
+  group.textContent = `交流群 ${GROUP_ID}`;
+  foot.appendChild(group);
+  modal.popup.appendChild(foot);
   modal.popup.scrollTop = 0;
   modal.popup.addEventListener('click', (e) => {
     const act = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-act]')?.dataset.act;

@@ -39,7 +39,7 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  padding: 6px 8px;
+  padding: 4px 8px;
   font-style: normal;
   text-align: center;
 }
@@ -80,3 +80,29 @@
   .bzs-btn:hover { border-color: var(--un-accent); color: var(--un-accent); }
 }
 .bzs-btn.pri { background: var(--un-accent); border-color: var(--un-accent); color: var(--bzrv-on-accent); font-weight: 600; }
+
+/* 照 bz-reader 的 modal：头 / 可滚表格 / 固底按钮三段。
+   长对照表一滚就把购买入口藏掉，用户不知道要往下滑，这里把按钮钉在底部。 */
+.bzrv-overlay-popup.bzs-unlock-modal {
+  padding: 0;
+  overflow: hidden;
+}
+.bzrv-overlay-popup.bzs-unlock-modal .bzrv-dialog-head {
+  margin: 0;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--bzrv-border);
+}
+.bzrv-overlay-popup.bzs-unlock-modal .bzrv-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.bzrv-overlay-popup.bzs-unlock-modal .bzs-unlock-foot {
+  --un-accent: var(--bzrv-brand);
+  --un-ink: var(--bzrv-text-1);
+  --un-line: var(--bzrv-border);
+  flex: none;
+  background: var(--bzrv-surface-3);
+  padding: 12px 20px;
+  justify-content: flex-end;
+}
