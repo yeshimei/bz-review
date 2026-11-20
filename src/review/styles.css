@@ -1167,6 +1167,24 @@
   .bzrv-edit-actions .bzrv-btn { width: 100%; min-height: 44px; }
   .bzrv-edit-area { font-size: 16px; }
 }
+/* 备份与回滚：时间线列表，每行一份可回滚的历史 */
+.bzrv-backup-history { display: flex; flex-direction: column; gap: 12px; }
+.bzrv-backup-list { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; }
+.bzrv-backup-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--bzrv-border); border-radius: 8px;
+  background: var(--bzrv-bg-hover);
+}
+.bzrv-backup-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bzrv-backup-time { font-size: var(--bzrv-font-body); color: var(--bzrv-text-1); overflow-wrap: anywhere; }
+.bzrv-backup-row .bzrv-btn { flex: none; }
+@media (max-width: 768px) {
+  .bzrv-backup-row { flex-direction: column; align-items: stretch; }
+  .bzrv-backup-row .bzrv-btn { width: 100%; min-height: 44px; }
+  /* 沿用编辑弹窗的按钮条，但这里「关闭」是辅助动作，不该被 column-reverse 顶到最前 */
+  .bzrv-backup-actions { flex-direction: column; }
+}
+
 /* 统一弹窗壳里的输入与纯文本：编辑/排期/恢复/负荷四屏共用 */
 .bzrv-flow-dialog .bzrv-edit-field input { width: 100%; box-sizing: border-box; }
 .bzrv-flow-dialog pre { white-space: pre-wrap; font-family: var(--font-monospace); line-height: 1.6; }

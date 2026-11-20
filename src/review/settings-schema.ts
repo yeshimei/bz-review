@@ -17,7 +17,7 @@ import { setHtml } from './ui/set-html';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
 import { DEFAULT_ACCENT, applyAccent } from '../settings';
-import { diskReadText, jsonFileStore } from '../core/storage';
+
 import { openFlowDialog } from '../core/flow-dialog';
 import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
 import { getSettings, saveSettings } from '../core/settings-provider';
@@ -35,7 +35,6 @@ import { fetchProviderModels, providerDescriptorOf } from '../core/ai-models';
 import { openModelPicker } from '../core/settings-model-picker';
 import { tryGetSettings } from '../core/settings-provider';
 import type { ReviewDataManager } from './data';
-import { getReviewFilePath, getReviewMetaPath } from './data';
 import {
   GROUP_ID,
   PURCHASE_URL,
@@ -47,8 +46,7 @@ import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
 import { isBzPluginEnabled } from '../core/plugin-path';
 import { panelModeOf } from './panel-mode';
 import { DEFAULT_W } from './fsrs';
-import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
-import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
+import { openBackupHistoryDialog, restoreLatestWithConfirm } from './backup-history-dialog';
 
 /**
  * 激活码输入框的草稿：输入只改这里，不碰 settings、不触发通用 text 行的
@@ -489,58 +487,18 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           },
           {
             /* 快照是最后一道保险：合并写错、同步出事、手滑清空，都能从这里退回去。
-               回滚前先给当前数据留一份，所以「回滚」本身也能反悔。 */
+               备份/回滚都走二次确认；回滚前先给当前数据留一份，所以「回滚」本身也能反悔。 */
             type: 'info',
-            name: '自动快照',
-            desc: '每次写数据前留一份当天的快照，保留 7 天。回滚前会再给当前数据备份一次，反悔还能拿回来。',
+            name: '备份与回滚',
+            desc: '每次写数据前留一份当天的快照（最多 30 份）。点开可挑任意时间点回滚；备份和回滚都要二次确认，回滚前会先给当前数据存一份。',
             actions: [
               {
-                text: '立即备份',
-                onClick: async () => {
-                  const raw = await diskReadText(deps.app, getReviewFilePath());
-                  if (!raw) {
-                    notice('还没有复习数据，先加一条再备份', 'warning');
-                    return;
-                  }
-                  const name = await writeSnapshotNow(deps.app, raw, new Date());
-                  notice(name ? `已备份：${name}` : '备份失败，去控制台看原因', name ? 'success' : 'warning');
-                },
+                text: '备份与回滚',
+                onClick: () => openBackupHistoryDialog(deps.app),
               },
               {
-                text: '回滚到最近快照',
-                onClick: async () => {
-                  const name = await latestSnapshotName(deps.app);
-                  if (!name) {
-                    notice('还没有任何快照', 'warning');
-                    return;
-                  }
-                  const v = await openFlowDialog({
-                    title: '回滚到最近快照？',
-                    message: `会用 ${name} 覆盖当前复习数据。回滚前会再给当前数据留一份，反悔还能拿回来。`,
-                    actions: [
-                      { label: '取消', value: 'cancel' },
-                      { label: '回滚', value: 'ok', cta: true, danger: true },
-                    ],
-                  });
-                  if (v !== 'ok') return;
-                  try {
-                    const raw = await diskReadText(deps.app, getReviewFilePath());
-                    if (raw) await writeSnapshotNow(deps.app, raw, new Date());
-                    const snap = await readSnapshot(deps.app, name);
-                    if (!snap) {
-                      notice('这份快照读不出来，换一份试试', 'warning');
-                      return;
-                    }
-                    const parsed = parseReviewFile(JSON.parse(snap));
-                    await jsonFileStore<unknown>(getReviewFilePath(), { app: deps.app }).write(
-                      serializeReviewItems(parsed.items)
-                    );
-                    await jsonFileStore<unknown>(getReviewMetaPath(), { app: deps.app }).write(reviewMeta(new Date()));
-                    notice('已回滚，重新打开面板就能看到', 'success');
-                  } catch (e) {
-                    notice('回滚失败：' + (e instanceof Error ? e.message : String(e)), 'warning');
-                  }
-                },
+                text: '回滚到最近',
+                onClick: () => restoreLatestWithConfirm(deps.app),
               },
             ],
           },

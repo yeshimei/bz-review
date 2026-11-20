@@ -363,6 +363,14 @@ export default class ReviewPlugin extends Plugin {
       }),
     });
     this.addCommand({
+      id: 'review-backup',
+      name: t('备份与回滚', 'Backup & restore'),
+      callback: withReview(async (app) => {
+        const { openBackupHistoryDialog } = await import('./review/backup-history-dialog');
+        await openBackupHistoryDialog(app);
+      }),
+    });
+    this.addCommand({
       id: 'review-forecast',
       name: t('未来复习负荷', 'Upcoming workload'),
       callback: withReview(async (app) => {

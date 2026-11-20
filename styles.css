@@ -1260,14 +1260,16 @@ button.bzrv-rowbtn--busy:is([data-bzrv], [data-bzrv] *)::after {
   border-radius: 50%;
   animation: bzrv-rowbtn-spin 0.7s linear infinite;
 }
+/* 成功/失败是语义色，走 --bzrv-success/--bzrv-danger token（明暗主题各自有值），
+   原先写死的绿/红在换主题或切暗色时不跟随。 */
 button.bzrv-rowbtn--ok:is([data-bzrv], [data-bzrv] *) {
-  border: 2px solid #1f883d ;
-  color: #1f883d ;
+  border: 2px solid var(--bzrv-success) ;
+  color: var(--bzrv-success) ;
   background: transparent ;
 }
 button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
-  border: 2px solid #cf222e ;
-  color: #cf222e ;
+  border: 2px solid var(--bzrv-danger) ;
+  color: var(--bzrv-danger) ;
   background: transparent ;
 }
 @keyframes bzrv-rowbtn-spin {
@@ -1490,6 +1492,7 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   --bzrv-head-act-w: 34px;    /* 按钮（含 1px 透明描边） */
   --bzrv-head-act-h: 32px;
   --bzrv-head-act-ic: 18px;   /* 图标本体 */
+  --bzrv-head-pipe-h: 14px;   /* 头行「复习 / 日期」之间分隔竖线高度；域内需要更高时覆盖此 token */
   --bzrv-radius-ctl: 6px;     /* 图标钮圆角，对齐 Reader 的 --r-ctl */
 
   /* 阴影三档（透明黑、表达抬升） */
@@ -2157,7 +2160,7 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
 }
 /* 色点：flex 容器里本来是 flex item，落在普通按钮里时必须显式 inline-block，
    否则宽高被 inline 流吃掉、整颗点塌成 0（强调色 swatch 就是踩在这里）。 */
-.bzrv-choice-dot:is([data-bzrv], [data-bzrv] *) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.bzrv-choice-dot:is([data-bzrv], [data-bzrv] *) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--bzrv-choice-dot, var(--bzrv-accent)); }
 /* 浮岛 segmented（float: true，issue 199 组件化；issue 200 拍板：视觉 = .bzrv-segmented
    同款取值，仅加白卡滑动指示器（choice.ts 量位 transform/width 200ms）。
    白卡 = .bzrv-choice-seg（surface-2 + 分段阴影）；未选中项透底灰字，选中加重。 */
@@ -2584,19 +2587,19 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
   font-family: var(--bzrv-font-ui);
   /* z-index 由调用方经 topifyZ 动态分配（ADR-0067），不设静态档 */
 }
-/* bz 界面级隐藏滚动条（ADR-0122 / issue 277）：滚动功能保留（不动 overflow），只隐藏条。
-   作用域 = bz 自有界面：bz- 前缀类/ID + 通用面板壳整树 + 非 bz 前缀的遗留容器。
+/* Review 界面级隐藏滚动条：滚动功能保留（不动 overflow），只隐藏条。
+   作用域 = 本插件私有界面：[data-bzrv] 锚点、bzrv- 前缀类/ID、通用面板壳整树。
    刻意不用 * 通配——Obsidian 核心 UI（文件树/编辑器/核心设置）不属本插件，不隐藏。
    scrollbar-width/-ms-overflow-style 可继承（子树自动生效）；::-webkit-scrollbar 不继承，
    故对同组选择器补「元素自身 + 子树」两种形态（守卫：tests/core/ui-scrollbar.test.ts）。
-   深审 U6：补 review 域三个无 bz- 前缀弹层壳（统计/历史/quiz 遗留会话弹窗）整树——
    内层滚动区（#bzrv-stats-body/.bzrv-review-history-tl/.bzrv-stats-chart-scroll）经继承/
-   子树形态一并覆盖，域内不得再自造滚动条规则。 */
+   子树形态一并覆盖，域内不得再自造滚动条规则。
+   已从 bz 主仓照搬时删掉 #add-diary-popup/.diary-datetime-scroll-container/[id^="knowledge-"]
+   等非私有锚点——本仓不产这些 DOM，留着只会破坏作用域口径。 */
 .bzrv-panel-overlay:is([data-bzrv], [data-bzrv] *), .bzrv-panel-overlay *:is([data-bzrv], [data-bzrv] *),
 .bzrv-panel-frame:is([data-bzrv], [data-bzrv] *), .bzrv-panel-frame *:is([data-bzrv], [data-bzrv] *),
 [class^="bzrv-"]:is([data-bzrv], [data-bzrv] *), [class*=" bzrv-"]:is([data-bzrv], [data-bzrv] *),
-[id^="bzrv-"]:is([data-bzrv], [data-bzrv] *), [id^="knowledge-"]:is([data-bzrv], [data-bzrv] *),
-#add-diary-popup:is([data-bzrv], [data-bzrv] *), .diary-datetime-scroll-container:is([data-bzrv], [data-bzrv] *),
+[id^="bzrv-"]:is([data-bzrv], [data-bzrv] *),
 #bzrv-entries, #bzrv-confirm-popup,
 #bzrv-history-popup, #bzrv-quiz-popup {
   scrollbar-width: none;
@@ -2607,9 +2610,6 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
 [class^="bzrv-"]:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar, [class^="bzrv-"] *:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar,
 [class*=" bzrv-"]:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar, [class*=" bzrv-"] *:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar,
 [id^="bzrv-"]:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar, [id^="bzrv-"] *:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar,
-[id^="knowledge-"]:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar, [id^="knowledge-"] *:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar,
-#add-diary-popup:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar, #add-diary-popup *:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar,
-.diary-datetime-scroll-container:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar, .diary-datetime-scroll-container *:is([data-bzrv], [data-bzrv] *)::-webkit-scrollbar,
 #bzrv-entries::-webkit-scrollbar, #bzrv-entries *::-webkit-scrollbar,
 #bzrv-confirm-popup::-webkit-scrollbar, #bzrv-confirm-popup *::-webkit-scrollbar,
 #bzrv-history-popup::-webkit-scrollbar, #bzrv-history-popup *::-webkit-scrollbar,
@@ -2719,7 +2719,7 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
   flex-shrink: 0;
 }
 .bzrv-panel-brand .bzrv-ic:is([data-bzrv], [data-bzrv] *) { width: 13px; height: 13px; }
-.bzrv-panel-head-pipe:is([data-bzrv], [data-bzrv] *) { width: 1px; height: 14px; background: var(--bzrv-border); flex-shrink: 0; }
+.bzrv-panel-head-pipe:is([data-bzrv], [data-bzrv] *) { width: 1px; height: var(--bzrv-head-pipe-h); background: var(--bzrv-border); flex-shrink: 0; }
 .bzrv-panel-head-sub:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-panel-head-sp:is([data-bzrv], [data-bzrv] *) { flex: 1; }
 .bzrv-panel-head-btns:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: var(--bzrv-head-act-gap); }
@@ -5641,7 +5641,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 @media (hover: hover) {
   .bzrv-tut-cover:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-brand); }
 }
-/* ==================== 复习计划域样式（src/review/styles.css） ====================
+/* ==================== 复习域样式（src/review/styles.css） ====================
  * 2026-09-04 拍板形态：三区队列面板 + 整窗做题冲刺（非弹窗）。
  * 面板容器 / 难度弹窗 / watch·exclude 设置行 / 统计·历史弹窗为既有保留块；
  * bz-q-*（三区队列）/ bz-sprint-*（冲刺）为新增视觉，对齐 rp1x 原型评审。
@@ -5689,8 +5689,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-stutab .bzrv-stutab-ic:is([data-bzrv], [data-bzrv] *) { width: 16px; height: 16px; opacity: .72; flex-shrink: 0; }
 .bzrv-stutab.is-on .bzrv-stutab-ic:is([data-bzrv], [data-bzrv] *) { opacity: 1; }
 /* 「复习」与日期之间的分隔竖线加长（2026-11-20）：core 默认 14px 比两行文字都矮，
-   看着像一段没画完的短线；抬到 20px 与页签文字行齐平，分隔感才成立。 */
-#bzrv-popup .bzrv-panel-head-pipe { height: 20px; }
+   看着像一段没画完的短线；抬到 20px 与页签文字行齐平，分隔感才成立。
+   走 --bzrv-head-pipe-h token（头行几何不写死数字），在 popup 根上覆盖即可。 */
+#bzrv-popup { --bzrv-head-pipe-h: 20px; }
 /* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动）。
    不再有左栏，内容区独占整宽。 */
 #bzrv-entries { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
@@ -6222,7 +6223,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
    手机上整体偏小。本段按**视觉层级**定标放大（先例 src/diary/styles.css 六档体系：
    一层级一定值，不用一刀切倍数），档间保持单调、各层只差一档：
 
-     L1 面板/整屏题   复习计划 · 做题冲刺 · 本轮复习完成        20~22
+     L1 面板/整屏题   复习 · 做题冲刺 · 本轮复习完成        20~22
      L2 区块题/大数字 列头计数 · 结果篇名 · 结算大数字           18~26
      L3 卡片题        队列卡标题 · 题面 · 选项文本               16~17.5
      L4 正文/辅助     开始本轮条 · 解析 · 队列条目 · 底部信息行  14~15
@@ -6809,6 +6810,24 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-edit-actions .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 100%; min-height: 44px; }
   .bzrv-edit-area:is([data-bzrv], [data-bzrv] *) { font-size: 16px; }
 }
+/* 备份与回滚：时间线列表，每行一份可回滚的历史 */
+.bzrv-backup-history:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 12px; }
+.bzrv-backup-list:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 8px; max-height: 46vh; overflow-y: auto; }
+.bzrv-backup-row:is([data-bzrv], [data-bzrv] *) {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 12px; border: 1px solid var(--bzrv-border); border-radius: 8px;
+  background: var(--bzrv-bg-hover);
+}
+.bzrv-backup-info:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.bzrv-backup-time:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-body); color: var(--bzrv-text-1); overflow-wrap: anywhere; }
+.bzrv-backup-row .bzrv-btn:is([data-bzrv], [data-bzrv] *) { flex: none; }
+@media (max-width: 768px) {
+  .bzrv-backup-row:is([data-bzrv], [data-bzrv] *) { flex-direction: column; align-items: stretch; }
+  .bzrv-backup-row .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 100%; min-height: 44px; }
+  /* 沿用编辑弹窗的按钮条，但这里「关闭」是辅助动作，不该被 column-reverse 顶到最前 */
+  .bzrv-backup-actions:is([data-bzrv], [data-bzrv] *) { flex-direction: column; }
+}
+
 /* 统一弹窗壳里的输入与纯文本：编辑/排期/恢复/负荷四屏共用 */
 .bzrv-flow-dialog .bzrv-edit-field input:is([data-bzrv], [data-bzrv] *) { width: 100%; box-sizing: border-box; }
 .bzrv-flow-dialog pre:is([data-bzrv], [data-bzrv] *) { white-space: pre-wrap; font-family: var(--font-monospace); line-height: 1.6; }
@@ -6994,7 +7013,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .dot.tone-mid:is([data-bzrv], [data-bzrv] *), .dot.is-hard:is([data-bzrv], [data-bzrv] *) { background: rgb(var(--ra-amber-rgb)); }
 .dot.tone-low:is([data-bzrv], [data-bzrv] *), .dot.is-again:is([data-bzrv], [data-bzrv] *) { background: rgb(var(--ra-ember-rgb)); }
 .dot.tone-off:is([data-bzrv], [data-bzrv] *) { background: rgb(var(--ra-indigo-rgb)); }
-canvas:is([data-bzrv], [data-bzrv] *) { display: block; }
+.bzrv-ra-box canvas:is([data-bzrv], [data-bzrv] *) { display: block; }
 
 /* ── 01 点炉 ── */
 .ra-open:is([data-bzrv], [data-bzrv] *) { position: absolute; inset: 0; }
@@ -7085,7 +7104,7 @@ canvas:is([data-bzrv], [data-bzrv] *) { display: block; }
 .ra-step-bar:is([data-bzrv], [data-bzrv] *) { width: 100%; max-width: 4.2em; height: var(--ph, 0%); min-height: 2px;
   background: linear-gradient(to top, rgba(var(--ra-indigo-rgb), .85), rgba(var(--ra-indigo-rgb), .35));
   border-radius: 2px 2px 0 0; transform: scaleY(0); transform-origin: bottom center; }
-.ra-step.is-fsrs .ra-step-bar:is([data-bzrv], [data-bzrv] *) { background: linear-gradient(to top, rgba(var(--ra-jade-rgb), .9), rgba(var(--ra-jade-rgb), .3)); }
+.ra-step.is-last .ra-step-bar:is([data-bzrv], [data-bzrv] *) { background: linear-gradient(to top, rgba(var(--ra-jade-rgb), .9), rgba(var(--ra-jade-rgb), .3)); }
 .ra-step.is-peak .ra-step-n:is([data-bzrv], [data-bzrv] *) { color: rgb(var(--ra-jade-rgb)); }
 .ra-step-lb:is([data-bzrv], [data-bzrv] *) { margin-top: .5em; font-size: .74em; letter-spacing: .06em; color: rgba(var(--ra-ink-rgb), .6);
   border-top: 1px solid rgba(var(--ra-ink-rgb), .25); width: 100%; text-align: center; padding-top: .4em; }
@@ -7325,7 +7344,9 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   --bzsp-sheen: rgba(255, 255, 255, .7);
 }
 
-.bzrv-settings-content.bzs-set-page *:is([data-bzrv], [data-bzrv] *) {
+/* 用 :where() 把选择器特异性降为 0：box-sizing 仍需对所有后代生效，
+   但不必让整个设置页子树都带上两条类名的特异性（否则子组件很难覆盖、全量匹配也更慢）。 */
+:where(.bzrv-settings-content.bzs-set-page) *:is([data-bzrv], [data-bzrv] *) {
   box-sizing: border-box;
 }
 
@@ -9440,7 +9461,9 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
 }
 
 .bzs-sup-retry:is([data-bzrv], [data-bzrv] *):focus-visible {
-  outline: 2px solid var(--sup-accent, var(--bzrv-accent, #9a7434));
+  /* 焦点环属交互色，直接用已跟随 --bzrv-accent 的 --sup-accent；
+     原先三重兜底里写死的铜色散在组件层，违反「铜色只在 token 定义处」。 */
+  outline: 2px solid var(--sup-accent);
   outline-offset: 1px;
 }
 
