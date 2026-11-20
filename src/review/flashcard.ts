@@ -16,6 +16,7 @@
  * ============================================================ */
 import type { AIService } from '../core/ai';
 import type { ReviewCard } from './data';
+import { aiTextOf } from './card-text';
 import { parseLooseJson } from './loose-json';
 
 /** 问句至少这么长：太短的（「这句话讲了什么」）没有回忆价值 */
@@ -47,7 +48,7 @@ export function buildFlashcardPrompt(card: ReviewCard): string {
     '{"q": "问题", "a": "原文"}',
     '',
     `出处：${where}`,
-    `划线原文：${card.text}`,
+    `划线原文：${aiTextOf(card)}`,
   ].join('\n');
 }
 

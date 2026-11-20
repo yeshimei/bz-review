@@ -84,6 +84,12 @@ export interface ReviewCardInput {
   chapterTitle?: string;
   /** 划线原文（调用方负责截断超长文本） */
   text: string;
+  /**
+   * 只给模型看的正文节选（2026-11-21）。
+   *
+   * 整篇笔记加入复习时 text 是全文，模型只看前一段；不传则按 text 生成。
+   */
+  aiText?: string;
   comment?: string;
   /** 回到原文的链接（obsidian:// 协议串） */
   backlink?: string;

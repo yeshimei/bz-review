@@ -35,7 +35,7 @@ import {
   uiManager,
 } from './review';
 import type { CardWizardOptions } from './review/card-wizard';
-import { openSourcePicker } from './review/source-pick-ui';
+import { openAddToReviewFlow } from './review/add-flow';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
 import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
@@ -106,7 +106,9 @@ export default class ReviewPlugin extends Plugin {
      */
     openReaderFlow: (opts?: { bookId?: string }): void => {
       ensureReview(this.app);
-      openSourcePicker(this.app, opts ?? {});
+      /* 走统一入口，而不是直接开挑内容窗：所有「加入复习」只有一个分流点
+         （review/add-flow.ts），以后加来源不会又冒出一个旁路。 */
+      void openAddToReviewFlow(this.app, { kind: 'reader', bookId: opts?.bookId });
     },
     hasNote: async (path: string): Promise<boolean> => {
       ensureReview(this.app);
@@ -255,8 +257,8 @@ export default class ReviewPlugin extends Plugin {
     );
 
     /* 文件树右键「加入复习」（2026-11-21 用户口径）：只给文件夹与 .md 笔记
-       加这一项，其它文件类型一概不出现；没有单独的批量界面——点一下加一批，
-       结果用一条通知说清。 */
+       加这一项，其它文件类型一概不出现。点下去不是直接写库——单篇进统一制卡
+       流程，文件夹先弹「勾选哪几篇」再进同一个流程。 */
     this.registerEvent(
       this.app.workspace.on('file-menu', (menu, file) => {
         const isNote = file instanceof TFile && file.extension.toLowerCase() === 'md';
@@ -264,7 +266,9 @@ export default class ReviewPlugin extends Plugin {
         if (!isNote && !isFolder) return;
         menu.addItem((item) => {
           item
-            .setTitle(t('加入复习', 'Add to review'))
+            .setTitle(isFolder
+              ? t('加入复习（文件夹）', 'Add folder to review')
+              : t('加入复习', 'Add to review'))
             .setIcon('plus-with-circle')
             .onClick(() => {
               void reviewAddPath(this.app, file.path, isFolder);
@@ -298,7 +302,7 @@ export default class ReviewPlugin extends Plugin {
     this.addCommand({
       id: 'review-add-reader',
       name: t('从阅读器加入复习', 'Add from bz Reader'),
-      callback: withReview((app) => openSourcePicker(app)),
+      callback: withReview((app) => openAddToReviewFlow(app, { kind: 'reader' })),
     });
     /* 选中一段文字就能做成一张卡（2026-11-15）。走 editorCallback：只有在笔记里
        有光标时才可用，菜单里不会出现一颗点了没反应的命令。 */
