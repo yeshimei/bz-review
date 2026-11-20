@@ -101,7 +101,7 @@ export function unlockDialogHtml(paid: boolean, reason = ''): string {
   const total = GROUPS.reduce((n, g) => n + g.rows.length, 0);
   return (
     '<div class="bzs-unlock">' +
-    `<div class="bzs-unlock-hd"><h2>高级版功能</h2><p>${esc(reason || '两版功能完全一样，只差数量上限。')}</p></div>` +
+    `<p class="bzs-unlock-sub">${esc(reason || '两版功能完全一样，只差数量上限。')}</p>` +
     '<div class="bzs-plan-head"><span>功能</span><i class="c">基础版<small>免费不限时</small></i><i class="c pro">高级版<small>一次买断</small></i></div>' +
     `<div class="bzs-plan">${body}</div>` +
     `<div class="bzs-plan-row is-total"><span>合计 ${total - different} 项功能 · 功能完全一致，仅 ${different} 项数量不同</span>${cell('', false)}${cell('', true)}</div>` +
@@ -119,6 +119,7 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
     content: unlockDialogHtml(paid, opts.reason),
     className: 'bzs-unlock-dialog',
     title: '高级版功能',
+    head: true,
     maxWidth: 720,
   });
   modal.popup.addEventListener('click', (e) => {

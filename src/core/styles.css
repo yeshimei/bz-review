@@ -566,26 +566,21 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-cta:hover {
 button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta) {
   color: var(--bzrv-danger);
 }
-/* 慎重决策（设计手册 §9/§10）：主动作为危险动作时，主按钮不默认高亮——双钮同为中性次级样式，
-   只有危险文字用 danger 色（弹窗挂 --danger 修饰；标准双动作按钮不加类，冻结契约不破）。
-   选择器刻意带上 `.bzrv-flow-dialog` 提一级（2,2,0）——域皮映射按钮时的
-   `#bzrv-confirm-popup.bzrv-xx-flow-dialog #bzrv-confirm-ok`（2,1,0）压不回高亮，
-   保证「删除不高亮」这条语义不被域皮肤破掉。
-   复位的是「整套中性次级形制」而非只改底色：域皮若给主动作加了提级形制（如 memo 纸感的
-   2px 墨框 + 硬偏移阴影），只压底色会得到「中性底 + 红字 + 仍是凸起墨章」的半吊子中性态
-   （issue 291 评审发现），故 border/border-radius/box-shadow 一并压回 core 次级档。
-   域皮若要保留自有按钮形制（如 clipbook 编辑部方角），须自己写一条 `.bzrv-flow-dialog--danger`
-   限定的覆写规则（同特异性下域文件后到即胜；favorites 即此范式）。 */
+/* 危险动作与普通确认同一套按钮几何：都是实心主按钮，只差主色（danger / brand）。
+   2026-11-21：原先危险动作压成中性底 + 红字，和「迁移 / 备份 / 批量加入」的实心紫
+   放在一起像两套弹窗；用户要求风格一致，故保留危险色、补齐实心形制。
+   选择器仍带 `.bzrv-flow-dialog` 提一级（2,2,0），防止域皮把危险色盖回 brand。 */
 #bzrv-confirm-popup.bzrv-flow-dialog.bzrv-flow-dialog--danger #bzrv-confirm-ok {
-  background: var(--bzrv-surface-2);
-  color: var(--bzrv-danger);
+  background: var(--bzrv-danger);
+  color: var(--bzrv-on-danger);
   border: 1px solid transparent;
   border-radius: var(--bzrv-radius-sm);
   box-shadow: none;
 }@media (hover: hover) {
 
 #bzrv-confirm-popup.bzrv-flow-dialog.bzrv-flow-dialog--danger #bzrv-confirm-ok:hover {
-  background: var(--bzrv-surface-hover);
+  background: var(--bzrv-danger);
+  opacity: 0.9;
 }
 }
 
@@ -1192,9 +1187,79 @@ button.bzrv-flow-dialog-action.bzrv-flow-dialog-danger:not(.bzrv-flow-dialog-cta
   .setting-item.bzrv-path-picker-setting-row > .setting-item-control { flex: 0 1 auto; justify-content: flex-end; }
 }
 
-/* ticket 133：已选态隐藏选择按钮——行级 data-filled 由 renderPathSettingRow 同步，CSS 强制隐藏
-   （双保险：即使按钮元素未及时移出 DOM，只要行有值即不可见；桌面/移动端一致） */
+/* ticket 133：已选态隐藏选择按钮——行级 data-filled 由旧版 renderPathSettingRow 同步；
+   2026-11-21 起路径行改成常显 pill，此规则只作旧 DOM 兜底，不再有元素命中。 */
 .setting-item.bzrv-path-picker-setting-row[data-filled='1'] .bzrv-path-picker-btn--slim { display: none; }
+
+/* 路径行统一 pill（2026-11-21）：每个目录一颗「图标 + 路径 + 选择」，✕ 独立一颗。
+   视觉配色在 review/ui/styles/settings-page.css（要跟数据目录的 --bzsp-* 对齐）。 */
+.bzrv-path-picker-picks {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  min-width: 0;
+  max-width: 72%;
+}
+.bzrv-path-pick-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+.bzrv-path-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-2);
+  color: var(--bzrv-text-1);
+  font-family: inherit;
+  font-size: var(--bzrv-font-label);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bzrv-path-pick-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bzrv-path-pick-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.bzrv-path-pick-icon svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+.bzrv-path-pick-action {
+  flex-shrink: 0;
+  color: var(--bzrv-brand);
+}
+.bzrv-path-pick-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--bzrv-radius-sm);
+  background: transparent;
+  color: var(--bzrv-text-2);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.bzrv-path-pick-remove svg {
+  width: 13px;
+  height: 13px;
+}
 
 
 /* ticket 173 模型选择器弹窗：列表行（名称 + 来源小字），当前生效值高亮；行内嵌按钮随输入框等宽 */

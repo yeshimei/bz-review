@@ -5,20 +5,19 @@
   --un-muted: var(--text-muted, #777);
   --un-accent: var(--bzrv-accent, #9a7434);
   --un-tint: color-mix(in srgb, var(--un-accent) 8%, transparent);
-  --pcol: 92px;
+  --pcol: 104px;
   display: block;
   color: var(--un-ink);
   font-size: 12.5px;
 }
-.bzs-unlock-hd { padding: 18px 20px 12px; border-bottom: 1px solid var(--un-line); }
-.bzs-unlock-hd h2 {
-  margin: 0 0 4px;
-  font-family: Georgia, "Times New Roman", "STZhongsong", serif;
-  font-size: 18px;
-  font-weight: 500;
-  letter-spacing: .08em;
+/* 标题交给 uiModal 的统一头行（与备份 / 选择面板同一条），正文只留一句说明 */
+.bzs-unlock-sub {
+  margin: 0;
+  padding: 12px 20px 10px;
+  border-bottom: 1px solid var(--un-line);
+  color: var(--un-muted);
+  font-size: 11px;
 }
-.bzs-unlock-hd p { margin: 0; color: var(--un-muted); font-size: 11px; }
 .bzs-plan-head,
 .bzs-plan-row {
   display: grid;
@@ -46,6 +45,9 @@
 }
 .bzs-plan-head > span,
 .bzs-plan-row > span { justify-content: flex-start; padding-left: 14px; text-align: left; }
+/* 列的副标（免费不限时 / 一次买断）必须落成两行，否则和「基础版」抢同一行宽度，
+   中文会被挤成「基础 / 版」竖排（真机 2026-11-21 抓到） */
+.bzs-plan-head > i.c { flex-direction: column; gap: 1px; line-height: 1.2; }
 .bzs-plan-head small { display: block; font-size: 9px; color: var(--un-muted); font-weight: 400; }
 .bzs-plan-row { border-bottom: 1px solid color-mix(in srgb, var(--un-line) 60%, transparent); }
 .bzs-plan-row > .c.pro,

@@ -52,6 +52,16 @@ async function collectRestorePoints(app: App): Promise<RestorePoint[]> {
   return sortRestorePoints(out);
 }
 
+/** 删除一份恢复点：只删磁盘上的快照 / 备份文件，当前复习数据一律不动 */
+async function deleteRestorePoint(app: App, point: RestorePoint): Promise<{ ok: boolean; message: string }> {
+  try {
+    await app.vault.adapter.remove(point.path);
+    return { ok: true, message: '已删除这份备份' };
+  } catch (e) {
+    return { ok: false, message: `删除失败：${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 /**
  * 回滚到指定恢复点：先给当前数据留一份快照，再整份写回。
  * 快照、手动备份两种原文形态都认（走 parseReviewFile），不走合并——用户明确说
@@ -121,7 +131,28 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
       const row = list.createDiv({ cls: 'bzrv-backup-row' });
       const info = row.createDiv({ cls: 'bzrv-backup-info' });
       info.createSpan({ cls: 'bzrv-backup-time', text: describeRestorePoint(point) });
-      const btn = row.createEl('button', { cls: 'bzrv-btn', text: '回滚到这里' });
+      const rowActions = row.createDiv({ cls: 'bzrv-backup-row-actions' });
+      const del = rowActions.createEl('button', { cls: 'bzrv-btn bzrv-btn--danger-ghost', text: '删除' });
+      del.onclick = () => {
+        void (async () => {
+          const v = await openFlowDialog({
+            title: '删除这份备份？',
+            message: `${describeRestorePoint(point)}\n\n删除后无法恢复；当前复习数据不受影响。`,
+            actions: [
+              { label: '取消', value: 'cancel' },
+              { label: '删除', value: 'ok', cta: true, danger: true },
+            ],
+          });
+          if (v !== 'ok') return;
+          const res = await deleteRestorePoint(app, point);
+          notice(res.message, res.ok ? 'success' : 'warning');
+          if (res.ok) {
+            points = points.filter((p) => p.path !== point.path);
+            render();
+          }
+        })();
+      };
+      const btn = rowActions.createEl('button', { cls: 'bzrv-btn', text: '回滚到这里' });
       let busy = false;
       btn.onclick = () => {
         if (busy) return;

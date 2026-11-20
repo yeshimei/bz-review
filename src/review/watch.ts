@@ -10,6 +10,7 @@ import { isUnderFolder as isUnderFolderCore, stripMdExt } from '../core/utils';
 import type { App, TFile } from 'obsidian';
 import { notice, notifySaveError, notifyUndo } from '../core/notice';
 import { openFlowDialog } from '../core/flow-dialog';
+import { uiModal } from '../core/ui/modal';
 import { tryGetSettings, saveSettings } from '../core/settings-provider';
 import { ReviewDataManager } from './data';
 import { QuotaExceededError } from '../data/entitlement';
@@ -34,6 +35,85 @@ export function __setAutoAddMergeMsForTests(ms: number): void {
 export let RENAME_MERGE_MS = 3000;
 export function __setRenameMergeMsForTests(ms: number): void {
   RENAME_MERGE_MS = ms;
+}
+
+/**
+ * 文件夹加入复习的选择面板（2026-11-21）：
+ * 用户确认「批量加入复习」后，不再闷头全量写入，先把候选笔记列出来让用户勾选。
+ * 返回 null = 用户在面板里取消（文件夹也不加入监听）；返回数组 = 选中集合（可为空）。
+ */
+function pickFolderNotes(folder: string, candidates: string[]): Promise<string[] | null> {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value: string[] | null): void => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    const body = createDiv({ cls: 'bzrv-folder-add' });
+    body.createDiv({
+      cls: 'bzrv-folder-add-desc',
+      text: `监听文件夹「${folder}」下有 ${candidates.length} 篇笔记未加入复习。勾选要加入的笔记：`,
+    });
+    const tools = body.createDiv({ cls: 'bzrv-folder-add-tools' });
+    const all = tools.createEl('input', { type: 'checkbox' });
+    all.checked = true;
+    const allLabel = tools.createEl('label', { cls: 'bzrv-folder-add-all' });
+    allLabel.append(all, createSpan({ text: '全选' }));
+    const countEl = tools.createSpan({ cls: 'bzrv-folder-add-count' });
+
+    const list = body.createDiv({ cls: 'bzrv-folder-add-list' });
+    const boxes: Array<{ path: string; box: HTMLInputElement }> = [];
+    for (const path of candidates) {
+      const row = list.createEl('label', { cls: 'bzrv-folder-add-row' });
+      const box = row.createEl('input', { type: 'checkbox' });
+      box.checked = true;
+      box.value = path;
+      const name = path.split('/').pop() || path;
+      row.createSpan({ cls: 'bzrv-folder-add-name', text: stripMdExt(name) });
+      const parent = path.slice(0, path.lastIndexOf('/'));
+      if (parent) row.createSpan({ cls: 'bzrv-folder-add-dir', text: parent });
+      boxes.push({ path, box });
+    }
+
+    const selected = (): string[] => boxes.filter((b) => b.box.checked).map((b) => b.path);
+    const paint = (): void => {
+      const n = selected().length;
+      countEl.textContent = `已选 ${n} / ${boxes.length}`;
+      all.checked = n === boxes.length;
+      all.indeterminate = n > 0 && n < boxes.length;
+      ok.setText(n ? `加入 ${n} 篇` : '加入');
+      ok.disabled = n === 0;
+    };
+    all.onchange = () => {
+      for (const b of boxes) b.box.checked = all.checked;
+      paint();
+    };
+    for (const b of boxes) b.box.onchange = paint;
+
+    const modal = uiModal({
+      title: '加入复习',
+      head: true,
+      content: body,
+      maxWidth: 560,
+      className: 'bzrv-folder-add-modal',
+      onClose: () => finish(null),
+    });
+    const actions = modal.popup.createDiv({ cls: 'bzrv-edit-actions bzrv-folder-add-actions' });
+    const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: '取消' });
+    cancel.onclick = () => {
+      finish(null);
+      modal.close();
+    };
+    const ok = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: '加入' });
+    ok.onclick = () => {
+      const picked = selected();
+      finish(picked);
+      modal.close();
+    };
+    paint();
+    window.setTimeout(() => all.focus(), 0);
+  });
 }
 
 export class ReviewWatcher {
@@ -253,9 +333,18 @@ export class ReviewWatcher {
       ],
     });
     if (v !== 'ok') return false;
+    /* 二次确认之后走「文件夹加入复习」的选择面板：用户勾完再写，和手动从文件夹
+       加入复习是同一套流程；面板取消 = 整个文件夹不加入监听。 */
+    const picked = await pickFolderNotes(folder, candidates);
+    if (picked === null) return false;
+    if (picked.length === 0) {
+      notice('已加入监听，但没有勾选要加入的笔记', 'info');
+      await this.refresh();
+      return true;
+    }
     // A13：单趟 RMW 批量加入（原逐篇 addItem = N 次全文件读写）
     const res = await this.dataManager.addItems(
-      candidates.map((p) => ({ filePath: p, fileName: stripMdExt(p.split('/').pop()!) }))
+      picked.map((p) => ({ filePath: p, fileName: stripMdExt(p.split('/').pop()!) }))
     );
     if (res.overLimitMessage) {
       notice(`已加入 ${res.added} 篇笔记。${res.overLimitMessage}`, 'warning');
