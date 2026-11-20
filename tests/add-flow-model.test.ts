@@ -7,6 +7,7 @@ import {
   folderNotePaths,
   noteSourceOf,
   noteWholeKey,
+  plannedPathsFrom,
   silentModeOf,
 } from '../src/review/add-flow-model';
 
@@ -117,6 +118,25 @@ describe('「不用每次询问」的判据', () => {
   it('设了具体方式 → 直接用那个方式，不再问', () => {
     expect(silentModeOf('flashcard')).toBe('flashcard');
     expect(silentModeOf('plain')).toBe('plain');
+  });
+});
+
+describe('「已经在计划里」要认两种钥匙', () => {
+  it('旧版整篇条目按真实路径命中', () => {
+    expect(plannedPathsFrom([{ path: 'notes/a.md', planned: true }], ['notes/a.md']).has('notes/a.md')).toBe(true);
+  });
+
+  it('新流程的整篇卡按 note: 钥匙命中（真机重复点命令时就是这里漏了）', () => {
+    expect(plannedPathsFrom([{ path: 'note:notes/a.md', planned: true }], ['notes/a.md']).has('notes/a.md')).toBe(true);
+  });
+
+  it('没计划的不算，且不误伤别的路径', () => {
+    const s = plannedPathsFrom([
+      { path: 'notes/a.md', planned: false },
+      { path: 'note:notes/b.md', planned: true },
+    ], ['notes/a.md', 'notes/b.md']);
+    expect(s.has('notes/a.md')).toBe(false);
+    expect(s.has('notes/b.md')).toBe(true);
   });
 });
 

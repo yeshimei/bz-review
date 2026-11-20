@@ -26,6 +26,8 @@ import {
   addSummaryText,
   folderNotePaths,
   noteSourceOf,
+  noteWholeKey,
+  plannedPathsFrom,
   silentModeOf,
 } from './add-flow-model';
 import { noteCardKey } from './note-source';
@@ -76,27 +78,41 @@ interface CollectResult {
 }
 
 /**
+ * 这批笔记里哪些已经在复习计划里。
+ *
+ * 必须同时问两种钥匙（2026-11-22 真机踩到的）：
+ *   · 真实路径 `notes/a.md`：旧版「整篇笔记条目」在排期表里就是这么存的；
+ *   · 整篇钥匙 `note:notes/a.md`：统一流程之后笔记变成一张卡，存的是这个。
+ * Reader 的 statusOf 只按 filePath 查，两种都会命中，但调用方要的是「路径 →
+ * 在不在」。只查真实路径的话，新流程加过的笔记会被当成没加过，重复点命令
+ * 还会再弹一次制卡窗。
+ */
+async function plannedNotePaths(paths: readonly string[]): Promise<Set<string>> {
+  const api = getReviewPlanApi();
+  const list = Array.from(new Set(paths.filter(Boolean)));
+  if (!api || !list.length) return new Set<string>();
+  const byWhole = new Map(list.map((p) => [noteWholeKey(p), p]));
+  try {
+    const rows = await api.statusOf([...list, ...byWhole.keys()]);
+    return plannedPathsFrom(rows, list);
+  } catch {
+    /* 查重读盘失败不该挡路：照当没加过，入库时 addCards 还会再拦一次 */
+    return new Set<string>();
+  }
+}
+
+/**
  * 把一批笔记读成来源。
  *
- * 三种进不来的情况分开数：已经在计划里（老版整篇条目）、文件找不到、
- * 笔记是空的。用户看到的原因才说得清，而不是一律「加入失败」。
+ * 三种进不来的情况分开数：已经在计划里（老版整篇条目 / 新流程的整篇卡）、
+ * 文件找不到、笔记是空的。用户看到的原因才说得清，而不是一律「加入失败」。
  */
 async function collectSources(app: App, paths: readonly string[]): Promise<CollectResult> {
   const out: CollectResult = { sources: [], exists: 0, missing: 0, empty: 0 };
   const list = Array.from(new Set((Array.isArray(paths) ? paths : []).map((p) => String(p ?? '').trim()).filter(Boolean)));
   if (!list.length) return out;
 
-  const api = getReviewPlanApi();
-  let planned = new Set<string>();
-  if (api) {
-    try {
-      const rows = await api.statusOf(list);
-      planned = new Set(rows.filter((r) => r.planned).map((r) => r.path));
-    } catch {
-      planned = new Set();
-    }
-  }
-
+  const planned = await plannedNotePaths(list);
   const vault = vaultOf(app);
   for (const path of list) {
     if (planned.has(path)) {
@@ -183,16 +199,7 @@ async function addFolder(app: App, folder: string): Promise<void> {
     notice('这个文件夹里没有笔记', 'info');
     return;
   }
-  const api = getReviewPlanApi();
-  let planned = new Set<string>();
-  if (api) {
-    try {
-      const rows = await api.statusOf(paths);
-      planned = new Set(rows.filter((r) => r.planned).map((r) => r.path));
-    } catch {
-      planned = new Set();
-    }
-  }
+  const planned = await plannedNotePaths(paths);
   const fresh = paths.filter((p) => !planned.has(p));
   if (!fresh.length) {
     notice('这个文件夹里的笔记都已经在复习计划里了', 'info');
