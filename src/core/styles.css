@@ -21,6 +21,21 @@
     border: 0;
 }
 
+/* 文件树阶段徽章（review/app.ts 染色寄生在 Obsidian 文件树里，靠 markOwned 挂的
+   [data-bzrv] 锚点取作用域）：原整套 cssText 视觉值收编于此，动态色走局部变量
+   --bzrv-stage-badge-c（app.ts 只 setProperty 这一个变量，不再拼内联样式串）。 */
+[data-bzrv].bzrv-stage-badge {
+  font-size: 0.7em;
+  opacity: 0.8;
+  margin-left: 6px;
+  color: var(--bzrv-stage-badge-c, currentColor);
+  background: color-mix(in srgb, var(--bzrv-stage-badge-c, currentColor) 10%, transparent);
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--bzrv-stage-badge-c, currentColor) 30%, transparent);
+  font-weight: 500;
+}
+
 /* ===== 设置页顶部分页（参考 obsidian-linter 设置页） ===== */
 /* 设置区块标题（ADR-0009 单页平铺：🤖 AI / 📂 数据存储路径） */
 .bzrv-setting-section-title {
@@ -219,6 +234,12 @@ button.news-close-btn {
 .bzrv-notice--leaving.bzrv-notice--out-fade {
   animation: bzrvNoticeOutFade var(--bzrv-dur-base) ease-in forwards;
 }
+.bzrv-notice--leaving.bzrv-notice--out-drop {
+  animation: bzrvNoticeOutDrop var(--bzrv-dur-base) ease-in forwards;
+}
+.bzrv-notice--in-drop {
+  animation: bzrvNoticeInDrop 0.25s ease-out;
+}
 .bzrv-notice--in-pop {
   animation: bzrvNoticeInPop 0.25s ease-out;
 }
@@ -340,6 +361,10 @@ button.news-close-btn {
   from { opacity: 0; transform: translateY(-14px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes bzrvNoticeInDrop {
+  from { opacity: 0; transform: translateY(-24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 @keyframes bzrvNoticeInPop {
   from { opacity: 0; transform: scale(0.88); }
   to { opacity: 1; transform: scale(1); }
@@ -377,6 +402,9 @@ button.news-close-btn {
 @keyframes bzrvNoticeOut {
   to { opacity: 0; transform: translateY(-14px); }
 }
+@keyframes bzrvNoticeOutDrop {
+  to { opacity: 0; transform: translateY(-24px); }
+}
 @keyframes bzrvNoticeOutPop {
   to { opacity: 0; transform: scale(0.88); }
 }
@@ -400,6 +428,8 @@ button.news-close-btn {
 @media (prefers-reduced-motion: reduce) {
   .bzrv-notice,
   .bzrv-notice--leaving,
+  .bzrv-notice--leaving.bzrv-notice--out-drop,
+  .bzrv-notice--in-drop,
   .bzrv-notice--leaving.bzrv-notice--out-pop,
   .bzrv-notice--leaving.bzrv-notice--out-left,
   .bzrv-notice--leaving.bzrv-notice--out-right,

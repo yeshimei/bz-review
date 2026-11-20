@@ -926,6 +926,15 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
     const coloD = s.querySelector<HTMLElement>('[data-r="coloD"]');
     const coloS = s.querySelector<HTMLElement>('[data-r="coloS"]');
     const roll = rng(4242);
+    /* 萤群轨道参数 build 期一次算好（禁止逐帧随机）：rx 依赖画布尺寸，这里只存比例，
+       update 里按当帧 w/h 还原，不再逐帧 rng 重抽导致乱跳 */
+    const keeperFires = Array.from({ length: 18 }, () => ({
+      a: roll() * Math.PI * 2,
+      rxF: .28 + roll() * .22,
+      ryF: .5 + roll() * .3,
+      spd: .25 + roll() * .4,
+      ph: roll() * Math.PI * 2,
+    }));
     out.set('keeper', {
       dur: 3.4,
       update({ t, pal, px, py }) {
@@ -940,16 +949,14 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
           const ctx = cv.ctx, w = cv.w, h = cv.h;
           const cx = w / 2 + px * 8, cy = h / 2 + py * 6;
           const appear = at(t, 1.2, .4);
-          // 萤群：18 只沿各自椭圆轨道绕行（确定性：build 期 rng 生成参数）
-          for (let i = 0; i < 18; i++) {
-            const a = roll() * Math.PI * 2;
-            const rx = Math.min(w, h) * (.28 + roll() * .22);
-            const ry = rx * (.5 + roll() * .3);
-            const spd = .25 + roll() * .4;
-            const ph = roll() * Math.PI * 2;
-            const u = t * spd + ph;
+          // 萤群：18 只沿各自椭圆轨道绕行（参数 build 期已固定，update 只用 t 推进）
+          for (let i = 0; i < keeperFires.length; i++) {
+            const f = keeperFires[i];
+            const rx = Math.min(w, h) * f.rxF;
+            const ry = rx * f.ryF;
+            const u = t * f.spd + f.ph;
             const x = cx + Math.cos(u) * rx;
-            const y = cy + Math.sin(u * .92 + a) * ry;
+            const y = cy + Math.sin(u * .92 + f.a) * ry;
             const tw = .35 + .65 * Math.abs(Math.sin(t * 1.9 + i * 2.3));
             ctx.fillStyle = rgba(pal.jadeRgb, .5 * tw * appear);
             ctx.beginPath(); ctx.arc(x, y, 1.6 + tw, 0, Math.PI * 2); ctx.fill();

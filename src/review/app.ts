@@ -1203,7 +1203,8 @@ export const reviewApp = {
         } else {
           badgeEl.textContent = timeText;
         }
-        badgeEl.style.cssText = `font-size:0.7em;opacity:0.8;margin-left:6px;color:${color};background:color-mix(in srgb, ${color} 10%, transparent);padding:1px 4px;border-radius:3px;border:1px solid color-mix(in srgb, ${color} 30%, transparent);font-weight:500;`;
+        // 视觉样式已收进 core/styles.css 的 [data-bzrv].bzrv-stage-badge；这里只传动态色，不再写 cssText
+        badgeEl.style.setProperty('--bzrv-stage-badge-c', color);
         target.appendChild(badgeEl);
       }
       this._styledPaths.add(path);

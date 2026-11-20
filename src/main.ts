@@ -46,6 +46,7 @@ import { isBzPluginEnabled } from './core/plugin-path';
 import { t } from './i18n';
 import { installScopeGuard, markOwned } from './core/scope';
 import { setNoticeEmbedded } from './core/notice';
+import { devAutoOpen } from './core/dev-auto-open';
 
 /** 取 localStorage；隐私模式 / 移动端 WebView 可能抛错，退回 null（镜像降级，主流程照旧） */
 function localStorageOf(): CodeStorage | null {
@@ -491,6 +492,8 @@ export default class ReviewPlugin extends Plugin {
 
     this.app.workspace.onLayoutReady(() => {
       if (this.settings.enableAutoNotify !== false) ensureReview(this.app);
+      // 开发辅助：测试库数据目录里放了 debug-open.json 就自动直达对应命令（没有则静默）
+      devAutoOpen(this.app, this.settings.storagePath);
     });
   }
 

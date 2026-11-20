@@ -1,5 +1,5 @@
 /* ============================================================
- * bz-reader · 在线支持者名单（src/data/patrons.ts）
+ * bz Review · 在线支持者名单（src/review/ui/patrons.ts）
  *
  * 2026-11-11 起名单**不再内置在插件里**：两个插件（bz 与 bz Reader）共用
  * bz 主仓 `docs/patrons.json` 这一份公开数据，改名单只改那个文件、推一次，

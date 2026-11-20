@@ -1437,11 +1437,6 @@ export class UIManager {
       this.filterOpen = false;
       void this.refreshPanel();
     });
-    container.querySelector('[data-act="select"]')?.addEventListener('click', () => {
-      this.selectMode = !this.selectMode;
-      this.selected.clear();
-      void this.refreshPanel();
-    });
     // 头行没有「批量」之后，底栏这颗是唯一入口
     container.querySelector('[data-act="batch"]')?.addEventListener('click', () => {
       this.selectMode = !this.selectMode;

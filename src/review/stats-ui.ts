@@ -166,11 +166,11 @@ function rankRowHTML(rows: Array<{ name: string; meta: string; sub?: string }>):
     .join('');
 }
 
-/** 环比文案：上周 0 时不显示百分比（除以 0 只会得到「+∞」这种没有意义的东西） */
-function deltaText(cur: number, prev: number): string {
-  if (prev <= 0) return '上周无记录，暂无环比';
+/** 环比文案：上期 0 时不显示百分比（除以 0 只会得到「+∞」这种没有意义的东西）；unit 区分周/月 */
+function deltaText(cur: number, prev: number, unit = '周'): string {
+  if (prev <= 0) return `上${unit}无记录，暂无环比`;
   const d = Math.round(((cur - prev) / prev) * 100);
-  if (d === 0) return '与上周持平';
+  if (d === 0) return `与上${unit}持平`;
   return `环比 ${d > 0 ? '+' : ''}${d}%`;
 }
 
@@ -342,7 +342,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
     `本周 ${rich.weekCur} 次`,
     { text: deltaText(rich.weekCur, rich.weekPrev), title: `上周 ${rich.weekPrev} 次` },
     `本月 ${rich.monthCur} 次`,
-    { text: deltaText(rich.monthCur, rich.monthPrev), title: `上月 ${rich.monthPrev} 次` },
+    { text: deltaText(rich.monthCur, rich.monthPrev, '月'), title: `上月 ${rich.monthPrev} 次` },
     `今年 ${rich.yearCur} 次`,
     `累计 ${rich.reviews} 次`,
     `活跃日均 ${rich.perActiveDay.toFixed(1)} 次`,

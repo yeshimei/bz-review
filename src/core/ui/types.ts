@@ -169,7 +169,7 @@ export interface BzMobStripOpts {
 export interface BzSetlistItem {
   key: string;
   label: string;
-  sub?: string;            // chips 变体不展示，转 title 悬停提示
+  sub?: string;            // chips 变体不展示时渲染为 sr-only 视觉隐藏文本（不用 title，免悬停气泡）
   imageUrl?: string;
 }
 

@@ -53,14 +53,17 @@ export function uiCardChoice<T extends string>(opts: BzCardPickOpts<T>): { el: H
     el.appendChild(card);
   });
 
-  // 左右方向键在卡片间移动焦点（Enter/Space 原生触发 click）
+  // 方向键在同组内循环移动选中（radio 组语义，对齐 uiChoice/uiSegmented；Enter/Space 原生触发 click）
   el.addEventListener('keydown', (e) => {
-    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight' && e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+    e.preventDefault();
     const list = opts.options.map((o) => o.value);
     const idx = list.indexOf(cur);
-    const next = e.key === 'ArrowRight' ? (idx + 1) % list.length : (idx - 1 + list.length) % list.length;
+    const delta = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : -1;
+    const next = (idx + delta + list.length) % list.length;
+    sync(list[next]);
+    opts.onChange(list[next]);
     btns.get(list[next])?.focus();
-    e.preventDefault();
   });
 
   return { el, setValue: sync };

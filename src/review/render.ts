@@ -32,10 +32,10 @@ interface QuestionLike {
 // 与标签名无关，样式均挂 .bzrv-ic/.bzrv-q-ic/.bzrv-sprint-ic 类，span→i 无行为差异）。
 // 原 icon() 默认类 bzrv-q-ic 的调用点改为 iconSpan(name, 'bzrv-q-ic')。
 
-/** 对错标记（lucide check/x 占位；尺寸随 .bzrv-mark 字号档） */
+/** 对错标记（lucide check/x 占位；尺寸随 .bzrv-mark-state 字号档） */
 export function markHtml(kind: 'ok' | 'bad', size: '' | 'lg' = ''): string {
-  if (kind === 'ok') return `<span class="bzrv-mark ok ${size}"><i data-lucide="check"></i></span>`;
-  return `<span class="bzrv-mark bad ${size}"><i data-lucide="x"></i></span>`;
+  if (kind === 'ok') return `<span class="bzrv-mark-state ok ${size}"><i data-lucide="check"></i></span>`;
+  return `<span class="bzrv-mark-state bad ${size}"><i data-lucide="x"></i></span>`;
 }
 
 /** 头行日期副题：9月9日 周三 */
@@ -724,10 +724,8 @@ export function sprintLoadingHtml(): string {
 function sprintOptsHtml(
   q: QuestionLike,
   answered: boolean,
-  sel: number[],
-  lastCorrect: boolean
+  sel: number[]
 ): string {
-  void lastCorrect;
   return q.options
     .map((opt, i) => {
       const isSel = sel.includes(i);
@@ -743,7 +741,7 @@ function sprintOptsHtml(
           : '';
       return `
           <div class="bzrv-sprint-opt${extra}${answered ? ' is-disabled' : ''}" data-i="${i}" role="button" tabindex="${answered ? '-1' : '0'}" aria-disabled="${answered ? 'true' : 'false'}">
-            <span class="k">${'ABCD'[i]}</span>
+            <span class="k">${String.fromCharCode(65 + i)}</span>
             <span class="t">${esc(opt)}</span>
             <span class="m">${m}</span>
           </div>`;
@@ -760,7 +758,7 @@ export function sprintQuestionHtml(
   const single = question.correctIndices.length === 1;
   const total = entry.questions.length;
   const done = entry.doneCount;
-  const optsHtml = sprintOptsHtml(question, st.answered, st.sel, st.lastCorrect);
+  const optsHtml = sprintOptsHtml(question, st.answered, st.sel);
 
   const needSubmit = !single && !st.answered;
   /* 解析：答对答错都显示（与做题练习同一口径——答对也该知道自己为什么对）。
@@ -909,7 +907,7 @@ export function quizPracticeSetupHtml(ctx: QuizPracticeSetupCtx): string {
       ? ctx.folders
           .map((f) => {
             const label = f === '' ? '（库根目录）' : f;
-            return `<span class="bzrv-qp-chip"><span class="bzrv-qp-chip-name"><span class="bzrv-sr-only">${esc(label)}</span>${esc(label)}</span><button type="button" class="bzrv-qp-chip-x" data-rm-folder="${esc(f)}"><span class="bzrv-sr-only">移除 ${esc(label)}</span>${iconSpan('x', 'bzrv-q-ic')}</button></span>`;
+            return `<span class="bzrv-qp-chip"><span class="bzrv-qp-chip-name">${esc(label)}</span><button type="button" class="bzrv-qp-chip-x" data-rm-folder="${esc(f)}"><span class="bzrv-sr-only">移除 ${esc(label)}</span>${iconSpan('x', 'bzrv-q-ic')}</button></span>`;
           })
           .join('')
       : `<span class="bzrv-qp-detail">还没选文件夹</span>`;

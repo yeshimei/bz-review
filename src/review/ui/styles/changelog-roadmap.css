@@ -243,4 +243,4 @@
   border-radius:8px;background:none;box-shadow:none;font:inherit;font-size:12px;font-weight:600;
   color:var(--cc-ink-2);cursor:pointer;text-align:center;
 }
-.bzs-chgn-confirm-acts button.primary{color:#fff;background:var(--cc-accent);border-color:var(--cc-accent)}
+.bzs-chgn-confirm-acts button.primary{color:var(--bzrv-on-accent);background:var(--cc-accent);border-color:var(--cc-accent)}

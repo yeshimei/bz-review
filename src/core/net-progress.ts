@@ -29,7 +29,9 @@ export async function fetchBytesWithProgress(
   try {
     const res = await window.fetch(url, { method: 'GET' });
     if (!res?.ok) return null;
-    const total = Number(res.headers?.get?.('content-length') || 0);
+    // 畸形 content-length（NaN / Infinity / 负数）不能流进进度回调，否则 UI 显示 NaN%
+    const raw = Number(res.headers?.get?.('content-length') || 0);
+    const total = Number.isFinite(raw) && raw > 0 ? raw : 0;
 
     const body = res.body as ReadableStream<Uint8Array> | null | undefined;
     if (!body || typeof (body as { getReader?: unknown }).getReader !== 'function') {

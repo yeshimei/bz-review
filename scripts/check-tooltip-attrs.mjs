@@ -8,7 +8,7 @@
  * 数据对象的 .title 字段（book.title / meta.title 等）不算，只拦 DOM 写法：
  *   · 模板字符串里的 aria-label="..." / title="..."
  *   · el.setAttribute('aria-label'|'title', ...)
- *   · el.title = ... / el.setAttribute('title', ...)
+ *   · DOM 变量的 .title = ... / el.setAttribute('title', ...)
  *   · .setTooltip(...)
  * 用法：node scripts/check-tooltip-attrs.mjs   （退出码 0=干净，1=有违规）
  * ============================================================ */
@@ -48,6 +48,8 @@ export function findTooltipAttrs(code) {
     // 前面不是点号/连字符，且等号后紧跟引号：只认 HTML 属性写法，
     // 避免误伤 book.title = 'x' 和 data-title="..." 这类数据字段。
     { re: /(?<![\w-])(?:aria-label|title)=["'`]/, why: 'HTML tooltip attr' },
+    // .title = 属性赋值同样会冒气泡；只按 DOM 接收者名拦截，book.title / o.title 等数据字段不算
+    { re: /\b(?:el|elem|node|btn|button|input|item|\w+El)\.title\s*=/, why: '.title DOM assignment' },
   ];
   lines.forEach((line, idx) => {
     /* 先剥掉行尾注释再匹配：注释里写的 `// title="x"` 或文档里的示例不该算违规。
