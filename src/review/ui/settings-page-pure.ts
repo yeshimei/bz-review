@@ -122,6 +122,6 @@ export function pluginGroupHtml(mirrorUrl: string): string {
           </div>
         </div>
       </div>
-      <div class="bzs-capnote">商城可直接搜索安装；这里提供压缩包下载。<a href="${esc(mirrorUrl)}" target="_blank" rel="noopener noreferrer">备用下载（码云）</a></div>
+      <div class="bzs-capnote">商城可直接搜索安装；这里下载 main.js / manifest.json / styles.css 三个文件放进插件目录。<a href="${esc(mirrorUrl)}" target="_blank" rel="noopener noreferrer">备用下载（码云）</a></div>
     </div>`;
 }
