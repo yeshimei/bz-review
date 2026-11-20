@@ -37,6 +37,26 @@ describe('联动 · 复习方式跟着卡走', () => {
   });
 });
 
+describe('联动 · 卡片标题跟着卡走', () => {
+  const base = { key: 'reader:b:h1', bookTitle: '书', text: '划线原文' };
+  const questions = [{ q: '第一题题干', options: ['甲', '乙'], correct: [0] }];
+
+  it('做题卡：Reader 给的标题优先于第一题题干', () => {
+    const card = normalizeCardInput({
+      ...base,
+      mode: 'quiz',
+      displayTitle: '关于孙柔嘉，正确的是？',
+      questions,
+    });
+    expect(card?.displayTitle).toBe('关于孙柔嘉，正确的是？');
+  });
+
+  it('没给标题时才回填第一题题干（老行为不变）', () => {
+    const card = normalizeCardInput({ ...base, mode: 'quiz', questions });
+    expect(card?.displayTitle).toBe('第一题题干');
+  });
+});
+
 describe('联动 · Reader 出好的题转成题库', () => {
   it('字段改名到 Review 的题库格式', () => {
     expect(

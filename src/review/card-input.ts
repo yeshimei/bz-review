@@ -81,12 +81,17 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
     const a = String(input?.qa?.a ?? '').trim() || text;
     card.qa = { q, a, at: now };
   }
-  /* 阅读器交来已出好的做题卡：题目落进独立题库，卡上回填第一题题干当
-     列表短标题（题目在别处、cardTitleOf 读不到，只能在这里写进来）。mode
-     可能在盖章阶段才定，所以这里只看有没有题目，不依赖 mode 已就位。 */
-  const questions = normalizeQuestions(input.questions);
-  const firstQ = String(questions[0]?.question ?? '').trim();
-  if (firstQ) card.displayTitle = firstQ;
+  /* 阅读器交来已出好的做题卡：题目落进独立题库，卡上回填标题供复习列表显示。
+     2026-11-20 起 Reader 会随卡交来自家 AI 生成、用户改过的标题，那个才是准的；
+     老版本 Reader 没这个字段时才回退到第一题题干，避免把改过的标题冲掉。 */
+  const explicitTitle = String(input.displayTitle ?? '').trim();
+  if (explicitTitle) {
+    card.displayTitle = explicitTitle;
+  } else {
+    const questions = normalizeQuestions(input.questions);
+    const firstQ = String(questions[0]?.question ?? '').trim();
+    if (firstQ) card.displayTitle = firstQ;
+  }
   return card;
 }
 

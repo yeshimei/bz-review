@@ -131,6 +131,13 @@ export interface ReviewCardInput {
   media?: { images?: string[]; audio?: string };
   /** 图片遮挡的图片与区域；mode='occlusion' 时用 */
   occlusion?: { image: string; regions: Array<{ x: number; y: number; w: number; h: number; label: string }> };
+  /**
+   * 复习列表里显示的卡片标题（2026-11-20）。
+   *
+   * 做题卡由 Reader 出题时顺带让 AI 生成、并允许用户在确认题面那屏改；这里
+   * 优先收它，没给才回退到第一题题干。抽认卡的标题仍取问句，不用这个字段。
+   */
+  displayTitle?: string;
 }
 
 /** 卡片类额度（阅读器批量列表据此提前标「超出基础版上限」） */
