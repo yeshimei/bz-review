@@ -48,6 +48,12 @@ export default interface BzSettings {
   reviewDailyLimit: number;
   /** 间隔缩放（1 = 标准） */
   reviewIntervalScale: number;
+  /** Anki 式学习步骤（当天内的短步骤，如 "1m 10m"；空 = 关闭，新卡首次评级直接进 FSRS） */
+  reviewLearningSteps: string;
+  /** 走完学习步骤后的毕业间隔（天，Anki 默认 1）；Easy 直接毕业走 FSRS 首间隔 */
+  reviewGraduatingInterval: number;
+  /** Anki 式重新学习步骤：FSRS 阶段点"忘了"后的当天重学（默认 1m 10m；空 = 关闭） */
+  reviewRelearnSteps: string;
   /** 文件树显示复习角标 */
   reviewTreeBadge: boolean;
   /** 按复习历史拟合个人记忆曲线 */
@@ -168,6 +174,10 @@ export const DEFAULT_SETTINGS: BzSettings = {
   forceQuizForReview: true,
   reviewDailyLimit: 0,
   reviewIntervalScale: 1,
+  /* Anki 默认学习步骤：当天 1m + 10m，走完毕业（1 天）；留空 = 直接 FSRS。 */
+  reviewLearningSteps: '1m 10m',
+  reviewGraduatingInterval: 1,
+  reviewRelearnSteps: '1m 10m',
   reviewTreeBadge: true,
   reviewEnableFit: true,
   reviewFitEveryN: 10,

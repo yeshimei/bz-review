@@ -122,7 +122,7 @@ export interface ReviewItem {
   card?: ReviewCard;
   reviewStart: string; // ISO
   stage: number;
-  phase: 'ladder' | 'fsrs';
+  phase: 'ladder' | 'fsrs' | 'relearn';
   /** FSRS-7：长期稳定性（= S_long）。字段名沿用 v4，下游语义升级为长期。 */
   stability: number;
   /** FSRS-7：短期稳定性（= S_short）。可选：老数据/未首次评级的条目没有，调度按 0.8·S_long 回退。 */
@@ -246,8 +246,15 @@ export class ReviewDataManager {
     if (item.stability === undefined) item.stability = 1;
     if (item.stabilityShort === undefined && item.stability > 0) item.stabilityShort = 0.8 * item.stability;
     if (item.difficulty === undefined) item.difficulty = 0.3;
-    // FSRS-7 无阶梯：所有条目按 fsrs 相位处理（老 ladder 数据也走同一套调度）。
-    item.phase = 'fsrs';
+    // Anki 式学习步骤：phase 字段就是权威——ladder=在步骤中，fsrs=已毕业。
+    // 新卡建档 phase='ladder'；毕业写盘时置 'fsrs'。老 v4 数据没有"步骤"概念，
+    // 按其 totalReviews 判断：复习过的归一到 fsrs（不重走步骤），没复习过的进步骤。
+    if (item.phase === undefined || item.phase === null) {
+      item.phase = ((item.totalReviews || 0) > 0 || item.lastReviewed) ? 'fsrs' : 'ladder';
+    }
+    // 学习步骤态的 stage 是"第几步"的内部序号（0 起），与老 v4 的 stage（0..9 爬级）不是一回事。
+    // 进 ladder 时一律从第一步开始，避免老数据的 stage=1 导致第一次 Good 就"毕业"。
+    if (item.phase === 'ladder' && (item.totalReviews || 0) === 0) item.stage = 0;
     const now = new Date();
     const isCompleted = item.completed || false;
     let nextReview = item.nextReviewDate ? new Date(item.nextReviewDate) : null;
@@ -336,7 +343,8 @@ export class ReviewDataManager {
       id: `review_${now.getTime()}_${Math.random().toString(36).slice(2, 8)}`,
       reviewStart: now.toISOString(),
       stage: 0,
-      phase: 'fsrs',
+      // 新卡进 Anki 式学习步骤（1m/10m）；设置里关掉步骤时由 app.ts 直接按 FSRS 首次评级处理
+      phase: 'ladder',
       stability: 1,
       stabilityShort: 0.8,
       difficulty: 0.3,

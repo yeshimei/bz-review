@@ -10,6 +10,7 @@ import {
   clampIntervalDays,
   formatInterval,
   scheduleNext,
+  parseLearningSteps,
   currentR as fsrsCurrentR,
 } from './fsrs';
 import type { Rating } from './fsrs';
@@ -273,7 +274,11 @@ export const reviewApp = {
     const rating = selectedDifficulty;
     // FSRS-7 全量调度：三元组 (S_long, S_short, D) + 目标留存率 → 纯函数 scheduleNext。
     // 留存率取设置 reviewRThreshold（默认 0.9，官方推荐值；越高间隔越短、复习越勤）。
-    const desiredRetention = Number(getSettings().reviewRThreshold) || DEFAULT_R_THRESHOLD;
+    const s = getSettings();
+    const desiredRetention = Number(s.reviewRThreshold) || DEFAULT_R_THRESHOLD;
+    const stepsMins = parseLearningSteps(s.reviewLearningSteps);
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const stepStartKey = item.reviewStart ? new Date(item.reviewStart).toISOString().slice(0, 10) : '';
     const decision = scheduleNext(
       {
         stage: item.stage,
@@ -287,13 +292,20 @@ export const reviewApp = {
       rating,
       now,
       this.currentW(),
-      desiredRetention
+      desiredRetention,
+      {
+        stepsMins,
+        graduatingDays: Number(s.reviewGraduatingInterval) || 1,
+        relearnStepsMins: parseLearningSteps(s.reviewRelearnSteps),
+        // 步骤只在当天有效；跨天强制毕业，避免变成长阶梯
+        sameDay: stepStartKey === todayKey,
+      }
     );
-    // 复习间隔缩放（ADR-0046）：只乘 FSRS 动态间隔。
-    const scaleRaw = Number((getSettings()).reviewIntervalScale);
-    const scale = scaleRaw > 0 ? scaleRaw : 1;
-    /* 最长间隔上限：FSRS 高稳定度会算出几千天，实质等于「以后不再出现」。0 = 不限。 */
-    const capDays = Number((getSettings()).reviewMaxIntervalDays) || 0;
+    // 学习/重学步骤的间隔是分钟级 Anki 短步，不缩放、不套最长上限；FSRS 间隔才走缩放/上限。
+    const inSteps = decision.phase === 'ladder' || decision.phase === 'relearn';
+    const scaleRaw = Number(s.reviewIntervalScale);
+    const scale = inSteps ? 1 : (scaleRaw > 0 ? scaleRaw : 1);
+    const capDays = inSteps ? 0 : (Number(s.reviewMaxIntervalDays) || 0);
     const scaledDays = clampIntervalDays(decision.intervalDays, scale, capDays);
     const nextDate = new Date(now.getTime() + scaledDays * 86400000);
 
@@ -350,9 +362,12 @@ export const reviewApp = {
     if (this._undoStack.length > 20) this._undoStack.shift();
     const undo = (): void => void this.undoLastRating();
 
-    // 全量 FSRS：首次评级与后续轮次口径一致，都是「下次复习：X 后」。
-    // 说人话：动态间隔常在小时级，四舍五入成「1 天」会和实际排期对不上。
-    notifyUndo(`下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
+    // 学习步骤期报分钟级短间隔；毕业报"完成学习"；FSRS 报动态间隔。
+    if (decision.graduated) {
+      notifyUndo(`完成学习，下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
+    } else {
+      notifyUndo(`下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
+    }
     // ADR-0077：评级也累计拟合计数（含首次评级；样本过滤在 fit.ts 内做）。
     // fire-and-forget：计数在入口同步累加，拟合自防重入；不 await 避免大历史时卡评级路径
     void this.maybeRunFit(getApp());
