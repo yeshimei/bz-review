@@ -1611,3 +1611,134 @@
   .bzrv-wiz-cloze-src { max-height: 30vh; }
 }
 
+/* ==================== 从阅读器加入复习（source-pick-ui.ts，2026-11-21） ====================
+ * 选书 → 挑范围（按划线 / 按章节）→ 确认（字数 / 每章上限）→ 统一制卡。
+ * 与 card-wizard 同一套骨架：头尾固定、只有中段滚；配色只消费 --bzrv-* token。
+ */
+.bzrv-overlay-popup.bzrv-pick-popup {
+  padding: 0;
+  overflow: hidden;
+  width: min(720px, calc(100vw - 32px));
+  max-width: min(720px, calc(100vw - 32px));
+  max-height: min(86vh, 760px);
+}
+.bzrv-pick-popup .bzrv-dialog-body { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+.bzrv-pick { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.bzrv-pick, .bzrv-pick * { box-sizing: border-box; }
+
+.bzrv-pick-head {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 18px 20px 8px;
+}
+.bzrv-pick-title { font-size: var(--bzrv-font-title); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
+.bzrv-pick-x {
+  flex: none; width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: var(--bzrv-radius-sm);
+  background: transparent; color: var(--bzrv-text-3);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.bzrv-pick-x:hover { background: var(--bzrv-surface-2); color: var(--bzrv-text-1); }
+
+.bzrv-pick-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 20px 10px; }
+.bzrv-pick-foot {
+  flex: none;
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--bzrv-border);
+}
+.bzrv-pick-btn {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-label);
+  padding: 7px 16px; border-radius: var(--bzrv-radius-sm);
+  border: 1px solid var(--bzrv-border); background: transparent; color: var(--bzrv-text-1);
+  cursor: pointer;
+}
+.bzrv-pick-btn:hover:not(:disabled) { background: var(--bzrv-surface-2); }
+.bzrv-pick-btn.is-cta { background: var(--bzrv-accent); border-color: var(--bzrv-accent); color: #fff; }
+.bzrv-pick-btn.is-cta:hover:not(:disabled) { filter: brightness(1.06); }
+.bzrv-pick-btn:disabled { opacity: 0.45; cursor: default; }
+
+.bzrv-pick-lead { margin: 0 0 12px; color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); line-height: 1.65; }
+.bzrv-pick-empty {
+  margin: 0 0 12px; padding: 10px 12px;
+  border: 1px dashed var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); line-height: 1.7;
+}
+.bzrv-pick-loading { color: var(--bzrv-text-2); font-size: var(--bzrv-font-body); padding: 28px 0; text-align: center; }
+.bzrv-pick-error { color: var(--bzrv-text-2); font-size: var(--bzrv-font-meta); margin-top: 10px; }
+
+.bzrv-pick-books { display: flex; flex-direction: column; gap: 6px; }
+.bzrv-pick-book {
+  appearance: none; width: 100%; font: inherit; text-align: left; color: inherit;
+  padding: 10px 12px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  background: transparent; cursor: pointer;
+}
+.bzrv-pick-book:hover { background: var(--bzrv-surface-2); }
+.bzrv-pick-book-name { font-size: var(--bzrv-font-emphasis); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
+.bzrv-pick-book-sub { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 3px; }
+
+.bzrv-pick-bookmeta { margin: 0 0 10px; }
+.bzrv-pick-bookmeta-name { font-size: var(--bzrv-font-emphasis); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
+.bzrv-pick-bookmeta-sub { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 2px; }
+
+.bzrv-pick-tabs { display: flex; gap: 6px; margin: 0 0 10px; }
+.bzrv-pick-tab {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-label);
+  padding: 6px 14px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-full);
+  background: transparent; color: var(--bzrv-text-2); cursor: pointer;
+}
+.bzrv-pick-tab.is-on { background: var(--bzrv-accent); border-color: var(--bzrv-accent); color: #fff; }
+
+.bzrv-pick-list {
+  max-height: 44vh; overflow-y: auto;
+  border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  margin: 0 0 10px;
+}
+.bzrv-pick-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-bottom: 1px solid var(--bzrv-border);
+  cursor: pointer;
+}
+.bzrv-pick-row:last-child { border-bottom: 0; }
+.bzrv-pick-row:hover { background: var(--bzrv-surface-2); }
+.bzrv-pick-check { flex: none; width: 16px; height: 16px; accent-color: var(--bzrv-accent); }
+.bzrv-pick-row-main { min-width: 0; }
+.bzrv-pick-row-title {
+  font-size: var(--bzrv-font-body); color: var(--bzrv-text-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bzrv-pick-row-sub { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 2px; }
+
+.bzrv-pick-bar { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.bzrv-pick-link {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-meta);
+  color: var(--bzrv-accent); background: none; border: 0; padding: 2px 0; cursor: pointer;
+}
+.bzrv-pick-sum { font-size: var(--bzrv-font-meta); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-2); margin: 0 0 6px; }
+
+.bzrv-pick-confirm { margin: 0 0 10px; }
+.bzrv-pick-confirm-line { font-size: var(--bzrv-font-body); color: var(--bzrv-text-2); line-height: 1.9; }
+.bzrv-pick-confirm-line.is-warn { color: var(--bzrv-text-1); }
+.bzrv-pick-confirm-line.is-error { color: var(--bzrv-text-1); font-weight: 600; }
+.bzrv-pick-confirm-line.is-note { color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
+.bzrv-pick-limit {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin: 12px 0; padding: 12px;
+  border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+}
+.bzrv-pick-limit-main { flex: 1 1 auto; min-width: 0; }
+.bzrv-pick-limit-name { font-size: var(--bzrv-font-body); color: var(--bzrv-text-1); font-weight: var(--bzrv-weight-semibold); }
+.bzrv-pick-limit-hint { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 3px; line-height: 1.6; }
+.bzrv-pick-limit-input {
+  flex: none; width: 72px; padding: 5px 8px;
+  font: inherit; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1);
+  background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+}
+
+@media (max-width: 680px) {
+  .bzrv-pick-body { padding: 0 16px 8px; }
+  .bzrv-pick-list { max-height: 38vh; }
+  .bzrv-pick-head { padding: 16px 16px 8px; }
+  .bzrv-pick-foot { padding: 12px 16px 16px; }
+}
+

@@ -35,6 +35,7 @@ import {
   uiManager,
 } from './review';
 import type { CardWizardOptions } from './review/card-wizard';
+import { openSourcePicker } from './review/source-pick-ui';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
 import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
@@ -76,8 +77,10 @@ export default class ReviewPlugin extends Plugin {
    */
   readonly reviewApi = {
     /** 契约版本：v2 quota()；v3 embedInto()；v4 setDefaultCardMethod() / focusCard()；
-     *  v5 openCardFlow()——统一制卡流程搬进 Review，Reader 只交来源 */
-    version: 5,
+     *  v5 openCardFlow()——统一制卡流程搬进 Review，Reader 只交来源；
+     *  v6 openReaderFlow()——从阅读器整条流程（选书 / 挑范围 / AI 挑）也归 Review，
+     *  Reader 只留内容接口。 */
+    version: 6,
     addCards: async (cards: ReviewCardInput[]): Promise<ReviewAddSummary> => {
       ensureReview(this.app);
       const api = getReviewPlanApi();
@@ -94,6 +97,16 @@ export default class ReviewPlugin extends Plugin {
     openCardFlow: (opts: CardWizardOptions): void => {
       ensureReview(this.app);
       openCardWizardForAdd(this.app, opts);
+    },
+    /**
+     * 从阅读器加入复习（契约 v6，2026-11-21）。
+     *
+     * Reader 的书内入口只把 bookId 交过来；选书、挑范围（按划线 / 按章节）、
+     * 字数与每章上限、AI 挑重点，全在这个窗口里做。不给 bookId 就先列书。
+     */
+    openReaderFlow: (opts?: { bookId?: string }): void => {
+      ensureReview(this.app);
+      openSourcePicker(this.app, opts ?? {});
     },
     hasNote: async (path: string): Promise<boolean> => {
       ensureReview(this.app);
@@ -281,6 +294,11 @@ export default class ReviewPlugin extends Plugin {
       id: 'review-add',
       name: t('把当前笔记加入复习', 'Add current note to review plan'),
       callback: withReview((app) => reviewAddCurrent(app)),
+    });
+    this.addCommand({
+      id: 'review-add-reader',
+      name: t('从阅读器加入复习', 'Add from bz Reader'),
+      callback: withReview((app) => openSourcePicker(app)),
     });
     /* 选中一段文字就能做成一张卡（2026-11-15）。走 editorCallback：只有在笔记里
        有光标时才可用，菜单里不会出现一颗点了没反应的命令。 */
