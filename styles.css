@@ -7072,6 +7072,13 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-more-sep:is([data-bzrv], [data-bzrv] *) { height: 1px; background: var(--bzrv-border); margin: 6px 6px; }
 /* 嵌入 bz-reader 动作栏：那一条 overflow 可能裁掉下拉，抬高层级并把定位锚在可见区 */
 .bzrv-embed-acts .bzrv-more-menu:is([data-bzrv], [data-bzrv] *) { top: calc(100% + 6px); }
+/* 手机：头行只留 more 一颗，filter/data/settings 走「界面工具」组。
+   桌面保持原样（头行四颗 + 菜单副本），两端共用同一份菜单 HTML。 */
+@media (max-width: 768px) {
+  .bzrv-panel-head-btns > .bzrv-icon-btn[data-act="filter"]:is([data-bzrv], [data-bzrv] *),
+  .bzrv-panel-head-btns > .bzrv-icon-btn[data-act="data"]:is([data-bzrv], [data-bzrv] *),
+  .bzrv-panel-head-btns > .bzrv-icon-btn[data-act="settings"]:is([data-bzrv], [data-bzrv] *) { display: none; }
+}
 
 /* ==================== Anki 导入预览（2026-11-20） ====================
    导入前先摊开「进来多少 / 跳过什么 / 媒体带不过来」，用户确认才写盘。

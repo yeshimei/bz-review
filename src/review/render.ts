@@ -134,9 +134,14 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 export const PANEL_HEAD_ACTS = ['filter', 'data', 'more', 'settings'] as const;
 export type PanelHeadAct = (typeof PANEL_HEAD_ACTS)[number];
 
-/** 「更多」菜单里的入口：复习记录（arch/trash）+ 数据洞察（books/manager）。
- *  顺序即菜单里的呈现顺序；高亮仍走 panelActIsOn（与头行图标同一口径）。 */
-export const MORE_MENU_ACTS = ['arch', 'trash', 'books', 'manager'] as const;
+/** 「更多」菜单里的入口：复习操作（batch/achv）+ 复习记录（arch/trash）
+ *  + 数据洞察（books/manager）+ 界面工具（filter/data/settings）。
+ *  顺序即菜单里的呈现顺序；高亮仍走 panelActIsOn（与头行图标同一口径）。
+ *  2026-11-20 二轮：手机上头行只留 more，filter/data/settings 只能从这里进；
+ *  成就与批量选择也从底栏收进来——桌面和手机同一份菜单，不再各留一颗。 */
+export const MORE_MENU_ACTS = [
+  'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
+] as const;
 export type MoreMenuAct = (typeof MORE_MENU_ACTS)[number];
 
 /** data-act → 对应内置页；filter/more 是就地开关，没有「当前页」概念 */
@@ -160,10 +165,16 @@ function moreMenuItem(act: MoreMenuAct, title: string, sub: string, icon: string
   return `<button type="button" class="bzrv-more-item${panelActIsOn(act, activePage) ? ' is-on' : ''}" data-act="${act}">${iconSpan(icon, 'bzrv-more-item-ic')}<span class="bzrv-more-item-txt"><span class="bzrv-more-item-title">${title}</span><span class="bzrv-more-item-sub">${sub}</span></span></button>`;
 }
 
-/** 「更多」下拉菜单的内容（分组 + 四项）。挂在 .bzrv-panel-head-btns 内、more 按钮旁，
- *  开合由 ui.bindPanelHead 管；默认 hidden，纯 HTML 不碰 DOM。 */
+/** 「更多」下拉菜单的内容（四组）。挂在 .bzrv-panel-head-btns 内、more 按钮旁，
+ *  开合由 ui.bindPanelHead 管；默认 hidden，纯 HTML 不碰 DOM。
+ *  桌面与手机共用这一份：底栏挪进来的 batch/achv 常驻，filter/data/settings
+ *  在手机上从头部收起后落到「界面工具」组，桌面仍可点（与头行同一动作）。 */
 export function panelMoreMenuHtml(activePage?: string | null): string {
   return `<div class="bzrv-more-menu" hidden>
+  <div class="bzrv-more-group">复习操作</div>
+  ${moreMenuItem('batch', '批量选择', '勾选条目批量处理', 'square-check-big', activePage)}
+  ${moreMenuItem('achv', '成就', '徽章进度单独成页', 'trophy', activePage)}
+  <div class="bzrv-more-sep"></div>
   <div class="bzrv-more-group">复习记录</div>
   ${moreMenuItem('arch', '已完成', '复习过的条目', 'folder-check', activePage)}
   ${moreMenuItem('trash', '已移出', '可从回收站找回', 'archive-restore', activePage)}
@@ -171,19 +182,24 @@ export function panelMoreMenuHtml(activePage?: string | null): string {
   <div class="bzrv-more-group">数据洞察</div>
   ${moreMenuItem('books', '按书档案', '按书名汇总报告', 'book-open', activePage)}
   ${moreMenuItem('manager', '卡片管理器', '挂起 / 排期 / 筛选', 'layout-grid', activePage)}
+  <div class="bzrv-more-sep"></div>
+  <div class="bzrv-more-group">界面工具</div>
+  ${moreMenuItem('filter', '筛选', '牌组 / 类型 / 状态', 'list-filter', activePage)}
+  ${moreMenuItem('data', '数据', '统计与负荷', 'chart-column', activePage)}
+  ${moreMenuItem('settings', '设置', '偏好与授权', 'settings', activePage)}
 </div>`;
 }
 
 /**
  * 只生成头行图标按钮（不含 .bzrv-panel-head-btns 外壳），给面板头与嵌入门面复用。
  * 可读名只用 sr-only，绝不写 aria-label / title——Obsidian 会把它们变成悬停气泡。
- * 头行 4 颗工具 + more 按钮 + 默认隐藏的下拉菜单（含四个次级入口）。
+ * 头行 4 颗工具 + more 按钮 + 默认隐藏的下拉菜单（含九个次级入口）。
  */
 export function panelHeadBtnsHtml(activePage?: string | null): string {
   const on = (act: PanelHeadAct): string => (panelActIsOn(act, activePage) ? ' is-on' : '');
   return `<button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
 <button data-act="data" class="bzrv-icon-btn${on('data')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
-<button data-act="more" class="bzrv-icon-btn bzrv-more-btn${on('more')}"><span class="bzrv-sr-only">更多（已完成 / 已移出 / 按书档案 / 卡片管理器）</span>${iconSpan('more-vertical', 'bzrv-q-ic')}</button>${panelMoreMenuHtml(activePage)}
+<button data-act="more" class="bzrv-icon-btn bzrv-more-btn${on('more')}"><span class="bzrv-sr-only">更多（批量选择 / 成就 / 复习记录 / 数据洞察 / 界面工具）</span>${iconSpan('more-vertical', 'bzrv-q-ic')}</button>${panelMoreMenuHtml(activePage)}
 <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>`;
 }
 
@@ -422,14 +438,12 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       : '';
   /* 「已完成」只数真的复习完了的。col.done 里还混着挂起（文件缺失）的条目——
      直接拿它的长度当完成数，会让「已完成 2 篇」里藏着一条早就丢了文件的记录。 */
-  /* 已完成挪到头行图标后，底栏这颗换成「批量选择」——不然它就彻底没了入口。 */
+  /* 归档态才需要「返回队列」——批量选择已收进更多菜单，普通队列底栏不再放它。 */
   const archItem = ctx.showArchived
     ? `<span class="bzrv-q-fitem bzrv-touch-target--lg is-back" data-act="arch"><span class="bzrv-sr-only">点此返回队列</span>
         ${iconSpan('undo-2', 'bzrv-q-ic')}<span class="lbl">返回队列</span>
       </span>`
-    : `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="batch"><span class="bzrv-sr-only">批量选择</span>
-        ${iconSpan('square-check-big', 'bzrv-q-ic')}<span class="lbl">批量选择</span>
-      </span>`;
+    : '';
   /* 底栏入口只在真有东西时出现（头行那颗图标常驻）：没删过东西的人不需要多一行 0 条，
      删过的人则必须有地方把东西捞回来（以前只有几秒的 toast 撤销，错过就没了）。 */
   const trashItem = (ctx.trashCount ?? 0) > 0
@@ -437,23 +451,16 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
         ${iconSpan('archive-restore', 'bzrv-q-ic')}<span class="lbl">已移出 <b>${ctx.trashCount}</b> 条</span>
       </span>`
     : '';
-  /* 成就单列一页（2026-11-20）：不放进统计页，也不占头行第 6 颗图标——
-     头行四颗要与 Reader 嵌入的动作栏一一对齐，多一颗切页就会跳。 */
-  const achvItem = `<span class="bzrv-q-fitem bzrv-touch-target--lg" data-act="achv"><span class="bzrv-sr-only">成就徽章，单独成页</span>
-      ${iconSpan('trophy', 'bzrv-q-ic')}<span class="lbl">成就</span>
-    </span>`;
-  const footer = `
-      <div class="bzrv-q-footer">
-        ${archItem}
-        ${trashItem ? `<i class="sep"></i>${trashItem}` : ''}
-        <i class="sep"></i>
-        ${achvItem}
-        <i class="sep"></i>
-        <span class="bzrv-q-fitem">
-          ${iconSpan('flame', 'bzrv-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
-        </span>
-        ${savedItem}
-      </div>`;
+  /* 成就单列一页（2026-11-20 二轮）：入口收进更多菜单，桌面与手机同一份；
+     底栏只留真的需要一眼看到的东西（返回队列 / 已移出 / 连续天数）。 */
+  const footerItems: string[] = [];
+  if (archItem) footerItems.push(archItem);
+  if (trashItem) footerItems.push(trashItem);
+  footerItems.push(`<span class="bzrv-q-fitem">
+        ${iconSpan('flame', 'bzrv-q-ic')}<span class="lbl">累计 <b>${stats.totalReviews}</b> 天 · 连续 <b>${stats.streak}</b> 天</span>
+      </span>`);
+  if (savedItem) footerItems.push(savedItem.replace(/^\s*<i class="sep"><\/i>\s*/, ''));
+  const footer = `<div class="bzrv-q-footer">${footerItems.join('<i class="sep"></i>')}</div>`;
 
   /* 筛选条：说清楚「列表被筛过、开始本轮不受影响」——不说的话，用户会以为
      筛选后开始本轮只复习筛出来的那些，结果被多塞了一堆条目。 */
