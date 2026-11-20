@@ -974,6 +974,18 @@ export class UIManager {
           })();
         });
       });
+      row.querySelector<HTMLElement>('[data-act="mgr-reverse"]')?.addEventListener('click', () => {
+        void (async () => {
+          try {
+            const res = await this.dataManager?.createReverseCard(it.card!.key);
+            if (!res) return;
+            notice(res.message, res.ok ? 'success' : 'warning');
+            if (res.ok) await this.refreshPanel();
+          } catch (e) {
+            notifySaveError(e, '生成反向卡');
+          }
+        })();
+      });
       row.querySelector<HTMLElement>('[data-act="mgr-suspend"]')?.addEventListener('click', () => void applyHidden(it, 'suspend'));
       row.querySelector<HTMLElement>('[data-act="mgr-bury"]')?.addEventListener('click', () => void applyHidden(it, 'bury'));
       row.querySelector<HTMLElement>('[data-act="mgr-restore"]')?.addEventListener('click', () => void applyHidden(it, 'restore'));

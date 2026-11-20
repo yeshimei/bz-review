@@ -817,6 +817,13 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             min: 0.5,
             max: 0.99,
           },
+          {
+            type: 'toggle',
+            name: '兄弟卡不扎堆',
+            desc: '反向卡 / 挖空拆卡同一轮只出一张，默认开',
+            help: '同一段内容生成的几张卡（正反对调、多处挖空）如果连着复习，正确率会被虚高、也浪费时间。开启后同一轮只挑一张，其余留到下一轮；不改排期、不删卡。',
+            binding: { key: 'reviewBurySiblings' },
+          },
           /* 批 3：新卡与到期分两个额度，各自截断。合成一个上限时，新卡多的一天
              会被新卡吃光，剩下的时间全在啃新的，复习效率反而更低。 */
           {

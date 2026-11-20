@@ -80,6 +80,8 @@ export default interface BzSettings {
   reviewCardDefaultMethod: 'manual' | 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain' | 'media' | 'occlusion';
   /** 评级键位（四个字符，顺序＝忘了/困难/一般/简单；默认 1234） */
   reviewRatingKeys: string;
+  /** 同一组兄弟卡（反向卡/挖空拆卡）一轮只出一张，避免连着复习同一段内容；默认开 */
+  reviewBurySiblings: boolean;
   /** 休假到哪天（ISO；空 = 不休假）。到期那天把整份计划顺延，回来不雪崩 */
   reviewVacationUntil: string;
   /** 休假开始时间（ISO；用于算顺延多长，用户看不到） */
@@ -190,6 +192,7 @@ export const DEFAULT_SETTINGS: BzSettings = {
   /* 默认「手动」：加入计划那一刻每次问用户选哪种制卡方式（用户 2026-11-15 拍板的默认值） */
   reviewCardDefaultMethod: 'manual',
   reviewRatingKeys: '1234',
+  reviewBurySiblings: true,
   reviewVacationUntil: '',
   reviewVacationFrom: '',
   reviewMaxIntervalDays: 0,

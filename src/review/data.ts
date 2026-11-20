@@ -110,6 +110,13 @@ export interface ReviewCard {
   /** 自定义字段模板（抽认卡）：正面/背面各显示哪些预定义字段；受限，不开放手写 HTML */
   template?: { front: string[]; back: string[] };
   /**
+   * 兄弟卡组标识（2026-11-20）：同一源内容生成的多张卡（反向卡/挖空拆卡）共享一个
+   * groupId，同一轮复习只出一张，避免连着复习同一条内容（Anki 的 bury siblings）。
+   */
+  groupId?: string;
+  /** 反向卡指向原卡的 key（自制反向卡）；单纯标记，排期各自独立 */
+  reverseOf?: string;
+  /**
    * 用户手改过（批 2）：后台自动补内容一律跳过，别把刚写的话顶掉。
    * 点「重新生成」仍可覆盖（那条路走 force）。
    */
@@ -469,6 +476,45 @@ export class ReviewDataManager {
       item.card = { ...item.card!, ...patch, key: item.card!.key };
       item.name = cardTitleOf(item.card);
       return true;
+    });
+  }
+
+  /**
+   * 给一张抽认卡生成反向卡（问句与答案对调）。
+   * 复用 Anki 导入 `#rev` 的口径：新卡 key = 原 key + '#rev'，正文=q、qa 互换；
+   * 两张卡共享 groupId（同轮只出一张），反向卡 reverseOf 指向原卡。
+   * 已生成过（key 已存在）则不重复；原卡没有被问答对（qa.q 空）时拒绝。
+   */
+  createReverseCard(key: string): Promise<{ ok: boolean; message: string }> {
+    return this.mutate((items) => {
+      const idx = items.findIndex((i) => i.filePath === key && isCardItem(i));
+      if (idx < 0) return { ok: false, message: '没找到这张卡' };
+      const orig = items[idx];
+      const card = orig.card!;
+      const q = String(card.qa?.q ?? '').trim();
+      const a = String(card.qa?.a ?? '').trim();
+      if (!q || !a) return { ok: false, message: '这张卡还没有问句和答案，先生成内容再反向' };
+      const revKey = `${key}#rev`;
+      if (items.some((i) => i.filePath === revKey)) return { ok: false, message: '反向卡已经存在了' };
+      const groupId = card.groupId || key;
+      /* 原卡与反向卡都打上同一个组号，供同轮去重；不动任何排期字段 */
+      items[idx] = { ...orig, card: { ...card, groupId } };
+      const rev: ReviewItem = {
+        ...this.newCardItem({
+          key: revKey,
+          bookTitle: card.bookTitle,
+          chapterTitle: card.chapterTitle,
+          text: q,
+          displayTitle: a.slice(0, 40),
+          comment: card.comment,
+          mode: 'flashcard',
+          qa: { q: a, a: q, at: Date.now() },
+          groupId,
+          reverseOf: key,
+        }),
+      };
+      items.push(rev);
+      return { ok: true, message: '已生成反向卡，两张卡同轮只会出现一张' };
     });
   }
 
