@@ -5,6 +5,15 @@ import { GROUP_ID } from '../../data/entitlement';
 export const REPO_URL = `https://github.com/${REPO_SLUG}`;
 /** 关于条用的推荐向那一集（第 1P；环境自检那一处仍用各自的分 P） */
 export const VIDEO_TUTORIAL_URL = 'https://www.bilibili.com/video/BV1vNsZ6pE7i/?p=1';
+
+/**
+ * 插件组「下载 bz Reader」（2026-11-20）：GitHub Release 取最新版压缩包，
+ * 码云作备份路线。两条都指向 latest，版本随发布自动跟进。
+ */
+export const READER_DOWNLOAD_URL =
+  'https://github.com/yeshimei/bz-reader/releases/latest/download/bz-reader.zip';
+export const READER_DOWNLOAD_MIRROR =
+  'https://gitee.com/ntbl/bz-reader/releases/latest/download/bz-reader.zip';
 export { GROUP_ID };
 
 /** 桌面优先 Electron shell，移动端退回 window.open（与 reader 逐字同口径） */
