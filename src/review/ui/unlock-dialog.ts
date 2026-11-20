@@ -1,6 +1,7 @@
 /* ============================================================
  * 高级功能弹窗（照 bz-reader 的功能对照表）：
  * 两版功能完全一致，只有复习笔记 / 划线卡数量不同。价格不写进插件。
+ * 弹窗只做引导（去购买 / 交流群）；填激活码统一走设置页「授权」组，别在两处各做一份。
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
 import { GROUP_ID, PURCHASE_URL } from '../../data/entitlement';
@@ -87,7 +88,7 @@ function cell(v: string, pro: boolean): string {
   return `<i class="c${pro ? ' pro' : ''}${v === YES ? ' y' : ''}">${esc(v)}</i>`;
 }
 
-export function unlockDialogHtml(paid: boolean): string {
+export function unlockDialogHtml(paid: boolean, reason = ''): string {
   const body = GROUPS.map(
     (g) =>
       `<div class="bzs-plan-row is-group"><span>${esc(g.title)}</span>${cell('', false)}${cell('', true)}</div>` +
@@ -102,7 +103,7 @@ export function unlockDialogHtml(paid: boolean): string {
   const total = GROUPS.reduce((n, g) => n + g.rows.length, 0);
   return (
     '<div class="bzs-unlock">' +
-    '<div class="bzs-unlock-hd"><h2>高级版功能</h2><p>两版功能完全一样，只差数量上限。</p></div>' +
+    `<div class="bzs-unlock-hd"><h2>高级版功能</h2><p>${esc(reason || '两版功能完全一样，只差数量上限。')}</p></div>` +
     '<div class="bzs-plan-head"><span>功能</span><i class="c">基础版<small>免费不限时</small></i><i class="c pro">高级版<small>一次买断</small></i></div>' +
     `<div class="bzs-plan">${body}</div>` +
     `<div class="bzs-plan-row is-total"><span>合计 ${total - different} 项功能 · 功能完全一致，仅 ${different} 项数量不同</span>${cell('', false)}${cell('', true)}</div>` +
@@ -113,11 +114,11 @@ export function unlockDialogHtml(paid: boolean): string {
   );
 }
 
-/** 打开高级功能弹窗（设置页授权组入口） */
-export function openReviewUnlockDialog(): void {
+/** 打开高级功能弹窗（设置页授权组入口 / 额度到顶时自动弹出） */
+export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
   const paid = getLicenseState().paid;
   const modal = uiModal({
-    content: unlockDialogHtml(paid),
+    content: unlockDialogHtml(paid, opts.reason),
     className: 'bzs-unlock-dialog',
     title: '高级版功能',
     maxWidth: 720,
@@ -127,4 +128,13 @@ export function openReviewUnlockDialog(): void {
     if (act === 'unlockbuy') openExternalUrl(PURCHASE_URL);
     else if (act === 'unlockgroup') openExternalUrl(`https://qm.qq.com/q/${GROUP_ID}`);
   });
+}
+
+/** 基础版额度到顶：弹同一份对照表，但顶上说明是哪一类到顶、数据不会被删。 */
+export function openQuotaUpgradeDialog(kind: 'note' | 'card'): void {
+  const reason =
+    kind === 'note'
+      ? '基础版的 20 篇复习笔记已用完，已有数据不会被删。激活高级版即可继续添加。'
+      : '基础版的 50 条划线卡已用完，已有数据不会被删。激活高级版即可继续添加。';
+  openReviewUnlockDialog({ reason });
 }

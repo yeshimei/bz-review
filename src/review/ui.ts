@@ -37,7 +37,8 @@ import { escManager } from '../core/esc-manager';
 import { getSettings, tryGetSettings, panelSizePersist } from '../core/settings-provider';
 import { createAI } from '../core/ai';
 import { isMobileEnv } from '../core/mobile';
-import { uiEmpty, uiRail, mountIcons, uiResizable } from '../core/ui';
+import { uiEmpty, mountIcons, uiResizable } from '../core/ui';
+import { openVideoTutorial } from './ui/links-bridge';
 import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
@@ -55,21 +56,19 @@ import {
 } from './motion';
 import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
 import { ratingForKey } from './keys';
+import { FILTER_CLICK_STATE, nextPanelPage, type PanelPage } from './panel-nav';
 import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
 import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './plan-ops';
-import { canUseCapability, capabilityBlock } from '../data/entitlement';
 import { bookSummariesOf } from './book-summary';
 import { setSuspended, buryItem, unsuspendAndUnbury, hiddenNotice } from './card-manager';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
 import { CardSession } from './card-session';
 import { generateFlashcard } from './flashcard';
-import { cardModeOf, cardQuizRatioOf, modeOfCard } from './card-ai';
-import { confirmBeforeRound, needsCardConfirm } from './card-flow';
+import { cardModeOf, cardQuizRatioOf } from './card-ai';
 import { openCardEditor } from './card-edit';
-import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
+import { getCardQuiz } from './card-quiz-store';
 import { isCardItem } from './data';
-import type { ReviewCard } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { QuizMasterUI } from './quiz-core/session';
 
@@ -183,6 +182,12 @@ export class UIManager {
   /** 已选条目（filePath） */
   private selected = new Set<string>();
   private escHandle: { unregister: () => void } | null = null;
+  /** 「更多」菜单的 ESC 层句柄（比主面板层后注册，ESC 时优先收菜单） */
+  private moreEscHandle: { unregister: () => void } | null = null;
+  /** 「更多」下拉菜单当前打开的那份节点（null = 全关）。重绘/切页/ESC/点外部统一收起。 */
+  private moreMenuEl: HTMLElement | null = null;
+  /** 点外部关闭的 document 监听只挂一次（面板单例，重绘不重复挂） */
+  private moreOutsideBound = false;
   /** 动效 boot 消费标志：showMain 置位，首个 renderEntries 消费（后台刷新静默不重播） */
   private motionBootPending = false;
   /** 桌面拖拽缩放句柄（ADR-0084/ADR-0094）：壳常驻 DOM，showMain 幂等挂 / hideMain 摘；null = 未挂 */
@@ -355,19 +360,9 @@ export class UIManager {
     this.popup.classList.add('bzrv-panel-mtop');
     this.popup.style.display = CSS_DISPLAY_NONE;
 
-    /* 左栏固定一项「复习」（与 bz Reader 的书库/笔记同形制）。
-       嵌进 reader 书架时由 CSS 收起——那边页签栏已经承担了这件事。 */
-    const railHost = createDiv({ cls: 'bzrv-rail-host' });
-    const rail = uiRail({
-      groups: [{ items: [{ id: 'home', name: '复习', icon: 'calendar-check' }] }],
-      activeId: 'home',
-      onSelect: () => {
-        this.page = null;
-        void this.refreshPanel();
-      },
-    });
-    railHost.appendChild(rail.el);
-    this.popup.appendChild(railHost);
+    /* 左侧竖栏已撤（2026-11-20，图三形制）：原来那一项「复习」挪到头栏成了
+       顶部页签（见 render.panelHeadHtml 的 .bzrv-stutab），点击回主列表由
+       bindPanelHead 的 data-act="home" 承接。独立界面与嵌入态都不再有左栏。 */
 
     const content = createDiv();
     content.id = 'bzrv-entries';
@@ -386,6 +381,12 @@ export class UIManager {
     this.escHandle = escManager.register('bzrv-review-main', {
       isVisible: () => this.isShown,
       close: () => this.hideMain(),
+    });
+    /* 「更多」菜单层后注册 → 排在数组末尾 → ESC 从后往前先判它：菜单开着时只收菜单、
+       不关面板。顺序反了会一次 ESC 直接关掉面板（2026-11-20 真机测出来的坑）。 */
+    this.moreEscHandle = escManager.register('bzrv-review-more-menu', {
+      isVisible: () => !!this.moreMenuEl && !this.moreMenuEl.hidden,
+      close: () => this.closeMoreMenu(),
     });
   }
 
@@ -460,6 +461,15 @@ export class UIManager {
       this.escHandle.unregister();
       this.escHandle = null;
     }
+    if (this.moreEscHandle) {
+      this.moreEscHandle.unregister();
+      this.moreEscHandle = null;
+    }
+    if (this.moreOutsideBound) {
+      document.removeEventListener('click', this.onDocClickCloseMore, true);
+      this.moreOutsideBound = false;
+    }
+    this.moreMenuEl = null;
     if (this.mask) this.mask.remove();
     if (this.popup) this.popup.remove();
     this.mask = null;
@@ -472,6 +482,9 @@ export class UIManager {
 
   /** 读盘并渲染三区队列（外部刷新入口） */
   async refreshPanel(): Promise<void> {
+    /* 重绘会替换整段头栏 DOM，旧菜单节点随之脱离——先复位引用 + 复位开态按钮，
+       免得 isVisible（菜单层 ESC）还指着游离节点、或下次打开时两颗按钮都亮着。 */
+    this.closeMoreMenu();
     if (this.sprint) return;
     /* 卡片会话正接管内容区：这时候重画队列会把它冲掉（评级会顺手调本方法，
        等于每评一张就把会话打回队列）。会话结束时 onExit 自己会重画。 */
@@ -534,35 +547,44 @@ export class UIManager {
       /* 有数据但筛没了：说清楚是筛掉的，别让用户以为计划空了 */
       const host = container.querySelector('[data-empty-host]');
       if (host) {
+        const acts = createDiv();
+        acts.className = 'bzrv-btn-row';
+        const clearBtn = createEl('button');
+        clearBtn.className = 'bzrv-btn bzrv-btn--ghost';
+        clearBtn.dataset.act = 'filter-clear';
+        clearBtn.textContent = '清除筛选';
+        acts.appendChild(clearBtn);
         host.appendChild(
           uiEmpty({
             icon: 'list-filter',
             title: '没有符合筛选的条目',
-            desc: `当前条件：${describeFilter(this.filter)}`,
+            desc: `当前条件：${describeFilter(this.filter)}，清除后看全部`,
+            actions: acts,
           })
         );
       }
     } else if (!visible.length) {
-      // item 10：空库两条路引导（组件库 uiEmpty 工厂）
       const host = container.querySelector('[data-empty-host]');
       if (host) {
         const acts = createDiv();
         acts.className = 'bzrv-btn-row';
-        const addBtn = createEl('button');
-        addBtn.className = 'bzrv-btn bzrv-btn--primary';
-        addBtn.dataset.act = 'add-current';
-        addBtn.textContent = '把当前笔记加入复习';
-        const helpBtn = createEl('button');
-        helpBtn.className = 'bzrv-btn bzrv-btn--ghost';
-        helpBtn.dataset.act = 'watch-help';
-        helpBtn.textContent = '如何配置监听文件夹';
-        acts.appendChild(addBtn);
-        acts.appendChild(helpBtn);
+        const videoBtn = createEl('button');
+        videoBtn.className = 'bzrv-btn bzrv-btn--primary';
+        videoBtn.dataset.act = 'watch-video';
+        videoBtn.textContent = '看视频教程';
+        acts.appendChild(videoBtn);
+        /* 视频还没发布：空态不能只剩一颗只会弹「制作中」的按钮，给一条能立刻
+           落地内容的路——Anki 导入（系统文件选择框，不要求文件在库内）。 */
+        const ankiBtn = createEl('button');
+        ankiBtn.className = 'bzrv-btn bzrv-btn--ghost';
+        ankiBtn.dataset.act = 'empty-anki-import';
+        ankiBtn.textContent = '从 Anki 导入';
+        acts.appendChild(ankiBtn);
         host.appendChild(
           uiEmpty({
             icon: 'inbox',
             title: '复习还是空的',
-            desc: '添加监听文件夹后新笔记自动加入',
+            desc: 'bz review 把制卡、整卡交给 AI，让你专注阅读与复习。内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。',
             actions: acts,
           })
         );
@@ -693,52 +715,14 @@ export class UIManager {
     tip.textContent = '峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。';
     fc.appendChild(tip);
     holder.appendChild(fc);
-    const row = createDiv();
-    row.className = 'bzrv-btn-row';
-    /* 数据页放两个入口：可用就进页，不可用给解锁按钮并弹能力位文案。
-       记忆分析（逐幕报幕）的入口已摘，analysis/ 代码保留。 */
-    const bookCap = canUseCapability('bookReport');
-    const bookBtn = createEl('button');
-    bookBtn.className = 'bzrv-btn';
-    bookBtn.textContent = bookCap ? '按书档案' : '解锁按书报告';
-    bookBtn.addEventListener('click', () => {
-      if (!bookCap) {
-        notice(capabilityBlock('bookReport').message, 'warning');
-        return;
-      }
-      this.page = 'books';
-      void this.refreshPanel();
-    });
-    row.appendChild(bookBtn);
-    const mgrCap = canUseCapability('cardManager');
-    const mgrBtn = createEl('button');
-    mgrBtn.className = 'bzrv-btn';
-    mgrBtn.textContent = mgrCap ? '卡片管理器' : '解锁卡片管理器';
-    mgrBtn.addEventListener('click', () => {
-      if (!mgrCap) {
-        notice(capabilityBlock('cardManager').message, 'warning');
-        return;
-      }
-      this.page = 'manager';
-      void this.refreshPanel();
-    });
-    row.appendChild(mgrBtn);
-    holder.appendChild(row);
+    /* 按书档案 / 卡片管理器的入口已收进头行「更多」菜单（2026-11-20）：数据页底部
+       不再重复摆两颗按钮，避免同一个功能两处入口。记忆分析入口亦已摘，analysis/ 保留。 */
   }
 
-  /** 「按书档案」内置页（高级档 bookReport）：分组列表 + 一键导出 Markdown。 */
+  /** 「按书档案」内置页：分组列表 + 一键导出 Markdown。基础版功能，无门控。 */
   private fillBooksPage(body: HTMLElement, items: ReviewItem[]): void {
     const wrap = createDiv();
     wrap.className = 'bzrv-book-page';
-    if (!canUseCapability('bookReport')) {
-      const btn = createEl('button');
-      btn.className = 'bzrv-btn bzrv-btn--primary';
-      btn.textContent = '解锁按书报告';
-      btn.addEventListener('click', () => notice(capabilityBlock('bookReport').message, 'warning'));
-      wrap.appendChild(btn);
-      body.appendChild(wrap);
-      return;
-    }
     setMarkup(wrap, booksViewHtml(bookSummariesOf(items)));
     const row = createDiv();
     row.className = 'bzrv-btn-row';
@@ -747,6 +731,16 @@ export class UIManager {
     exp.textContent = '导出按书报告（Markdown）';
     exp.addEventListener('click', () => void this.exportBookReport(items));
     row.appendChild(exp);
+    if (!items.length) {
+      const go = createEl('button');
+      go.className = 'bzrv-btn bzrv-btn--primary';
+      go.textContent = '去添加条目';
+      go.addEventListener('click', () => {
+        this.page = null;
+        void this.refreshPanel();
+      });
+      row.appendChild(go);
+    }
     wrap.appendChild(row);
     body.appendChild(wrap);
   }
@@ -756,25 +750,16 @@ export class UIManager {
     try {
       const { exportBookReportMarkdown } = await import('./export-actions');
       const path = await exportBookReportMarkdown(this.app, items);
-      notice(path ? `按书报告已导出：${path}` : '还没有复习数据，没有可导出的按书报告。', path ? 'success' : 'warning');
+      notice(path ? `按书报告已导出：${path}` : '还没有复习数据，先加入条目并完成一次复习。', path ? 'success' : 'warning');
     } catch (e) {
       notifySaveError(e, '导出按书报告');
     }
   }
 
-  /** 「卡片管理器」内置页（高级档 cardManager）：全部条目的挂起 / 埋藏 / 恢复 / 排期 / 移出。 */
+  /** 「卡片管理器」内置页：全部条目的挂起 / 埋藏 / 恢复 / 排期 / 移出。基础版功能，无门控。 */
   private fillManagerPage(body: HTMLElement, items: ReviewItem[]): void {
     const wrap = createDiv();
     wrap.className = 'bzrv-mgr-page';
-    if (!canUseCapability('cardManager')) {
-      const btn = createEl('button');
-      btn.className = 'bzrv-btn bzrv-btn--primary';
-      btn.textContent = '解锁卡片管理器';
-      btn.addEventListener('click', () => notice(capabilityBlock('cardManager').message, 'warning'));
-      wrap.appendChild(btn);
-      body.appendChild(wrap);
-      return;
-    }
     setMarkup(wrap, managerViewHtml(items, {
       filter: this.mgrFilter,
       decks: collectFacets(items).decks,
@@ -796,6 +781,14 @@ export class UIManager {
 
   /** 管理器事件：搜索防抖 + 三个筛选下拉 + 每行五个动作。 */
   private bindManagerEvents(root: HTMLElement, items: ReviewItem[]): void {
+    root.querySelector('[data-act="mgr-go-add"]')?.addEventListener('click', () => {
+      this.page = null;
+      void this.refreshPanel();
+    });
+    root.querySelector('[data-act="mgr-filter-clear"]')?.addEventListener('click', () => {
+      this.mgrFilter = {};
+      void this.refreshPanel();
+    });
     const rerender = (): void => {
       void this.refreshPanel();
     };
@@ -1021,7 +1014,7 @@ export class UIManager {
           uiEmpty({
             icon: 'archive-restore',
             title: '还没有移出过条目',
-            desc: '从计划里移走的笔记和划线会先来这里，30 天内都能恢复',
+            desc: '从计划里移走的笔记和划线会先来这里，30 天内都能恢复；排期和复习历史不丢',
           })
         );
       }
@@ -1240,31 +1233,80 @@ export class UIManager {
   }
 
   /**
-   * 头行四个图标的点击（2026-11-19 口径：点一下高亮进页，再点一下回主列表）。
-   * 主队列与内置页共用 panelHeadHtml，所以绑定也共用这一份，不再各写一套。
+   * 头行图标点击（2026-11-20 口径：点哪个图标直接打开对应页，幂等；只有「复习」
+   * 页签回主列表）。主队列与内置页共用 panelHeadHtml，绑定也共用这一份。
+   * 四个次级入口（arch/trash/books/manager）收进「更多」下拉菜单：点 more 开合，
+   * 点菜单项进页，点外部/ESC/切页关菜单。嵌入态外置动作栏也走这一份绑定。
    */
   private bindPanelHead(container: HTMLElement): void {
-    const go = (page: 'settings' | 'stats' | 'achv' | 'arch' | 'trash'): void => {
-      this.page = this.page === page || this.page ? null : page;
+    const go = (clicked: PanelPage): void => {
+      this.closeMoreMenu();
+      this.page = nextPanelPage(this.page, clicked);
       void this.refreshPanel();
     };
+    container.querySelector('[data-act="home"]')?.addEventListener('click', () => go('home'));
     container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
     container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
-    /* 成就入口在底栏（头行四颗图标要与 Reader 嵌入动作栏对齐，不能再加） */
-    container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
-    container.querySelector('[data-act="arch"]')?.addEventListener('click', () => go('arch'));
-    /* trash 有两处入口（头行那颗图标 + 底栏「已移出 N 条」）：querySelector 只会绑到
-       头行那颗，底栏那颗就成了纯装饰。这里两处都绑同一个动作。 */
+    /* 菜单里的四项：基础版功能，无门控（entitlement.canUseCapability 恒 true）。
+       querySelectorAll 覆盖面板头 + 嵌入外置动作栏两套 DOM。 */
+    container.querySelectorAll('[data-act="books"]').forEach((el) => el.addEventListener('click', () => go('books')));
+    container.querySelectorAll('[data-act="manager"]').forEach((el) => el.addEventListener('click', () => go('manager')));
+    container.querySelectorAll('[data-act="arch"]').forEach((el) => el.addEventListener('click', () => go('arch')));
+    /* trash 有两处入口（菜单项 + 底栏「已移出 N 条」）：两处都绑同一动作。 */
     container.querySelectorAll('[data-act="trash"]').forEach((el) => el.addEventListener('click', () => go('trash')));
+    /* 成就入口在底栏（走同一份 panelHeadBtnsHtml 体系） */
+    container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
+    /* 「更多」按钮：开合下拉菜单。一次只开一个——重绘/嵌入两处 DOM 都先关再切。 */
+    container.querySelectorAll<HTMLElement>('[data-act="more"]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const menu = btn.parentElement?.querySelector<HTMLElement>('.bzrv-more-menu');
+        if (!menu) return;
+        const willOpen = menu.hidden;
+        this.closeMoreMenu();
+        if (willOpen) {
+          menu.hidden = false;
+          btn.addClass('is-open');
+          this.moreMenuEl = menu;
+        }
+      });
+    });
     container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
-      if (this.page) {
-        this.page = null;
-      } else {
-        this.filterOpen = !this.filterOpen;
-        this.keepFilterFocus = this.filterOpen;
-      }
+      this.closeMoreMenu();
+      /* 点搜索图标恒定展开搜索面板（FILTER_CLICK_STATE）：从内置页点也回主列表并打开，
+         连点不再 toggle 收起、更不清掉已输入的条件——清条件是筛选区「清除」那颗的事。 */
+      this.page = FILTER_CLICK_STATE.page;
+      this.filterOpen = FILTER_CLICK_STATE.filterOpen;
+      this.keepFilterFocus = true;
       void this.refreshPanel();
     });
+    /* 点菜单外任意处关闭：挂一次 document 监听，靠数据集去重避免每次重绘叠层。
+       延迟到下一个 tick 注册，避开本次 click 刚冒泡的目标判定。 */
+    if (!this.moreOutsideBound) {
+      this.moreOutsideBound = true;
+      window.setTimeout(() => {
+        document.addEventListener('click', this.onDocClickCloseMore, true);
+      }, 0);
+    }
+  }
+
+  /** document 捕获阶段：点「更多」按钮/菜单以外的任何地方都收起菜单。
+   *  路径里含 .bzrv-more-btn 或 .bzrv-more-menu 的不关（交给各自的 click 处理）。 */
+  private onDocClickCloseMore = (e: MouseEvent): void => {
+    const t = e.target;
+    if (t instanceof Element && (t.closest('.bzrv-more-menu') || t.closest('.bzrv-more-btn'))) return;
+    this.closeMoreMenu();
+  };
+
+  /** 收起当前打开的「更多」菜单（幂等）。重绘 / 切页 / ESC / 点外部统一走这里。 */
+  private closeMoreMenu(): void {
+    if (this.moreMenuEl) {
+      this.moreMenuEl.hidden = true;
+      this.moreMenuEl = null;
+    }
+    /* 重绘后旧节点已不在 DOM，但 is-open 残留在被替换掉的节点上无害；这里顺手把
+       当前 DOM 里所有开着的 more 按钮也复位，覆盖嵌入态外置动作栏那一份。 */
+    document.querySelectorAll<HTMLElement>('.bzrv-more-btn.is-open').forEach((b) => b.removeClass('is-open'));
   }
 
   // ================= 队列事件 =================
@@ -1286,9 +1328,15 @@ export class UIManager {
     /* 底部「已移出 N 条」入口由 bindPanelHead 统一绑（同一个 data-act="trash"，
        两边各绑一次会让一次点击跑两遍 go()，等于点了没反应）。 */
     // 累计/连续 chip 现在是纯展示：记忆分析入口已摘（analysis/ 代码保留，未删）。
-    // item 10：空态两条路（把当前笔记加入复习 / 监听文件夹配置说明）
-    container.querySelector('[data-act="add-current"]')?.addEventListener('click', () => void this.addCurrentNote());
-    container.querySelector('[data-act="watch-help"]')?.addEventListener('click', () => void this.showWatchHelp());
+    // 空态：看视频教程（视频未发布时只弹通知，不跳浏览器）
+    container.querySelector('[data-act="watch-video"]')?.addEventListener('click', () => openVideoTutorial());
+    // 空态第二个入口：从 Anki 导入（视频还没发布，得给用户一条真正能走的路）
+    container.querySelector('[data-act="empty-anki-import"]')?.addEventListener('click', () => {
+      void (async () => {
+        const { importAnkiFromPicker } = await import('./anki-import');
+        await importAnkiFromPicker(this.app, this.dataManager);
+      })();
+    });
     // 筛选（批 8：就地展开，不再弹原生弹窗）的图标绑定已并入 bindPanelHead；
     // 下面只管筛选区里的关键字与三个下拉。
     // 筛选区控件：关键字防抖 220ms，三个下拉即时生效（没有「应用」这一步）
@@ -1434,11 +1482,11 @@ export class UIManager {
     }
   }
 
-  /** 配置监听文件夹说明（空库引导动作；设置面板路径指路） */
+  /** 空库引导（保留给可能的调用点）：先看视频教程了解用法 */
   private async showWatchHelp(): Promise<void> {
     await openFlowDialog({
-      title: '配置监听文件夹',
-      message: '打开 设置 → 复习 → 监听文件夹，添加文件夹后，其中新建的笔记会自动加入复习；已存在的笔记可在添加时选择一并加入。',
+      title: '怎么把内容加进复习',
+      message: '先看视频教程，了解制卡、划线与自动收编的用法。',
       actions: [{ label: '知道了', value: 'ok', cta: true }],
     });
   }
@@ -1484,9 +1532,7 @@ export class UIManager {
   async startCardRound(queue: ReviewItem[], onDone?: () => void): Promise<void> {
     const container = this.entriesContainer;
     if (!container || !queue.length) return;
-    /* 二次确认放在所有销毁动作**之前**：用户点取消时面板里该是什么还是什么，
-       不能先把上一轮的会话拆掉、再问「要不要开始」。 */
-    if (!(await this.confirmCardStart(queue))) return;
+    /* 「开卡前先看一眼」开关与二次确认已删除（2026-11-20 用户拍板）：点开卡片直接进会话。 */
     const prevSprint = this.sprint;
     this.sprint = null;
     prevSprint?.destroy();
@@ -1567,86 +1613,6 @@ export class UIManager {
     });
     this.cardSession = session;
     session.start();
-  }
-
-  /**
-   * 开卡前的二次确认（2026-11-15）。
-   *
-   * 只在**单张开卡**时问：整轮十几张卡逐张弹框会把人烦死，而且那本来就不是
-   * 「我想先看一眼这张卡」的语境。抽认卡让改问句和原文、做题卡让删题，
-   * 其余方式没有可改的东西就不弹空框。返回 false = 用户取消了，别开会话。
-   */
-  private async confirmCardStart(queue: ReviewItem[]): Promise<boolean> {
-    if (queue.length !== 1) return true;
-    if (!(getSettings()).reviewCardConfirm) return true;
-    const item = queue[0];
-    const card = item.card;
-    if (!card) return true;
-    const mode = modeOfCard(card);
-    if (!needsCardConfirm(mode)) return true;
-
-    const questions = mode === 'quiz' ? ((await getCardQuiz(card.key)) ?? undefined) : undefined;
-    /* 题库还没生成（没配 AI / 加入时生成失败）：没有可删的题，弹出来只会看到一个
-       空列表和一个点不动的「开始」。交给会话自己去补内容 / 降级看全文。 */
-    if (mode === 'quiz' && !questions?.length) return true;
-    const res = await confirmBeforeRound({
-      item,
-      mode,
-      questions,
-      regenerateQuiz:
-        mode === 'quiz'
-          ? async () => {
-              const { regenerateCardContent } = await import('./index');
-              await regenerateCardContent(item.filePath);
-              return (await getCardQuiz(card.key)) ?? null;
-            }
-          : undefined,
-      regenerateAsk:
-        mode === 'flashcard'
-          ? async () => {
-              try {
-                return await generateFlashcard(card, () => createAI());
-              } catch {
-                return null;
-              }
-            }
-          : undefined,
-    });
-    if (!res.go) return false;
-
-    if (mode === 'flashcard') {
-      const patch: Partial<ReviewCard> = {};
-      const nextText = typeof res.text === 'string' ? res.text : card.text;
-      if (nextText !== card.text) patch.text = nextText;
-      const nextQ = String(res.question ?? '').trim();
-      if (nextQ && nextQ !== card.qa?.q) patch.qa = { q: nextQ, a: nextText, at: Date.now() };
-      if (Object.keys(patch).length) {
-        patch.manual = true; // 手改过就不要再被后台预生成顶掉
-        try {
-          await this.dataManager?.updateCard(card.key, patch);
-          Object.assign(card, patch);
-        } catch (e) {
-          notifySaveError(e, '保存卡片修改');
-        }
-      }
-      return true;
-    }
-
-    /* 做题卡：删题只在确认时生效。全删光就不让开始——不然进会话拿不到题，
-       会被当成「本篇没题」直接跳过，用户以为自己白点了一次。 */
-    const left = res.questions ?? [];
-    if (!left.length) {
-      notice('这一轮的题都删掉了：先点「重新生成整份题库」，或把删掉的补回来');
-      return false;
-    }
-    if (left.length !== (questions?.length ?? 0)) {
-      try {
-        await saveCardQuiz(card.key, left);
-      } catch (e) {
-        notifySaveError(e, '保存题库');
-      }
-    }
-    return true;
   }
 
   /** 队列里所有到期卡片（给「开始本轮」按类型分流用） */

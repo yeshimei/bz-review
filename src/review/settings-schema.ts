@@ -12,6 +12,8 @@
 import type { App } from 'obsidian';
 import { Setting } from 'obsidian';
 import { notice } from '../core/notice';
+import { pickFolderNative } from '../core/folder-pick';
+import { setHtml } from './ui/set-html';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
 import { DEFAULT_ACCENT, applyAccent } from '../settings';
@@ -34,14 +36,31 @@ import { openModelPicker } from '../core/settings-model-picker';
 import { tryGetSettings } from '../core/settings-provider';
 import type { ReviewDataManager } from './data';
 import { getReviewFilePath, getReviewMetaPath } from './data';
-import { GROUP_ID, PURCHASE_URL, licenseSummary, refreshLicense } from '../data/entitlement';
+import {
+  GROUP_ID,
+  PURCHASE_URL,
+  licenseSummary,
+  refreshLicense,
+  currentLicenseCode,
+} from '../data/entitlement';
 import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
 import { isBzPluginEnabled } from '../core/plugin-path';
 import { panelModeOf } from './panel-mode';
 import { DEFAULT_W } from './fsrs';
 import { latestSnapshotName, readSnapshot, writeSnapshotNow } from './snapshot-store';
 import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-format';
-import type { TtsConfig } from '../core/tts-client';
+
+/**
+ * 激活码输入框的草稿：输入只改这里，不碰 settings、不触发通用 text 行的
+ * 800ms 防抖落盘。只有点「激活」验签通过才写回 settings.licenseKey；
+ * 失败恢复成当前生效码——输错一次不该把真码冲掉。
+ */
+let licenseDraft = '';
+
+/** 数据目录选择钮上的文件夹图标（与 bz Reader 的 pickdir 同一口径） */
+const FOLDER_SVG =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
+  '<path d="M3.5 7.5h6l1.8 2h9.2v8.5a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-10.5Z"/></svg>';
 
 /* ── AI 设置：照 bz 主仓的 18 家注册表驱动（不再硬编码 5 家） ── */
 
@@ -279,6 +298,49 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
   // 门控），设置弹窗 toggle 只需落盘，渲染器键直绑自动完成，无需额外副作用回调。
   /** 数据目录迁移：上一次已生效的目录（取消迁移时回退到这里） */
   let lastDir = String((getSettings()).storagePath || DEFAULT_REVIEW_DIR);
+
+  /**
+   * 数据目录切换：确认后复制、不移动；取消或失败都回退旧目录，返回最终生效路径。
+   * 从原来的 path 行 onCommit 抽出来——换成 Reader 那种「路径 + 选择」按钮后，
+   * 同一套迁移逻辑要由按钮回调复用，不能在两处各写一遍。
+   */
+  const migrateStorageDir = async (raw: string): Promise<string> => {
+    const next = String(raw || '').trim().replace(/^\/+|\/+$/g, '');
+    const prev = lastDir;
+    if (!next || next === prev) return prev;
+    const ok = await openFlowDialog({
+      title: '迁移数据目录？',
+      message: `会把「${prev}」里的复习数据复制到「${next}」。旧目录保留，搬错了改回去就能自愈；新目录已有数据时不覆盖。`,
+      actions: [
+        { label: '取消', value: 'cancel' },
+        { label: '确认迁移', value: 'ok', cta: true },
+      ],
+    });
+    if (ok !== 'ok') {
+      notice('已取消，数据目录没变', 'info');
+      return prev;
+    }
+    try {
+      const { copied, kept } = await copyReviewData(deps.app, prev, next);
+      lastDir = next;
+      /* 原来 path 行的 binding 会把 onChange 返回值写回 settings 并落盘；
+         换成自绘按钮后这一步得自己来——只 paint 按钮不写盘会在下次启动跳回旧目录。 */
+      getSettings().storagePath = next;
+      await saveSettings();
+      if (copied.length) {
+        notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
+      } else if (kept.length) {
+        notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
+      } else {
+        notice(`已切到 ${next}，旧目录没有需要迁移的数据`, 'info');
+      }
+      return next;
+    } catch {
+      notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
+      return prev;
+    }
+  };
+
   const ACCENT_NAME = '强调色';
   const ACCENT_DESC = '跟随 Obsidian / 铜金 / 黛蓝 / 苔青；换色后全插件交互色一起变';
   const ACCENT_HELP =
@@ -316,24 +378,45 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           {
             type: 'text',
             name: '激活码',
-            desc: '填高级版激活码，解锁不限数量。离线验签，不联网。',
-            placeholder: 'BZP2.…',
-            binding: { key: 'licenseKey' },
+            desc: '填激活码解锁不限数量。赞助人 / 专属定制码两款插件通用；普通高级版码各插件独立。离线验签，不联网。',
+            placeholder: 'BZP2.… 或 BZR2.…（赞助人 / 专属码）',
+            /* 外部 binding：输入只进草稿、不落盘。通用 text 行 800ms 防抖就会
+               saveSettings，直绑 licenseKey 的话输错一次就把真码冲掉了。 */
+            binding: {
+              get: () => licenseDraft || currentLicenseCode(),
+              set: (v: string) => {
+                licenseDraft = v;
+              },
+              save: () => {
+                /* 输入本身不落盘：只有点「激活」验签通过才写 settings */
+              },
+            },
             actions: [
               {
                 text: '激活',
                 cta: true,
                 onClick: async () => {
-                  // 文本行的输入先写内存再防抖落盘，这里读内存值即可
-                  const code = String((getSettings()).licenseKey || '').trim();
-                  const state = await refreshLicense(code);
-                  await saveSettings();
-                  notice(
-                    state.paid
-                      ? `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`
-                      : '激活码无效或已过期。',
-                    state.paid ? 'success' : 'warning'
+                  const code = licenseDraft.trim();
+                  const state = await refreshLicense(code, false);
+                  if (state.paid) {
+                    licenseDraft = '';
+                    getSettings().licenseKey = code;
+                    await saveSettings();
+                    notice(
+                      `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`,
+                      'success'
+                    );
+                    return;
+                  }
+                  /* 失败：授权状态和落盘码都没被这枚错码碰过，把输入框也回显回生效码。
+                     激活码输入框的 placeholder 是全局唯一的，靠它定位。 */
+                  const effective = currentLicenseCode();
+                  licenseDraft = '';
+                  const input = document.querySelector<HTMLInputElement>(
+                    'input[placeholder^="BZP2"]'
                   );
+                  if (input) input.value = effective;
+                  notice('激活码无效或已过期，原来的激活码已保留。', 'warning');
                 },
               },
             ],
@@ -345,48 +428,51 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '数据',
         rows: [
           {
-            type: 'path',
-            mode: 'single',
+            /* 2026-11-20：目录行跟 bz Reader 同形——只一颗「路径 / 选择」按钮。
+               不摆 chips / ✕ / 手输框：vault 路径有口径，手打错了还不报错，文件写到别处。 */
+            type: 'custom',
             name: '数据目录',
             desc: '复习数据存在这个目录下的 review.json。换目录会先确认，再把数据复制过去。',
-            pickerTitle: '选择复习数据目录',
-            pickerDesc: '建议用库根目录下单独的文件夹，方便同步与备份。',
-            emptyText: DEFAULT_REVIEW_DIR,
-            fallbackValue: () => DEFAULT_REVIEW_DIR,
-            binding: { key: 'storagePath' },
-            /* 二次确认 + 复制不移动：目录是可逆操作，旧目录原样留着，搬错改回去就自愈。
-               path 行的 onChange 返回清单即否决口径，取消时把 chips 与落盘值一起退回。 */
-            onChange: async (list) => {
-              const next = String(list[0] || '').trim().replace(/^\/+|\/+$/g, '');
-              const prev = lastDir;
-              if (!next || next === prev) return [prev];
-              const ok = await openFlowDialog({
-                title: '迁移数据目录？',
-                message: `会把「${prev}」里的复习数据复制到「${next}」。旧目录保留，搬错了改回去就能自愈；新目录已有数据时不覆盖。`,
-                actions: [
-                  { label: '取消', value: 'cancel' },
-                  { label: '确认迁移', value: 'ok', cta: true },
-                ],
+            render: (body) => {
+              const setting = new Setting(body)
+                .setName('数据目录')
+                .setDesc('复习数据存在这个目录下的 review.json。换目录会先确认，再把数据复制过去。');
+              setting.settingEl.classList.add('bzrv-pickdir-row');
+              const btn = createEl('button');
+              btn.type = 'button';
+              btn.className = 'bzs-pickdir';
+              btn.appendChild(
+                Object.assign(createSpan(), {
+                  className: 'bzs-sr-only',
+                  textContent: '从列表选择复习数据目录',
+                }),
+              );
+              const pathEl = createSpan();
+              pathEl.className = 'bzs-pickdir-path';
+              const ico = createSpan();
+              ico.className = 'bzs-pickdir-ico';
+              setHtml(ico, FOLDER_SVG);
+              btn.append(pathEl, ico, createEl('i', { text: '选择' }));
+              const current = (): string => String(getSettings().storagePath || DEFAULT_REVIEW_DIR);
+              const paint = (dir: string): void => {
+                pathEl.textContent = `${dir}/`;
+              };
+              paint(current());
+              btn.addEventListener('click', () => {
+                void pickFolderNative(deps.app, {
+                  title: '选择复习数据目录',
+                  mode: 'single',
+                  selected: [current()],
+                }).then(async (list) => {
+                  const picked = String(list[0] || '').trim();
+                  if (!picked) {
+                    notice('数据目录不能是库根目录，请选一个文件夹', 'warning');
+                    return;
+                  }
+                  paint(await migrateStorageDir(picked));
+                });
               });
-              if (ok !== 'ok') {
-                notice('已取消，数据目录没变', 'info');
-                return [prev];
-              }
-              try {
-                const { copied, kept } = await copyReviewData(deps.app, prev, next);
-                lastDir = next;
-                if (copied.length) {
-                  notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
-                } else if (kept.length) {
-                  notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
-                } else {
-                  notice(`已切到 ${next}，旧目录没有需要迁移的数据`, 'info');
-                }
-                return [next];
-              } catch {
-                notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
-                return [prev];
-              }
+              setting.controlEl.appendChild(btn);
             },
           },
           {
@@ -473,6 +559,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             help: ACCENT_HELP,
             render: (body: HTMLElement) => {
               const setting = new Setting(body).setName(ACCENT_NAME).setDesc(ACCENT_DESC);
+              /* 整行让标签独占一行、控件吃满整宽（同 Reader 的 is-stack）：4 档横排
+                 在右列 ~340px 里会把「跟随 Obsidian」挤破卡片右缘（2026-11-20 真机反馈）。 */
+              setting.settingEl.classList.add('bzrv-accent-row');
               const nameEl = (setting as unknown as { nameEl?: HTMLElement }).nameEl;
               if (nameEl) attachHelpTip(nameEl, { text: ACCENT_HELP });
               const modes = [
@@ -592,19 +681,14 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               },
               save: () => saveSettings(),
             },
-            /* 2026-11-20 界面不再提供填空 / 上下文 / 展开全文三种新入口；
-               上面 set 校验的合法值仍保留这三种，老卡数据与存量设置照常生效。 */
+            /* 2026-11-20 挖空（Cloze）解锁为可选项；上下文 / 展开全文仍不提供新入口，
+               但上面 set 校验的合法值仍保留这两种，老卡数据与存量设置照常生效。 */
             options: [
               { value: 'manual', label: '每次问我（默认）' },
               { value: 'flashcard', label: 'AI 抽认卡' },
               { value: 'quiz', label: 'AI 做题' },
+              { value: 'cloze', label: '挖空卡（Cloze）' },
             ],
-          },
-          {
-            type: 'toggle',
-            name: '开卡前先看一眼',
-            desc: '点开一张卡时先弹确认框：抽认卡可改、做题卡可删题',
-            binding: { key: 'reviewCardConfirm' },
           },
           {
             type: 'select',
@@ -913,92 +997,31 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         rows: reviewLlmRows(),
       },
       {
-        /* 朗读（听卡片）：自建 OpenAI 兼容本地 TTS 客户端，与 AI 服务商分开配。
-           只在本组暴露地址/音色/格式/模型/可选密钥，处处给人话，不写死英文。 */
-        icon: 'volume-2',
-        name: '朗读',
+        /* 探索组（2026-11-20）：还在打磨的功能先放这里，代码在、暂不铺开给用户。
+           · 朗读听卡：实现有问题，做题界面的按钮与原来的「朗读」设置组都已撤下，
+             功能代码（tts-client / card-audio / card-session.speak）整段保留，成熟后再放回。
+           · 挖空卡（Cloze）：社区正名，读作「克洛兹」，Anki 的 {{c1::答案}} 写法；已解锁为
+             制卡方式之一，见「划线卡」组的新卡默认方式。
+           · Anki 格式导入：兼容 Anki 导出的 TSV / 挖空写法，入口在下方按钮与命令面板。 */
+        icon: 'flask-conical',
+        name: '探索',
         rows: [
           {
-            type: 'text',
-            name: '服务地址',
-            desc: '本地朗读服务的地址（如 http://127.0.0.1:5000）。留空就不能听卡片。',
-            placeholder: 'http://127.0.0.1:5000',
-            binding: { key: 'ttsUrl' },
-          },
-          {
-            type: 'text',
-            name: '音色',
-            desc: '服务端音色名，留空用服务端默认。',
-            placeholder: '可留空',
-            binding: { key: 'ttsVoice' },
-          },
-          {
-            type: 'select',
-            name: '格式',
-            desc: 'mp3 体积小、适合手机上听；wav 不用解码但大得多。',
-            binding: { key: 'ttsFormat' },
-            options: [
-              { value: 'mp3', label: 'mp3（默认）' },
-              { value: 'wav', label: 'wav' },
-            ],
-          },
-          {
-            type: 'text',
-            name: '模型',
-            desc: '服务端模型名，留空用服务端默认。',
-            placeholder: '可留空',
-            binding: { key: 'ttsModel' },
-          },
-          {
-            type: 'text',
-            name: 'API Key',
-            desc: '可选：服务需要鉴权时才填，不需要就留空。',
-            placeholder: '可留空',
-            binding: { key: 'ttsApiKey' },
+            type: 'info',
+            name: '还在打磨的功能',
+            desc:
+              '朗读听卡（代码在、暂不显示）、挖空卡 Cloze、Anki 格式导入都放在这里。' +
+              '挖空卡读作「克洛兹」，是 Anki 的 {{c1::答案}} 填空写法；导入的 Anki 卡会自动转成挖空卡。',
           },
           {
             type: 'button',
-            name: '测试朗读连接',
-            desc: '向朗读服务发一次最小请求，确认地址和音色可用。',
-            buttonText: '测试',
+            name: '从 Anki 导入',
+            desc: '打开系统文件框选一份 Anki「笔记纯文本」导出（.txt/.tsv/.csv，库外任意位置都行），先看清进来多少、跳过什么再确认。支持 Tab/逗号分隔、网页格式、{{c1::挖空}} 拆卡与反向卡；命令面板也可执行。',
+            buttonText: '选文件导入',
             onClick: () => {
               void (async () => {
-                const live = getSettings();
-                const url = String(live.ttsUrl ?? '').trim();
-                if (!url) {
-                  notice('先填朗读服务地址再测试', 'warning');
-                  return;
-                }
-                const cfg: TtsConfig = {
-                  url,
-                  model: String(live.ttsModel ?? '').trim(),
-                  voice: String(live.ttsVoice ?? '').trim(),
-                  format: live.ttsFormat === 'wav' ? 'wav' : 'mp3',
-                  apiKey: String(live.ttsApiKey ?? '').trim(),
-                };
-                try {
-                  const { voicesEndpoint, synthesizeSpeech } = await import('../core/tts-client');
-                  const { requestUrl } = await import('obsidian');
-                  const headers: Record<string, string> = {};
-                  if (cfg.apiKey) headers.Authorization = `Bearer ${cfg.apiKey}`;
-                  // 先问音色列表：拿到 2xx 就够，不必真合成，省一次模型开销。
-                  const resp = await requestUrl({
-                    url: voicesEndpoint(cfg.url, cfg.model),
-                    method: 'GET',
-                    headers,
-                    throw: false,
-                  });
-                  const status = resp.status;
-                  if (status >= 200 && status < 300) {
-                    notice('朗读连接正常', 'success');
-                    return;
-                  }
-                  // 有的服务只开了 speech、没开 voices；再试一句最短合成兜底。
-                  await synthesizeSpeech('测试', cfg);
-                  notice('朗读连接正常（音色列表接口不可用，但合成接口可用）', 'success');
-                } catch (e) {
-                  notice(`朗读连接失败：${e instanceof Error ? e.message : String(e)}`, 'error');
-                }
+                const { importAnkiFromPicker } = await import('./anki-import');
+                await importAnkiFromPicker(deps.app, deps.dataManager);
               })();
             },
           },

@@ -20,7 +20,7 @@ import { uiModal } from '../../core/ui/modal';
 import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
-import { VIDEO_TUTORIAL_URL, openExternalUrl, REPO_URL, GROUP_ID } from './links-bridge';
+import { openVideoTutorial, openExternalUrl, REPO_URL, GROUP_ID } from './links-bridge';
 import { changelogLang } from './i18n-bridge';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
@@ -768,9 +768,9 @@ export function changelogNoteHtml(
   data: BzrData | null = viewData(),
 ): string {
   const c = copy();
-  /* 在线日志优先：data.changelog 有的版本用在线的（带 issue 字段），
-     没有的沿用内置 releases（离线兜底 / 在线还没收录的版本）。 */
-  const merged = mergeReleases(releases, data?.changelog ?? []);
+  /* 在线 data.changelog 是 bz-reader 的版本日志，不是 Review 的：合并进来会把
+     Reader 的条目混进 Review 的版本历史。Review 只用自己的内置 releases。 */
+  const merged = mergeReleases(releases, []);
   const list = usable(merged);
   if (!list.length) return '';
   const at = activeIndex(list, expectVersion);
@@ -935,7 +935,8 @@ export function openChangelogNote(
   expectVersion = '',
   data?: BzrData | null,
 ): ChangelogNoteHandle {
-  const list = usable(mergeReleases(releases, data?.changelog ?? viewData()?.changelog ?? []));
+  /* 同上：不合并在线 changelog，避免 Review 日志里出现 Reader 的版本。 */
+  const list = usable(mergeReleases(releases, []));
   const html = changelogNoteHtml(list, expectVersion, currentPatrons(), data);
   if (!html) return { close: () => undefined };
 
@@ -1099,7 +1100,7 @@ export function openChangelogNote(
     if (target.closest('[data-role="chgnsupport"]')) { openSupportDialog(); return; }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
     if (act === 'chgnrepo') window.open(REPO_URL, '_blank', 'noopener,noreferrer');
-    else if (act === 'chgnvideo') window.open(VIDEO_TUTORIAL_URL, '_blank', 'noopener,noreferrer');
+    else if (act === 'chgnvideo') openVideoTutorial();
     else if (act === 'chgnqq') void copyReviewGroupId();
   });
 

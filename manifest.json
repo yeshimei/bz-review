@@ -3,7 +3,7 @@
   "name": "Review",
   "version": "1.0.0",
   "minAppVersion": "1.8.7",
-  "description": "Spaced repetition for your notes and book highlights: schedule what you want to remember, rate how it felt, and track memory strength — everything stored locally in your vault.",
+  "description": "bz review 把制卡、整卡交给 AI，让你专注阅读与复习。内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。",
   "author": "叫我包仔",
   "authorUrl": "https://github.com/yeshimei",
   "isDesktopOnly": false

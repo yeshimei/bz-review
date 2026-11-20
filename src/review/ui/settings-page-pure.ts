@@ -19,33 +19,72 @@ export const GROUP_SUBTITLES: Record<string, string> = {
   记忆算法: 'Algorithm',
   自动化: 'Automation',
   AI: 'AI',
-  朗读: 'Audio',
+  探索: 'Explore',
+  插件: 'Plugins',
 };
 
 /**
- * 两列分栏：按每组的体量（行数）贪心装进当前更矮的一列。
+ * 设置页分组的阅读顺序（左侧从上到下、再右侧从上到下）。
  *
- * 以前写死「前五组左、其余右」，复习节奏/朗读这些长卡片一多，左列就空出半屏。
- * 现在只保证「同组不拆」和「列内保持原顺序」，两列总高度尽量齐平；编号由
- * CSS 计数器按 DOM 顺序（左列到底、再右列）自动出，所以左列编号在前。
+ * 授权 → 数据 → 自动化 → 检查提醒 → 界面（先账号、数据、自动收编与提醒，再外观）
+ * → 划线卡 → 做题家（怎么把内容做成卡）
+ * → 复习节奏 → 记忆算法 → AI → 探索（怎么复习、算间隔，最后是进阶与实验）。
+ * 这一顺序也决定两列的切分点：读起来连贯，编号才不会跳。
+ */
+export const GROUP_ORDER: readonly string[] = [
+  '授权', '数据', '自动化', '检查提醒', '界面',
+  '划线卡', '做题家', '复习节奏', '记忆算法', 'AI', '探索',
+] as const;
+
+/**
+ * 真机（1024×800、默认设置）量出来的各组高度，单位 px，只作配平权重，
+ * 不参与布局。用实测值而不是行数：AI 组 24 行里绝大多数按服务商显隐，
+ * 界面组的强调色自绘行比普通开关高一截——按行数算永远配不平。
+ * 窄栏（单列）与弹窗两列各 452px 两种宽度都量过，切分点相同；
+ * 两列实测列高约 1895 / 2007px，差 112px（约 6%）。
+ */
+export const GROUP_WEIGHTS: Record<string, number> = {
+  授权: 306, 数据: 211, 自动化: 217, 检查提醒: 175, 界面: 276,
+  划线卡: 134, 做题家: 352, 复习节奏: 761, 记忆算法: 326, AI: 388, 探索: 247,
+};
+
+/**
+ * 两列分栏：在保持阅读顺序的前提下找一个切分点，使两列总高度尽量接近。
+ *
+ * 以前的贪心「谁矮往谁那放」会把末尾的「探索」塞进左列，编号 5 直接跳到实验功能，
+ * 数据组却排到 6——视觉配平了，顺序乱了。现在只切一刀：前 k 组在左、其余在右，
+ * 列内保持原顺序、同组不拆；CSS 计数器按 DOM 顺序出号，所以编号连贯。
  * weights 缺省时按组数均分（纯测试与无 schema 场景用）。
  */
 export function groupColumns(names: readonly string[], weights: readonly number[] = []): [string[], string[]] {
-  const left: string[] = [];
-  const right: string[] = [];
-  let leftWeight = 0;
-  let rightWeight = 0;
-  names.forEach((name, i) => {
-    const w = Math.max(1, Number(weights[i]) || 1);
-    if (leftWeight <= rightWeight) {
-      left.push(name);
-      leftWeight += w;
-    } else {
-      right.push(name);
-      rightWeight += w;
+  if (names.length === 0) return [[], []];
+  const w = names.map((_, i) => Math.max(1, Number(weights[i]) || 1));
+  const total = w.reduce((a, b) => a + b, 0);
+  let best = 0;
+  let bestDiff = Infinity;
+  let leftSum = 0;
+  /* k = 左列最后一组的下标；并列时取更靠后的切分点（左列多一组，与旧口径一致） */
+  for (let k = 0; k < names.length - 1; k++) {
+    leftSum += w[k];
+    const diff = Math.abs(total - 2 * leftSum);
+    if (diff <= bestDiff) {
+      bestDiff = diff;
+      best = k;
     }
-  });
-  return [left, right];
+  }
+  return [names.slice(0, best + 1) as string[], names.slice(best + 1) as string[]];
+}
+
+/** 按 GROUP_ORDER 重排（未知组保持相对顺序追加在末尾），返回新数组，不改入参。 */
+export function orderGroups<T extends { name: string }>(groups: readonly T[]): T[] {
+  const rank = (name: string): number => {
+    const i = GROUP_ORDER.indexOf(name);
+    return i === -1 ? GROUP_ORDER.length : i;
+  };
+  return groups
+    .map((g, i) => ({ g, i }))
+    .sort((a, b) => rank(a.g.name) - rank(b.g.name) || a.i - b.i)
+    .map((x) => x.g);
 }
 
 const GITHUB_SVG =
@@ -93,5 +132,33 @@ export function aboutBarHtml(version: string, paid: boolean, name: string, group
       <button class="bzs-about-link" type="button" data-act="support">${HEART_SVG}<b>支持作者</b><span class="bzs-sr-only">看看支持作者的方式</span></button>
       <span class="dot"></span>
       <button class="bzs-about-link" type="button" data-act="changelog">${HISTORY_SVG}<b>更新日志</b><span class="bzs-sr-only">看看每一版改了什么</span></button>
+    </div>`;
+}
+
+const READER_ICON_SVG =
+  '<svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">' +
+  '<path d="M12 6c-2.2-1.6-5-1.9-8-1.3v13c3-.6 5.8-.3 8 1.3 2.2-1.6 5-1.9 8-1.3v-13c-3-.6-5.8-.3-8 1.3Z"/><path d="M12 6v13"/></svg>';
+const DOWNLOAD_SVG =
+  '<svg class="ic" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">' +
+  '<path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>';
+
+/**
+ * 插件组 HTML（2026-11-20）：能力卡形态，直接下载 bz Reader。
+ * 下载按钮走 GitHub 主线路，连不通自动切码云——兜底内置在动作层，不给用户多一行说明。
+ */
+export function pluginGroupHtml(): string {
+  return `<div class="bzs-setgrp wide bzs-plugin-grp">
+      <h3 data-en="Plugins">插件</h3>
+      <div class="bzs-cap is-on">
+        <span class="bzs-capico">${READER_ICON_SVG}</span>
+        <div class="bzs-capmain">
+          <div class="bzs-cap-t"><b>bz Reader</b><span class="bzs-capchip">配套阅读器</span></div>
+          <p>把库变成阅读器：桌面 + 手机、多种格式、AI 追问与全文问答、离线朗读、阅读统计，数据全留本地。</p>
+          <div class="bzs-captags"><span class="bzs-tag">多格式</span><span class="bzs-tag">AI 问答</span><span class="bzs-tag">离线朗读</span></div>
+          <div class="bzs-capfoot">
+            <button class="bzs-btn sm pri" type="button" data-act="readerdownload">${DOWNLOAD_SVG}下载安装</button>
+          </div>
+        </div>
+      </div>
     </div>`;
 }

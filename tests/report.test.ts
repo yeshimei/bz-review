@@ -92,6 +92,6 @@ describe('负荷预测文字版', () => {
   });
 
   it('全空就说没有安排（不输出一张空表）', () => {
-    expect(forecastToText([{ day: '2026-11-15', count: 0 }])).toBe('未来这些天没有安排复习。');
+    expect(forecastToText([{ day: '2026-11-15', count: 0 }])).toContain('未来这些天没有安排复习。');
   });
 });

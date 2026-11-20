@@ -16,6 +16,7 @@ import {
 } from './fsrs';
 import type { Rating } from './fsrs';
 import type { ReviewItem, ReviewHistoryEntry } from './data';
+import { QuotaExceededError } from '../data/entitlement';
 import type { QuizMasterUI } from './quiz-core';
 import type { QuizQuestion } from './quiz-core/manager';
 import { ReviewDataManager, isCardItem } from './data';
@@ -522,6 +523,16 @@ export const reviewApp = {
     // 行为流（issue 261）：开始本轮复习入小橘行为流（review:started）
     emitDomainEvent('review', { kind: 'started' });
     let items = await this.dataManager!.loadItems();
+    /* 2026-11-20 用户拍板：只有有逾期才能开始本轮。界面按钮也加了同样的门控，
+       这里是第二道闸——命令入口 / 自动跳转同样得先有逾期。force（「不限到期，
+       全部过一遍」）是刻意例外，不受这条约束。 */
+    if (!opts.force) {
+      const hasOverdue = items.some((i) => i.isOverdue && !i.isCompleted && !i.completed && !i.isMissing);
+      if (!hasOverdue) {
+        notice('没有逾期笔记，不能开始本轮复习');
+        return;
+      }
+    }
     const pend = this.pendingRedoItems(items);
     if (pend.length && getSettings().forceQuizForReview) {
       const quiz = await this.quizWithAI();
@@ -1051,8 +1062,9 @@ export const reviewApp = {
         notice('这篇已经在复习里了', 'info');
         return;
       }
-      if (msg.includes('基础版最多')) {
-        notice(msg, 'warning');
+      /* 额度到顶不是写盘失败：弹高级功能对照窗，里面能直接填码解锁。 */
+      if (e instanceof QuotaExceededError) {
+        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog(e.kind));
         return;
       }
       throw e;

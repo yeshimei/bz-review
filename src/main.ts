@@ -5,7 +5,7 @@
  * 付费形态照 bz Reader / 归物本：一个完整插件包，激活码离线验签；
  * 基础版 20 篇笔记 + 50 条划线卡，高级版不限，功能两边完全一致。
  *
- * 数据：自己的 review.json（默认 CONFIG/REVIEW），与 bz 的 CONFIG/STORAGE
+ * 数据：自己的 review.json（默认库根 bz-review/storage），与 bz 的 CONFIG/STORAGE
  * 分开存，两个插件同时装也不会互相覆盖。
  */
 import { Plugin } from 'obsidian';
@@ -32,6 +32,7 @@ import {
   uiManager,
 } from './review';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
+import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
 import { ReviewPanelView } from './review/panel-view';
@@ -44,7 +45,15 @@ import { isBzPluginEnabled } from './core/plugin-path';
 import { t } from './i18n';
 import { installScopeGuard, markOwned } from './core/scope';
 import { notice, setNoticeEmbedded } from './core/notice';
-import { DEFAULT_REVIEW_DIR, LEGACY_REVIEW_DIR, startupStorageDir } from './core/storage-dir';
+
+/** 取 localStorage；隐私模式 / 移动端 WebView 可能抛错，退回 null（镜像降级，主流程照旧） */
+function localStorageOf(): CodeStorage | null {
+  try {
+    return typeof window !== 'undefined' && window.localStorage ? window.localStorage : null;
+  } catch {
+    return null;
+  }
+}
 
 export default class ReviewPlugin extends Plugin {
   settings: BzSettings;
@@ -310,6 +319,16 @@ export default class ReviewPlugin extends Plugin {
         void reviewApp.refreshPanel();
       }),
     });
+    this.addCommand({
+      id: 'review-import-anki',
+      name: t('从 Anki 文件导入卡片', 'Import cards from Anki file'),
+      callback: withReview(async (app) => {
+        const { importAnkiFromPicker } = await import('./review/anki-import');
+        const { reviewApp } = await import('./review/app');
+        reviewApp.ensure(app);
+        await importAnkiFromPicker(app, reviewApp.dataManager!);
+      }),
+    });
     for (const [id, label, kind] of [
       ['review-export', t('导出备份（JSON）', 'Export backup (JSON)'), 'json'],
       ['review-export-csv', t('导出表格（CSV）', 'Export spreadsheet (CSV)'), 'csv'],
@@ -414,7 +433,7 @@ export default class ReviewPlugin extends Plugin {
           reviewApp.ensure(app);
           const items = await reviewApp.dataManager!.loadItems();
           const path = await exportBookReportMarkdown(app, items);
-          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，没有可导出的按书报告。', path ? 'success' : 'warning');
+          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，先加入条目并完成一次复习。', path ? 'success' : 'warning');
         } catch (e) {
           const { notifyActionError } = await import('./core/notice');
           notifyActionError(e, '导出按书报告');
@@ -466,44 +485,34 @@ export default class ReviewPlugin extends Plugin {
   async loadSettings(): Promise<void> {
     const loaded: unknown = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded && typeof loaded === 'object' ? loaded : {});
-    /* 老用户的复习数据在 CONFIG/REVIEW，新装才用 bz-review/storage。
-       新目录空、老目录有数据时自动指回老目录，避免升级后一看「今日已清空」。 */
-    const hasData = async (dir: string): Promise<boolean> => {
-      try {
-        const raw = await this.app.vault.adapter.read(`${dir}/review.json`);
-        const parsed: unknown = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.length > 0 : !!parsed && String(raw).trim() !== '[]';
-      } catch {
-        return false;
+    /* data.json 被清掉 / 删目录重装时从 localStorage 镜像把码拿回来。
+       镜像里只有码原文，启动时仍走 refreshLicense 真验签——塞假码没用。 */
+    if (!this.settings.licenseKey) {
+      const mirrored = readLicenseMirror(localStorageOf());
+      if (mirrored) {
+        this.settings.licenseKey = mirrored;
+        await this.saveData(this.settings); // 顺手写回 data.json，下次不必再借镜像
       }
-    };
-    const dir = startupStorageDir({
-      configured: this.settings.storagePath,
-      newHasData: await hasData(DEFAULT_REVIEW_DIR),
-      legacyHasData: await hasData(LEGACY_REVIEW_DIR),
-    });
-    if (dir !== this.settings.storagePath) {
-      this.settings.storagePath = dir;
-      await this.saveData(this.settings);
-      notice(`找到老目录 ${LEGACY_REVIEW_DIR} 里的复习数据，已自动指回，数据没动。`, 'info');
     }
   }
 
   async saveSettings(): Promise<void> {
     await this.saveData(this.settings);
+    writeLicenseMirror(localStorageOf(), this.settings.licenseKey);
     resetAIProviderCache();
   }
 
-  /** 设置页「激活」按钮 */
+  /** 设置页「激活」按钮：失败不动当前授权，也不写盘——真码要留着 */
   async activateLicense(code: string): Promise<{ ok: boolean; message: string }> {
-    const state = await refreshLicense(code);
+    const state = await refreshLicense(code, false);
+    if (!state.paid) {
+      return { ok: false, message: '激活码无效或已过期，原来的激活码已保留。' };
+    }
     this.settings.licenseKey = code.trim();
     await this.saveSettings();
     return {
-      ok: state.paid,
-      message: state.paid
-        ? `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`
-        : '激活码无效或已过期。',
+      ok: true,
+      message: `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`,
     };
   }
 

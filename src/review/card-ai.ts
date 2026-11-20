@@ -109,10 +109,17 @@ export async function applyCardContent(card: ReviewCard, ctx: CardPrepareContext
   if (draft.mode === 'cloze') {
     if (!draft.cloze?.blanks?.length) return false;
     await ctx.updateCard(card.key, { cloze: draft.cloze });
+    /* 挖空句当列表短标题（去掉 {{1}} 标记）；纯展示，不进编辑界面。 */
+    const sentence = String(draft.cloze.text ?? '').replace(/\{\{\d+\}\}/g, '').trim();
+    if (sentence) await ctx.updateCard(card.key, { displayTitle: sentence });
     return true;
   }
   if (!draft.questions?.length) return false;
   await ctx.saveQuiz(card.key, draft.questions);
+  /* 做题卡的题目在独立题库、卡上拿不到；回填第一题题干当列表短标题，
+     让同章的十几道题在复习列表里分得清。纯展示字段，不进编辑界面。 */
+  const firstQ = String(draft.questions[0]?.question ?? '').trim();
+  if (firstQ) await ctx.updateCard(card.key, { displayTitle: firstQ });
   return true;
 }
 

@@ -59,6 +59,22 @@ export interface PlanCounts {
   cards: number;
 }
 
+/**
+ * 额度到顶的专用错误。调用方早先靠消息文本认「基础版最多」，而 quotaBlock
+ * 实际说的是「基础版上限」——第 21 篇只能看到一句失败提示，不会弹升级窗。
+ * 现在带类型的错误让界面能稳稳认出「这是额度到顶」→ 弹高级功能窗，
+ * 而不是把正常的上限拦当成写盘失败。
+ */
+export class QuotaExceededError extends Error {
+  constructor(
+    public readonly kind: 'note' | 'card',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'QuotaExceededError';
+  }
+}
+
 /** 当前还能不能再加一篇复习笔记 */
 export function canAddNote(notes: number): boolean {
   return isPaid() || notes < FREE_NOTE_LIMIT;
@@ -174,22 +190,34 @@ export function licenseSummary(): string {
   return `高级版已激活${who}：${until}，数量不限、所有功能可用。`;
 }
 
+/** 当前真正生效的码（上次验签通过的那枚）。激活失败时用它恢复输入框与落盘值。 */
+export function currentLicenseCode(): string {
+  return cachedCode;
+}
+
 /**
  * 用一枚码刷新授权状态（启动时与用户点「激活」时都走这里）。
  * 验签结论缓存进内存；码原文由调用方存 data.json。
+ *
+ * `commitFailure=false` 给「用户正在试填新码」的入口用：码不认就只回报
+ * 「这枚不行」，不动当前授权（与 Reader 的 activateLicense 同口径）。否则
+ * 输错一次就把真码的运行期结论冲掉——重启虽能恢复，当前会话已经掉级。
+ * 空码是显式清码，任何情况下都提交。
  */
-export async function refreshLicense(code: string): Promise<LicenseState> {
+export async function refreshLicense(code: string, commitFailure = true): Promise<LicenseState> {
   if (!code || !code.trim()) {
     state = EMPTY;
     cachedCode = '';
     return state;
   }
   const r = await verifyLicense(code);
-  cachedCode = code;
   if (!r.ok || !r.payload) {
+    if (!commitFailure) return { paid: false, checkedAt: Date.now() };
+    cachedCode = code;
     state = { paid: false, checkedAt: Date.now() };
     return state;
   }
+  cachedCode = code;
   state = {
     paid: true,
     name: r.payload.name,
