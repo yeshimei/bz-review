@@ -122,6 +122,9 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
     head: true,
     maxWidth: 720,
   });
+  /* uiModal 会把焦点交给弹窗内第一个可交互元素；这张表很长，首个按钮在底部，
+     focus 会把弹窗容器滚下去、把刚加的统一头行推出可视区。打开时拉回顶部。 */
+  modal.popup.scrollTop = 0;
   modal.popup.addEventListener('click', (e) => {
     const act = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-act]')?.dataset.act;
     if (act === 'unlockbuy') openExternalUrl(PURCHASE_URL);
