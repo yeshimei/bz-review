@@ -1197,11 +1197,56 @@
 .bzrv-backup-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .bzrv-backup-time { font-size: var(--bzrv-font-body); color: var(--bzrv-text-1); overflow-wrap: anywhere; }
 .bzrv-backup-row .bzrv-btn { flex: none; }
+.bzrv-backup-row-actions { display: flex; align-items: center; gap: 8px; flex: none; }
 @media (max-width: 768px) {
   .bzrv-backup-row { flex-direction: column; align-items: stretch; }
+  .bzrv-backup-row-actions { flex-direction: column; align-items: stretch; }
   .bzrv-backup-row .bzrv-btn { width: 100%; min-height: 44px; }
   /* 沿用编辑弹窗的按钮条，但这里「关闭」是辅助动作，不该被 column-reverse 顶到最前 */
   .bzrv-backup-actions { flex-direction: column; }
+}
+
+/* 文件夹加入复习的选择面板（2026-11-21）：批量确认后先勾笔记再加入 */
+.bzrv-folder-add { display: flex; flex-direction: column; gap: 10px; }
+/* 原生复选框默认吃宿主紫；这里跟插件强调色走，和弹窗里的金色主按钮一致 */
+.bzrv-folder-add input[type='checkbox'] { accent-color: var(--bzrv-brand); }
+.bzrv-folder-add-desc { font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); line-height: var(--bzrv-leading-normal); }
+.bzrv-folder-add-tools { display: flex; align-items: center; gap: 8px; font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); }
+.bzrv-folder-add-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.bzrv-folder-add-count { margin-left: auto; color: var(--bzrv-text-3); }
+.bzrv-folder-add-list {
+  display: flex; flex-direction: column; gap: 2px;
+  max-height: 46vh; overflow-y: auto;
+  padding: 4px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-2);
+}
+.bzrv-folder-add-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: var(--bzrv-radius-sm);
+  font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); cursor: pointer;
+}
+.bzrv-folder-add-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-folder-add-dir { margin-left: auto; color: var(--bzrv-text-3); font-size: var(--bzrv-font-caption); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzrv-folder-add-actions { justify-content: flex-end; }
+/* 宿主 reset：`[data-bzrv] button` 会把按钮底色 unset（settings 页另有规则接回），
+   弹窗里这颗主按钮要自己把品牌底接回来 */
+[data-bzrv] .bzrv-folder-add-actions button.bzrv-btn--primary {
+  background: var(--bzrv-brand);
+  color: var(--bzrv-on-brand);
+  border-color: transparent;
+}
+@media (hover: hover) {
+  [data-bzrv] .bzrv-folder-add-actions button.bzrv-btn--primary:hover {
+    background: var(--bzrv-brand-hover);
+  }
+}
+@media (hover: hover) {
+  .bzrv-folder-add-row:hover { background: var(--bzrv-surface-hover); }
+}
+@media (max-width: 768px) {
+  .bzrv-folder-add-dir { display: none; }
+  .bzrv-folder-add-actions { flex-direction: column; }
+  .bzrv-folder-add-actions .bzrv-btn { width: 100%; min-height: 44px; }
 }
 
 /* 自定义卡片模板：编辑弹窗的字段勾选项 + 复习时的正反面字段 */

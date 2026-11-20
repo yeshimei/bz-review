@@ -20,7 +20,7 @@ import { uiModal } from '../../core/ui/modal';
 import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
-import { openVideoTutorial, openExternalUrl, REPO_URL, GROUP_ID } from './links-bridge';
+import { openVideoTutorial, openExternalUrl, REVIEW_REPO_URL, BZ_REPO_URL, GROUP_ID } from './links-bridge';
 import { changelogLang } from './i18n-bridge';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
@@ -168,7 +168,7 @@ const COPY: Record<'zh' | 'en', ChangelogCopy> = {
     stateDone: '已完成',
     srcBuiltin: '内置',
     srcGithub: 'GitHub',
-    emptyRoadmap: '路线图暂无条目',
+    emptyRoadmap: 'Review 的路线图还在整理，先去「功能建议」看已采纳的条目',
     roadmapTab: '路线图',
     fbBug: '问题反馈',
     fbFeature: '功能建议',
@@ -367,7 +367,7 @@ function statsHtml(_data: BzrData | null): string {
 /** 一条反馈链接：issue 类用仓库地址拼，其余用白名单校验后的 href；不合法就不给 href */
 function feedbackLinkHtml(fb: RoadmapFeedback): string {
   let href: string | null = '';
-  if (fb.kind === 'issue') href = REPO_URL + '/issues/' + String(fb.n ?? '');
+  if (fb.kind === 'issue') href = BZ_REPO_URL + '/issues/' + String(fb.n ?? '');
   else href = safeFeedbackUrl(fb.href);
   const cls = 'bzs-chgn-fb ' + esc(fb.kind);
   if (!href) return '<span class="' + cls + '">' + esc(fb.label) + '</span>';
@@ -526,7 +526,7 @@ function viewsHtml(data: BzrData | null): string {
 /** 条目尾部的 #N 链接：issue 来自在线配置；点开新标签跳 GitHub */
 function issueLinkHtml(n?: number): string {
   if (typeof n !== 'number' || !Number.isInteger(n) || n <= 0) return '';
-  return `<a class="bzs-chgn-issue" href="${esc(REPO_URL)}/issues/${n}" target="_blank" rel="noopener">#${n} ↗</a>`;
+  return `<a class="bzs-chgn-issue" href="${esc(REVIEW_REPO_URL)}/issues/${n}" target="_blank" rel="noopener">#${n} ↗</a>`;
 }
 
 /** 条目尾部的 QQ 频道帖子链接：白名单校验通过才渲染成可点链接 */
@@ -1112,7 +1112,7 @@ export function openChangelogNote(
        关掉上面那层下面还在，看着像关不掉。这里不弹提醒，点了就是点了。 */
     if (target.closest('[data-role="chgnsupport"]')) { openSupportDialog(); return; }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
-    if (act === 'chgnrepo') window.open(REPO_URL, '_blank', 'noopener,noreferrer');
+    if (act === 'chgnrepo') window.open(REVIEW_REPO_URL, '_blank', 'noopener,noreferrer');
     else if (act === 'chgnvideo') openVideoTutorial();
     else if (act === 'chgnqq') void copyReviewGroupId();
   });
