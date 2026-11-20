@@ -67,6 +67,21 @@ export function totalOf(counts: PlanCounts): number {
   return counts.notes + counts.cards;
 }
 
+/**
+ * 额度到顶的专用错误。调用方早先靠消息文本认「基础版最多」，而 quotaBlock
+ * 实际说的是「基础版上限」——加不进去时只能看到一句失败提示，不会弹升级窗。
+ * 现在带类型的错误让界面能稳稳认出「这是额度到顶」→ 弹高级功能窗，
+ * 而不是把正常的上限拦当成写盘失败。
+ *
+ * 不再带 kind：配额是笔记 + 划线合计，哪一类到顶都只是「合计满了」这一件事。
+ */
+export class QuotaExceededError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'QuotaExceededError';
+  }
+}
+
 /** 单条能不能再加一条（笔记或卡）：合计没到 50 就行 */
 export function canAdd(counts: PlanCounts): boolean {
   return isPaid() || totalOf(counts) < FREE_ITEM_LIMIT;
