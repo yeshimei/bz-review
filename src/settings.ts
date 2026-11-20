@@ -48,6 +48,8 @@ export default interface BzSettings {
   reviewDailyLimit: number;
   /** 间隔缩放（1 = 标准） */
   reviewIntervalScale: number;
+  /** Anki 式复习间隔抖动（>=2.5 天的间隔上下浮动，摊平复习高峰；默认开） */
+  reviewFuzz: boolean;
   /** Anki 式学习步骤（当天内的短步骤，如 "1m 10m"；空 = 关闭，新卡首次评级直接进 FSRS） */
   reviewLearningSteps: string;
   /** 走完学习步骤后的毕业间隔（天，Anki 默认 1）；Easy 直接毕业走 FSRS 首间隔 */
@@ -174,6 +176,8 @@ export const DEFAULT_SETTINGS: BzSettings = {
   forceQuizForReview: true,
   reviewDailyLimit: 0,
   reviewIntervalScale: 1,
+  /* Anki 默认对 >=2.5 天的复习间隔做 fuzz，避免同一天到期的卡扎堆。 */
+  reviewFuzz: true,
   /* Anki 默认学习步骤：当天 1m + 10m，走完毕业（1 天）；留空 = 直接 FSRS。 */
   reviewLearningSteps: '1m 10m',
   reviewGraduatingInterval: 1,

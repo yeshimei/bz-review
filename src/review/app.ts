@@ -11,6 +11,11 @@ import {
   formatInterval,
   scheduleNext,
   parseLearningSteps,
+  localDateKey,
+  applyReviewFuzz,
+  learningStepFuzzMinutes,
+  fuzzFactor,
+  MIN_INTERVAL_DAYS,
   currentR as fsrsCurrentR,
 } from './fsrs';
 import type { Rating } from './fsrs';
@@ -277,8 +282,10 @@ export const reviewApp = {
     const s = getSettings();
     const desiredRetention = Number(s.reviewRThreshold) || DEFAULT_R_THRESHOLD;
     const stepsMins = parseLearningSteps(s.reviewLearningSteps);
-    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    const stepStartKey = item.reviewStart ? new Date(item.reviewStart).toISOString().slice(0, 10) : '';
+    // 两端都按本地日历算：ISO 串是 UTC，东八区凌晨 0–8 点 UTC 日期还是昨天，
+    // 旧写法（toISOString().slice(0,10) vs 本地 todayKey）会把刚建档的新卡误判跨天。
+    const todayKey = localDateKey(now);
+    const stepStartKey = item.reviewStart ? localDateKey(new Date(item.reviewStart)) : '';
     const decision = scheduleNext(
       {
         stage: item.stage,
@@ -307,7 +314,16 @@ export const reviewApp = {
     const scale = inSteps ? 1 : (scaleRaw > 0 ? scaleRaw : 1);
     const capDays = inSteps ? 0 : (Number(s.reviewMaxIntervalDays) || 0);
     const scaledDays = clampIntervalDays(decision.intervalDays, scale, capDays);
-    const nextDate = new Date(now.getTime() + scaledDays * 86400000);
+    // Anki fuzz：长间隔 ±比例抖动、学习步骤 +0~25%（≤5 分钟）。
+    // seed 用「卡片 id + 本次复习序号」，同一张卡同一轮结果稳定，跨设备一致。
+    const fuzz = fuzzFactor(`${item.id}:${(item.totalReviews || 0) + 1}`);
+    let fuzzedDays = scaledDays;
+    if (s.reviewFuzz !== false) {
+      fuzzedDays = inSteps
+        ? learningStepFuzzMinutes(scaledDays * 1440, fuzz) / 1440
+        : applyReviewFuzz(scaledDays, fuzz, MIN_INTERVAL_DAYS, capDays > 0 ? capDays : Infinity);
+    }
+    const nextDate = new Date(now.getTime() + fuzzedDays * 86400000);
 
     /* 撤销快照在写盘之前取：评级是就地改对象，写完之后拿不到「改之前」。
        只留持久字段（stripRuntime 剥掉 file/isCompleted 等派生态）。 */
@@ -340,6 +356,7 @@ export const reviewApp = {
           entry.stability = decision.historyStability;
           entry.difficulty = decision.historyDifficulty;
         }
+        if (decision.historyStabilityShort !== null) entry.stabilityShort = decision.historyStabilityShort;
         if (decision.R !== null) entry.R = Math.round(decision.R * 100);
         it.reviewHistory.push(entry);
         it.nextReviewDate = nextDate.toISOString();
@@ -364,9 +381,9 @@ export const reviewApp = {
 
     // 学习步骤期报分钟级短间隔；毕业报"完成学习"；FSRS 报动态间隔。
     if (decision.graduated) {
-      notifyUndo(`完成学习，下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
+      notifyUndo(`完成学习，下次复习：${formatInterval(fuzzedDays)}后`, undo, { type: 'success' });
     } else {
-      notifyUndo(`下次复习：${formatInterval(scaledDays)}后`, undo, { type: 'success' });
+      notifyUndo(`下次复习：${formatInterval(fuzzedDays)}后`, undo, { type: 'success' });
     }
     // ADR-0077：评级也累计拟合计数（含首次评级；样本过滤在 fit.ts 内做）。
     // fire-and-forget：计数在入口同步累加，拟合自防重入；不 await 避免大历史时卡评级路径
