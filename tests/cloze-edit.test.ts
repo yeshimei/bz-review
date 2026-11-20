@@ -5,6 +5,7 @@ import {
   MAX_SPAN,
   MIN_VISIBLE,
   rangesToCloze,
+  removeRangeFromSpans,
   removeSpan,
   visibleLength,
 } from '../src/review/cloze-edit';
@@ -116,6 +117,44 @@ describe('addSpan：拖选加空 / 选中已有空位＝还原', () => {
     const res = addSpan(text, [], 0, text.length - (MIN_VISIBLE - 1));
     expect(res.action).toBe('rejected');
     expect(res.reason).toBe('visible');
+  });
+});
+
+describe('点词挖空：相邻词并成一个空位', () => {
+  const plain = '方鸿渐的每一段关系都在印证它';
+
+  it('连点两个相邻词 → 合并成一个空，而不是两个各答一半', () => {
+    const one = addSpan(plain, [], 0, 3);
+    const two = addSpan(plain, one.spans, 3, 4);
+    expect(two.action).toBe('added');
+    expect(two.spans).toEqual([{ start: 0, end: 4 }]);
+  });
+
+  it('中间隔着标点/空格就不合并', () => {
+    const text = '甲、乙、丙、丁、戊';
+    const one = addSpan(text, [], 0, 1);
+    const two = addSpan(text, one.spans, 2, 3);
+    expect(two.spans).toEqual([{ start: 0, end: 1 }, { start: 2, end: 3 }]);
+    expect(visibleLength(text, two.spans)).toBe(7);
+  });
+});
+
+describe('触屏点词取消：只去掉点的那个词', () => {
+  it('合并过的空位被点中间一段时，切成左右两段保留', () => {
+    const spans = [{ start: 0, end: 9 }];
+    expect(removeRangeFromSpans(spans, 3, 6)).toEqual([
+      { start: 0, end: 3 },
+      { start: 6, end: 9 },
+    ]);
+  });
+
+  it('点整段就整段还原', () => {
+    expect(removeRangeFromSpans([{ start: 2, end: 5 }], 2, 5)).toEqual([]);
+  });
+
+  it('没点到就不动', () => {
+    const spans = [{ start: 0, end: 3 }];
+    expect(removeRangeFromSpans(spans, 5, 7)).toEqual(spans);
   });
 });
 

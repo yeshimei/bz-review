@@ -1342,6 +1342,9 @@
 }
 .bzrv-wiz-popup .bzrv-dialog-body { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
 .bzrv-wiz { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+/* 弹窗里全部 border-box：按钮设了 width:100% 又带 padding，不统一下会挤出容器
+   （真机第一版四张方式卡的第 4 张被裁在右边） */
+.bzrv-wiz, .bzrv-wiz * { box-sizing: border-box; }
 
 .bzrv-wiz-head {
   flex: none;
@@ -1524,6 +1527,35 @@
 .bzrv-wiz-blank:hover { background: var(--bzrv-accent-line); }
 .bzrv-wiz-blank-text { color: var(--bzrv-text-1); opacity: 0.72; }
 .bzrv-wiz-blank-no { font-size: 9px; vertical-align: super; color: var(--bzrv-accent); margin-left: 1px; user-select: none; }
+/* 触屏点选：正文只读，词块是独立的大号按钮 */
+.bzrv-wiz-picker {
+  margin-top: 10px; padding-top: 9px;
+  border-top: 1px dashed var(--bzrv-border);
+}
+.bzrv-wiz-picker-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px;
+}
+.bzrv-wiz-picker-label { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-2); }
+.bzrv-wiz-picker-list {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-height: 30vh; overflow-y: auto; padding: 2px 2px 4px;
+}
+/* 触屏把正文压矮一点，把空间留给下面的词块；手机上的编辑窗可以更高 */
+.bzrv-wiz-cloze-src.is-touch { max-height: 20vh; }
+.bzrv-wiz.is-touch .bzrv-wiz-list { max-height: 58vh; }
+.bzrv-wiz.is-touch .bzrv-wiz-picker-list { max-height: 26vh; }
+.bzrv-wiz-chip {
+  appearance: none; -webkit-appearance: none;
+  font: inherit; font-size: var(--bzrv-font-body); line-height: 1.2;
+  min-height: 34px; padding: 7px 11px;
+  border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-1); color: var(--bzrv-text-1);
+  cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.bzrv-wiz-chip.is-on {
+  background: var(--bzrv-accent); border-color: var(--bzrv-accent); color: #fff;
+}
 .bzrv-wiz-cloze-src.is-preview .bzrv-wiz-blank { background: var(--bzrv-accent-soft); }
 .bzrv-wiz-cloze-src.is-preview .bzrv-wiz-blank-text { visibility: hidden; }
 .bzrv-wiz-cloze-src.is-preview .bzrv-wiz-blank-no { display: none; }
