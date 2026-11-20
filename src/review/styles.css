@@ -1204,6 +1204,13 @@
   .bzrv-backup-actions { flex-direction: column; }
 }
 
+/* 自定义卡片模板：编辑弹窗的字段勾选项 + 复习时的正反面字段 */
+.bzrv-tpl-opt { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); cursor: pointer; }
+.bzrv-tpl-opt input { margin: 0; }
+.bzrv-cs-tpl { display: flex; flex-direction: column; gap: 12px; }
+.bzrv-cs-tpl-field { margin: 0; font-size: var(--bzrv-font-label); line-height: 1.7; color: var(--bzrv-text-1); overflow-wrap: anywhere; }
+.bzrv-cs-tpl-back { padding-top: 12px; border-top: 1px solid var(--bzrv-border); display: flex; flex-direction: column; gap: 10px; }
+
 /* 统一弹窗壳里的输入与纯文本：编辑/排期/恢复/负荷四屏共用 */
 .bzrv-flow-dialog .bzrv-edit-field input { width: 100%; box-sizing: border-box; }
 .bzrv-flow-dialog pre { white-space: pre-wrap; font-family: var(--font-monospace); line-height: 1.6; }

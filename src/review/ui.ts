@@ -63,6 +63,7 @@ import { bookSummariesOf } from './book-summary';
 import { setSuspended, buryItem, unsuspendAndUnbury, hiddenNotice } from './card-manager';
 import { openDeckTagEditor, allTagsOf } from './deck-tag-dialog';
 import { openMediaEditor } from './media-dialog';
+import { openTemplateEditor } from './template-dialog';
 import { deckOf } from './deck';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
@@ -940,6 +941,21 @@ export class UIManager {
               await this.refreshPanel();
             } catch (e) {
               notifySaveError(e, '保存媒体配置');
+            }
+          })();
+        });
+      });
+      row.querySelector<HTMLElement>('[data-act="mgr-template"]')?.addEventListener('click', () => {
+        const card = it.card;
+        if (!card) return;
+        openTemplateEditor(this.app, card, (tpl) => {
+          void (async () => {
+            try {
+              await this.dataManager?.updateCardTemplate(card.key, tpl);
+              notice(tpl ? '已保存自定义模板' : '已恢复默认模板', 'success');
+              await this.refreshPanel();
+            } catch (e) {
+              notifySaveError(e, '保存卡片模板');
             }
           })();
         });

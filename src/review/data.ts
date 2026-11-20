@@ -107,6 +107,8 @@ export interface ReviewCard {
    * （0-100，相对图片尺寸），复习时盖住，点开揭示 label。移动端也能用（不依赖拖拽画框）。
    */
   occlusion?: { image: string; regions: Array<{ x: number; y: number; w: number; h: number; label: string }> };
+  /** 自定义字段模板（抽认卡）：正面/背面各显示哪些预定义字段；受限，不开放手写 HTML */
+  template?: { front: string[]; back: string[] };
   /**
    * 用户手改过（批 2）：后台自动补内容一律跳过，别把刚写的话顶掉。
    * 点「重新生成」仍可覆盖（那条路走 force）。
@@ -466,6 +468,17 @@ export class ReviewDataManager {
       if (!item) return false;
       item.card = { ...item.card!, ...patch, key: item.card!.key };
       item.name = cardTitleOf(item.card);
+      return true;
+    });
+  }
+
+  /** 更新卡片的自定义字段模板；传 null 清空（恢复默认抽认卡） */
+  updateCardTemplate(key: string, template: { front: string[]; back: string[] } | null): Promise<boolean> {
+    return this.mutate((items) => {
+      const item = items.find((i) => i.filePath === key && isCardItem(i));
+      if (!item || !item.card) return false;
+      if (template) item.card.template = template;
+      else delete item.card.template;
       return true;
     });
   }

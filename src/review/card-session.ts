@@ -23,6 +23,7 @@ import type { CardMode } from './card-ai';
 import { QUIZ_RATIO, pickCardQuestions } from './card-quiz';
 import type { QuizQuestion } from './quiz-core/manager';
 import { checkBlanks, renderClozeHtmlParts } from './cloze';
+import { normalizeTemplate, fieldValue } from './card-template';
 import { contextPromptOf } from './context';
 import { clozeContentUsable, clozeSlotWidth, clozeViewOf, promptViewFor, quizViewOf } from './card-prompt';
 import { stageNum } from './render';
@@ -750,6 +751,35 @@ export class CardSession {
       ${idea ? `<p class="bzrv-cs-idea">${esc(idea)}</p>` : ''}`;
   }
 
+  /** 自定义字段模板：正面按 front 字段渲染，揭示后按 back 字段渲染 */
+  private templateBodyHtml(card: ReviewCard): string {
+    const tpl = normalizeTemplate(card.template as never);
+    if (!tpl) return this.answerHtml(card);
+    const renderFields = (keys: readonly string[]): string =>
+      keys
+        .map((k) => {
+          if ((k === 'image' || k === 'audio') && card.media) {
+            if (k === 'image') {
+              return (card.media.images ?? [])
+                .map((p) => this.vaultUrl(p))
+                .filter((u): u is string => !!u)
+                .map((u) => `<img class="bzrv-cs-media-img" src="${esc(u)}" alt="复习图片">`)
+                .join('');
+            }
+            const u = card.media.audio ? this.vaultUrl(card.media.audio) : null;
+            return u ? `<audio class="bzrv-cs-media-audio" controls src="${esc(u)}"></audio>` : '';
+          }
+          const value = fieldValue(card, k as never);
+          return value ? `<p class="bzrv-cs-tpl-field">${esc(value)}</p>` : '';
+        })
+        .join('');
+    const front = renderFields(tpl.front);
+    const back = renderFields(tpl.back);
+    return `<div class="bzrv-cs-tpl">${front || '<p class="bzrv-cs-prompt">这张模板卡还没填正面内容</p>'}${
+      this.revealed ? `<div class="bzrv-cs-tpl-back">${back || this.answerHtml(card)}</div>` : ''
+    }</div>`;
+  }
+
   /** 库内文件路径 → 可显示的 URL（Obsidian 的 app:// 协议，图片/音频都能用） */
   private vaultUrl(path: string): string | null {
     const raw = String(path ?? '').trim();
@@ -848,6 +878,7 @@ export class CardSession {
     if (this.isContextMode()) return this.contextBodyHtml(card);
     if (this.isMediaMode()) return this.mediaBodyHtml(card);
     if (this.isOcclusionMode()) return this.occlusionBodyHtml(card);
+    if (card.template && !this.isQuizMode()) return this.templateBodyHtml(card);
 
     const prompt = this.promptFor(item);
     return `
