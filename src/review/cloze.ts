@@ -13,6 +13,7 @@
  * ============================================================ */
 import type { AIService } from '../core/ai';
 import type { ReviewCard } from './data';
+import { aiTextOf } from './card-text';
 import { parseLooseJson } from './loose-json';
 
 /** 挖空占位：`{{1}}`、`{{2}}`…。用双花括号是因为正文里几乎不会出现 */
@@ -183,7 +184,7 @@ export function buildClozePrompt(card: ReviewCard): string {
     '{"text": "挖空后的句子，空位写成 {{1}}", "blanks": ["答案1", "答案2"]}',
     '',
     `出处：${where}`,
-    `划线原文：${card.text}`,
+    `划线原文：${aiTextOf(card)}`,
   ].join('\n');
 }
 

@@ -61,6 +61,9 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
     bookTitle: String(input.bookTitle ?? ''),
     text: String(input.text ?? ''),
   };
+  /* 只给模型看的节选：与全文相同就不存，免得同一段正文在盘上存两份 */
+  const aiText = String(input.aiText ?? '').trim();
+  if (aiText && aiText !== text) card.aiText = aiText;
   if (input.chapterTitle) card.chapterTitle = String(input.chapterTitle);
   if (input.comment) card.comment = String(input.comment);
   if (input.backlink) card.backlink = String(input.backlink);

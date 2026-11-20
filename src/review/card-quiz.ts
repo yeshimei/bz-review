@@ -14,6 +14,7 @@
 import type { AIService } from '../core/ai';
 import type { ReviewCard } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
+import { aiTextOf } from './card-text';
 import { parseLooseJson } from './loose-json';
 
 /** 一道题最少要多少字才够问出东西 */
@@ -69,7 +70,7 @@ export function buildCardQuizPrompt(card: ReviewCard, count: number): string {
     '{"questions":[{"question":"题目","options":["A","B","C","D"],"correctIndices":[0],"explain":"解析"}]}',
     '',
     idea ? `我当时的想法：${idea}` : '',
-    `划线原文：${card.text}`,
+    `划线原文：${aiTextOf(card)}`,
   ]
     .filter((line) => line !== '')
     .join('\n');
@@ -138,7 +139,7 @@ export async function generateCardQuiz(
     return null;
   }
   if (!ai) return null;
-  const n = Math.min(QUIZ_MAX, Math.max(QUIZ_MIN, Math.round(Number(count) || quizCountFor(card.text))));
+  const n = Math.min(QUIZ_MAX, Math.max(QUIZ_MIN, Math.round(Number(count) || quizCountFor(aiTextOf(card)))));
   try {
     const reply = await ai.json(buildCardQuizPrompt(card, n));
     return parseCardQuiz(String(reply ?? ''), n);
@@ -170,7 +171,7 @@ export function buildSingleQuizPrompt(card: ReviewCard): string {
     '结构：',
     '{"questions":[{"question":"题目","options":["A","B","C","D"],"correctIndices":[0],"explain":"解析"}]}',
     '',
-    `划线原文：${card.text}`,
+    `划线原文：${aiTextOf(card)}`,
   ].join('\n');
 }
 

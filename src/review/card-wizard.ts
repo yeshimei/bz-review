@@ -54,6 +54,7 @@ import {
   type WizardState,
 } from './card-wizard-model';
 import { buildModePicker } from './mode-picker';
+import { addHappened, addSummaryText } from './add-flow-model';
 
 /** 交给制卡流程的一条内容（Reader 的划线 / 笔记选段都长这样） */
 export interface CardWizardSource {
@@ -61,6 +62,8 @@ export interface CardWizardSource {
   bookTitle: string;
   chapterTitle?: string;
   text: string;
+  /** 只给模型看的正文节选（整篇笔记才有；缺省用 text） */
+  aiText?: string;
   comment?: string;
   backlink?: string;
   sourceNote?: { path: string; from: number; to: number };
@@ -106,7 +109,10 @@ function srOnly(text: string): HTMLElement {
 }
 
 function sourceTextChars(s: CardWizardSource): number {
-  return Array.from(String(s.text ?? '')).length + Array.from(String(s.comment ?? '')).length;
+  /* 按「模型会读多少」算：整篇笔记卡上存全文，但出题只用 aiText 那一段，
+     预估字数拿全文算会把几百字说成几千字。 */
+  const body = s.aiText ?? s.text;
+  return Array.from(String(body ?? '')).length + Array.from(String(s.comment ?? '')).length;
 }
 
 export function openCardWizard(app: App, host: CardWizardHost, opts: CardWizardOptions): void {
@@ -882,6 +888,7 @@ class CardWizard {
       mode: d.mode as CardMode,
     };
     if (d.chapterTitle) card.chapterTitle = d.chapterTitle;
+    if (d.aiText) card.aiText = d.aiText;
     if (d.comment) card.comment = d.comment;
     if (d.backlink) card.backlink = d.backlink;
     if (d.sourceNote) card.sourceNote = d.sourceNote;
@@ -900,6 +907,7 @@ class CardWizard {
       questions: [],
       cloze: null,
     };
+    if (src.aiText) d.aiText = src.aiText;
     if (src.chapterTitle) d.chapterTitle = src.chapterTitle;
     if (src.comment) d.comment = src.comment;
     if (src.backlink) d.backlink = src.backlink;
@@ -916,8 +924,9 @@ class CardWizard {
     if (this.cancelled) return d;
 
     if (mode === 'flashcard') {
-      /* 出不来就问原文本身：宁可退化成全文回忆，也不给一张空白卡 */
-      d.front = String(generated?.qa?.q ?? '').trim() || src.text;
+      /* 出不来就问原文本身：宁可退化成全文回忆，也不给一张空白卡。
+         整篇笔记的原文可能几千字，问句面必须截短——不然复习时那面就是一大段正文。 */
+      d.front = String(generated?.qa?.q ?? '').trim() || clipTitle(src.text, 60);
       return d;
     }
     if (mode === 'quiz') {
@@ -979,6 +988,7 @@ class CardWizard {
 
   private sourceOf(d: WizardDraft): CardWizardSource {
     const s: CardWizardSource = { key: d.key, bookTitle: d.bookTitle, text: d.text };
+    if (d.aiText) s.aiText = d.aiText;
     if (d.chapterTitle) s.chapterTitle = d.chapterTitle;
     if (d.comment) s.comment = d.comment;
     if (d.backlink) s.backlink = d.backlink;
@@ -1023,11 +1033,9 @@ class CardWizard {
     this.render();
     try {
       const res = await this.host.addCards(fresh.map(draftToInput));
-      const parts = [`已加入 ${res.added} 张`];
-      if (res.exists) parts.push(`${res.exists} 张本来就在计划里`);
-      if (res.rejected) parts.push(`${res.rejected} 张超出基础版上限`);
-      if (res.notFound) parts.push(`${res.notFound} 张找不到原文`);
-      notice(parts.join('，'), res.added ? 'success' : 'warning');
+      /* 所有入口共用同一句结果话术（2026-11-21 统一流程）：
+         别再每个入口各写一套「已在复习中」「加了 0 条」的说法。 */
+      notice(addSummaryText(res, '张'), addHappened(res) ? 'success' : 'warning');
       try {
         this.opts.onAdded?.(res);
       } catch {
