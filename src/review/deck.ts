@@ -4,8 +4,9 @@
  * 几百条条目挤在「逾期/今天/未来」三列里，实际复习时常常变成「随便点一条」。
  * 牌组给的是复习时的心理单位：一门课、一本书、一个项目——各自按自己的节奏走。
  *
- * 不新造一套分类体系：牌组直接用库里已有的东西——笔记用所在文件夹，
- * 划线卡用书名。用户怎么组织库，牌组就怎么长，不需要再维护一份分组表。
+ * 不新造一套分类体系：牌组默认用库里已有的东西——笔记用所在文件夹，
+ * 划线卡用书名。2026-11-20 起支持自建牌组（item.deck）与标签（item.tags），
+ * 填了就优先用自建的，没填继续按老办法推导，老数据零迁移。
  */
 import type { ReviewItem } from './data';
 import { DEFAULT_W } from './fsrs';
@@ -20,8 +21,10 @@ function isCardItem(item: ReviewItem): boolean {
   return item?.kind === 'card' && !!item.card;
 }
 
-/** 这条属于哪个牌组（笔记 = 文件夹，划线卡 = 书名）；取不到时给「未分组」 */
+/** 这条属于哪个牌组：自建牌组优先；没填则笔记=文件夹、划线卡=书名；再取不到给「未分组」 */
 export function deckOf(item: ReviewItem): string {
+  const own = String(item.deck ?? '').trim();
+  if (own) return own;
   if (isCardItem(item)) {
     const book = String(item.card?.bookTitle ?? '').trim();
     return book || '未分组';
@@ -32,13 +35,28 @@ export function deckOf(item: ReviewItem): string {
   return path.slice(0, cut);
 }
 
-/** 一条目挂在哪些牌组下（笔记还可能按标签看，标签由调用方从元数据取） */
+/**
+ * 一条目的标签（不带 #）：自建 tags 与运行时从 Obsidian 元数据读出的标签合并去重。
+ * 运行时标签由调用方传入（data 层读 metadataCache），这里只做合并，保持纯函数。
+ */
+export function tagsOf(item: ReviewItem, runtimeTags?: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of [...(item.tags ?? []), ...(item.metaTags ?? []), ...(runtimeTags ?? [])]) {
+    const v = String(raw ?? '')
+      .trim()
+      .replace(/^#+/, '');
+    if (!v || seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+  return out;
+}
+
+/** 一条目挂在哪些「牌组/标签」分组下（用于展示与候选汇总） */
 export function decksOf(item: ReviewItem, tags?: readonly string[]): string[] {
   const out = [deckOf(item)];
-  for (const t of tags ?? []) {
-    const v = String(t ?? '').trim();
-    if (v) out.push(`#${v.replace(/^#/, '')}`);
-  }
+  for (const t of tagsOf(item, tags)) out.push(`#${t}`);
   return out;
 }
 
@@ -55,8 +73,9 @@ export function collectFacets(items: readonly ReviewItem[], tagsByPath?: Map<str
   const tagCounts: Record<string, number> = {};
   for (const it of items) {
     for (const d of [deckOf(it)]) counts[d] = (counts[d] ?? 0) + 1;
-    for (const t of tagsByPath?.get(it.filePath) ?? []) {
-      const key = `#${t.replace(/^#/, '')}`;
+    /* 标签来源两条：条目自建 tags（卡片/笔记都能有）+ 调用方按路径传入的 Obsidian 元数据标签。 */
+    for (const t of tagsOf(it, tagsByPath?.get(it.filePath))) {
+      const key = `#${t}`;
       tagCounts[key] = (tagCounts[key] ?? 0) + 1;
     }
   }
@@ -80,7 +99,7 @@ export interface ItemFilter {
 /** 关键字匹配：标题 / 路径 / 卡片原文 / 书名 / 章节（卡片管理器搜索框复用） */
 export function matchesQuery(item: ReviewItem, q: string): boolean {
   if (!q) return true;
-  const hay = [item.name, item.filePath, item.card?.text, item.card?.comment, item.card?.bookTitle, item.card?.chapterTitle]
+  const hay = [item.name, item.filePath, item.card?.text, item.card?.comment, item.card?.bookTitle, item.card?.chapterTitle, ...tagsOf(item)]
     .filter(Boolean)
     .join('\n')
     .toLowerCase();
@@ -101,13 +120,15 @@ export function applyFilter(items: readonly ReviewItem[], filter: ItemFilter = {
     if (kind === 'note' && isCardItem(it)) return false;
     if (kind === 'card' && !isCardItem(it)) return false;
     if (deck) {
-      const carded = isCardItem(it) ? String(it.card?.bookTitle ?? '').trim() : '';
-      const hit = carded ? carded === deck : deckOf(it) === deck;
-      /* 只按牌组名匹配。旧代码这里有两行完全等价的 `if (!hit && …) return false`
-         （一行判 # 开头、一行判非 # 开头），还留着「按标签兜底匹配」的注释——
-         但 applyFilter 没有标签数据、UI 的下拉也只来自 collectFacets().decks，
-         所谓标签兜底根本不存在，以 # 开头的筛选只会把所有条目过滤光。 */
-      if (!hit) return false;
+      if (deck.startsWith('#')) {
+        /* #标签筛选：按条目自己的标签匹配（自建 tags + 运行时元数据标签由调用方
+           合并进 item.tags，见 data.loadItems）。旧代码这里只按牌组名比，
+           以 # 开头的筛选把所有条目过滤光——真实 bug，2026-11-20 修复。 */
+        const want = deck.slice(1).trim().toLowerCase();
+        if (!tagsOf(it).some((t) => t.toLowerCase() === want)) return false;
+      } else if (deckOf(it) !== deck) {
+        return false;
+      }
     }
     if (!matchesQuery(it, q)) return false;
     return true;

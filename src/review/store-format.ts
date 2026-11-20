@@ -27,7 +27,7 @@ export function reviewMeta(now: Date): ReviewMeta {
 }
 
 /** loadItems 派生、不落盘的运行时字段（比对内容时必须剔除，否则一次列表刷新就算全员改动） */
-const RUNTIME_FIELDS = ['file', 'isCompleted', 'isOverdue', 'isMissing', 'currentStage', 'totalStages'] as const;
+const RUNTIME_FIELDS = ['file', 'isCompleted', 'isOverdue', 'isMissing', 'currentStage', 'totalStages', 'metaTags'] as const;
 type RuntimeField = typeof RUNTIME_FIELDS[number];
 
 /**

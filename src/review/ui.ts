@@ -61,6 +61,8 @@ import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFil
 import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './plan-ops';
 import { bookSummariesOf } from './book-summary';
 import { setSuspended, buryItem, unsuspendAndUnbury, hiddenNotice } from './card-manager';
+import { openDeckTagEditor, allTagsOf } from './deck-tag-dialog';
+import { deckOf } from './deck';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
 import { CardSession } from './card-session';
@@ -536,7 +538,8 @@ export class UIManager {
     const visible = applyFilter(items, this.filter);
     const filtering = !isEmptyFilter(this.filter);
     // 牌组下拉取全量（不是筛过的结果），否则选完一个牌组，别的牌组就从下拉里消失了
-    setMarkup(container, this.queueViewHtml(visible, collectFacets(items).decks));
+    const facets = collectFacets(items);
+    setMarkup(container, this.queueViewHtml(visible, [...facets.decks, ...facets.tags]));
     /* 「开始本轮」节点复用：面板刚打开那一两秒里队列常被再刷一次（样式落盘 / 逾期检查 /
        外层动作回调）。如果这次重绘正好落在按下与松开之间，旧按钮已经被换成新节点，
        click 事件（要求 down/up 落在同一元素）就整个丢掉——用户看到的是一次点了没反应。
@@ -760,9 +763,10 @@ export class UIManager {
   private fillManagerPage(body: HTMLElement, items: ReviewItem[]): void {
     const wrap = createDiv();
     wrap.className = 'bzrv-mgr-page';
+    const facets = collectFacets(items);
     setMarkup(wrap, managerViewHtml(items, {
       filter: this.mgrFilter,
-      decks: collectFacets(items).decks,
+      decks: [...facets.decks, ...facets.tags],
     }));
     body.appendChild(wrap);
     /* 五颗操作按钮是 <i data-lucide> 占位，不 mountIcons 就是五个空白方框——
@@ -923,6 +927,20 @@ export class UIManager {
       });
       row.querySelector<HTMLElement>('[data-act="mgr-regen"]')?.addEventListener('click', () => {
         void this.regenerateWithConfirm(it);
+      });
+      row.querySelector<HTMLElement>('[data-act="mgr-deck"]')?.addEventListener('click', () => {
+        const decks = [...new Set(items.map((x) => deckOf(x)))];
+        openDeckTagEditor(this.app, it, decks, allTagsOf(items), (values) => {
+          void (async () => {
+            try {
+              await this.dataManager?.updateItemMeta(it.filePath, values);
+              notice('已保存牌组与标签', 'success');
+              await this.refreshPanel();
+            } catch (e) {
+              notifySaveError(e, '保存牌组与标签');
+            }
+          })();
+        });
       });
       row.querySelector<HTMLElement>('[data-act="mgr-suspend"]')?.addEventListener('click', () => void applyHidden(it, 'suspend'));
       row.querySelector<HTMLElement>('[data-act="mgr-bury"]')?.addEventListener('click', () => void applyHidden(it, 'bury'));

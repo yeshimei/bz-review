@@ -603,6 +603,7 @@ export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCt
         <div class="bzrv-mgr-ops">
           ${it.card ? `<button class="bzrv-icon-btn" data-act="mgr-edit"><span class="bzrv-sr-only">编辑这张卡</span>${iconSpan('pencil', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-regen"><span class="bzrv-sr-only">重新生成 AI 内容</span>${iconSpan('refresh-cw', 'bzrv-q-ic')}</button>` : ''}
+          <button class="bzrv-icon-btn" data-act="mgr-deck"><span class="bzrv-sr-only">设置牌组与标签</span>${iconSpan('folder', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-suspend"><span class="bzrv-sr-only">挂起</span>${iconSpan('pause', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-bury"><span class="bzrv-sr-only">埋藏一天</span>${iconSpan('hourglass', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-restore"><span class="bzrv-sr-only">恢复</span>${iconSpan('rotate-ccw', 'bzrv-q-ic')}</button>
