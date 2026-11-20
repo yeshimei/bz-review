@@ -13,7 +13,7 @@ import { backupOriginal, diskReadText, enqueueFileTask, jsonFileStore, storageFi
 import { tryGetSettings } from '../core/settings-provider';
 import { FSRS_FIRST_INTERVALS, LADDER_MAX, TOTAL_STAGES } from './fsrs';
 import { clipWToBounds } from './fit';
-import { canAddCard, canAddNote, quotaBlock, type PlanCounts } from '../data/entitlement';
+import { canAddCard, canAddNote, quotaBlock, QuotaExceededError, type PlanCounts } from '../data/entitlement';
 import {
   fingerprintsOf,
   mergeReviewItems,
@@ -420,7 +420,7 @@ export class ReviewDataManager {
     return this.mutate((items) => {
       if (items.some((i) => i.filePath === filePath)) throw new Error('该笔记已在复习计划中');
       const block = quotaBlock('note', planCounts(items));
-      if (!block.ok) throw new Error(block.message);
+      if (!block.ok) throw new QuotaExceededError('note', block.message);
       const newItem = this.newReviewItem(filePath, fileName);
       items.push(newItem);
       return newItem;
