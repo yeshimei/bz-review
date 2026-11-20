@@ -196,6 +196,45 @@ describe('三路合并（带基准）', () => {
   });
 });
 
+/* 2026-11-20 真机事故：卡片短标题上线后，每评一张旧卡弹一次「别的设备也改过」并留
+   一份 .bak。远端没有动静——是加载时把 name 重算成了新标题：合并基准里是新标题、
+   盘上还是旧标题，评级又把本机指纹改掉了，两边都不等于基准 → 判成冲突。
+   标题是派生展示字段，不该参与内容比对。 */
+describe('派生展示字段不参与内容比对', () => {
+  const CARD = {
+    id: 'c1',
+    filePath: 'reader:book:h1',
+    kind: 'card',
+    name: '围城 · 第一章',
+    stage: 2,
+    updatedAt: '2026-11-19T18:00:00.000Z',
+    reviewHistory: [],
+  };
+  const NEW_TITLE = '一纸文凭为何能遮羞…';
+
+  it('评级一条加载时重算过标题的卡片：不算冲突，评级照常落盘', () => {
+    const base = fingerprintsOf([{ ...CARD, name: NEW_TITLE }]);
+    const local = [{ ...CARD, name: NEW_TITLE, stage: 4, updatedAt: '2026-11-20T07:41:03.000Z' }];
+    const r = mergeReviewItems(local, [CARD], { now: new Date('2026-11-20T07:41:03.000Z'), base });
+    expect(r.conflicts).toEqual([]);
+    expect(r.items[0].stage).toBe(4);
+    expect(r.items[0].name).toBe(NEW_TITLE);
+  });
+
+  it('只是标题变了：不盖新的 updatedAt', () => {
+    const stamped = stampChangedItems([{ ...CARD, name: NEW_TITLE }], [CARD], new Date('2026-11-20T07:41:03.000Z'));
+    expect(stamped[0].updatedAt).toBe(CARD.updatedAt);
+  });
+
+  it('剔除标题不妨碍真冲突：语义字段两边都改过照样报', () => {
+    const base = fingerprintsOf([{ ...CARD, name: '旧标题', stage: 1 }]);
+    const disk = [{ ...CARD, name: '旧标题', stage: 6, updatedAt: '2026-11-20T06:00:00.000Z' }];
+    const local = [{ ...CARD, name: NEW_TITLE, stage: 5, updatedAt: '2026-11-20T07:00:00.000Z' }];
+    const r = mergeReviewItems(local, disk, { now: new Date('2026-11-20T08:00:00.000Z'), base });
+    expect(r.conflicts).toEqual(['c1']);
+  });
+});
+
 describe('卡片管理器字段的持久化', () => {
   it('suspended / buriedUntil 不在运行时字段表里，serializeReviewItems 原样写盘', () => {
     const it = { ...A, suspended: true, buriedUntil: '2099-01-01T00:00:00.000Z', isOverdue: true };
