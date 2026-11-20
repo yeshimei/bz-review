@@ -11,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import {
-  PANEL_HEAD_ACTS, MORE_MENU_ACTS, panelActIsOn, panelHeadBtnsHtml, panelMoreMenuHtml,
+  PANEL_HEAD_ACTS, MORE_MENU_ACTS, panelActIsOn, panelHeadBtnsHtml, panelMoreMenuHtml, queueViewHtml,
 } from '../src/review/render';
 
 /** 从生成的 HTML 里挑按钮身份（保留模板顺序，顺序漂移也算漂移） */
@@ -34,8 +34,27 @@ describe('嵌入动作栏 · 头行图标 HTML', () => {
   });
 
   it('头行按钮 + 菜单项合起来覆盖全部入口，顺序固定', () => {
-    expect(actsOf(panelHeadBtnsHtml())).toEqual(['filter', 'data', 'more', 'arch', 'trash', 'books', 'manager', 'settings']);
-    expect([...MORE_MENU_ACTS]).toEqual(['arch', 'trash', 'books', 'manager']);
+    expect(actsOf(panelHeadBtnsHtml())).toEqual([
+      'filter', 'data', 'more',
+      'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
+      'settings',
+    ]);
+    expect([...MORE_MENU_ACTS]).toEqual([
+      'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
+    ]);
+  });
+
+  it('成就与批量选择只留在更多菜单（桌面+移动同一份），底栏不再画这两颗', () => {
+    const menu = panelMoreMenuHtml();
+    for (const act of ['batch', 'achv', 'filter', 'data', 'settings']) {
+      expect(menu, act).toContain(`data-act="${act}"`);
+    }
+    expect(menu).toContain('批量选择');
+    expect(menu).toContain('成就');
+    const html = queueViewHtml([], {});
+    const footer = html.slice(html.indexOf('bzrv-q-footer'));
+    expect(footer).not.toContain('data-act="batch"');
+    expect(footer).not.toContain('data-act="achv"');
   });
 
   it('头行图标有 sr-only 可读名，菜单项用真实文本，都不挂悬停气泡属性', () => {

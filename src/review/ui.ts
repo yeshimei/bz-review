@@ -1327,17 +1327,25 @@ export class UIManager {
       void this.refreshPanel();
     };
     container.querySelector('[data-act="home"]')?.addEventListener('click', () => go('home'));
-    container.querySelector('[data-act="settings"]')?.addEventListener('click', () => go('settings'));
-    container.querySelector('[data-act="data"]')?.addEventListener('click', () => go('stats'));
-    /* 菜单里的四项：基础版功能，无门控（entitlement.canUseCapability 恒 true）。
-       querySelectorAll 覆盖面板头 + 嵌入外置动作栏两套 DOM。 */
+    /* 头行图标与菜单项同名时都要响应：手机上 filter/data/settings 只从菜单进，
+       桌面上两处都在。querySelectorAll 覆盖面板头 + 嵌入外置动作栏两套 DOM。 */
+    container.querySelectorAll('[data-act="settings"]').forEach((el) => el.addEventListener('click', () => go('settings')));
+    container.querySelectorAll('[data-act="data"]').forEach((el) => el.addEventListener('click', () => go('stats')));
+    /* 菜单里的入口都是基础版功能，无门控（entitlement.canUseCapability 恒 true）。 */
     container.querySelectorAll('[data-act="books"]').forEach((el) => el.addEventListener('click', () => go('books')));
     container.querySelectorAll('[data-act="manager"]').forEach((el) => el.addEventListener('click', () => go('manager')));
     container.querySelectorAll('[data-act="arch"]').forEach((el) => el.addEventListener('click', () => go('arch')));
     /* trash 有两处入口（菜单项 + 底栏「已移出 N 条」）：两处都绑同一动作。 */
     container.querySelectorAll('[data-act="trash"]').forEach((el) => el.addEventListener('click', () => go('trash')));
-    /* 成就入口在底栏（走同一份 panelHeadBtnsHtml 体系） */
+    /* 成就入口在更多菜单（桌面手机同一份） */
     container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
+    /* 批量选择从底栏收进菜单后仍是唯一入口：勾不勾由这里切，不走 go()。 */
+    container.querySelectorAll('[data-act="batch"]').forEach((el) => el.addEventListener('click', () => {
+      this.closeMoreMenu();
+      this.selectMode = !this.selectMode;
+      this.selected.clear();
+      void this.refreshPanel();
+    }));
     /* 「更多」按钮：开合下拉菜单。一次只开一个——重绘/嵌入两处 DOM 都先关再切。 */
     container.querySelectorAll<HTMLElement>('[data-act="more"]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -1353,7 +1361,7 @@ export class UIManager {
         }
       });
     });
-    container.querySelector('[data-act="filter"]')?.addEventListener('click', () => {
+    container.querySelectorAll('[data-act="filter"]').forEach((el) => el.addEventListener('click', () => {
       this.closeMoreMenu();
       /* 点搜索图标恒定展开搜索面板（FILTER_CLICK_STATE）：从内置页点也回主列表并打开，
          连点不再 toggle 收起、更不清掉已输入的条件——清条件是筛选区「清除」那颗的事。 */
@@ -1361,7 +1369,7 @@ export class UIManager {
       this.filterOpen = FILTER_CLICK_STATE.filterOpen;
       this.keepFilterFocus = true;
       void this.refreshPanel();
-    });
+    }));
     /* 点菜单外任意处关闭：挂一次 document 监听，靠数据集去重避免每次重绘叠层。
        延迟到下一个 tick 注册，避开本次 click 刚冒泡的目标判定。 */
     if (!this.moreOutsideBound) {
@@ -1464,12 +1472,12 @@ export class UIManager {
       this.filterOpen = false;
       void this.refreshPanel();
     });
-    // 头行没有「批量」之后，底栏这颗是唯一入口
-    container.querySelector('[data-act="batch"]')?.addEventListener('click', () => {
+    container.querySelector('[data-act="select"]')?.addEventListener('click', () => {
       this.selectMode = !this.selectMode;
       this.selected.clear();
       void this.refreshPanel();
     });
+    /* 批量选择由 bindPanelHead 统一绑：底栏入口已收进更多菜单，那里是唯一绑定点。 */
     container.querySelector('[data-act="batch-cancel"]')?.addEventListener('click', () => {
       this.selectMode = false;
       this.selected.clear();
