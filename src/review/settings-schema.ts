@@ -12,6 +12,8 @@
 import type { App } from 'obsidian';
 import { Setting } from 'obsidian';
 import { notice } from '../core/notice';
+import { pickFolderNative } from '../core/folder-pick';
+import { setHtml } from './ui/set-html';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
 import { DEFAULT_ACCENT, applyAccent } from '../settings';
@@ -54,6 +56,11 @@ import { parseReviewFile, reviewMeta, serializeReviewItems } from './store-forma
  * 失败恢复成当前生效码——输错一次不该把真码冲掉。
  */
 let licenseDraft = '';
+
+/** 数据目录选择钮上的文件夹图标（与 bz Reader 的 pickdir 同一口径） */
+const FOLDER_SVG =
+  '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true">' +
+  '<path d="M3.5 7.5h6l1.8 2h9.2v8.5a2 2 0 0 1-2 2h-15a2 2 0 0 1-2-2v-10.5Z"/></svg>';
 
 /* ── AI 设置：照 bz 主仓的 18 家注册表驱动（不再硬编码 5 家） ── */
 
@@ -291,6 +298,49 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
   // 门控），设置弹窗 toggle 只需落盘，渲染器键直绑自动完成，无需额外副作用回调。
   /** 数据目录迁移：上一次已生效的目录（取消迁移时回退到这里） */
   let lastDir = String((getSettings()).storagePath || DEFAULT_REVIEW_DIR);
+
+  /**
+   * 数据目录切换：确认后复制、不移动；取消或失败都回退旧目录，返回最终生效路径。
+   * 从原来的 path 行 onCommit 抽出来——换成 Reader 那种「路径 + 选择」按钮后，
+   * 同一套迁移逻辑要由按钮回调复用，不能在两处各写一遍。
+   */
+  const migrateStorageDir = async (raw: string): Promise<string> => {
+    const next = String(raw || '').trim().replace(/^\/+|\/+$/g, '');
+    const prev = lastDir;
+    if (!next || next === prev) return prev;
+    const ok = await openFlowDialog({
+      title: '迁移数据目录？',
+      message: `会把「${prev}」里的复习数据复制到「${next}」。旧目录保留，搬错了改回去就能自愈；新目录已有数据时不覆盖。`,
+      actions: [
+        { label: '取消', value: 'cancel' },
+        { label: '确认迁移', value: 'ok', cta: true },
+      ],
+    });
+    if (ok !== 'ok') {
+      notice('已取消，数据目录没变', 'info');
+      return prev;
+    }
+    try {
+      const { copied, kept } = await copyReviewData(deps.app, prev, next);
+      lastDir = next;
+      /* 原来 path 行的 binding 会把 onChange 返回值写回 settings 并落盘；
+         换成自绘按钮后这一步得自己来——只 paint 按钮不写盘会在下次启动跳回旧目录。 */
+      getSettings().storagePath = next;
+      await saveSettings();
+      if (copied.length) {
+        notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
+      } else if (kept.length) {
+        notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
+      } else {
+        notice(`已切到 ${next}，旧目录没有需要迁移的数据`, 'info');
+      }
+      return next;
+    } catch {
+      notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
+      return prev;
+    }
+  };
+
   const ACCENT_NAME = '强调色';
   const ACCENT_DESC = '跟随 Obsidian / 铜金 / 黛蓝 / 苔青；换色后全插件交互色一起变';
   const ACCENT_HELP =
@@ -378,48 +428,51 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '数据',
         rows: [
           {
-            type: 'path',
-            mode: 'single',
+            /* 2026-11-20：目录行跟 bz Reader 同形——只一颗「路径 / 选择」按钮。
+               不摆 chips / ✕ / 手输框：vault 路径有口径，手打错了还不报错，文件写到别处。 */
+            type: 'custom',
             name: '数据目录',
             desc: '复习数据存在这个目录下的 review.json。换目录会先确认，再把数据复制过去。',
-            pickerTitle: '选择复习数据目录',
-            pickerDesc: '建议用库根目录下单独的文件夹，方便同步与备份。',
-            emptyText: DEFAULT_REVIEW_DIR,
-            fallbackValue: () => DEFAULT_REVIEW_DIR,
-            binding: { key: 'storagePath' },
-            /* 二次确认 + 复制不移动：目录是可逆操作，旧目录原样留着，搬错改回去就自愈。
-               path 行的 onChange 返回清单即否决口径，取消时把 chips 与落盘值一起退回。 */
-            onChange: async (list) => {
-              const next = String(list[0] || '').trim().replace(/^\/+|\/+$/g, '');
-              const prev = lastDir;
-              if (!next || next === prev) return [prev];
-              const ok = await openFlowDialog({
-                title: '迁移数据目录？',
-                message: `会把「${prev}」里的复习数据复制到「${next}」。旧目录保留，搬错了改回去就能自愈；新目录已有数据时不覆盖。`,
-                actions: [
-                  { label: '取消', value: 'cancel' },
-                  { label: '确认迁移', value: 'ok', cta: true },
-                ],
+            render: (body) => {
+              const setting = new Setting(body)
+                .setName('数据目录')
+                .setDesc('复习数据存在这个目录下的 review.json。换目录会先确认，再把数据复制过去。');
+              setting.settingEl.classList.add('bzrv-pickdir-row');
+              const btn = createEl('button');
+              btn.type = 'button';
+              btn.className = 'bzs-pickdir';
+              btn.appendChild(
+                Object.assign(createSpan(), {
+                  className: 'bzs-sr-only',
+                  textContent: '从列表选择复习数据目录',
+                }),
+              );
+              const pathEl = createSpan();
+              pathEl.className = 'bzs-pickdir-path';
+              const ico = createSpan();
+              ico.className = 'bzs-pickdir-ico';
+              setHtml(ico, FOLDER_SVG);
+              btn.append(pathEl, ico, createEl('i', { text: '选择' }));
+              const current = (): string => String(getSettings().storagePath || DEFAULT_REVIEW_DIR);
+              const paint = (dir: string): void => {
+                pathEl.textContent = `${dir}/`;
+              };
+              paint(current());
+              btn.addEventListener('click', () => {
+                void pickFolderNative(deps.app, {
+                  title: '选择复习数据目录',
+                  mode: 'single',
+                  selected: [current()],
+                }).then(async (list) => {
+                  const picked = String(list[0] || '').trim();
+                  if (!picked) {
+                    notice('数据目录不能是库根目录，请选一个文件夹', 'warning');
+                    return;
+                  }
+                  paint(await migrateStorageDir(picked));
+                });
               });
-              if (ok !== 'ok') {
-                notice('已取消，数据目录没变', 'info');
-                return [prev];
-              }
-              try {
-                const { copied, kept } = await copyReviewData(deps.app, prev, next);
-                lastDir = next;
-                if (copied.length) {
-                  notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
-                } else if (kept.length) {
-                  notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
-                } else {
-                  notice(`已切到 ${next}，旧目录没有需要迁移的数据`, 'info');
-                }
-                return [next];
-              } catch {
-                notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
-                return [prev];
-              }
+              setting.controlEl.appendChild(btn);
             },
           },
           {

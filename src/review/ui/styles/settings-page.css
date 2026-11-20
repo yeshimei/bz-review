@@ -234,6 +234,48 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   font-weight: 600;
 }
 
+/* 目录选择钮（bz Reader 同款：「路径 / [图标] 选择」一颗按钮，不摆 chips 与手输框） */
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 72%;
+  padding: 6px 10px;
+  border: 1px solid var(--bzsp-line);
+  background: var(--bzsp-sunken);
+  color: var(--bzsp-t2);
+  font-family: var(--bzsp-ui);
+  font-size: 12px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir-ico {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir i {
+  font-style: normal;
+  color: var(--bzsp-accent);
+  flex-shrink: 0;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: .7;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir:hover {
+  color: var(--bzsp-t1);
+  border-color: color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--bzsp-accent) 10%, transparent);
+}
+
 /* 分段控件（原型 .bzs-seg，对应现有 .bzrv-segmented） */
 .bzrv-settings-content .bzrv-segmented {
   display: flex;
