@@ -248,7 +248,13 @@ export class ReviewWatcher {
     const res = await this.dataManager.addItems(
       candidates.map((p) => ({ filePath: p, fileName: stripMdExt(p.split('/').pop()!) }))
     );
-    notice(`已加入 ${res.added} 篇笔记到复习计划`, 'success');
+    if (res.overLimitMessage) {
+      notice(`已加入 ${res.added} 篇笔记。${res.overLimitMessage}`, 'warning');
+    } else if (res.rejected) {
+      notice(`合计已达基础版上限，这批 ${res.rejected} 篇未加入；升级高级版后可继续`, 'warning');
+    } else {
+      notice(`已加入 ${res.added} 篇笔记到复习计划`, 'success');
+    }
     await this.refresh();
     return true;
   }

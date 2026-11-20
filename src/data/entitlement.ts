@@ -3,9 +3,14 @@
  *
  * 与 bz / bz Reader / 归物本同构：一个完整包，运行期由激活码决定数量上限。
  *
- * 产品决策（2026-11-18）：基础版与高级版功能完全一致，只限数量——
- *   数量：基础版复习笔记 20 篇 + 划线卡 50 条（两类分别计数），高级版都不限；
+ * 产品决策（2026-11-18，2026-11-20 调整）：基础版与高级版功能完全一致，只限数量——
+ *   数量：基础版复习笔记 + 划线卡**合计 20 条**（两类不再分开计数），高级版不限；
  *   能力：全部放开。现有四项免费可用，未来新增功能同样不对基础版关闭。
+ *
+ * 「超一次」宽限（2026-11-20）：按**导入后合计**决定——
+ *   导入前合计 < 20、这批加完会越过 20：整批放行，但回一个 overLimit 给调用方提醒
+ *   「这次还能加，下次要先升级」；一旦合计已达 20，再导入就整批拦。
+ *   不记额外的「已超一次」状态——合计本身是否已满就是那个状态，重启也不会丢。
  *
  * 能力位保留为登记清单（PRO_CAPABILITIES / CAPABILITY_LABELS），
  * 供界面文案、用量口径与测试引用；门控本身恒放行，架构上不再有功能差异。
@@ -17,10 +22,8 @@ export const PURCHASE_URL = 'https://wzyp.cn/shop/IFCEI5I3';
 /** 交流群（与 bz Reader 同一个群） */
 export const GROUP_ID = '1130883117';
 
-/** 基础版：复习笔记上限（篇） */
-export const FREE_NOTE_LIMIT = 20;
-/** 基础版：划线卡上限（条） */
-export const FREE_CARD_LIMIT = 50;
+/** 基础版：复习条目合计上限（笔记 + 划线卡） */
+export const FREE_ITEM_LIMIT = 20;
 
 export interface LicenseState {
   /** 是否已解锁高级版 */
@@ -59,24 +62,46 @@ export interface PlanCounts {
   cards: number;
 }
 
-/** 当前还能不能再加一篇复习笔记 */
-export function canAddNote(notes: number): boolean {
-  return isPaid() || notes < FREE_NOTE_LIMIT;
+/** 两类合计——基础版配额看的是这个总数，不再各数各的 */
+export function totalOf(counts: PlanCounts): number {
+  return counts.notes + counts.cards;
 }
 
-/** 当前还能不能再加一条划线卡 */
-export function canAddCard(cards: number): boolean {
-  return isPaid() || cards < FREE_CARD_LIMIT;
-}
-
-/** 还能加几篇（已解锁返回 Infinity） */
-export function remainingNotes(notes: number): number {
-  return isPaid() ? Infinity : Math.max(0, FREE_NOTE_LIMIT - notes);
+/** 单条能不能再加一条（笔记或卡）：合计没到 20 就行 */
+export function canAdd(counts: PlanCounts): boolean {
+  return isPaid() || totalOf(counts) < FREE_ITEM_LIMIT;
 }
 
 /** 还能加几条（已解锁返回 Infinity） */
-export function remainingCards(cards: number): number {
-  return isPaid() ? Infinity : Math.max(0, FREE_CARD_LIMIT - cards);
+export function remaining(counts: PlanCounts): number {
+  return isPaid() ? Infinity : Math.max(0, FREE_ITEM_LIMIT - totalOf(counts));
+}
+
+/**
+ * 批量导入的放行决策（「超一次」宽限，按导入后合计判断）。
+ *
+ * `incoming` 是这批**有效的新条目数**（去重、排除空项之后）。
+ *
+ * - 已解锁：整批放行，永不算超限；
+ * - 导入前合计已达上限：整批拒绝，`allowed = 0`；
+ * - 导入前没满、但加完会越过上限：整批放行，`overLimit = true` 让调用方提醒
+ *   「这次还能加，下次要先升级」——用户要的「允许超一次」就是这个分支。
+ *
+ * 整批一致放行或整批一致拒绝，不做「前 20 条进、后面拒」的逐条截断：
+ * 一次导 60 张书卡，要么全进，要么全不进，别让用户拿到半本书。
+ */
+export interface BatchQuota {
+  /** 这批实际允许加入的条数：等于 incoming = 放行；0 = 整批拒绝 */
+  allowed: number;
+  /** 放行后合计是否超过上限（未解锁才有意义），调用方据此弹「下次要升级」提醒 */
+  overLimit: boolean;
+}
+
+export function batchQuota(counts: PlanCounts, incoming: number): BatchQuota {
+  if (isPaid() || incoming <= 0) return { allowed: incoming, overLimit: false };
+  const used = totalOf(counts);
+  if (used >= FREE_ITEM_LIMIT) return { allowed: 0, overLimit: true };
+  return { allowed: incoming, overLimit: used + incoming > FREE_ITEM_LIMIT };
 }
 
 /** 用量面板要的三个数：已用、上限、还剩（解锁后上限是 Infinity，界面按「不限」显示） */
@@ -88,12 +113,12 @@ export interface QuotaInfo {
 }
 
 /**
- * 某一类当前用量。`used` 照实报——迁移进来的老数据可能早就超过上限，
+ * 合计用量。`used` 照实报——迁移进来的老数据可能早就超过上限，
  * 这里不把它按上限截断，否则用户看到「20/20」却明明有 26 条，只会觉得插件在骗人。
  */
-export function quotaInfo(kind: 'note' | 'card', counts: PlanCounts): QuotaInfo {
-  const used = kind === 'note' ? counts.notes : counts.cards;
-  const limit = isPaid() ? Infinity : kind === 'note' ? FREE_NOTE_LIMIT : FREE_CARD_LIMIT;
+export function quotaInfo(counts: PlanCounts): QuotaInfo {
+  const used = totalOf(counts);
+  const limit = isPaid() ? Infinity : FREE_ITEM_LIMIT;
   return {
     used,
     limit,
@@ -103,27 +128,31 @@ export function quotaInfo(kind: 'note' | 'card', counts: PlanCounts): QuotaInfo 
 }
 
 /**
- * 某一类还有没有余量；到顶时给一句能直接弹给人的话。
+ * 单条加入还有没有余量；到顶时给一句能直接弹给人的话。
  *
  * `counts` 是**当前已存在**的条数：迁移进来的老数据可能早就超过上限，
  * 那种情况一律按「已满」处理——不删用户的东西，只是不能再加新的。
  *
- * 文案刻意写成「已用 20/20」而不是「最多 20 篇」：用户要的是自己现在处在
+ * 文案刻意写成「已用 20/20」而不是「最多 20 条」：用户要的是自己现在处在
  * 哪一格，不是再读一遍规则；后面那句「已有数据不会被删」是防恐慌的，
  * 上限提示最容易被误解成「要删我的东西」。
  */
-export function quotaBlock(
-  kind: 'note' | 'card',
-  counts: PlanCounts,
-): { ok: boolean; message: string } {
+export function quotaBlock(counts: PlanCounts): { ok: boolean; message: string } {
   if (isPaid()) return { ok: true, message: '' };
-  const info = quotaInfo(kind, counts);
+  const info = quotaInfo(counts);
   if (!info.full) return { ok: true, message: '' };
-  const unit = kind === 'note' ? '篇复习笔记' : '条划线卡';
   return {
     ok: false,
-    message: `已用 ${info.used}/${info.limit} ${unit}（基础版上限）。激活高级版解锁不限数量，已有数据不会被删。`,
+    message: `已用 ${info.used}/${info.limit} 条（笔记 + 划线合计，基础版上限）。激活高级版解锁不限数量，已有数据不会被删。`,
   };
+}
+
+/**
+ * 批量导入越过上限时的提醒（「超一次」那一次弹）。
+ * 明说这次全进去了、下次要先升级，不含 emoji、不说「已拒绝」。
+ */
+export function overLimitMessage(counts: PlanCounts, incoming: number): string {
+  return `这次 ${incoming} 条已全部加入，合计 ${totalOf(counts) + incoming} 条，超过基础版 ${FREE_ITEM_LIMIT} 条上限；下次再加入需要先升级高级版。已有数据不会被删。`;
 }
 
 /**
@@ -165,9 +194,9 @@ export function licenseSummary(): string {
   if (!state.paid) {
     const parsed = cachedCode ? parseLicense(cachedCode) : null;
     if (parsed?.payload?.exp && Date.now() > parsed.payload.exp) {
-      return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，所有功能可用。当前激活码已过期。`;
+      return `基础版：笔记 + 划线合计 ${FREE_ITEM_LIMIT} 条，所有功能可用。当前激活码已过期。`;
     }
-    return `基础版：${FREE_NOTE_LIMIT} 篇笔记 + ${FREE_CARD_LIMIT} 条划线，所有功能可用；填激活码解锁不限数量。`;
+    return `基础版：笔记 + 划线合计 ${FREE_ITEM_LIMIT} 条，所有功能可用；填激活码解锁不限数量。`;
   }
   const who = state.name ? `（${state.name}）` : '';
   const until = state.exp ? `有效期到 ${new Date(state.exp).toLocaleDateString()}` : '永久有效';

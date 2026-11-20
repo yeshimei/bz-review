@@ -10,7 +10,7 @@
 import type { App } from 'obsidian';
 import { jsonFileStore, storageFile } from '../core/storage';
 import { parseBzReviewJson } from './migrate-parse';
-import { FREE_CARD_LIMIT, FREE_NOTE_LIMIT } from './entitlement';
+import { FREE_ITEM_LIMIT } from './entitlement';
 import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
 
 /** 复习域自己产出的数据文件（换数据目录时要跟着走） */
@@ -205,24 +205,14 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
     return { ok: false, message: `写入失败：${(e as Error)?.message || '未知错误'}` };
   }
   /* 导入不按配额截断——老用户攒的数据不该因为换了插件就少一半。但**得说一声**：
-     85 条原样搬进来，而免费版上限是 20 篇 + 50 条，用户完全不知道自己在超限状态，
+     85 条原样搬进来，而免费版上限是合计 20 条，用户完全不知道自己在超限状态，
      之后加任何新笔记都被拦，只会觉得「导入之后就不能用了」。 */
-  const cardCount = items.filter((i: unknown) => {
-    if (!i || typeof i !== 'object') return false;
-    const rec = i as { kind?: unknown; card?: unknown };
-    return rec.kind === 'card' && !!rec.card;
-  }).length;
-  const noteCount = items.length - cardCount;
-  const overNotes = Math.max(0, noteCount - FREE_NOTE_LIMIT);
-  const overCards = Math.max(0, cardCount - FREE_CARD_LIMIT);
-  const overPart = [overNotes > 0 ? `${overNotes} 篇笔记` : '', overCards > 0 ? `${overCards} 条划线` : '']
-    .filter(Boolean)
-    .join('、');
+  const over = Math.max(0, items.length - FREE_ITEM_LIMIT);
   return {
     ok: true,
     message:
       `已从 bz 导入 ${items.length} 条复习记录。bz 那边的数据没动。` +
-      (overPart ? ` 其中 ${overPart}超出免费版上限——已有数据不会删，但免费版不能再加新的。` : ''),
+      (over > 0 ? ` 合计超出免费版上限 ${over} 条——已有数据不会删，但免费版不能再加新的。` : ''),
     imported: items.length,
   };
 }

@@ -60,16 +60,16 @@ describe('withoutPrepared：已带题面/题目的卡不再排队二次生成', 
   });
 });
 
-describe('cardQuota：额度预知', () => {
-  it('基础版 50 条，报已用/上限/剩余', () => {
-    const q = cardQuota({ notes: 3, cards: 47 });
-    expect(q.used).toBe(47);
-    expect(q.limit).toBe(50);
-    expect(q.remaining).toBe(3);
+describe('cardQuota：额度预知（笔记 + 划线合计 20）', () => {
+  it('基础版合计 20 条，报已用/上限/剩余', () => {
+    const q = cardQuota({ notes: 3, cards: 7 });
+    expect(q.used).toBe(10);
+    expect(q.limit).toBe(20);
+    expect(q.remaining).toBe(10);
     expect(q.full).toBe(false);
   });
-  it('满了就是满了', () => {
-    expect(cardQuota({ notes: 0, cards: 50 }).full).toBe(true);
+  it('合计满了就是满了', () => {
+    expect(cardQuota({ notes: 5, cards: 15 }).full).toBe(true);
     expect(cardQuota({ notes: 0, cards: 60 }).remaining).toBe(0);
   });
 });

@@ -207,6 +207,10 @@ export function ensureReview(app: App): void {
     addNotes: async (paths) => {
       if (!dataManager) return { added: 0, exists: 0, notFound: 0 };
       const res = await planAddNotes(dataManager, app, paths);
+      /* 与 addCards 同口径：「超一次」提醒由 Review 自己弹，reader 不认这个增量字段。 */
+      if (res.overLimitMessage) {
+        void import('../core/notice').then(({ notice }) => notice(res.overLimitMessage!, 'warning'));
+      }
       if (res.added) notePlanAdded(paths[0] ?? '');
       return res;
     },
@@ -217,6 +221,11 @@ export function ensureReview(app: App): void {
     addCards: async (cards) => {
       if (!dataManager) return { added: 0, exists: 0, notFound: 0 };
       const res = await planAddCards(dataManager, cards);
+      /* 「超一次」提醒由 Review 自己弹：reader 侧不认 overLimitMessage 这个增量字段，
+         不弹就等于用户什么都没看到。只在这一句上弹，加卡结果仍由 reader 通知，不重复。 */
+      if (res.overLimitMessage) {
+        void import('../core/notice').then(({ notice }) => notice(res.overLimitMessage!, 'warning'));
+      }
       if (res.added) {
         notePlanAdded(cards[0]?.key ?? '');
         /* 做题：阅读器出好的题先落进题库。必须在排队之前写完——
@@ -491,7 +500,7 @@ export async function reviewAddSelection(app: App): Promise<void> {
     };
     const res = await dataManager!.addCards([card]);
     if (!res.added) {
-      notice(res.rejected ? '划线卡已到上限：高级版可以继续加' : '这段内容已经在复习计划里了');
+      notice(res.rejected ? '复习条目合计已到基础版上限：升级高级版后可继续加' : '这段内容已经在复习计划里了');
       return;
     }
     /* 内容在后台补：模型慢的时候不该把「已加入」卡住（同划线卡口径） */
