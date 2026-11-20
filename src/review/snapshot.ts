@@ -8,8 +8,10 @@
  * 不能变出两份「同一天」的快照。
  */
 
-/** 保留天数 */
+/** 保留天数（多备份模式下由份数上限兜底，天数仍作粗筛） */
 export const SNAPSHOT_KEEP_DAYS = 7;
+/** 最多保留份数：用户频繁点「立即备份」时，超过这个数就删最旧的 */
+export const SNAPSHOT_KEEP_COUNT = 30;
 /** 快照目录名（与数据文件同级的点目录，Obsidian 侧栏看不见） */
 export const SNAPSHOT_DIR_NAME = '.SNAPSHOT';
 
@@ -61,6 +63,20 @@ export function pickPrunable(names: readonly string[], now: Date, keepDays: numb
     if (d && d.getTime() < cutoff) out.push(name);
   }
   return out;
+}
+
+/**
+ * 超出「最多保留份数」的旧快照，按时间戳从旧到新排（最旧的在前）。
+ * 与 pickPrunable 互补：那边按天数清过期，这边按份数封顶——用户一天点几次
+ * 「立即备份」时，光靠天数清不掉，会一直堆。只清认得出时间戳的，不认识的不动。
+ */
+export function pickOverLimit(names: readonly string[], keepCount: number = SNAPSHOT_KEEP_COUNT): string[] {
+  if (!Number.isFinite(keepCount) || keepCount <= 0) return [];
+  const known = names
+    .map((name) => ({ name, stamp: snapshotStamp(name) }))
+    .filter((x): x is { name: string; stamp: string } => x.stamp !== null);
+  known.sort((a, b) => (a.stamp < b.stamp ? -1 : a.stamp > b.stamp ? 1 : a.name.localeCompare(b.name)));
+  return known.slice(0, Math.max(0, known.length - Math.floor(keepCount))).map((x) => x.name);
 }
 
 /** 最新的一份（按文件名里的时间戳排序，不依赖列表顺序） */

@@ -10,6 +10,7 @@ import {
   SNAPSHOT_DIR_NAME,
   isSnapshotName,
   latestSnapshot,
+  pickOverLimit,
   pickPrunable,
   snapshotDay,
   snapshotName,
@@ -56,7 +57,10 @@ async function writeOne(app: App, raw: string, now: Date): Promise<string> {
   /* 同一秒内连点两次「立即备份」：加 -2/-3 后缀，别互相覆盖 */
   for (let i = 2; names.includes(name); i++) name = snapshotName(now).replace(/\.json$/, `-${i}.json`);
   await app.vault.adapter.write(`${snapshotDir()}/${name}`, raw);
-  for (const old of pickPrunable(names, now)) {
+  /* 两份清单取并集：按天清过期 + 按份数封顶（含刚写的这份一起数）。
+     pickPrunable 拿到的是写之前的列表，不会把刚写的那份当旧的删掉。 */
+  const toRemove = new Set([...pickPrunable(names, now), ...pickOverLimit([...names, name])]);
+  for (const old of toRemove) {
     try {
       await app.vault.adapter.remove(`${snapshotDir()}/${old}`);
     } catch {
