@@ -156,7 +156,7 @@ export default interface BzSettings {
 }
 
 export const DEFAULT_SETTINGS: BzSettings = {
-  /* 与 bz 的默认值故意不同：bz 用 CONFIG/STORAGE，这里用库根 bz-review/storage，
+  /* 与 bz 的默认值故意不同：bz 用 CONFIG/STORAGE，这里用 CONFIG/REVIEW，
      两个插件同时装也不会抢同一个 review.json。 */
   storagePath: DEFAULT_REVIEW_DIR,
   language: 'auto',
