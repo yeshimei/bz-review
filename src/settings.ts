@@ -40,8 +40,6 @@ export default interface BzSettings {
   // ===== 复习 =====
   /** 有笔记到期待复习时自动提醒 */
   enableAutoNotify: boolean;
-  /** 新笔记被自动加入时提示一句 */
-  reviewAutoAddNotice: boolean;
   /** 复习时强制做题（做题家） */
   forceQuizForReview: boolean;
   /** 每日复习上限，0 = 不限 */
@@ -174,7 +172,6 @@ export const DEFAULT_SETTINGS: BzSettings = {
   licenseKey: '',
 
   enableAutoNotify: true,
-  reviewAutoAddNotice: true,
   forceQuizForReview: true,
   reviewDailyLimit: 0,
   reviewIntervalScale: 1,

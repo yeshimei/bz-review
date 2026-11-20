@@ -643,7 +643,6 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '检查提醒',
         rows: [
           { type: 'toggle', name: '到期提醒', desc: '有笔记到期待复习时自动弹出提醒', binding: { key: 'enableAutoNotify' } },
-          { type: 'toggle', name: '新笔记加入提醒', desc: '新笔记被自动加入时弹出提示，多条合并成一条', binding: { key: 'reviewAutoAddNotice' } },
         ],
       },
       {

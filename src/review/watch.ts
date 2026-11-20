@@ -1,6 +1,6 @@
 /**
  * 复习监听器（ticket 098；ticket 099 修订）：
- *  - 监听文件夹自动加入（新建自动加入 + 排除名单）
+ *  - 监听文件夹：新建笔记走统一制卡流程（不再直接写库，2026-11-21）
  *  - 删除计划内文件 → 确认「是否同步移除复习记录？」
  *  - 重命名/移动计划内文件 → 自动更新路径（不再确认，ticket 099）
  *  - 监听文件夹添加：选择弹窗后立即确认存量收编（取消=什么都不做，不再写排除名单，ticket 099）
@@ -10,10 +10,9 @@ import { isUnderFolder as isUnderFolderCore, stripMdExt } from '../core/utils';
 import type { App, TFile } from 'obsidian';
 import { notice, notifySaveError, notifyUndo } from '../core/notice';
 import { openFlowDialog } from '../core/flow-dialog';
-import { uiModal } from '../core/ui/modal';
 import { tryGetSettings, saveSettings } from '../core/settings-provider';
 import { ReviewDataManager } from './data';
-import { QuotaExceededError } from '../data/entitlement';
+import { openAddToReviewFlow, pickFolderNotes } from './add-flow';
 
 /** 设置里的数组字段运行期可能被旧数据写脏：只认数组，再按 string[] 读 */
 function stringArray(v: unknown): string[] {
@@ -38,83 +37,9 @@ export function __setRenameMergeMsForTests(ms: number): void {
 }
 
 /**
- * 文件夹加入复习的选择面板（2026-11-21）：
- * 用户确认「批量加入复习」后，不再闷头全量写入，先把候选笔记列出来让用户勾选。
- * 返回 null = 用户在面板里取消（文件夹也不加入监听）；返回数组 = 选中集合（可为空）。
+ * 文件夹加入复习的选择面板已搬到 add-flow.ts（2026-11-21）：
+ * 文件树右键的「文件夹加入复习」和监听文件夹的存量收编现在共用同一块面板。
  */
-function pickFolderNotes(folder: string, candidates: string[]): Promise<string[] | null> {
-  return new Promise((resolve) => {
-    let done = false;
-    const finish = (value: string[] | null): void => {
-      if (done) return;
-      done = true;
-      resolve(value);
-    };
-    const body = createDiv({ cls: 'bzrv-folder-add' });
-    body.createDiv({
-      cls: 'bzrv-folder-add-desc',
-      text: `监听文件夹「${folder}」下有 ${candidates.length} 篇笔记未加入复习。勾选要加入的笔记：`,
-    });
-    const tools = body.createDiv({ cls: 'bzrv-folder-add-tools' });
-    const all = tools.createEl('input', { type: 'checkbox' });
-    all.checked = true;
-    const allLabel = tools.createEl('label', { cls: 'bzrv-folder-add-all' });
-    allLabel.append(all, createSpan({ text: '全选' }));
-    const countEl = tools.createSpan({ cls: 'bzrv-folder-add-count' });
-
-    const list = body.createDiv({ cls: 'bzrv-folder-add-list' });
-    const boxes: Array<{ path: string; box: HTMLInputElement }> = [];
-    for (const path of candidates) {
-      const row = list.createEl('label', { cls: 'bzrv-folder-add-row' });
-      const box = row.createEl('input', { type: 'checkbox' });
-      box.checked = true;
-      box.value = path;
-      const name = path.split('/').pop() || path;
-      row.createSpan({ cls: 'bzrv-folder-add-name', text: stripMdExt(name) });
-      const parent = path.slice(0, path.lastIndexOf('/'));
-      if (parent) row.createSpan({ cls: 'bzrv-folder-add-dir', text: parent });
-      boxes.push({ path, box });
-    }
-
-    const selected = (): string[] => boxes.filter((b) => b.box.checked).map((b) => b.path);
-    const paint = (): void => {
-      const n = selected().length;
-      countEl.textContent = `已选 ${n} / ${boxes.length}`;
-      all.checked = n === boxes.length;
-      all.indeterminate = n > 0 && n < boxes.length;
-      ok.setText(n ? `加入 ${n} 篇` : '加入');
-      ok.disabled = n === 0;
-    };
-    all.onchange = () => {
-      for (const b of boxes) b.box.checked = all.checked;
-      paint();
-    };
-    for (const b of boxes) b.box.onchange = paint;
-
-    const modal = uiModal({
-      title: '加入复习',
-      head: true,
-      content: body,
-      maxWidth: 560,
-      className: 'bzrv-folder-add-modal',
-      onClose: () => finish(null),
-    });
-    const actions = modal.popup.createDiv({ cls: 'bzrv-edit-actions bzrv-folder-add-actions' });
-    const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: '取消' });
-    cancel.onclick = () => {
-      finish(null);
-      modal.close();
-    };
-    const ok = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: '加入' });
-    ok.onclick = () => {
-      const picked = selected();
-      finish(picked);
-      modal.close();
-    };
-    paint();
-    window.setTimeout(() => all.focus(), 0);
-  });
-}
 
 export class ReviewWatcher {
   app: App;
@@ -179,40 +104,24 @@ export class ReviewWatcher {
     await saveSettings();
   }
 
-  /** vault create：监听目录内新建 md → 自动加入（未排除、未在计划）；ticket 100：3 秒窗口合并提醒 + 开关 */
+  /** vault create：监听目录内新建 md → 走统一流程（未排除、未在计划）；
+   *   一次新建多篇时用 3 秒窗口合并，只开一个窗口。 */
   async onVaultCreate(file: TFile): Promise<void> {
     if (file.extension !== 'md') return;
     if (!this.isWatched(file.path)) return;
     if (this.isExcluded(file.path)) return;
     const items = await this.dataManager.loadItems();
     if (items.some((i) => i.filePath === file.path)) return;
-    try {
-      await this.dataManager.addItem(file.path, file.basename);
-    } catch (e) {
-      // F10：查重类错误（并发已加入）静默；额度到顶弹升级窗；写盘失败给人话提示
-      if (e instanceof Error && e.message.includes('已在复习中')) return;
-      if (e instanceof QuotaExceededError) {
-        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog());
-        return;
-      }
-      notifySaveError(e, '自动加入复习');
-      return;
-    }
-    // U8：面板开着时列表即时补卡（对齐 rename 路径的「列表即时、通知合并」）
-    void this.refresh();
-    // 提醒开关（默认开）：3 秒窗口内多条合并成一条通知
-    const s = tryGetSettings();
-    if (s && s.reviewAutoAddNotice === false) return;
-    this.autoAddQueue.push(file.basename);
+    /* 2026-11-21 用户口径：自动监听也要走流程，不能直接写库。
+       合并窗口保留：一次建 10 篇只弹一个制卡窗，不连开 10 个。 */
+    this.autoAddQueue.push(file.path);
     if (this.autoAddTimer) return;
     this.autoAddTimer = window.setTimeout(() => {
       this.autoAddTimer = null;
       const batch = this.autoAddQueue;
       this.autoAddQueue = [];
       if (!batch.length) return;
-      const shown = batch.slice(0, 3).join('、');
-      const tail = batch.length > 3 ? ` 等 ${batch.length - 3} 篇` : '';
-      notice(batch.length > 1 ? `已自动加入复习：${shown}${tail}` : `已自动加入复习：${shown}`, 'success');
+      void openAddToReviewFlow(this.app, { kind: 'notes', paths: batch, from: 'watch' });
     }, REVIEW_AUTO_ADD_MERGE_MS);
   }
 
@@ -333,27 +242,15 @@ export class ReviewWatcher {
       ],
     });
     if (v !== 'ok') return false;
-    /* 二次确认之后走「文件夹加入复习」的选择面板：用户勾完再写，和手动从文件夹
-       加入复习是同一套流程；面板取消 = 整个文件夹不加入监听。 */
+    /* 二次确认之后走「文件夹加入复习」的选择面板：用户勾完再进统一制卡流程
+       （2026-11-21 起不再勾完直接写库）。面板取消 = 整个文件夹不加入监听。 */
     const picked = await pickFolderNotes(folder, candidates);
     if (picked === null) return false;
     if (picked.length === 0) {
       notice('已加入监听，但没有勾选要加入的笔记', 'info');
-      await this.refresh();
       return true;
     }
-    // A13：单趟 RMW 批量加入（原逐篇 addItem = N 次全文件读写）
-    const res = await this.dataManager.addItems(
-      picked.map((p) => ({ filePath: p, fileName: stripMdExt(p.split('/').pop()!) }))
-    );
-    if (res.overLimitMessage) {
-      notice(`已加入 ${res.added} 篇笔记。${res.overLimitMessage}`, 'warning');
-    } else if (res.rejected) {
-      notice(`合计已达基础版上限，这批 ${res.rejected} 篇未加入；升级高级版后可继续`, 'warning');
-    } else {
-      notice(`已加入 ${res.added} 篇笔记到复习`, 'success');
-    }
-    await this.refresh();
+    await openAddToReviewFlow(this.app, { kind: 'notes', paths: picked, from: 'folder' });
     return true;
   }
 
