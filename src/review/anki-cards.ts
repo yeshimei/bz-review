@@ -24,6 +24,11 @@ export interface ParsedAnkiCard {
   card: ReviewCard;
   /** 这行认成哪种卡 */
   syntax: 'qa' | 'cloze';
+  /**
+   * 这行引用到的媒体文件名（basename，去重）。纯文本导出只带文件名不带文件；
+   * 导入层按名字跟用户补选的媒体文件配对后，才把卡片指向库内真实路径。
+   */
+  mediaRefs?: string[];
 }
 
 export interface AnkiParseStats {
@@ -46,6 +51,16 @@ export interface AnkiParseStats {
   multiCloze: number;
   /** 图片 / 音频引用数（文本导出不带文件，只能留占位文字） */
   media: number;
+  /** 不同媒体文件名数（补选文件时按这个跟人对） */
+  mediaNames: number;
+  /** 其中成功配对到用户文件的引用数 */
+  mediaMatched: number;
+  /** 没配上文件的媒体文件名数 */
+  mediaMissing: number;
+  /** 补选文件撞名后自动改名的数量 */
+  renamed: number;
+  /** 图片遮挡卡导入成「图片+文字」卡的数量 */
+  occlusion: number;
   /** 带标签的笔记数（标签写进卡片备注） */
   tagged: number;
   /** 跳过的数据行，按原因分 */
@@ -271,19 +286,20 @@ function baseName(path: string): string {
  * 其余标签剥掉、实体解码。卡片在复习界面按纯文本显示（不会渲染 HTML），
  * 所以这一步不是「美化」，而是不做就会看到一堆 <div>&nbsp;。
  */
-function htmlToText(raw: string, onMedia: () => void): string {
+function htmlToText(raw: string, onMedia: (name: string) => void): string {
   let s = raw;
   s = s.replace(/<!--[\s\S]*?-->/g, '');
   s = s.replace(/<(style|script)\b[^>]*>[\s\S]*?<\/\1>/gi, '');
   s = s.replace(/<img\b[^>]*>/gi, (tag) => {
-    onMedia();
     const m = /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
     const name = baseName(m?.[1] || m?.[2] || m?.[3] || '');
+    if (name) onMedia(name);
     return name ? `[图片：${name}]` : '[图片]';
   });
   s = s.replace(/\[sound:([^\]]+)\]/gi, (_all, name: string) => {
-    onMedia();
-    return `[音频：${baseName(name)}]`;
+    const file = baseName(name);
+    if (file) onMedia(file);
+    return `[音频：${file}]`;
   });
   s = s.replace(/<br\s*\/?>/gi, '\n');
   s = s.replace(/<\/(div|p|li|tr|h[1-6]|blockquote|table|section|article)>/gi, '\n');
@@ -325,6 +341,11 @@ function emptyStats(): AnkiParseStats {
     reversed: 0,
     multiCloze: 0,
     media: 0,
+    mediaNames: 0,
+    mediaMatched: 0,
+    mediaMissing: 0,
+    renamed: 0,
+    occlusion: 0,
     tagged: 0,
     skipped: { empty: 0, short: 0, emptyFront: 0, emptyBack: 0, imageOcclusion: 0, noCloze: 0 },
   };
@@ -385,15 +406,25 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
     const guid = cell(guidCol);
     const tagText = cell(tagsCol) || globalTags;
 
-    const media = (): void => {
+    const mediaRefs: string[] = [];
+    const media = (name: string): void => {
       stats.media += 1;
+      if (name && !mediaRefs.includes(name)) mediaRefs.push(name);
     };
     const fields: string[] = [];
     for (let i = 0; i < cells.length; i++) {
       if (metaCols.has(i)) continue;
       const rawCell = cells[i] ?? '';
+      /* 非 HTML 行也可能带 [sound:…]（Anki 音频引用不依赖 html 头），一样收进来 */
+      if (!html) {
+        rawCell.replace(/\[sound:([^\]]+)\]/gi, (_all, name: string) => {
+          media(baseName(name));
+          return '';
+        });
+      }
       fields.push(html ? htmlToText(rawCell, media) : rawCell.trim());
     }
+    stats.mediaNames += mediaRefs.length;
 
     const firstRaw = fields[0] ?? '';
     const secondRaw = fields[1] ?? '';
@@ -403,9 +434,40 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
       stats.skipped.empty += 1;
       continue;
     }
+    const book = (deck || defaultBook).trim() || defaultBook;
+
     if (/image\s*occlusion|图片遮挡|圖像遮擋/i.test(notetype)) {
-      /* 图片遮挡卡的内容就是几张图片，文本导出里没有可复习的文字 */
-      stats.skipped.imageOcclusion += 1;
+      /*
+       * 图片遮挡卡：Anki 的纯文本导出带得过来图片引用与零散文字，但遮罩的 SVG
+       * 坐标不在文本里。按「图片 + 文字」导入成遮挡卡：图先挂上（配对成功后
+       * 指向库内文件），遮挡区域留空——让用户之后在卡片管理器里点几下补。
+       * 绝不静默跳过，免得用户以为整份牌组都导进来了。
+       */
+      const image = mediaRefs[0] ?? '';
+      /* 正文取所有字段里的文字；挖空标记 {{c1::答案}} 还原成答案文本 */
+      const spoken = fields
+        .map((f) => renderCloze(f, clozeTokens(f), null).text)
+        .filter(Boolean)
+        .join('\n')
+        .trim();
+      const baseKey = guid
+        ? `anki:guid:${guid}`
+        : `anki:${fnv1a(`${notetype}\u0000${fields.join('\u0001')}`)}`;
+      cards.push({
+        syntax: 'qa',
+        card: {
+          key: baseKey,
+          bookTitle: book,
+          text: spoken || image,
+          displayTitle: (spoken.split('\n')[0] || image || '图片遮挡卡').slice(0, 40),
+          comment: tagText ? `标签：${tagText}` : 'Anki 图片遮挡卡，遮挡区域待补',
+          mode: 'occlusion',
+          occlusion: { image, regions: [] },
+        },
+        mediaRefs,
+      });
+      stats.occlusion += 1;
+      stats.notes += 1;
       continue;
     }
     if (!firstRaw && !secondRaw) {
@@ -413,7 +475,6 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
       continue;
     }
 
-    const book = (deck || defaultBook).trim() || defaultBook;
     const comment = tagText ? `标签：${tagText}` : undefined;
     if (tagText) stats.tagged += 1;
 
@@ -448,6 +509,7 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
             mode: 'cloze',
             cloze: { text: part.text, blanks: part.blanks, at: now },
           },
+          mediaRefs,
         });
         stats.cloze += 1;
       }
@@ -499,6 +561,7 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
         mode: 'flashcard',
         qa: { q: front, a: back, at: now },
       },
+      mediaRefs,
     });
     stats.qa += 1;
 
@@ -514,6 +577,7 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
           mode: 'flashcard',
           qa: { q: back, a: front, at: now },
         },
+        mediaRefs,
       });
       stats.reversed += 1;
       stats.qa += 1;
