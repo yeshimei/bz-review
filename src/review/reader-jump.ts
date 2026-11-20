@@ -33,6 +33,8 @@ export interface JumpCardLike {
   text?: string;
   chapterTitle?: string;
   backlink?: string;
+  /** 笔记选段出处：有它也能「回到原文」，不该因为没 reader key 就不显示按钮 */
+  sourceNote?: { path: string; from: number; to: number };
 }
 
 export type JumpUrlBuilder = (
@@ -44,6 +46,11 @@ export type JumpUrlBuilder = (
 export function backlinkOfCard(card: JumpCardLike, buildUrl: JumpUrlBuilder): string {
   const existing = textOf(card?.backlink).trim();
   if (existing) return existing;
+  /* 笔记选段卡：回的是库里那篇笔记（调用方据此 re-select 范围），不是书 */
+  const note = card?.sourceNote;
+  if (note && typeof note.path === 'string' && note.path.trim()) {
+    return `obsidian://open?path=${encodeURIComponent(note.path)}`;
+  }
   const bookId = bookIdOfCardKey(card?.key);
   if (!bookId) return '';
   return buildUrl(bookId, {

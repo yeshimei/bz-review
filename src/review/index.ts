@@ -1,5 +1,5 @@
 /**
- * 复习计划入口（ticket 16 修正版：对齐源码 entry，含 4 快捷命令与完整事件监听）
+ * 复习入口（ticket 16 修正版：对齐源码 entry，含 4 快捷命令与完整事件监听）
  * 命令（review-*）由 main.ts 裸注册（含 review-mark-again/hard/good/easy）。
  */
 import { stripMdExt } from '../core/utils';
@@ -19,6 +19,7 @@ import { unloadReviewAnalysis } from './analysis/index';
 import { cancelActiveFlowDialog } from '../core/flow-dialog';
 import type { Rating } from './fsrs';
 import { setReviewPlanApi } from './reader-api';
+import { noteCardKey, selectionRange } from './note-source';
 import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
 import { embeddedReviewRoute } from './reader-embed';
 import { tryGetSettings } from '../core/settings-provider';
@@ -380,7 +381,7 @@ async function openPanelView(app: App): Promise<void> {
   await leaf.setViewState({ type: REVIEW_VIEW_TYPE, active: true });
 }
 
-/** 复习计划分析报告（review-report）：独立命令，直接打开统计弹窗（ticket 174） */
+/** 复习分析报告（review-report）：独立命令，直接打开统计弹窗（ticket 174） */
 export async function openReviewReport(app: App): Promise<void> {
   ensureReview(app);
   const { showStatsModal } = await import('./stats-ui');
@@ -428,7 +429,7 @@ export function openQuizPractice(app: App): void {
   void openQuizPanel(app);
 }
 
-/** 加入复习计划（review-add-current） */
+/** 加入复习（review-add-current） */
 export async function reviewAddCurrent(app: App): Promise<void> {
   ensureReview(app);
   const file = app.workspace.getActiveFile();
@@ -442,7 +443,7 @@ export async function reviewAddCurrent(app: App): Promise<void> {
     await reviewApp.applyReviewStyles(app);
   } catch (e: unknown) {
     // C9：动作失败提示走 notifyActionError 单源（白拿 onRetry 挂「重试」出口，效率整改 8）
-    notifyActionError(e, '加入复习计划', { onRetry: () => void reviewAddCurrent(app) });
+    notifyActionError(e, '加入复习', { onRetry: () => void reviewAddCurrent(app) });
   }
 }
 
@@ -466,55 +467,62 @@ async function resolveCardMethod(): Promise<CardMode | null> {
 }
 
 /**
- * 把**选中的内容**放进复习计划（review-add-selection，2026-11-15）。
+ * 把**选中的内容**放进复习（review-add-selection，2026-11-15）。
  *
  * 以前只能整篇笔记加入，或者靠 `::` 语法手写卡片文件；用户想复习某一段话，
  * 得先造一篇笔记。现在选中任意文字就能直接做成一张卡，方式当场选。
  */
-export async function reviewAddSelection(app: App): Promise<void> {
+export async function reviewAddSelection(app: App, editorFromMenu?: unknown): Promise<void> {
   ensureReview(app);
   const file = app.workspace.getActiveFile();
   if (!file) {
     notice('请先打开一个笔记');
     return;
   }
-  const editor =
-    app.workspace.activeEditor?.editor ?? (app as unknown as { editor?: { getSelection(): string } }).editor;
+  const editor: { getSelection?: () => string } | null | undefined =
+    editorFromMenu ??
+    app.workspace.activeEditor?.editor ??
+    (app as unknown as { editor?: { getSelection(): string } }).editor;
   const text = String(editor?.getSelection?.() ?? '').trim();
   if (!text) {
     notice('先选中要加入复习的内容');
     return;
   }
+  /* 记下路径 + 字符范围：复习时据此跳回这篇笔记并把那段重新选中 */
+  const range = selectionRange(editor);
+  const sourceNote = range ? { path: file.path, ...range } : undefined;
   const method = await resolveCardMethod();
   if (!method) return;
 
   try {
     /* 钥匙必须是「不可能是真实路径」的字符串——排期表拿它当 filePath 用，
-       真实路径会让它在列表里被当成一篇笔记去打开。 */
-    const key = `sel:${file.path}:${Date.now()}`;
+       真实路径会让它在列表里被当成一篇笔记去打开。选段有出处时用稳定钥匙，
+       同一篇同一段重复加入不排两次；没出处（老编辑器）退回时间戳口径。 */
+    const key = sourceNote ? noteCardKey(sourceNote) : `sel:${file.path}:${Date.now()}`;
     const card: ReviewCard = {
       key,
       bookTitle: file.basename,
       text,
       mode: method,
+      ...(sourceNote ? { sourceNote } : {}),
     };
     const res = await dataManager!.addCards([card]);
     if (!res.added) {
-      notice(res.rejected ? '复习条目合计已到基础版上限：升级高级版后可继续加' : '这段内容已经在复习计划里了');
+      notice(res.rejected ? '复习条目合计已到基础版上限：升级高级版后可继续加' : '这段内容已经在复习里了');
       return;
     }
     /* 内容在后台补：模型慢的时候不该把「已加入」卡住（同划线卡口径） */
     if (method !== 'plain' && method !== 'context') {
       void queueCardPreparation([key], cardPrepareCtx(method));
     }
-    notice(`已加入复习计划（${text.slice(0, 12)}${text.length > 12 ? '…' : ''}）`);
+    notice(`已加入复习（${text.slice(0, 12)}${text.length > 12 ? '…' : ''}）`);
     await uiManager?.refreshPanel();
   } catch (e) {
-    notifyActionError(e, '把选中内容加入复习计划', { onRetry: () => void reviewAddSelection(app) });
+    notifyActionError(e, '把选中内容加入复习', { onRetry: () => void reviewAddSelection(app) });
   }
 }
 
-/** 移出复习计划（review-remove-current）：先二次确认（2026-11-19 用户口径，命令面板里
+/** 移出复习（review-remove-current）：先二次确认（2026-11-19 用户口径，命令面板里
  *  误触也会直接删条目），确认后照旧走 notifyUndo 撤销链 + restoreItem 原样插回；
  *  写盘/刷新链包 try/catch + notifySaveError（对齐抽屉同动作口径，写失败不再零反馈） */
 export async function reviewRemoveCurrent(app: App): Promise<void> {
@@ -527,13 +535,13 @@ export async function reviewRemoveCurrent(app: App): Promise<void> {
   const items = await dataManager!.loadItems();
   const target = items.find((i) => i.filePath === file.path);
   if (!target) {
-    notice('该笔记不在复习计划中');
+    notice('该笔记不在复习中');
     return;
   }
   if (!(await confirmRemovePlan({ name: file.basename }))) return;
   try {
     await dataManager!.removeItem(file.path);
-    // 行为流（issue 261）：移出复习计划入小橘行为流（review:removed）
+    // 行为流（issue 261）：移出复习入小橘行为流（review:removed）
     emitDomainEvent('review', { kind: 'removed', title: file.basename });
     notifyUndo(`已移出「${file.basename}」`, () => {
       void (async () => {
@@ -575,7 +583,7 @@ export async function reviewMarkDialog(app: App): Promise<void> {
   const items = await dataManager!.loadItems();
   const item = items.find((i) => i.filePath === file.path);
   if (!item) {
-    notice('该笔记不在复习计划中');
+    notice('该笔记不在复习中');
     return;
   }
   if (item.completed) {
@@ -601,7 +609,7 @@ export async function reviewMarkRating(app: App, rating: Rating): Promise<void> 
   const items = await dataManager!.loadItems();
   const item = items.find((i) => i.filePath === file.path);
   if (!item) {
-    notice('该笔记不在复习计划中');
+    notice('该笔记不在复习中');
     return;
   }
   if (item.completed) {

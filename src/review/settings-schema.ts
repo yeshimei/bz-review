@@ -1,5 +1,5 @@
 /**
- * 复习计划设置 schema（自 src/review/ui.ts 拆出，ticket 131 声明式；ADR-0064）
+ * 复习设置 schema（自 src/review/ui.ts 拆出，ticket 131 声明式；ADR-0064）
  *
  * 检查提醒/做题家/复习节奏/记忆算法/自动化/界面 + 移动端六组卡片。
  * 做题家子项显隐（原 quizBox style.display）收敛为 visibleWhen 声明式联动；
@@ -652,7 +652,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
       },
       {
         /* 划线卡（2026-11-11）：一条划线就是一张卡，复习时不开任何文件。
-           方式由复习计划这边定：AI 抽认卡（问句当提示面）、AI 做题
+           方式由复习这边定：AI 抽认卡（问句当提示面）、AI 做题
            （四选一，每轮抽三分之一）。填空 / 上下文 / 展开全文的代码与老卡行为
            全部保留，但 2026-11-20 起界面不再提供这三种新入口。 */
         icon: 'layers',
@@ -666,7 +666,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             name: '新卡默认方式',
             desc: '加卡时用哪种方式制卡；选「每次问我」就每张都问一遍',
             help:
-              '这张卡做成什么形式，在「加入复习计划那一刻」定下来，之后复习就按它走，' +
+              '这张卡做成什么形式，在「加入复习那一刻」定下来，之后复习就按它走，' +
               '同一份计划里抽认卡、做题卡可以并存。\n' +
               '选「每次问我」：每次加卡都弹一个选择框（里面可以勾「以后别再问」）；' +
               '选了具体方式：加卡不再打扰，直接按它制。\n' +
@@ -972,9 +972,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             type: 'path',
             mode: 'multi',
             name: '监听文件夹',
-            desc: '新笔记自动加入复习计划',
+            desc: '新笔记自动加入复习',
             help:
-              '目录里的新笔记自动加入复习计划。库根目录不支持监听，会被拦下。' +
+              '目录里的新笔记自动加入复习。库根目录不支持监听，会被拦下。' +
               '首次添加目录时会问是否把目录内已有笔记一并收编：取消 = 该目录不加入监听（新老笔记都不收），确认才加入。',
             binding: {
               get: () => (getSettings()).reviewWatchedFolders || [],
@@ -982,7 +982,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               save: () => {},
             },
             pickerTitle: '选择监听文件夹',
-            pickerDesc: '文件夹里的新笔记自动加入复习计划，包括子文件夹',
+            pickerDesc: '文件夹里的新笔记自动加入复习，包括子文件夹',
             onChange: (list) => {
               const prev = [...((getSettings()).reviewWatchedFolders || [])];
               return (async (): Promise<string[]> => {

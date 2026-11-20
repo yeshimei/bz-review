@@ -225,7 +225,7 @@ export class QuizMasterUI {
    *  已无调用方，做题家只作为复习流程一环经 startReviewSession 进入。 */
 
   /**
-   * 复习联动契约：开始一轮做题会话（复习计划经此进入做题模式）——ticket 141 起唯一入口。
+   * 复习联动契约：开始一轮做题会话（复习经此进入做题模式）——ticket 141 起唯一入口。
    * 会话状态（_sessionActive/currentQuestions/计数/onComplete）只允许在本方法内设置，
    * 复习域禁止直接改写——契约化后复习域只需调用本方法与 endReviewSession。
    * 「打乱出题顺序」设置在会话入口生效（原普通模式行为迁移，设置项保留语义不变）。

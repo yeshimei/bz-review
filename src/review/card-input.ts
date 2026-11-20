@@ -12,6 +12,7 @@
 import type { ReviewCard } from './data';
 import type { ReviewCardInput } from './reader-api';
 import type { QuizQuestion } from './quiz-core/manager';
+import { noteSourceOf } from './note-source';
 
 const CARD_MODES: readonly string[] = ['flashcard', 'quiz', 'cloze', 'context', 'plain'];
 
@@ -62,6 +63,9 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
   if (input.chapterTitle) card.chapterTitle = String(input.chapterTitle);
   if (input.comment) card.comment = String(input.comment);
   if (input.backlink) card.backlink = String(input.backlink);
+  /* 笔记选段出处：只收合法范围，脏值丢掉后「回到原文」就退回普通文件打开 */
+  const note = noteSourceOf(input.sourceNote);
+  if (note) card.sourceNote = note;
   if (input.context) card.context = input.context;
   /* 方式由 Reader 在制卡那一刻定下；这里是唯一的落库入口，丢了就只能按全局
      默认方式重盖——用户选的填空会变成抽认卡，选的做题会退化成看原文。 */

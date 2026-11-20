@@ -1,5 +1,5 @@
 /**
- * 复习计划数据层（ticket 16 修正版：对齐源码 DataManager，日期字段 ISO 字符串）
+ * 复习数据层（ticket 16 修正版：对齐源码 DataManager，日期字段 ISO 字符串）
  * review.json：CONFIG/STORAGE/review.json，jsonStore 读写。
  * D3 可靠写契约原语 1 收编：全部「读→改→写」事务整体入 core per-path 串行队列
  * （enqueueFileTask，键 = review.json 路径）——复习中评级、文件监控批量增删与列表操作
@@ -45,7 +45,7 @@ export function getReviewMetaPath(): string {
 /**
  * 一条「划线卡」的内容（2026-11-11）。
  *
- * 复习计划以前只认**笔记文件**：排期表的钥匙是路径，复习就是打开那篇笔记。
+ * 复习以前只认**笔记文件**：排期表的钥匙是路径，复习就是打开那篇笔记。
  * 于是「划线 → 复习」只能先造一篇 Markdown 再排期，读十本书划八百条，库里就
  * 多八百篇一句话笔记，文件列表、搜索、图谱全被这些碎片占满。
  *
@@ -74,6 +74,11 @@ export interface ReviewCard {
   comment?: string;
   /** 回到原文的链接（obsidian:// 协议串） */
   backlink?: string;
+  /**
+   * 笔记选段的出处：库里笔记路径 + 加入时的字符范围（review/note-source.ts）。
+   * 有它「回到原文」才不只是打开文件，而是把那一段重新选中给人看。
+   */
+  sourceNote?: { path: string; from: number; to: number };
   /**
    * 划线前后各一段原文（阅读器推送时带）。
    * 有它才能走「上下文卡」：把划线藏起来，凭前后文回忆。
@@ -440,7 +445,7 @@ export class ReviewDataManager {
   /** 新增条目 */
   addItem(filePath: string, fileName: string): Promise<ReviewItem> {
     return this.mutate((items) => {
-      if (items.some((i) => i.filePath === filePath)) throw new Error('该笔记已在复习计划中');
+      if (items.some((i) => i.filePath === filePath)) throw new Error('该笔记已在复习中');
       const block = quotaBlock(planCounts(items));
       if (!block.ok) throw new QuotaExceededError(block.message);
       const newItem = this.newReviewItem(filePath, fileName);
