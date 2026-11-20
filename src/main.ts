@@ -309,12 +309,12 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-import-anki',
-      name: t('从 Anki 文件导入卡片（探索）', 'Import cards from Anki file (explore)'),
+      name: t('从 Anki 文件导入卡片', 'Import cards from Anki file'),
       callback: withReview(async (app) => {
-        const { importAnkiFromActiveFile } = await import('./review/anki-import');
+        const { importAnkiFromPicker } = await import('./review/anki-import');
         const { reviewApp } = await import('./review/app');
         reviewApp.ensure(app);
-        await importAnkiFromActiveFile(app, reviewApp.dataManager!);
+        await importAnkiFromPicker(app, reviewApp.dataManager!);
       }),
     });
     for (const [id, label, kind] of [

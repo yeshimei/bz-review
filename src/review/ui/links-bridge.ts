@@ -1,11 +1,30 @@
 /* 照搬 reader 的对外链接与外链打开方式，地址换成 bz-review 自己的 */
 import { requestUrl } from 'obsidian';
+import { notice } from '../../core/notice';
 import { REPO_SLUG } from '../../core/remote-base';
 import { GROUP_ID } from '../../data/entitlement';
 
 export const REPO_URL = `https://github.com/${REPO_SLUG}`;
-/** 关于条用的推荐向那一集（第 1P；环境自检那一处仍用各自的分 P） */
-export const VIDEO_TUTORIAL_URL = 'https://www.bilibili.com/video/BV1vNsZ6pE7i/?p=1';
+/**
+ * 视频教程地址（2026-11-20）。
+ *
+ * 视频还没做，这里**故意留空**：不留任何 B 站占位地址，用户点到的每一下都由
+ * `openVideoTutorial()` 弹一句「还在制作中」，不跳浏览器。做好后只改这一行，
+ * 空态、设置页、更新日志三处入口同时生效。
+ */
+export const VIDEO_TUTORIAL_URL = '';
+
+/**
+ * 打开视频教程（空态 / 设置关于条 / 更新日志页脚共用）。
+ * 地址为空 = 还没发布，弹通知；有地址就照旧走系统浏览器。
+ */
+export function openVideoTutorial(): void {
+  if (!VIDEO_TUTORIAL_URL) {
+    notice('视频教程还在制作中，做好后会在这里更新', 'info');
+    return;
+  }
+  openExternalUrl(VIDEO_TUTORIAL_URL);
+}
 
 /**
  * 插件组「下载 bz Reader」（2026-11-20）：GitHub Release 页面直接下载三件套，

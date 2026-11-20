@@ -1060,7 +1060,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           {
             type: 'button',
             name: '从 Anki 导入',
-            desc: '选一份 Anki 导出的文本（.txt/.tsv），认 Tab 分隔的问答与 {{c1::挖空}}；也可以从命令面板执行。',
+            desc: '打开系统文件框选一份 Anki「笔记纯文本」导出（.txt/.tsv/.csv，库外任意位置都行），先看清进来多少、跳过什么再确认。支持 Tab/逗号分隔、网页格式、{{c1::挖空}} 拆卡与反向卡；命令面板也可执行。',
             buttonText: '选文件导入',
             onClick: () => {
               void (async () => {
