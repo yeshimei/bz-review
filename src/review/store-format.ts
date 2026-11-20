@@ -30,6 +30,20 @@ export function reviewMeta(now: Date): ReviewMeta {
 const RUNTIME_FIELDS = ['file', 'isCompleted', 'isOverdue', 'isMissing', 'currentStage', 'totalStages'] as const;
 type RuntimeField = typeof RUNTIME_FIELDS[number];
 
+/**
+ * 落盘、但**不算内容**的派生展示字段（比对时必须剔除）。
+ *
+ * `name` 是加载时按当前内容重算出来的（卡片走 cardTitleOf，笔记走 basename，见
+ * review/data.ts 的 loadItems）。磁盘上可能还留着旧标题，于是「合并基准」与盘上
+ * 初值天然不同；只要这一轮恰好评了这一条，本机指纹变了、盘上也不等于基准，就被
+ * 判成「别的设备也改过」——2026-11-20 真机事故：每评一张旧卡弹一次、留一份 .bak，
+ * 其实只差 name 这一列。
+ *
+ * 规则：指纹只比**用户改得出来**的语义字段。任何「读的时候顺手算一下」的字段都
+ * 登记在这里，否则加载逻辑一改就重演一次假冲突。
+ */
+const DERIVED_FIELDS = ['name'] as const;
+
 /** 落盘条目的通用形态。旧版/脏数据字段可能缺失、值类型不定，故值一律 unknown。
  *  只在此文件内部使用：调用方各自有更精确的类型（ReviewItem 等），传进来时按 unknown 收窄。 */
 type ReviewRecord = Record<string, unknown>;
@@ -76,10 +90,11 @@ function canonicalValue(value: unknown): unknown {
   return value;
 }
 
-/** 内容指纹：剔除运行时字段与 updatedAt 后比较（updatedAt 本身不是内容） */
+/** 内容指纹：剔除运行时字段、派生展示字段与 updatedAt 后比较（updatedAt 本身不是内容） */
 export function contentFingerprint(item: unknown): string {
   const body: ReviewRecord = { ...asRecord(stripRuntime(item ?? {})) };
   delete body.updatedAt;
+  for (const k of DERIVED_FIELDS) delete body[k];
   return JSON.stringify(canonicalValue(body));
 }
 

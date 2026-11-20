@@ -1,12 +1,10 @@
 /* ============================================================
  * 高级功能弹窗（照 bz-reader 的功能对照表）：
  * 两版功能完全一致，只差笔记 + 划线的合计数量上限。价格不写进插件。
+ * 弹窗只做引导（去购买 / 交流群）；填激活码统一走设置页「授权」组，别在两处各做一份。
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
-import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, refreshLicense } from '../../data/entitlement';
-import { getLicenseState } from '../../data/entitlement';
-import { getSettings, saveSettings } from '../../core/settings-provider';
-import { notice } from '../../core/notice';
+import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, getLicenseState } from '../../data/entitlement';
 import { openExternalUrl } from './links-bridge';
 
 interface PlanRow {
@@ -107,13 +105,6 @@ export function unlockDialogHtml(paid: boolean, reason = ''): string {
     '<div class="bzs-plan-head"><span>功能</span><i class="c">基础版<small>免费不限时</small></i><i class="c pro">高级版<small>一次买断</small></i></div>' +
     `<div class="bzs-plan">${body}</div>` +
     `<div class="bzs-plan-row is-total"><span>合计 ${total - different} 项功能 · 功能完全一致，仅 ${different} 项数量不同</span>${cell('', false)}${cell('', true)}</div>` +
-    (paid
-      ? ''
-      : '<div class="bzs-unlock-act">' +
-        '<div class="bzs-unlock-act-txt"><b>已有激活码？</b><span>填在这里直接解锁；赞助人 / 专属定制码两款插件通用，普通版两款各买各的。</span></div>' +
-        '<div class="bzs-unlock-act-row"><span class="bzs-sr-only">激活码输入框</span>' +
-        '<input class="bzs-unlock-code" type="text" spellcheck="false" placeholder="BZP2.… 或 BZR2.…" />' +
-        '<button class="bzs-btn pri" type="button" data-act="unlockactivate">激活</button></div></div>') +
     `<div class="bzs-unlock-foot">${
       paid ? '' : '<button class="bzs-btn pri" type="button" data-act="unlockbuy">去购买</button>'
     }<button class="bzs-btn" type="button" data-act="unlockgroup">交流群 ${esc(GROUP_ID)}</button></div>` +
@@ -134,23 +125,6 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
     const act = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-act]')?.dataset.act;
     if (act === 'unlockbuy') openExternalUrl(PURCHASE_URL);
     else if (act === 'unlockgroup') openExternalUrl(`https://qm.qq.com/q/${GROUP_ID}`);
-    else if (act === 'unlockactivate') {
-      void (async () => {
-        const input = modal.popup.querySelector<HTMLInputElement>('.bzs-unlock-code');
-        const code = String(input?.value ?? '').trim();
-        if (!code) return notice('先填激活码', 'warning');
-        const state = await refreshLicense(code, false);
-        if (!state.paid) return notice('激活码无效或已过期，原来的激活码已保留。', 'warning');
-        getSettings().licenseKey = code;
-        await saveSettings();
-        modal.close();
-        notice(`已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`, 'success');
-        /* 设置页还开着就把身份徽章换掉，不必关掉再开一次 */
-        document.querySelectorAll<HTMLElement>('.bzs-set-page').forEach((el) =>
-          el.dispatchEvent(new CustomEvent('bz-review:license-changed')),
-        );
-      })();
-    }
   });
 }
 
