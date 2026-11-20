@@ -205,7 +205,10 @@ export class ReviewDataManager {
         item.isMissing = false;
         /* 标题每次加载都按当前内容重算（2026-11-20）：老卡存的名字是「围城·第一章」，
            同章十几张全一样；现在 qa/题目/全文都在卡上（或 displayTitle 已回填），
-           重算后每张卡各显示自己的那一句。 */
+           重算后每张卡各显示自己的那一句。
+           这是**派生展示字段**：盘上旧值与本机新值不同不代表谁改过数据，所以它
+           不进内容指纹（见 store-format 的 DERIVED_FIELDS）——否则每评一张旧卡都会
+           误报「别的设备也改过」。 */
         item.name = cardTitleOf(item.card!);
         this.finishSchedule(item);
         valid.push(item);
