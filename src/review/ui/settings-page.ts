@@ -10,9 +10,9 @@ import type { App } from 'obsidian';
 import manifest from '../../../manifest.json';
 import { notice } from '../../core/notice';
 import { getLicenseState } from '../../data/entitlement';
-import { openExternalUrl, VIDEO_TUTORIAL_URL, REPO_URL } from './links-bridge';
+import { openExternalUrl, VIDEO_TUTORIAL_URL, REPO_URL, READER_DOWNLOAD_URL, READER_DOWNLOAD_MIRROR } from './links-bridge';
 import { copyReviewGroupId } from './group-bridge';
-import { aboutBarHtml, groupColumns, GROUP_SUBTITLES } from './settings-page-pure';
+import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, pluginGroupHtml } from './settings-page-pure';
 import { setHtml } from './set-html';
 import type { ReviewDataManager } from '../data';
 
@@ -113,6 +113,11 @@ export async function renderReviewSettingsPage(
   });
   container.appendChild(grid);
 
+  /* 插件组（2026-11-20）：通栏，放到两列之下、快捷键之上 */
+  const pluginGrp = createDiv();
+  setHtml(pluginGrp, pluginGroupHtml(READER_DOWNLOAD_MIRROR));
+  if (pluginGrp.firstElementChild) container.appendChild(pluginGrp.firstElementChild);
+
   const keys = createDiv();
   setHtml(keys, shortcutsHtml());
   if (keys.firstElementChild) container.appendChild(keys.firstElementChild);
@@ -139,6 +144,9 @@ export async function renderReviewSettingsPage(
           return;
         case 'changelog':
           void openReviewChangelog();
+          return;
+        case 'readerdownload':
+          openExternalUrl(READER_DOWNLOAD_URL);
           return;
       }
     }
