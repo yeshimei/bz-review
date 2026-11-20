@@ -12,6 +12,7 @@ import { notice, notifySaveError, notifyUndo } from '../core/notice';
 import { openFlowDialog } from '../core/flow-dialog';
 import { tryGetSettings, saveSettings } from '../core/settings-provider';
 import { ReviewDataManager } from './data';
+import { QuotaExceededError } from '../data/entitlement';
 
 /** 设置里的数组字段运行期可能被旧数据写脏：只认数组，再按 string[] 读 */
 function stringArray(v: unknown): string[] {
@@ -108,8 +109,12 @@ export class ReviewWatcher {
     try {
       await this.dataManager.addItem(file.path, file.basename);
     } catch (e) {
-      // F10：查重类错误（并发已加入）静默；写盘类失败给人话提示——自动加入不再静默失败
+      // F10：查重类错误（并发已加入）静默；额度到顶弹升级窗；写盘失败给人话提示
       if (e instanceof Error && e.message.includes('已在复习计划中')) return;
+      if (e instanceof QuotaExceededError) {
+        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog());
+        return;
+      }
       notifySaveError(e, '自动加入复习计划');
       return;
     }

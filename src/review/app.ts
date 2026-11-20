@@ -16,6 +16,7 @@ import {
 } from './fsrs';
 import type { Rating } from './fsrs';
 import type { ReviewItem, ReviewHistoryEntry } from './data';
+import { QuotaExceededError } from '../data/entitlement';
 import type { QuizMasterUI } from './quiz-core';
 import type { QuizQuestion } from './quiz-core/manager';
 import { ReviewDataManager, isCardItem } from './data';
@@ -1061,8 +1062,9 @@ export const reviewApp = {
         notice('这篇已经在复习计划里了', 'info');
         return;
       }
-      if (msg.includes('基础版最多')) {
-        notice(msg, 'warning');
+      /* 额度到顶不是写盘失败：弹高级功能对照窗，里面能直接填码解锁。 */
+      if (e instanceof QuotaExceededError) {
+        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog());
         return;
       }
       throw e;

@@ -58,6 +58,25 @@
   background: color-mix(in srgb, var(--un-line) 18%, transparent);
 }
 .bzs-plan-row.is-total { border-top: 2px solid var(--un-line); border-bottom: 0; font-weight: 600; }
+.bzs-unlock-act {
+  padding: 12px 18px;
+  border-top: 1px solid var(--un-line);
+  background: var(--un-tint);
+}
+.bzs-unlock-act-txt { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; font-size: 11px; }
+.bzs-unlock-act-txt b { font-weight: 600; }
+.bzs-unlock-act-txt span { color: var(--un-muted); }
+.bzs-unlock-act-row { display: flex; gap: 8px; margin-top: 8px; }
+.bzs-unlock-code {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid var(--un-line);
+  border-radius: 6px;
+  padding: 7px 10px;
+  background: var(--background-primary, #fff);
+  color: var(--un-ink);
+  font-size: 11px;
+}
 .bzs-unlock-foot {
   display: flex;
   justify-content: flex-end;

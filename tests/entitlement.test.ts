@@ -6,6 +6,7 @@ import {
   licenseSummary,
   overLimitMessage,
   quotaBlock,
+  QuotaExceededError,
   quotaInfo,
   refreshLicense,
   currentLicenseCode,
@@ -44,6 +45,13 @@ describe('基础版上限 · 笔记 + 划线合计', () => {
     expect(block.ok).toBe(false);
     expect(block.message).toContain('300');
     expect(block.message).not.toContain('删除');
+  });
+
+  it('到顶抛带类型的错误，界面据此弹升级窗而不是当成写盘失败', () => {
+    const err = new QuotaExceededError('已用 50/50 条（笔记 + 划线合计，基础版上限）。');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('QuotaExceededError');
+    expect(err.message).toContain('50/50');
   });
 
   it('还剩几个：已满给 0，不会给负数', () => {
