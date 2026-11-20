@@ -6506,6 +6506,25 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-slot-ans:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-caption); line-height: 1.55; color: var(--bzrv-danger); }
 .bzrv-cs-cloze-result:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-label); font-weight: 600; color: var(--bzrv-text-1); }
 .bzrv-cs-cloze-result.is-ok:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-success); }
+
+/* 媒体卡：图片/音频 + 揭示后的原文 */
+.bzrv-cs-media:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 12px; }
+.bzrv-cs-media-img:is([data-bzrv], [data-bzrv] *) { display: block; max-width: 100%; max-height: 50vh; object-fit: contain; border-radius: var(--bzrv-radius-sm); }
+.bzrv-cs-media-audio:is([data-bzrv], [data-bzrv] *) { width: 100%; }
+
+/* 图片遮挡：图上盖百分比定位的方块，点开显答案 */
+.bzrv-cs-occl:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 10px; }
+.bzrv-cs-occl-stage:is([data-bzrv], [data-bzrv] *) { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
+.bzrv-cs-occl-img:is([data-bzrv], [data-bzrv] *) { display: block; max-width: 100%; max-height: 50vh; object-fit: contain; border-radius: var(--bzrv-radius-sm); }
+.bzrv-cs-occl-layer:is([data-bzrv], [data-bzrv] *) { position: absolute; inset: 0; }
+.bzrv-cs-occl-region:is([data-bzrv], [data-bzrv] *) {
+  position: absolute; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bzrv-accent); border-radius: 6px;
+  background: var(--bzrv-accent-soft); color: var(--bzrv-accent);
+  font-size: var(--bzrv-font-label); font-weight: 600; cursor: pointer; padding: 0;
+}
+.bzrv-cs-occl-region.is-shown:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-surface-1); color: var(--bzrv-text-1); border-style: dashed; }
+.bzrv-cs-occl-hint:is([data-bzrv], [data-bzrv] *) { margin: 0; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-cs-ctx:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: var(--bzrv-space-sm); }
 .bzrv-cs-ctx > p:is([data-bzrv], [data-bzrv] *), .bzrv-cs-ctx > blockquote:is([data-bzrv], [data-bzrv] *) { margin: 0; }
 .bzrv-cs-ctx-side:is([data-bzrv], [data-bzrv] *) { padding: 8px 12px; border-radius: var(--bzrv-radius-xs); background: var(--bzrv-surface-2); font-size: var(--bzrv-font-label); line-height: 1.8; color: var(--bzrv-text-2); white-space: pre-wrap; overflow-wrap: anywhere; }

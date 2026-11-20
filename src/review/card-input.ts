@@ -14,7 +14,7 @@ import type { ReviewCardInput } from './reader-api';
 import type { QuizQuestion } from './quiz-core/manager';
 import { noteSourceOf } from './note-source';
 
-const CARD_MODES: readonly string[] = ['flashcard', 'quiz', 'cloze', 'context', 'plain'];
+const CARD_MODES: readonly string[] = ['flashcard', 'quiz', 'cloze', 'media', 'occlusion', 'context', 'plain'];
 
 /**
  * 阅读器交来的题目 → Review 题库格式。
@@ -72,6 +72,9 @@ export function normalizeCardInput(input: ReviewCardInput, now: number = Date.no
   if (typeof input.mode === 'string' && CARD_MODES.includes(input.mode)) {
     card.mode = input.mode;
   }
+  /* 媒体卡 / 图片遮挡的内容随输入一起交来，原样收下（路径由调用方保证在库内） */
+  if (input.media) card.media = input.media;
+  if (input.occlusion) card.occlusion = input.occlusion;
 
   const q = String(input?.qa?.q ?? '').trim();
   if (q) {

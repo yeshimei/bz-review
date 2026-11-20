@@ -127,6 +127,10 @@ export interface ReviewCardInput {
    * 删过、补过、重新生成过的题必须原样保留。不给则走原来的生成路径。
    */
   questions?: Array<{ q: string; options: string[]; correct: number[]; explain?: string }>;
+  /** 媒体卡的图片/音频（库内路径）；mode='media' 时用 */
+  media?: { images?: string[]; audio?: string };
+  /** 图片遮挡的图片与区域；mode='occlusion' 时用 */
+  occlusion?: { image: string; regions: Array<{ x: number; y: number; w: number; h: number; label: string }> };
 }
 
 /** 卡片类额度（阅读器批量列表据此提前标「超出基础版上限」） */

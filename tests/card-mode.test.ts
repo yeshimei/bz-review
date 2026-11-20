@@ -37,8 +37,8 @@ describe('卡片自己的复习方式', () => {
     expect(modeOfCard(card({ mode: 'flashcardd' as any }), { reviewCardMode: 'context' })).toBe('context');
   });
 
-  it('isCardMode 只认五个合法值', () => {
-    for (const v of ['flashcard', 'cloze', 'quiz', 'context', 'plain']) expect(isCardMode(v)).toBe(true);
+  it('isCardMode 只认合法值（含媒体卡与图片遮挡）', () => {
+    for (const v of ['flashcard', 'cloze', 'quiz', 'context', 'plain', 'media', 'occlusion']) expect(isCardMode(v)).toBe(true);
     for (const v of ['', 'Flashcard', 'manual', null, undefined, 1]) expect(isCardMode(v)).toBe(false);
   });
 });
@@ -88,14 +88,14 @@ describe('批量落库前补默认方式', () => {
   });
 });
 
-describe('界面制卡方式：挖空解锁，上下文 / 展开全文仍隐藏（2026-11-20）', () => {
-  it('可选入口含抽认卡 / 做题 / 挖空，去掉上下文 / 展开全文', () => {
-    expect(CARD_MODE_LABELS.map((m) => m.value)).toEqual(['flashcard', 'quiz', 'cloze']);
+describe('界面制卡方式：挖空 / 媒体 / 遮挡可选，上下文 / 展开全文仍隐藏（2026-11-20）', () => {
+  it('可选入口含抽认卡 / 做题 / 挖空 / 媒体 / 遮挡，去掉上下文 / 展开全文', () => {
+    expect(CARD_MODE_LABELS.map((m) => m.value)).toEqual(['flashcard', 'quiz', 'cloze', 'media', 'occlusion']);
   });
 
-  it('全量元数据仍保留五种，老卡照常显示自己的名字', () => {
+  it('全量元数据仍保留七种，老卡照常显示自己的名字', () => {
     expect(CARD_MODE_META.map((m) => m.value)).toEqual([
-      'flashcard', 'quiz', 'cloze', 'context', 'plain',
+      'flashcard', 'quiz', 'cloze', 'media', 'occlusion', 'context', 'plain',
     ]);
     expect(modeMetaOf('cloze').label).toBe('挖空卡（Cloze）');
     expect(modeMetaOf('context').label).toBe('上下文');

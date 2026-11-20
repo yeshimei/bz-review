@@ -188,6 +188,8 @@ export class CardSession {
   private regenBusy = false;
   /** 填空作答态；null = 还没交卷 */
   private clozeState: { answers: string[]; results: boolean[] } | null = null;
+  /** 图片遮挡：本卡已点开的区域下标（换卡清空） */
+  private occlusionRevealed = new Set<number>();
   /** 工作台：上一次渲染的卡序号，用来判断「换卡了」而不是同一张重画 */
   private lastIndex = -1;
   /** 换卡时的一次性提示（同类型连做为空） */
@@ -258,6 +260,7 @@ export class CardSession {
     this.quizLoading = false;
     this.quizFallback = false;
     this.clozeState = null;
+    this.occlusionRevealed.clear();
   }
 
   /** 点右侧队列或顶部类型 tab 直接跳到那张卡（未评级的卡也允许回看） */
@@ -278,7 +281,7 @@ export class CardSession {
    */
   private mode(): CardMode {
     const own = this.opts.queue[this.index]?.card?.mode;
-    if (own === 'quiz' || own === 'plain' || own === 'cloze' || own === 'context' || own === 'flashcard') {
+    if (own === 'quiz' || own === 'plain' || own === 'cloze' || own === 'context' || own === 'flashcard' || own === 'media' || own === 'occlusion') {
       return own;
     }
     return this.opts.mode ?? 'flashcard';
@@ -298,6 +301,14 @@ export class CardSession {
 
   private isContextMode(): boolean {
     return this.mode() === 'context';
+  }
+
+  private isMediaMode(): boolean {
+    return this.mode() === 'media';
+  }
+
+  private isOcclusionMode(): boolean {
+    return this.mode() === 'occlusion';
   }
 
   private current(): ReviewItem | undefined {
@@ -587,6 +598,7 @@ export class CardSession {
       this.quiz = null;
       this.quizFallback = false;
       this.clozeState = null;
+      this.occlusionRevealed.clear();
       this.revealed = false;
       this.ensured.delete(item.filePath);
       this.render();
@@ -608,6 +620,7 @@ export class CardSession {
         this.quizFallback = false;
         this.revealed = false;
         this.clozeState = null;
+        this.occlusionRevealed.clear();
         // 重生成后卡上的内容变了：把最新那条换进来
         const card = item.card ?? ({} as ReviewCard);
         if (card.key) this.qCache.delete(card.key);
@@ -737,6 +750,59 @@ export class CardSession {
       ${idea ? `<p class="bzrv-cs-idea">${esc(idea)}</p>` : ''}`;
   }
 
+  /** 库内文件路径 → 可显示的 URL（Obsidian 的 app:// 协议，图片/音频都能用） */
+  private vaultUrl(path: string): string | null {
+    const raw = String(path ?? '').trim();
+    if (!raw) return null;
+    try {
+      const file = this.opts.app.vault.getAbstractFileByPath(raw);
+      if (!file) return null;
+      return this.opts.app.vault.getResourcePath(file as never);
+    } catch {
+      return null;
+    }
+  }
+
+  /** 媒体卡：提示面就把图片/音频摆出来，揭示后再给原文与想法 */
+  private mediaBodyHtml(card: ReviewCard): string {
+    const media = card.media;
+    const images = (media?.images ?? [])
+      .map((p) => this.vaultUrl(p))
+      .filter((u): u is string => !!u)
+      .map((u) => `<img class="bzrv-cs-media-img" src="${esc(u)}" alt="复习图片">`)
+      .join('');
+    const audioUrl = media?.audio ? this.vaultUrl(media.audio) : null;
+    const audio = audioUrl ? `<audio class="bzrv-cs-media-audio" controls src="${esc(audioUrl)}"></audio>` : '';
+    const mediaHtml = images || audio;
+    if (!mediaHtml) {
+      return `<p class="bzrv-cs-prompt">这张卡还没配图片或音频，先看原文</p>${this.answerHtml(card)}`;
+    }
+    return `<div class="bzrv-cs-media">${mediaHtml}${this.revealed ? this.answerHtml(card) : ''}</div>`;
+  }
+
+  /** 图片遮挡：图上盖住几块，点一下揭示那块的内容；不依赖拖拽画框，手机也能点 */
+  private occlusionBodyHtml(card: ReviewCard): string {
+    const occl = card.occlusion;
+    const url = occl?.image ? this.vaultUrl(occl.image) : null;
+    if (!url || !occl?.regions?.length) {
+      return `<p class="bzrv-cs-prompt">这张遮挡卡还没配好图片，先看原文</p>${this.answerHtml(card)}`;
+    }
+    const regions = occl.regions
+      .map((r, i) => {
+        const shown = this.occlusionRevealed.has(i);
+        const style = `left:${Number(r.x) || 0}%;top:${Number(r.y) || 0}%;width:${Number(r.w) || 0}%;height:${Number(r.h) || 0}%`;
+        return `<button type="button" class="bzrv-cs-occl-region${shown ? ' is-shown' : ''}" data-region="${i}" style="${style}"><span>${shown ? esc(String(r.label ?? '')) : '?'}</span></button>`;
+      })
+      .join('');
+    return `<div class="bzrv-cs-occl">
+      <div class="bzrv-cs-occl-stage">
+        <img class="bzrv-cs-occl-img" src="${esc(url)}" alt="遮挡练习图片">
+        <div class="bzrv-cs-occl-layer">${regions}</div>
+      </div>
+      <p class="bzrv-cs-occl-hint">先回忆被遮住的内容，点方块揭晓</p>
+    </div>`;
+  }
+
   private bodyHtml(item: ReviewItem): string {
     const card = item.card!;
     if (this.isPlainMode()) return this.answerHtml(card);
@@ -780,6 +846,8 @@ export class CardSession {
 
     if (this.isClozeMode()) return this.clozeBodyHtml(item);
     if (this.isContextMode()) return this.contextBodyHtml(card);
+    if (this.isMediaMode()) return this.mediaBodyHtml(card);
+    if (this.isOcclusionMode()) return this.occlusionBodyHtml(card);
 
     const prompt = this.promptFor(item);
     return `
@@ -879,6 +947,8 @@ export class CardSession {
   /** 卡片内部的动作按钮（揭示 / 下一题 / 对答案）；评级单独摆在卡片下方 */
   private actionHtml(item: ReviewItem): string {
     if (this.isPlainMode()) return '';
+    /* 图片遮挡没有统一的「看答案」：每块自己点开，点完直接评级 */
+    if (this.isOcclusionMode()) return '';
     if (this.isQuizMode()) {
       const round = this.quiz;
       if (!round) return '';
@@ -909,6 +979,8 @@ export class CardSession {
   /** 看完答案才给评级：全文卡没有揭示动作，直接可评；降级看原文也一样 */
   private showRating(item: ReviewItem): boolean {
     if (this.isPlainMode()) return true;
+    /* 图片遮挡：点遮罩块就是「揭示」，用户自己对照完直接评级，没有统一的「看答案」步骤 */
+    if (this.isOcclusionMode()) return true;
     if (this.isQuizMode()) {
       const round = this.quiz;
       return !!round && round.idx >= round.list.length;
@@ -941,6 +1013,15 @@ export class CardSession {
     });
     host.querySelectorAll<HTMLElement>('[data-opt]').forEach((btn) => {
       btn.addEventListener('click', () => this.pickOption(Number(btn.dataset.opt)));
+    });
+    /* 图片遮挡：点方块揭示那一块，再点收回（同一张卡重绘，不换卡） */
+    host.querySelectorAll<HTMLElement>('[data-region]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.region);
+        if (this.occlusionRevealed.has(i)) this.occlusionRevealed.delete(i);
+        else this.occlusionRevealed.add(i);
+        this.render();
+      });
     });
     /* 顶部类型 tab / 右侧队列：按类型实时跳卡，跳过已评级或未评级的都允许 */
     host.querySelectorAll<HTMLElement>('[data-jump-mode]').forEach((btn) => {

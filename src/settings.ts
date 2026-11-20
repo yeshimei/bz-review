@@ -72,12 +72,12 @@ export default interface BzSettings {
    *   2. 加入计划时的默认值（`reviewCardDefaultMethod` 为「手动」时不再读它）。
    * 新代码不要直接读它，用 `card-ai.ts` 的 `modeOfCard()`；设置页也不再暴露这个开关。
    */
-  reviewCardMode: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
+  reviewCardMode: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain' | 'media' | 'occlusion';
   /**
    * 新卡默认制卡方式：manual = 每次让用户选（默认）；
    * 选了具体方式就不再弹选择界面，新卡一律按它制。
    */
-  reviewCardDefaultMethod: 'manual' | 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
+  reviewCardDefaultMethod: 'manual' | 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain' | 'media' | 'occlusion';
   /** 评级键位（四个字符，顺序＝忘了/困难/一般/简单；默认 1234） */
   reviewRatingKeys: string;
   /** 休假到哪天（ISO；空 = 不休假）。到期那天把整份计划顺延，回来不雪崩 */
