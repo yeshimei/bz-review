@@ -125,7 +125,7 @@ describe('复习设置页 · 两列骨架与关于条', () => {
     const dlg = read('src/review/ui/unlock-dialog.ts');
     expect(dlg).not.toContain('unlockactivate');
     expect(dlg).not.toContain('bzs-unlock-code');
-    expect(dlg).toContain('data-act="unlockbuy"');
+    expect(dlg).toContain("buy.dataset.act = 'unlockbuy'");
     expect(dlg).toContain('条额度（笔记 + 划线合计）已用完');
     expect(dlg).not.toContain('篇复习笔记已用完');
     expect(dlg).toContain('已有数据不会被删');

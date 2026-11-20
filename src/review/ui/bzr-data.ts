@@ -57,6 +57,8 @@ export interface RoadmapItem {
   title: string;
   state: RoadmapState;
   src: 'builtin' | 'github';
+  /** 本条属于哪个插件；Review 只收自己的条目（与 bz 丢 reader 同口径） */
+  plugin: 'review';
   fb: RoadmapFeedback;
 }
 
@@ -346,12 +348,16 @@ function feedbackGroups(raw: unknown): BzrFeedbackGroup[] {
 function roadmapItem(raw: unknown): RoadmapItem | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
+  /* 路线图是三个插件共用的数据源：只收 plugin === 'review'。
+     bz 主插件在它那边丢掉 plugin === 'reader'，Reader 只收 reader，
+     各看各的，不再把别人的路线图混进来。 */
+  if (o.plugin !== 'review') return null;
   if (typeof o.title !== 'string' || !clean(o.title)) return null;
   if (o.state !== 'plan' && o.state !== 'doing' && o.state !== 'done') return null;
   if (o.src !== 'builtin' && o.src !== 'github') return null;
   const fb = feedback(o.fb);
   if (!fb) return null;
-  return { title: clean(o.title, MAX_TEXT), state: o.state, src: o.src, fb };
+  return { title: clean(o.title, MAX_TEXT), state: o.state, src: o.src, plugin: 'review', fb };
 }
 function roadmapTheme(raw: unknown): RoadmapTheme | null {
   if (!raw || typeof raw !== 'object') return null;
@@ -452,7 +458,7 @@ const BUILTIN: BzrData = {
   changelog: [],
   roadmap: [
     { theme: '路线图', color: '#7856d6', order: 1, items: [
-      { title: '路线图数据已更新，请联网查看', state: 'plan', src: 'builtin',
+      { title: '路线图数据已更新，请联网查看', state: 'plan', src: 'builtin', plugin: 'review',
         fb: { kind: 'issue', n: 1, label: '#1', href: '' } },
     ] },
   ],

@@ -22,7 +22,7 @@
  * 用户点 × 就是关掉。
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
-import { openExternalUrl, REPO_URL } from './links-bridge';
+import { openExternalUrl, REVIEW_REPO_URL } from './links-bridge';
 import { t } from './i18n-bridge';
 import { SPONSOR_URL, formatRewardDate, type RewardName } from './reward';
 import {
@@ -208,7 +208,7 @@ export function openSupportDialog(): SupportDialogHandle {
       return;
     }
     if (target.closest('[data-role="supstar"]')) {
-      openExternalUrl(REPO_URL);
+      openExternalUrl(REVIEW_REPO_URL);
       return;
     }
     if (target.closest('[data-role="supretry"]')) {

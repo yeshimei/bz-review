@@ -18,11 +18,10 @@
  *   token 声明**再消费（先例 `.bzrv-item-menu.bz-home-menu`），见 settings-panel/styles.css
  *   `.bz-sp-skin` 段。设置面板内的路径行传 'bz-sp-skin' 即得面板观感，其余入口不传 = 现状。
  */
-import { Setting } from 'obsidian';
+import { Setting, setIcon } from 'obsidian';
 import { getApp } from './app';
 import { pickFolderNative } from './folder-pick';
 import { notifySaveError, notifyActionError } from './notice';
-import { uiChip } from './ui/chip';
 
 import { markOwned } from './scope';
 export interface PathPickerOptions {
@@ -242,11 +241,12 @@ export interface PathSettingRowOptions {
   onChange: (list: string[]) => void | string[] | Promise<void | string[]>;
 }
 
-/** 构建路径设置行：Setting（名称/描述）+ 控件区——空态：紧凑「选择…/添加…」按钮（无「未选择」灰字）；
- *  已选态：按钮移出 DOM，chips 文本点击重开选择器、✕ 清除（ticket 133）。
- *  控件区恒 1 子元素 → markSettingSplitRows 不挂 .bzrv-setting-split → 移动端名称/描述与控件区同行。
+/** 构建路径设置行（2026-11-21 统一成数据目录样式）：Setting（名称/描述）+ 控件区一颗
+ *  「文件夹图标 + 当前路径 + 选择」的 pill。已选时每个目录一颗同形 pill，右侧 ✕ 移除；
+ *  点击 pill 本身重开选择器。空态 pill 写「选择文件夹」，有回落值时把回落目录写进 pill。
+ *  控件区仍只有一层包裹（markSettingSplitRows 不拆行），移动端名称/描述与控件区同行。
  *  不保留手输文本框（ADR-0061 拍板 3：路径一律经选择器录入，限 vault 内）。
- *  返回 { refresh } 供外部按需重渲染 chips（如设置被其他入口改动后回同步）。 */
+ *  返回 { refresh } 供外部按需重渲染（如设置被其他入口改动后回同步）。 */
 export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: () => void; settingEl: HTMLElement } {
   const readValue = (): string[] => {
     const v = opts.value;
@@ -255,14 +255,10 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
   let current = readValue();
   const setting = new Setting(opts.parent).setName(opts.name);
   if (opts.desc) setting.setDesc(opts.desc);
-  // ticket 133 兜底：移动端路径行恒单行（CSS 层保证，不依赖控件区子元素计数——即使按钮未及时移出也不拆两行）
   setting.settingEl.classList.add('bzrv-path-picker-setting-row');
-  const chipsWrap = createDiv();
-  chipsWrap.className = 'bzrv-path-picker-chips--setting';
 
   /** 统一变更入口：onChange 返回 Promise 时异步解析改写清单后重渲染；同步返回（含 void）立即重渲染。
-   *  N6：域回调同步抛错 / 异步 reject → 人话提示 + 保持旧选中（current 未动，renderAll 回滚 chips）
-   *  ——原先 unhandled rejection：chips 停留旧值且无任何提示。 */
+   *  N6：域回调同步抛错 / 异步 reject → 人话提示 + 保持旧选中（current 未动，renderAll 回滚）。 */
   const apply = (list: string[]): void | Promise<void> => {
     try {
       const res = opts.onChange(list);
@@ -297,60 +293,47 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
       },
     });
 
-  const render = () => {
-    renderPathChips(chipsWrap, current, (next) => {
-      void apply(next);
-    }, '', openPicker);
-    // 空值 + 有回落值：挂「实际生效目录」锁定 chip（不可移除，点击可直接去设显式值）。
-    // 与设置面板 renderer 的 fallbackChip 同形同义——用户不该因为入口不同就看到两种样子。
-    if (current.length === 0 && opts.fallbackChip) {
-      chipsWrap.appendChild(
-        uiChip({
-          label: opts.fallbackChip,
-          locked: true,
-          title: '未单独设置时的实际生效目录（点击可改为显式设置）',
-          onClick: openPicker,
-        })
-      );
-    }
-  };
-
-  let btn: HTMLButtonElement | null = null;
-  setting.addButton((b) => {
-    b
-      .setButtonText(opts.buttonText || (opts.mode === 'multi' ? '添加…' : '选择…'))
-      .onClick(openPicker);
-    // ticket 133：紧凑次级按钮（不再 setCta——去掉 Obsidian 原生 accent 大按钮风），样式见 styles.css
-    b.buttonEl.classList.add('bzrv-path-picker-btn--slim');
-    btn = b.buttonEl;
-  });
-
-  // chips 并入控件区
   const control = setting.settingEl.querySelector('.setting-item-control');
-  if (control) control.appendChild(chipsWrap);
+  const picks = createDiv({ cls: 'bzrv-path-picker-picks' });
+  if (control) control.appendChild(picks);
 
-  // ticket 133 已选态：① 行级 data-filled 标志——CSS 据此隐藏选择按钮（[data-filled='1']），
-  // 不依赖按钮元素移除时序（双保险，任何环境下有值即不可见）；② 按钮移出 DOM（控件区干净）。
-  // 空态（含 ✕ 清除后）恢复按钮 + data-filled='0'
-  const syncBtn = () => {
-    setting.settingEl.dataset.filled = current.length > 0 ? '1' : '0';
-    if (!btn || !control) return;
+  /** 一颗 path pill：文件夹图标 + 路径 + 「选择」；整颗可点 = 重开选择器 */
+  const pickPill = (parent: HTMLElement, label: string, empty: boolean): HTMLButtonElement => {
+    const btn = parent.createEl('button', { cls: 'bzrv-path-pick', type: 'button' });
+    if (empty) btn.classList.add('bzrv-path-pick--empty');
+    btn.createSpan({ cls: 'bzrv-sr-only', text: empty ? '选择文件夹' : `更换文件夹：${label}` });
+    const icon = btn.createSpan({ cls: 'bzrv-path-pick-icon' });
+    setIcon(icon, 'folder');
+    btn.createSpan({ cls: 'bzrv-path-pick-name', text: label });
+    btn.createSpan({ cls: 'bzrv-path-pick-action', text: opts.buttonText || '选择' });
+    btn.onclick = openPicker;
+    return btn;
+  };
+
+  const render = () => {
+    picks.empty();
     if (current.length === 0) {
-      if (!btn.isConnected) control.appendChild(btn);
-    } else if (btn.isConnected) {
-      btn.remove();
+      pickPill(picks, opts.fallbackChip || '未选择', true);
+      return;
+    }
+    for (const p of current) {
+      const wrap = picks.createDiv({ cls: 'bzrv-path-pick-wrap' });
+      pickPill(wrap, p || '（库根目录）', false);
+      const rm = wrap.createEl('button', { cls: 'bzrv-path-pick-remove', type: 'button' });
+      rm.createSpan({ cls: 'bzrv-sr-only', text: `移除文件夹：${p || '库根目录'}` });
+      setIcon(rm, 'x');
+      rm.onclick = () => {
+        void apply(current.filter((x) => x !== p));
+      };
     }
   };
 
-  const renderAll = () => {
-    syncBtn();
-    render();
-  };
+  const renderAll = () => render();
   const refresh = () => {
     current = readValue();
-    renderAll();
+    render();
   };
-  renderAll();
+  render();
   return { refresh, settingEl: setting.settingEl };
 }
 
