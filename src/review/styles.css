@@ -1244,6 +1244,26 @@
 /* 嵌入 bz-reader 动作栏：那一条 overflow 可能裁掉下拉，抬高层级并把定位锚在可见区 */
 .bzrv-embed-acts .bzrv-more-menu { top: calc(100% + 6px); }
 
+/* ==================== Anki 导入预览（2026-11-20） ====================
+   导入前先摊开「进来多少 / 跳过什么 / 媒体带不过来」，用户确认才写盘。
+   版式只做三件事：文件行弱一档、数字块给强调色、清单左对齐便于扫读。 */
+.bzrv-anki-preview { display: flex; flex-direction: column; gap: 10px; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); }
+.bzrv-anki-file { margin: 0; color: var(--bzrv-text-2); line-height: 1.6; overflow-wrap: anywhere; }
+.bzrv-anki-nums {
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  padding: 10px 12px;
+  background: var(--bzrv-surface-2);
+  border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-sm);
+  color: var(--bzrv-text-2);
+}
+.bzrv-anki-nums b { margin-right: 3px; font-size: var(--bzrv-font-emphasis); color: var(--bzrv-accent); }
+.bzrv-anki-list { margin: 0; padding-left: 18px; color: var(--bzrv-text-2); line-height: 1.7; }
+.bzrv-anki-note { margin: 0; color: var(--bzrv-text-3); line-height: 1.65; }
+.bzrv-anki-warn { margin: 0; color: var(--bzrv-warning); line-height: 1.65; }
+.bzrv-anki-acts { justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.bzrv-anki-acts .bzrv-btn--primary { background: var(--bzrv-accent); border-color: transparent; }
+
 /* ==================== 空态「看视频教程」按钮强调色（2026-11-20） ====================
    通用 .bzrv-btn--primary 吃 --bzrv-brand（部分强调档下该变量缺失 → 背景透明、按钮
    看着像没样式）。这颗是空态唯一的行动号召，单独钉到确定有值的 --bzrv-accent，

@@ -20,7 +20,7 @@ import { uiModal } from '../../core/ui/modal';
 import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
-import { VIDEO_TUTORIAL_URL, openExternalUrl, REPO_URL, GROUP_ID } from './links-bridge';
+import { openVideoTutorial, openExternalUrl, REPO_URL, GROUP_ID } from './links-bridge';
 import { changelogLang } from './i18n-bridge';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
@@ -1100,7 +1100,7 @@ export function openChangelogNote(
     if (target.closest('[data-role="chgnsupport"]')) { openSupportDialog(); return; }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
     if (act === 'chgnrepo') window.open(REPO_URL, '_blank', 'noopener,noreferrer');
-    else if (act === 'chgnvideo') window.open(VIDEO_TUTORIAL_URL, '_blank', 'noopener,noreferrer');
+    else if (act === 'chgnvideo') openVideoTutorial();
     else if (act === 'chgnqq') void copyReviewGroupId();
   });
 

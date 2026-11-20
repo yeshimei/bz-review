@@ -38,7 +38,7 @@ import { getSettings, tryGetSettings, panelSizePersist } from '../core/settings-
 import { createAI } from '../core/ai';
 import { isMobileEnv } from '../core/mobile';
 import { uiEmpty, mountIcons, uiResizable } from '../core/ui';
-import { openExternalUrl, VIDEO_TUTORIAL_URL } from './ui/links-bridge';
+import { openVideoTutorial } from './ui/links-bridge';
 import { DEFAULT_W } from './fsrs';
 import type { ReviewItem } from './data';
 import { ReviewDataManager } from './data';
@@ -573,6 +573,13 @@ export class UIManager {
         videoBtn.dataset.act = 'watch-video';
         videoBtn.textContent = '看视频教程';
         acts.appendChild(videoBtn);
+        /* 视频还没发布：空态不能只剩一颗只会弹「制作中」的按钮，给一条能立刻
+           落地内容的路——Anki 导入（系统文件选择框，不要求文件在库内）。 */
+        const ankiBtn = createEl('button');
+        ankiBtn.className = 'bzrv-btn bzrv-btn--ghost';
+        ankiBtn.dataset.act = 'empty-anki-import';
+        ankiBtn.textContent = '从 Anki 导入';
+        acts.appendChild(ankiBtn);
         host.appendChild(
           uiEmpty({
             icon: 'inbox',
@@ -1321,8 +1328,15 @@ export class UIManager {
     /* 底部「已移出 N 条」入口由 bindPanelHead 统一绑（同一个 data-act="trash"，
        两边各绑一次会让一次点击跑两遍 go()，等于点了没反应）。 */
     // 累计/连续 chip 现在是纯展示：记忆分析入口已摘（analysis/ 代码保留，未删）。
-    // 空态：看视频教程占位
-    container.querySelector('[data-act="watch-video"]')?.addEventListener('click', () => openExternalUrl(VIDEO_TUTORIAL_URL));
+    // 空态：看视频教程（视频未发布时只弹通知，不跳浏览器）
+    container.querySelector('[data-act="watch-video"]')?.addEventListener('click', () => openVideoTutorial());
+    // 空态第二个入口：从 Anki 导入（视频还没发布，得给用户一条真正能走的路）
+    container.querySelector('[data-act="empty-anki-import"]')?.addEventListener('click', () => {
+      void (async () => {
+        const { importAnkiFromPicker } = await import('./anki-import');
+        await importAnkiFromPicker(this.app, this.dataManager);
+      })();
+    });
     // 筛选（批 8：就地展开，不再弹原生弹窗）的图标绑定已并入 bindPanelHead；
     // 下面只管筛选区里的关键字与三个下拉。
     // 筛选区控件：关键字防抖 220ms，三个下拉即时生效（没有「应用」这一步）
