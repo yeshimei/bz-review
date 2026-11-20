@@ -199,7 +199,7 @@ Still in production — the link will be added here and in the plugin's "video t
 
 ### Features and pricing
 
-The free edition is complete and unlimited in time: 20 review notes and 50 highlight cards, with every feature the plugin has. The purchased edition only removes the counts — both editions are identical in features, and every future feature will be too. Existing data above the free limits is never deleted.
+The free edition is complete and unlimited in time: 50 review notes and highlight cards combined. The purchased edition only removes the count — both editions are identical in features, and every future feature will be too. Existing data above the free limit is never deleted.
 
 A single build covers desktop and mobile. License keys are verified locally, offline, and are not tied to a device count — re-enter yours on a new machine. Purchase at the [store page](https://wzyp.cn/shop/IFCEI5I3). bz-review does not accept bz Reader license keys.
 
