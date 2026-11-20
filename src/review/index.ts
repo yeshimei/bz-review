@@ -21,6 +21,7 @@ import type { Rating } from './fsrs';
 import { setReviewPlanApi } from './reader-api';
 import { noteCardKey, selectionRange } from './note-source';
 import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
+import { embeddedReviewRoute } from './reader-embed';
 import { tryGetSettings } from '../core/settings-provider';
 import { canUseCapability, capabilityBlock } from '../data/entitlement';
 import {
@@ -322,6 +323,18 @@ export function ensureReview(app: App): void {
  */
 export async function openReviewPanel(app: App): Promise<void> {
   ensureReview(app);
+  /* Reader 开了「书架内显示复习」时，命令直接借道 Reader 的复习页签（2026-11-20）：
+     那里嵌着同一份面板，没必要再开一张带左侧栏的原生页。必须在 releaseEmbedded
+     之前判断——借道时那份嵌入正挂在 Reader 里，收掉就露空壳了。 */
+  const embedRoute = embeddedReviewRoute(app);
+  if (embedRoute) {
+    /* 只借道、不碰已存在的原生独立页：detach 它会触发 ReviewPanelView.onClose，
+      那套清理会把正要挂进 reader 的嵌入面板一起收掉，留下一张空标签（踩过）。
+      独立页留着无妨——openStudy 会把 reader 书架 reveal 到前台，用户看到的就是
+      内嵌页；旧标签还在后台，但不在眼前。 */
+    embedRoute.openReviewTab();
+    return;
+  }
   /* 书架「复习」页签和命令共用同一份面板 DOM：命令进来先把嵌入收掉、让书架回书库，
      否则新开的原生页只会露出空壳，用户看到的还是书架里那一屏。 */
   uiManager?.releaseEmbedded();

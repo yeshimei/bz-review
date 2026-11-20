@@ -18,12 +18,14 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 
 等我确认后再改动代码。
 
+所有事情做完后，必须逐项跑真机验证并截图，把每项的描述和完整截图写进一份 Markdown 报告发给我点开查看。
+
 ## 硬约束（看见就是错）
 
 1. 样式只认 `src/<域>/styles.css`（共享基线 `src/core/`、组件 `src/core/ui/`），构建时聚合成根 `styles.css`；域内禁内联视觉与裸选择器——构建期对裸选择器硬断言失败，锚点是 `[data-bzrv]` / `#bzrv-`，私有变量 `--bzrv-*`。
 2. 生成物一律不手改：根 `main.js`、根 `styles.css`，都是构建聚合产物，改源再构建。
 3. 命令 ID 用 `review-<动作>`；通知正文不带 emoji，新语义先查 `src/core/notice.ts` 的 `ICONS`，确无匹配再加类型（图标 + 颜色 class + 默认时长），别把 emoji 写进正文。
-4. 数据默认写 `CONFIG/REVIEW/review.json`（另有 `review-quiz.json` / `review-fit.json`），与 bz 的 `CONFIG/STORAGE/review.json` 分开；「从 bz 导入」只导一次、不覆盖、不动 bz 的数据（`src/data/migrate.ts`）。storagePath 已是显式值一律原样透传，别当成要搬家。
+4. 数据默认写库根 `bz-review/storage/review.json`（另有 `review-quiz.json` / `review-fit.json`），与 bz 的 `CONFIG/STORAGE/review.json` 分开；「从 bz 导入」只导一次、不覆盖、不动 bz 的数据（`src/data/migrate.ts`）。storagePath 已是显式值一律原样透传，别当成要搬家。
 5. 改动走仓库外 worktree 并从最新 master 分叉，worktree 内不构建。
 6. 授权是离线验签，签名密钥只在 `scripts/keys/`（gitignore），绝不进提交、绝不外发；基础版 20 篇笔记 + 50 条划线卡、高级版不限，功能两边完全一致——数量门控别写成功能差异。
 7. 给 bz Reader 的门面是插件实例上的 `reviewApi`（`src/main.ts`），契约 `version` 只在语义变更时升；分工是「Reader 决定哪些内容值得复习，Review 只负责复习」，别在 Review 里重做选题/出题。
@@ -56,13 +58,14 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 改 UI 的快速循环走测试库 `E:/Obsidian/bz reader`（插件目录 `…/.obsidian/plugins/bz-review`）：
 
 - **日常只落测试库**：构建显式带 `BZ_REVIEW_VAULT_DIR="E:/Obsidian/bz reader/.obsidian/plugins/bz-review"`；缺省落主库 `E:/Obsidian/叫我包仔`，漏写就把半成品推进主库了——构建前先确认。`node esbuild.config.mjs` = watch 常驻（同时监听 CSS 自动重出 `styles.css`）；`node esbuild.config.mjs once` = 一次性开发构建；`node esbuild.config.mjs production` = 发布构建（压缩、无 sourcemap），额外把 `main.js` 复制到仓库根。
-- **开机直达弹窗**：往测试库数据目录（默认 `CONFIG/REVIEW`）放 `debug-open.json`，内容 `{"command":"review-open"}`（换成目标命令 ID），插件 layout-ready 后自动执行；文件坏 / 命令不存在一律静默跳过。删掉文件即恢复常规启动。
+- **开机直达弹窗**：往测试库数据目录（默认 `bz-review/storage`）放 `debug-open.json`，内容 `{"command":"review-open"}`（换成目标命令 ID），插件 layout-ready 后自动执行；文件坏 / 命令不存在一律静默跳过。删掉文件即恢复常规启动。
 - **门禁口径不变**：改完在 worktree 跑 `npm test`（vitest）+ `npm run typecheck`（tsc --noEmit）+ 自审 + diff 审查；测试库只管「人眼看效果」，不算验证。
 
 ## 提交
 
 - Conventional Commits（`feat`/`fix`/`style`/`perf`…），标题一眼能看出改了什么。
 - 合入流程：worktree → `git merge master` → 门禁（见上）→ 合回主仓 → 推送。
+- **合并之后必须清除 worktree（硬性）**：分支一合回 master，同一个动作里就收尾——`git worktree remove <路径>` → `git worktree prune` → `git branch -d <分支>`。留着的已合并 worktree 只会攒成一片旧目录，还容易让人误以为改动没进主分支。worktree 里挂了 `node_modules` junction 的，先摘 junction 再删目录（Windows 直接递归删会把主仓依赖一起带走）。**没合并的分支一个都不许删**，只清理已合并的那批；清完用 `git worktree list` 复核。
 - 本仓目前只有本地分支、没配 remote；要推送先确认目标远端。
 
 ## 去哪儿查

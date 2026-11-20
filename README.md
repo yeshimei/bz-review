@@ -28,6 +28,10 @@
 
 审核期间或搜不到时，用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 添加本仓库安装，或手动下载 Release 里的 `main.js`、`manifest.json`、`styles.css`，放进 `<你的库>/.obsidian/plugins/bz-review/` 后启用。
 
+## 视频教程
+
+视频还在制作中，做好后会在这里补上链接；插件里的「看视频教程」按钮也会同步指向它。
+
 ## 功能
 
 基础版免费、不限时，限 20 篇笔记与 50 条划线卡；高级版不限量。两版功能完全一样，以后新增的功能也一样。
@@ -72,7 +76,7 @@
 - 激活码在 **复习计划 → 设置 → 授权** 里填入，本地验签，不联网。
 - 不绑定设备数：换电脑或手机时，在新设备的同一位置再填一次即可。
 - 桌面端与移动端是同一个包，买一次两边都能用。
-- bz-review 只认自己的激活码，不和 bz Reader 的码混用。
+- 激活码范围：**赞助人与专属定制码**（码里带 `patron` 标记）在 bz Reader 和 bz-review 都能激活；两款插件的普通高级版码各自独立，只在对应插件激活。
 
 ## 两种复习方式
 
@@ -189,6 +193,10 @@ Install from the community directory (visible once the initial review passes):
 3. Enable it — a calendar-check icon appears in the left ribbon.
 
 While the review is pending, or if search doesn't find it, install with [BRAT](https://github.com/TfTHacker/obsidian42-brat), or download `main.js`, `manifest.json`, and `styles.css` from the Release and place them in `<your vault>/.obsidian/plugins/bz-review/`, then enable the plugin.
+
+### Video tutorial
+
+Still in production — the link will be added here and in the plugin's "video tutorial" button once it's ready.
 
 ### Features and pricing
 

@@ -6,12 +6,15 @@ import {
   canAddNote,
   licenseSummary,
   quotaBlock,
+  QuotaExceededError,
   quotaInfo,
   refreshLicense,
+  currentLicenseCode,
+  getLicenseState,
   remainingCards,
   remainingNotes,
 } from '../src/data/entitlement';
-import { HAS_KEYS, signCode } from './helpers/sign';
+import { HAS_KEYS, HAS_READER_KEYS, signCode, signReaderCode } from './helpers/sign';
 
 afterEach(async () => {
   await refreshLicense('');
@@ -40,6 +43,13 @@ describe('基础版上限', () => {
     expect(block.ok).toBe(false);
     expect(block.message).toContain('300');
     expect(block.message).not.toContain('删除');
+  });
+
+  it('到顶抛带类型的错误，界面据此弹升级窗而不是当成写盘失败', () => {
+    const err = new QuotaExceededError('note', '已用 20/20 篇复习笔记（基础版上限）。');
+    expect(err).toBeInstanceOf(Error);
+    expect(err.kind).toBe('note');
+    expect(err.message).toContain('20/20');
   });
 
   it('两类各数各的：笔记满了不影响划线卡', () => {
@@ -93,6 +103,42 @@ describe('高级版', () => {
     expect(state.paid).toBe(false);
     expect(canAddNote(20)).toBe(false);
     expect(licenseSummary()).toContain('已过期');
+  });
+
+  it.runIf(HAS_READER_KEYS)('Reader 的赞助人码在本插件也能解锁数量', async () => {
+    const code = signReaderCode({
+      id: 'BZR-AF-2026-0176',
+      name: 'Pomodorinettina',
+      patron: true,
+      plan: 'lifetime',
+    });
+    const state = await refreshLicense(code);
+    expect(state.paid).toBe(true);
+    expect(state.name).toBe('Pomodorinettina');
+    expect(canAddNote(9999)).toBe(true);
+    expect(licenseSummary()).toContain('Pomodorinettina');
+  });
+
+  it.runIf(HAS_KEYS)('试填错码不掉级、不覆盖真码', async () => {
+    const good = signCode({ id: 'REV-2026-0300', name: '原码' });
+    await refreshLicense(good);
+    expect(getLicenseState().paid).toBe(true);
+    expect(currentLicenseCode()).toBe(good);
+
+    const r = await refreshLicense('这不是码', false);
+    expect(r.paid).toBe(false);
+    /* 这枚码不认，但运行期授权、生效码、状态文案都还是原来那枚 */
+    expect(getLicenseState().paid).toBe(true);
+    expect(currentLicenseCode()).toBe(good);
+    expect(licenseSummary()).toContain('原码');
+  });
+
+  it.runIf(HAS_KEYS)('启动验签（默认）遇到坏码仍按未激活处理', async () => {
+    const good = signCode({ id: 'REV-2026-0301', name: '原码' });
+    await refreshLicense(good);
+    const r = await refreshLicense('这不是码');
+    expect(r.paid).toBe(false);
+    expect(getLicenseState().paid).toBe(false);
   });
 
   it('填错码只降级，不抛错', async () => {

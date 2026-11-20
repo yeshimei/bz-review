@@ -8,11 +8,12 @@
  */
 import { stripMdExt } from '../core/utils';
 import { TFile, type App } from 'obsidian';
+import { cardTitleOf } from './card-title';
 import { backupOriginal, diskReadText, enqueueFileTask, jsonFileStore, storageFile } from '../core/storage';
 import { tryGetSettings } from '../core/settings-provider';
 import { FSRS_FIRST_INTERVALS, LADDER_MAX, TOTAL_STAGES } from './fsrs';
 import { clipWToBounds } from './fit';
-import { canAddCard, canAddNote, quotaBlock, type PlanCounts } from '../data/entitlement';
+import { canAddCard, canAddNote, quotaBlock, QuotaExceededError, type PlanCounts } from '../data/entitlement';
 import {
   fingerprintsOf,
   mergeReviewItems,
@@ -59,6 +60,16 @@ export interface ReviewCard {
   chapterTitle?: string;
   /** 划线原文（超长由调用方截断） */
   text: string;
+  /**
+   * 列表里区分「谁是谁」的简短标题（2026-11-20）。
+   *
+   * 同一本书同一章往往有十几张卡，光靠书名·章节根本分不清；这里按制卡方式
+   * 给每张卡一个短标题：抽认卡取问句、做题卡取第一题题干、全文回忆取全文
+   * （都截断）。做题卡的题目存在独立题库、卡上拿不到，所以生成后回填这个
+   * 字段；抽认卡/全文卡由 cardTitleOf 直接从卡上内容派生，不必落库。
+   * 纯展示字段，编辑界面不暴露给用户。
+   */
+  displayTitle?: string;
   /** 用户当时的想法 */
   comment?: string;
   /** 回到原文的链接（obsidian:// 协议串） */
@@ -168,14 +179,9 @@ export function planCounts(items: readonly ReviewItem[]): PlanCounts {
   return { notes, cards };
 }
 
-/** 卡片在列表里显示的那行字：书名 · 章节，缺章节就只写书名 */
-export function cardTitleOf(card: ReviewCard): string {
-  const book = String(card?.bookTitle ?? '').trim();
-  const chapter = String(card?.chapterTitle ?? '').trim();
-  if (book && chapter) return `${book} · ${chapter}`;
-  if (book) return book;
-  return String(card?.text ?? '').slice(0, 24) || '划线卡';
-}
+/* 列表短标题的纯函数在 card-title.ts（不碰 obsidian，可单测）；这里原样
+   再导出，既有调用方一行都不用改。 */
+export { cardTitleOf } from './card-title';
 
 export class ReviewDataManager {
   app: App;
@@ -202,7 +208,13 @@ export class ReviewDataManager {
       if (isCardItem(item)) {
         item.file = undefined;
         item.isMissing = false;
-        item.name = item.name || cardTitleOf(item.card!);
+        /* 标题每次加载都按当前内容重算（2026-11-20）：老卡存的名字是「围城·第一章」，
+           同章十几张全一样；现在 qa/题目/全文都在卡上（或 displayTitle 已回填），
+           重算后每张卡各显示自己的那一句。
+           这是**派生展示字段**：盘上旧值与本机新值不同不代表谁改过数据，所以它
+           不进内容指纹（见 store-format 的 DERIVED_FIELDS）——否则每评一张旧卡都会
+           误报「别的设备也改过」。 */
+        item.name = cardTitleOf(item.card!);
         this.finishSchedule(item);
         valid.push(item);
         continue;
@@ -413,7 +425,7 @@ export class ReviewDataManager {
     return this.mutate((items) => {
       if (items.some((i) => i.filePath === filePath)) throw new Error('该笔记已在复习中');
       const block = quotaBlock('note', planCounts(items));
-      if (!block.ok) throw new Error(block.message);
+      if (!block.ok) throw new QuotaExceededError('note', block.message);
       const newItem = this.newReviewItem(filePath, fileName);
       items.push(newItem);
       return newItem;
