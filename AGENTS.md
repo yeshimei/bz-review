@@ -18,6 +18,8 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 
 等我确认后再改动代码。
 
+所有事情做完后，必须逐项跑真机验证并截图，把每项的描述和完整截图写进一份 Markdown 报告发给我点开查看。
+
 ## 硬约束（看见就是错）
 
 1. 样式只认 `src/<域>/styles.css`（共享基线 `src/core/`、组件 `src/core/ui/`），构建时聚合成根 `styles.css`；域内禁内联视觉与裸选择器——构建期对裸选择器硬断言失败，锚点是 `[data-bzrv]` / `#bzrv-`，私有变量 `--bzrv-*`。
@@ -63,6 +65,7 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 
 - Conventional Commits（`feat`/`fix`/`style`/`perf`…），标题一眼能看出改了什么。
 - 合入流程：worktree → `git merge master` → 门禁（见上）→ 合回主仓 → 推送。
+- **合并之后必须清除 worktree（硬性）**：分支一合回 master，同一个动作里就收尾——`git worktree remove <路径>` → `git worktree prune` → `git branch -d <分支>`。留着的已合并 worktree 只会攒成一片旧目录，还容易让人误以为改动没进主分支。worktree 里挂了 `node_modules` junction 的，先摘 junction 再删目录（Windows 直接递归删会把主仓依赖一起带走）。**没合并的分支一个都不许删**，只清理已合并的那批；清完用 `git worktree list` 复核。
 - 本仓目前只有本地分支、没配 remote；要推送先确认目标远端。
 
 ## 去哪儿查

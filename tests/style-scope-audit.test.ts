@@ -86,4 +86,17 @@ describe('样式作用域审计', () => {
     if (!fs.existsSync(cssFile)) return;
     expect(fs.readFileSync(cssFile, 'utf8')).toContain('[data-bzrv]');
   });
+
+  it('开关旋钮样式修复进了产物：两条 checkbox-container::after 都清了宿主 transform（2026-11-20 真机反馈）', () => {
+    const cssFile = path.join(ROOT, 'styles.css');
+    if (!fs.existsSync(cssFile)) return; // 还没构建过就跳过
+    const css = fs.readFileSync(cssFile, 'utf8');
+    /* 源码里 b024e90 已加 transform:none，但产物 styles.css 若没重新构建就还是旧的——
+       用户真机看到的就是旧产物：圆点被宿主 translateX 顶出胶囊。这里守住产物同步。 */
+    const toggleBlock = css.slice(
+      css.indexOf('.bzrv-settings-content .bzs-setgrp .checkbox-container'),
+      css.indexOf('.bzrv-settings-content .bzs-setgrp .checkbox-container') + 1600
+    );
+    expect(toggleBlock.match(/transform:\s*none/g)?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
 });

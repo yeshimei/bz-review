@@ -245,7 +245,7 @@ export function analysisHtml(data: RaData): string {
   }).join('');
   S.push(frame(12, `
     <div class="ra-bedrock">
-      <div class="ra-bedrock-rows" data-r="brows">${bedRows || '<p class="ra-sline">还没有进入 FSRS 的笔记——基岩要靠一次次「记得」垒起来。</p>'}</div>
+      <div class="ra-bedrock-rows" data-r="brows">${bedRows || '<p class="ra-sline">还没进入 FSRS 的数据。完成第一次复习后，这里会显示记忆的基岩与水位变化。</p>'}</div>
       <div class="ra-bedrock-side">
         <div class="ra-kv big"><span class="ra-k">FSRS 在册</span><b>${data.fsrsN}<span class="ra-u">篇</span></b></div>
         <div class="ra-kv"><span class="ra-k">阶梯爬坡</span><b>${data.ladderN}<span class="ra-u">篇</span></b></div>

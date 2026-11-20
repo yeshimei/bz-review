@@ -19,13 +19,14 @@ export const GROUP_SUBTITLES: Record<string, string> = {
   记忆算法: 'Algorithm',
   自动化: 'Automation',
   AI: 'AI',
-  朗读: 'Audio',
+  探索: 'Explore',
+  插件: 'Plugins',
 };
 
 /**
  * 两列分栏：按每组的体量（行数）贪心装进当前更矮的一列。
  *
- * 以前写死「前五组左、其余右」，复习节奏/朗读这些长卡片一多，左列就空出半屏。
+ * 以前写死「前五组左、其余右」，复习节奏/探索这些长卡片一多，左列就空出半屏。
  * 现在只保证「同组不拆」和「列内保持原顺序」，两列总高度尽量齐平；编号由
  * CSS 计数器按 DOM 顺序（左列到底、再右列）自动出，所以左列编号在前。
  * weights 缺省时按组数均分（纯测试与无 schema 场景用）。
@@ -93,5 +94,33 @@ export function aboutBarHtml(version: string, paid: boolean, name: string, group
       <button class="bzs-about-link" type="button" data-act="support">${HEART_SVG}<b>支持作者</b><span class="bzs-sr-only">看看支持作者的方式</span></button>
       <span class="dot"></span>
       <button class="bzs-about-link" type="button" data-act="changelog">${HISTORY_SVG}<b>更新日志</b><span class="bzs-sr-only">看看每一版改了什么</span></button>
+    </div>`;
+}
+
+const READER_ICON_SVG =
+  '<svg class="ic" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">' +
+  '<path d="M12 6c-2.2-1.6-5-1.9-8-1.3v13c3-.6 5.8-.3 8 1.3 2.2-1.6 5-1.9 8-1.3v-13c-3-.6-5.8-.3-8 1.3Z"/><path d="M12 6v13"/></svg>';
+const DOWNLOAD_SVG =
+  '<svg class="ic" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">' +
+  '<path d="M12 3v12m0 0 4-4m-4 4-4-4M4 19h16"/></svg>';
+
+/**
+ * 插件组 HTML（2026-11-20）：能力卡形态，直接下载 bz Reader。
+ * 下载按钮走 GitHub 主线路，连不通自动切码云——兜底内置在动作层，不给用户多一行说明。
+ */
+export function pluginGroupHtml(): string {
+  return `<div class="bzs-setgrp wide bzs-plugin-grp">
+      <h3 data-en="Plugins">插件</h3>
+      <div class="bzs-cap is-on">
+        <span class="bzs-capico">${READER_ICON_SVG}</span>
+        <div class="bzs-capmain">
+          <div class="bzs-cap-t"><b>bz Reader</b><span class="bzs-capchip">配套阅读器</span></div>
+          <p>把库变成阅读器：桌面 + 手机、多种格式、AI 追问与全文问答、离线朗读、阅读统计，数据全留本地。</p>
+          <div class="bzs-captags"><span class="bzs-tag">多格式</span><span class="bzs-tag">AI 问答</span><span class="bzs-tag">离线朗读</span></div>
+          <div class="bzs-capfoot">
+            <button class="bzs-btn sm pri" type="button" data-act="readerdownload">${DOWNLOAD_SVG}下载安装</button>
+          </div>
+        </div>
+      </div>
     </div>`;
 }

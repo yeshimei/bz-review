@@ -70,8 +70,6 @@ export default interface BzSettings {
    * 选了具体方式就不再弹选择界面，新卡一律按它制。
    */
   reviewCardDefaultMethod: 'manual' | 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
-  /** 开卡前是否弹二次确认面板（抽认卡可改内容、做题卡可删题）；默认开 */
-  reviewCardConfirm: boolean;
   /** 评级键位（四个字符，顺序＝忘了/困难/一般/简单；默认 1234） */
   reviewRatingKeys: string;
   /** 休假到哪天（ISO；空 = 不休假）。到期那天把整份计划顺延，回来不雪崩 */
@@ -177,7 +175,6 @@ export const DEFAULT_SETTINGS: BzSettings = {
   reviewCardMode: 'flashcard',
   /* 默认「手动」：加入计划那一刻每次问用户选哪种制卡方式（用户 2026-11-15 拍板的默认值） */
   reviewCardDefaultMethod: 'manual',
-  reviewCardConfirm: true,
   reviewRatingKeys: '1234',
   reviewVacationUntil: '',
   reviewVacationFrom: '',

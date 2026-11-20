@@ -1,39 +1,44 @@
 /**
- * 独立复习界面的「复习计划」页签（2026-11-20）
+ * 独立复习界面顶部的「复习」页签（2026-11-20，图三形制）
  *
- * 独立界面原来左侧有一条竖栏（只有「复习计划」一项），像图二那样。用户要的是
- * 像 bz-reader 图三那样：把那一项挪到顶部成一个横排页签，左栏整个撤掉。
- * 页签点击回主列表（承接原竖栏 onSelect），其余功能仍走头栏右侧图标。
- *
- * 嵌入 reader 时头行由 CSS 整体隐藏、页签由 reader 画，所以这里只管独立态的
- * head markup，embed 态不受影响。纯函数钉在 render 层。
+ * 左栏整条撤掉，那一项挪到头栏成了一个横排页签。三条口径：
+ *   1. 页签文字永远固定「复习」两个字——进内置页（数据/设置）也不换成页名；
+ *   2. 进内置页时页签淡化、对应图标高亮即可，页面名不占页签位；
+ *   3. 嵌入 reader 时头行由 CSS 整体隐藏、页签由宿主画，这里只管独立态。
+ * 纯函数钉在 render 层。
  */
 import { describe, expect, it } from 'vitest';
 import { panelHeadHtml, queueViewHtml } from '../src/review/render';
 
-describe('独立界面头行：复习计划是一个可点页签', () => {
-  it('标题位渲染成 stutab 页签按钮，带 home 动作与日历图标', () => {
-    const html = panelHeadHtml({ title: '复习计划' });
+describe('独立界面头行：固定的「复习」页签', () => {
+  it('页签渲染成 stutab 按钮，文字固定「复习」，带日历图标', () => {
+    const html = panelHeadHtml();
     expect(html).toContain('bzrv-stutab');
     expect(html).toMatch(/<button[^>]*data-act="home"[^>]*class="[^"]*bzrv-stutab[^"]*"/);
     expect(html).toContain('calendar-check');
-    expect(html).toContain('复习计划</span>');
+    expect(html).toMatch(/bzrv-stutab-txt">复习<\/span>/);
   });
 
-  it('页签默认选中态（is-on），带强调下划线那套类', () => {
-    const html = panelHeadHtml();
-    expect(html).toMatch(/bzrv-stutab[^"]*is-on/);
+  it('主队列时页签选中（is-on + 下划线）', () => {
+    expect(panelHeadHtml()).toMatch(/bzrv-stutab[^"]*is-on/);
+  });
+
+  it('即使外面传了 title，页签也不改名（内置页 fixed 显示复习）', () => {
+    const html = panelHeadHtml({ title: '数据', activePage: 'stats' });
+    expect(html).toMatch(/bzrv-stutab-txt">复习<\/span>/);
+    expect(html).not.toContain('bzrv-stutab-txt">数据<');
+  });
+
+  it('进内置页时页签淡化（无 is-on），对应图标高亮', () => {
+    const html = panelHeadHtml({ activePage: 'stats' });
+    expect(html).not.toMatch(/bzrv-stutab[^"]*is-on/);
+    expect(html).toMatch(/data-act="data"[^>]*is-on/);
   });
 
   it('主队列头行也带上这个页签（queueViewHtml 走同一个 panelHeadHtml）', () => {
     const html = queueViewHtml([], { now: new Date(2026, 10, 20).getTime() });
     expect(html).toContain('bzrv-stutab');
     expect(html).toContain('data-act="home"');
-  });
-
-  it('内置页（数据/设置）的头行也有页签，点它能回主列表', () => {
-    const html = panelHeadHtml({ title: '数据', activePage: 'stats' });
-    expect(html).toContain('bzrv-stutab');
-    expect(html).toContain('data-act="home"');
+    expect(html).toMatch(/bzrv-stutab-txt">复习<\/span>/);
   });
 });
