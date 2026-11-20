@@ -127,6 +127,13 @@ export interface ReviewCardInput {
    * 删过、补过、重新生成过的题必须原样保留。不给则走原来的生成路径。
    */
   questions?: Array<{ q: string; options: string[]; correct: number[]; explain?: string }>;
+  /**
+   * 挖空卡已经挖好的空位（2026-11-21，契约 v5）。
+   *
+   * 制卡流程现在住在 Review 里，自己就能挖；阅读器老版本不会传这个字段，
+   * 按原路径后台生成。给了就不再生成——用户手工挖的空必须原样保留。
+   */
+  cloze?: { text: string; blanks: string[] };
   /** 媒体卡的图片/音频（库内路径）；mode='media' 时用 */
   media?: { images?: string[]; audio?: string };
   /** 图片遮挡的图片与区域；mode='occlusion' 时用 */

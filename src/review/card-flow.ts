@@ -1,96 +1,18 @@
 /* ============================================================
- * bz · 制卡与开卡两道流程界面（review/card-flow.ts）
+ * bz · 重新生成后的确认面板（review/card-flow.ts）
  *
- * 用户 2026-11-15 的两条口径，落成两个流程框：
+ * 2026-11-21 起「选一种复习方式」只留在统一制卡流程里（card-wizard），
+ * 原来这套列表式选择器整段删除——一个插件不再有第二种制卡界面。
  *
- *   一、**制卡方式选择**（加入复习那一刻）
- *       默认每次问「这段内容做成哪种卡」；勾了「记住」或设置里选了具体方式，
- *       以后不再问。选出来的方式写进 `ReviewCard.mode`，复习时就按它走。
+ * 这个文件现在只负责「重新生成 AI 内容」的确认：
+ * 先生成草稿、摆给用户看，点「确认修改」才覆盖卡上原来的题面。
  *
- *   二、**重新生成后的确认**。右键「重新生成 AI 内容」不再直接覆盖——先生成
- *       草稿，用同一套确认面板给用户看，确认后才替换。
- *
- * 原「开卡前二次确认」（「开卡前先看一眼」开关）已于 2026-11-20 按用户要求整段删除：
- * 点开卡片直接进会话，不再弹「看一遍再开始 / 这一轮的题」。两块可复用面板
- * （buildFlashcardParts / buildQuizParts）保留给重新生成确认用，共用 core/flow-dialog 壳。
+ * 原「开卡前二次确认」已于 2026-11-20 整段删除：点开卡片直接进会话。
  * ============================================================ */
 import { openFlowDialog } from '../core/flow-dialog';
-import { CARD_MODE_LABELS } from './card-mode-meta';
-export { CARD_MODE_LABELS, cardModeLabel } from './card-mode-meta';
 import type { CardMode } from './card-ai';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { ReviewItem } from './data';
-
-/** 制卡方式选择的结果：方式 + 是否要「以后别再问」 */
-export interface PickCardMethodResult {
-  mode: CardMode;
-  /** 勾了「记住」= 写进设置当默认方式，之后不再弹这个框 */
-  remember: boolean;
-}
-
-/**
- * 让用户选一种制卡方式。
- *
- * 取消（遮罩 / ESC / 「先不建」）返回 **null**，调用方据此什么都不做——
- * 不能把取消当成「用默认方式继续」，那会凭空给用户加一张他没要的卡。
- */
-export async function pickCardMethod(purpose: 'add' | 'regenerate' = 'add'): Promise<PickCardMethodResult | null> {
-  /* 勾选框只属于「加入」：重新生成是一次性动作，没有「以后别问」这回事。 */
-  const regenerating = purpose === 'regenerate';
-  const body = createDiv();
-  body.className = 'bzrv-card-method';
-
-  const list = createDiv();
-  list.className = 'bzrv-card-method-list';
-  for (const m of CARD_MODE_LABELS) {
-    const row = createDiv();
-    row.className = 'bzrv-card-method-row';
-    const name = createEl('b');
-    name.textContent = m.label;
-    const hint = createSpan();
-    hint.textContent = m.hint;
-    row.appendChild(name);
-    row.appendChild(hint);
-    list.appendChild(row);
-  }
-  body.appendChild(list);
-
-  let remember = false;
-  if (!regenerating) {
-    const rememberWrap = createEl('label');
-    rememberWrap.className = 'bzrv-card-method-remember';
-    const rememberBox = createEl('input');
-    rememberBox.type = 'checkbox';
-    const rememberText = createSpan();
-    rememberText.textContent = '记住这个选择，以后加卡不再问';
-    rememberWrap.appendChild(rememberBox);
-    rememberWrap.appendChild(rememberText);
-    body.appendChild(rememberWrap);
-    remember = rememberBox.checked;
-  }
-
-  const actions = [
-    { label: regenerating ? '取消' : '先不建', value: 'cancel' },
-    ...CARD_MODE_LABELS.map((m) => ({ label: m.label, value: m.value })),
-  ];
-
-  const picked = await openFlowDialog({
-    title: regenerating ? '重新生成用哪种方式？' : '这段内容做成哪种卡？',
-    message: regenerating
-      ? '选一种方式重新生成题面；原卡不会动，直到你点「确认修改」。'
-      : '选一种制卡方式；复习时这张卡就按它走。',
-    body,
-    actions,
-  });
-
-  if (!picked || picked === 'cancel') return null;
-  const mode = CARD_MODE_LABELS.find((m) => m.value === picked)?.value;
-  if (!mode) return null;
-  if (!regenerating && body.querySelector('input') instanceof HTMLInputElement) {
-    remember = (body.querySelector('input') as HTMLInputElement).checked;
-  }
-  return { mode, remember };
-}
 
 /* ── 两块可复用的确认面板（重新生成后用） ── */
 

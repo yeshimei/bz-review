@@ -18,7 +18,7 @@ import { closeStatsModal } from './stats-ui';
 import { unloadReviewAnalysis } from './analysis/index';
 import { cancelActiveFlowDialog } from '../core/flow-dialog';
 import type { Rating } from './fsrs';
-import { setReviewPlanApi } from './reader-api';
+import { getReviewPlanApi, setReviewPlanApi } from './reader-api';
 import { noteCardKey, selectionRange } from './note-source';
 import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
 import { embeddedReviewRoute } from './reader-embed';
@@ -27,7 +27,6 @@ import { canUseCapability, capabilityBlock } from '../data/entitlement';
 import {
   applyCardContent,
   cardModeOf,
-  defaultCardMethod,
   ensureCardContent,
   generateCardContent,
   modeOfCard,
@@ -37,7 +36,7 @@ import {
   type CardMode,
   type CardPrepareContext,
 } from './card-ai';
-import { pickCardMethod } from './card-flow';
+import { openCardWizard, type CardWizardOptions, type CardWizardSource } from './card-wizard';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { cardQuota, quizOf, withoutPrepared } from './reader-input';
 import { planCounts } from './data';
@@ -448,29 +447,32 @@ export async function reviewAddCurrent(app: App): Promise<void> {
 }
 
 /**
- * 定下这张卡用哪种方式制卡（2026-11-15）。
+ * 统一制卡流程的宿主（2026-11-21）。
  *
- * 设置里选了具体方式就直接用它、不再打扰；默认「手动」时才弹选择框，
- * 框里勾了「以后别问」就把选择写回设置——用户不用再跑一趟设置页。
+ * 流程本身住在 Review（card-wizard.ts），这里只把「加卡 / 查状态 / 查额度」
+ * 三件事接到 Review 自己的门面上——它顺手做了题库保存、补题排队与事件刷新，
+ * 比直接摸 dataManager 少漏一步。Reader 以后也走这个入口。
  */
-async function resolveCardMethod(): Promise<CardMode | null> {
-  const preset = defaultCardMethod();
-  if (preset) return preset;
-  const picked = await pickCardMethod();
-  if (!picked) return null;
-  if (picked.remember) {
-    const { getSettings, saveSettings } = await import('../core/settings-provider');
-    (getSettings()).reviewCardDefaultMethod = picked.mode;
-    await saveSettings();
+export function openCardWizardForAdd(app: App, opts: CardWizardOptions): void {
+  ensureReview(app);
+  const api = getReviewPlanApi();
+  if (!api) {
+    notice('复习模块还没准备好，稍后再试一次');
+    return;
   }
-  return picked.mode;
+  openCardWizard(app, {
+    addCards: (cards) => api.addCards(cards),
+    statusOf: (keys) => api.statusOf(keys),
+    quota: () => api.quota(),
+  }, opts);
 }
 
 /**
  * 把**选中的内容**放进复习（review-add-selection，2026-11-15）。
  *
- * 以前只能整篇笔记加入，或者靠 `::` 语法手写卡片文件；用户想复习某一段话，
- * 得先造一篇笔记。现在选中任意文字就能直接做成一张卡，方式当场选。
+ * 2026-11-21 改：不再「选完方式直接入库」——交棒给统一制卡流程，
+ * 先出题面、确认才加入。以前这个入口的列表弹窗与 Reader 的卡片网格是
+ * 两套界面，用户说是「从设计一开始就很蠢」，现在只剩一套。
  */
 export async function reviewAddSelection(app: App, editorFromMenu?: unknown): Promise<void> {
   ensureReview(app);
@@ -491,34 +493,46 @@ export async function reviewAddSelection(app: App, editorFromMenu?: unknown): Pr
   /* 记下路径 + 字符范围：复习时据此跳回这篇笔记并把那段重新选中 */
   const range = selectionRange(editor);
   const sourceNote = range ? { path: file.path, ...range } : undefined;
-  const method = await resolveCardMethod();
-  if (!method) return;
+  /* 钥匙必须是「不可能是真实路径」的字符串——排期表拿它当 filePath 用，
+     真实路径会让它在列表里被当成一篇笔记去打开。选段有出处时用稳定钥匙，
+     同一篇同一段重复加入不排两次；没出处（老编辑器）退回时间戳口径。 */
+  const key = sourceNote ? noteCardKey(sourceNote) : `sel:${file.path}:${Date.now()}`;
+  const source: CardWizardSource = {
+    key,
+    bookTitle: file.basename,
+    text,
+    ...(sourceNote ? { sourceNote } : {}),
+  };
+  openCardWizardForAdd(app, { sources: [source] });
+}
 
+/**
+ * 文件树右键：笔记 / 文件夹加入复习（2026-11-21）。
+ *
+ * 只收 `.md`，其它文件类型调用方根本不加菜单项；文件夹递归收里面的笔记。
+ * 「批量加入」没有单独界面——菜单就是菜单，点一下加一批，结果用一条通知说清。
+ */
+export async function reviewAddPath(app: App, path: string, isFolder: boolean): Promise<void> {
+  ensureReview(app);
+  const api = getReviewPlanApi();
+  if (!api) return;
+  const all = app.vault.getFiles().filter((f) => f.extension === 'md');
+  const prefix = path.endsWith('/') ? path : `${path}/`;
+  const paths = (isFolder ? all.filter((f) => f.path.startsWith(prefix)).map((f) => f.path) : [path])
+    .filter((p) => p.toLowerCase().endsWith('.md'));
+  if (!paths.length) {
+    notice(isFolder ? '这个文件夹里没有笔记' : '只有笔记能加入复习');
+    return;
+  }
   try {
-    /* 钥匙必须是「不可能是真实路径」的字符串——排期表拿它当 filePath 用，
-       真实路径会让它在列表里被当成一篇笔记去打开。选段有出处时用稳定钥匙，
-       同一篇同一段重复加入不排两次；没出处（老编辑器）退回时间戳口径。 */
-    const key = sourceNote ? noteCardKey(sourceNote) : `sel:${file.path}:${Date.now()}`;
-    const card: ReviewCard = {
-      key,
-      bookTitle: file.basename,
-      text,
-      mode: method,
-      ...(sourceNote ? { sourceNote } : {}),
-    };
-    const res = await dataManager!.addCards([card]);
-    if (!res.added) {
-      notice(res.rejected ? '复习条目合计已到基础版上限：升级高级版后可继续加' : '这段内容已经在复习里了');
-      return;
-    }
-    /* 内容在后台补：模型慢的时候不该把「已加入」卡住（同划线卡口径） */
-    if (method !== 'plain' && method !== 'context') {
-      void queueCardPreparation([key], cardPrepareCtx(method));
-    }
-    notice(`已加入复习（${text.slice(0, 12)}${text.length > 12 ? '…' : ''}）`);
-    await uiManager?.refreshPanel();
+    const res = await api.addNotes(paths);
+    const parts = [`已加入 ${res.added} 篇`];
+    if (res.exists) parts.push(`${res.exists} 篇本来就在计划里`);
+    if (res.rejected) parts.push(`${res.rejected} 篇超出基础版上限`);
+    if (res.notFound) parts.push(`${res.notFound} 篇找不到`);
+    if (res.added || res.exists) notice(parts.join('，'), res.added ? 'success' : 'warning');
   } catch (e) {
-    notifyActionError(e, '把选中内容加入复习', { onRetry: () => void reviewAddSelection(app) });
+    notifyActionError(e, '把笔记加入复习', { onRetry: () => void reviewAddPath(app, path, isFolder) });
   }
 }
 

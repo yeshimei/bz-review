@@ -148,6 +148,54 @@ export async function generateCardQuiz(
 }
 
 /**
+ * 只出一道（确认题面那屏的「补一道题」）。
+ *
+ * 与整份题库分开：整份按篇幅算 3~15 道，补题只要一道；共用生成器会被
+ * QUIZ_MIN 卡住，一次补三道，用户以为按钮坏了。提示词也只要求一道。
+ */
+export function buildSingleQuizPrompt(card: ReviewCard): string {
+  const book = String(card.bookTitle ?? '').trim();
+  const chapter = String(card.chapterTitle ?? '').trim();
+  const where = chapter ? `《${book}》${chapter}` : `《${book}》`;
+  return [
+    `下面是一条读书划线（${where}），请再出一道四选一的选择题。`,
+    '',
+    '要求：',
+    '1. 只出一道，四个选项、有且只有一个正确答案；',
+    '2. 问的是划线里说了什么、为什么这么说，不要问「出自哪本书」这种靠书名就能猜的；',
+    '3. 干扰项要像真的，但必须能从划线内容判出真假；',
+    '4. 带一句 explain：一句话解析正确答案，并点出原文依据；',
+    '5. 只输出 JSON，不要解释、不要代码块。',
+    '',
+    '结构：',
+    '{"questions":[{"question":"题目","options":["A","B","C","D"],"correctIndices":[0],"explain":"解析"}]}',
+    '',
+    `划线原文：${card.text}`,
+  ].join('\n');
+}
+
+/** 补一道题：任何失败返回 null（调用方给一句「这次没补出来」） */
+export async function generateOneQuizQuestion(
+  card: ReviewCard,
+  makeAI: () => AIService | null,
+): Promise<QuizQuestion | null> {
+  let ai: AIService | null = null;
+  try {
+    ai = makeAI();
+  } catch {
+    return null;
+  }
+  if (!ai) return null;
+  try {
+    const reply = await ai.json(buildSingleQuizPrompt(card));
+    const list = parseCardQuiz(String(reply ?? ''), 1);
+    return list?.[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * 这一轮抽哪几道。
  *
  * 固定抽三分之一（至少一道）：题库 15 道就抽 5 道，3 道就抽 1 道。洗牌用

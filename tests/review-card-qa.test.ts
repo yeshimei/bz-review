@@ -8,6 +8,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { keysWithQa, normalizeCardInput } from '../src/review/card-input';
+import { withoutPrepared } from '../src/review/reader-input';
 
 describe('normalizeCardInput：外部交来的卡片', () => {
   it('qa 原样保留，并补上生成时间', () => {
@@ -40,6 +41,37 @@ describe('normalizeCardInput：外部交来的卡片', () => {
   it('答案为空时退回原文，不留空背面', () => {
     const card = normalizeCardInput({ key: 'reader:b:h1', bookTitle: '书', text: '原文在这', qa: { q: '问题一是什么？', a: '  ' } });
     expect(card!.qa!.a).toBe('原文在这');
+  });
+
+  it('自带挖空空位：原样收下（用户手工挖的不能被后台重生成覆盖）', () => {
+    const card = normalizeCardInput({
+      key: 'reader:b:h1',
+      bookTitle: '书',
+      text: '婚姻像一座城。',
+      mode: 'cloze',
+      cloze: { text: '婚姻像{{1}}城。', blanks: ['一座'] },
+    }, 1700000000000);
+    expect(card!.cloze).toEqual({ text: '婚姻像{{1}}城。', blanks: ['一座'], at: 1700000000000 });
+  });
+
+  it('挖空标记不合法就不收，退回后台生成（宁可从原文重出，也不存坏卡）', () => {
+    const card = normalizeCardInput({
+      key: 'reader:b:h1',
+      bookTitle: '书',
+      text: '婚姻像一座城。',
+      mode: 'cloze',
+      cloze: { text: '婚姻像{{2}}城。', blanks: ['一座'] },
+    });
+    expect(card!.cloze).toBeUndefined();
+  });
+
+  it('带着挖空的卡不进后台补题队列', () => {
+    const cards = [{
+      key: 'reader:b:h1',
+      text: '婚姻像一座城。',
+      cloze: { text: '婚姻像{{1}}城。', blanks: ['一座'] },
+    }];
+    expect(withoutPrepared(['reader:b:h1'], cards)).toEqual([]);
   });
 
   it('空钥匙或空原文一律不收', () => {
