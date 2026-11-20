@@ -82,16 +82,36 @@ export function partitionQueue(
 }
 
 /**
+ * 同一组的兄弟卡一轮只出一张（2026-11-20，Anki 的 bury siblings）。
+ * 反向卡 / 挖空拆卡共享 groupId：连着复习同一段内容会虚高正确率、也浪费时间。
+ * 保留规则：同组多张同时到期时，取第一张（列表里的顺序），其余留到下一轮——
+ * 不是删除、不改排期，只是本轮不重复出现。没有 groupId 的卡完全不受影响。
+ */
+export function dedupeSiblings(items: readonly ReviewItem[]): ReviewItem[] {
+  const used = new Set<string>();
+  const out: ReviewItem[] = [];
+  for (const it of items) {
+    const gid = String(it.card?.groupId ?? '').trim();
+    if (gid && used.has(gid)) continue;
+    if (gid) used.add(gid);
+    out.push(it);
+  }
+  return out;
+}
+
+/**
  * 「开始本轮」集合（未排序、未截断）：逾期 ∪ R 阈值提前 ∪ 今日到期。
  * 与三区列同源（partitionQueue 的 overdue+today 再并入提前卡）——列表看到什么本轮就复习什么。
+ * 同组兄弟卡只取一张（burySiblings 默认开），设置里可关。
  */
-export function roundQueue(items: ReviewItem[], rThreshold: number, w: number[]): ReviewItem[] {
-  return items.filter((i) => {
+export function roundQueue(items: ReviewItem[], rThreshold: number, w: number[], burySiblings = true): ReviewItem[] {
+  const round = items.filter((i) => {
     if (!active(i)) return false;
     if (i.isOverdue) return true;
     if (isDueToday(i)) return true;
     return isEarlyDue(i, rThreshold, w);
   });
+  return burySiblings ? dedupeSiblings(round) : round;
 }
 
 /** R 阈值提前卡（挂「提前」tag 用；在 roundQueue 集合内但既非逾期也非今日到期） */

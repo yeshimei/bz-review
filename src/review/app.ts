@@ -576,9 +576,10 @@ export const reviewApp = {
     // item 6/9：开始本轮与三区列同口径（roundQueue 纯函数）——
     // 逾期 ∪ R 阈值提前 ∪ 今日到期（今日到期时刻未到 = 允许提前开始今天全部）
     const rThreshold = Number((getSettings()).reviewRThreshold) || DEFAULT_R_THRESHOLD;
+    const bury = (getSettings() as { reviewBurySiblings?: boolean }).reviewBurySiblings !== false;
     const round = opts.force
       ? items.filter((i) => !i.isCompleted && !i.completed && !i.isMissing)
-      : roundQueue(items, rThreshold, this.currentW());
+      : roundQueue(items, rThreshold, this.currentW(), bury);
     if (!round.length) {
       notice(opts.force ? '计划里还没有可复习的条目' : '没有逾期笔记', 'success');
       return;
