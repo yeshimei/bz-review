@@ -1,6 +1,6 @@
 /**
  * 做题家入口（ticket 17）：ensureQuiz/resetQuiz + 单例 re-export。
- * 独立命令入口已退役（ticket 098），做题家经复习计划域进入
+ * 独立命令入口已退役（ticket 098），做题家经复习域进入
  * （review/app.ts ensureQuiz + startReviewSession、review/quiz-panel.ts openQuizPanel）。
  * A5（深审批 C）：quizUpdate 删除——「更新题库」入口已随 ADR-0045 退役，
  * 全仓零调用方（原注释宣称的 review/ui.ts 调用点不存在），连带链见 session.ts/manager.ts。

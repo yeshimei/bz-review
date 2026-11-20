@@ -1,5 +1,5 @@
 /**
- * 复习计划 FSRS 幂律模型（ticket 16，源码 L11-64 逐字移植）
+ * 复习 FSRS 幂律模型（ticket 16，源码 L11-64 逐字移植）
  */
 export type Rating = 'again' | 'hard' | 'good' | 'easy';
 

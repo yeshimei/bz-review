@@ -1,5 +1,5 @@
 /**
- * 复习计划渲染纯层（issue 253：markup 单源收编，ADR-0104/0106 范式）
+ * 复习渲染纯层（issue 253：markup 单源收编，ADR-0104/0106 范式）
  *
  * markup 唯一出处：三区队列（头行/工具行/开始本轮条/三区列/底部信息行/空态宿主）、
  * 整窗冲刺（头行/加载/题卡/本轮队列/结果卡/结算屏）、难度弹窗、悬浮迷你评级条。
@@ -600,7 +600,7 @@ export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCt
           <button class="bzrv-icon-btn" data-act="mgr-bury"><span class="bzrv-sr-only">埋藏一天</span>${iconSpan('hourglass', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-restore"><span class="bzrv-sr-only">恢复</span>${iconSpan('rotate-ccw', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-schedule"><span class="bzrv-sr-only">手动排期</span>${iconSpan('calendar-days', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="mgr-delete"><span class="bzrv-sr-only">移出复习计划</span>${iconSpan('trash-2', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn" data-act="mgr-delete"><span class="bzrv-sr-only">移出复习</span>${iconSpan('trash-2', 'bzrv-q-ic')}</button>
         </div>
       </div>`;
     })
@@ -845,7 +845,7 @@ export function sprintSummaryHtml(p: { total: number; passed: number; failed: nu
         </div>`
         }
         ${p.streak > 0 ? `<div class="bzrv-summary-streak">连续复习 <b>${p.streak}</b> 天</div>` : ''}
-        <button class="bzrv-btn bzrv-btn--primary bzrv-btn--block" data-action="done">完成 · 回到复习计划</button>
+        <button class="bzrv-btn bzrv-btn--primary bzrv-btn--block" data-action="done">完成 · 回到复习</button>
       </div>`;
 }
 
