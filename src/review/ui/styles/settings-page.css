@@ -236,6 +236,48 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   font-weight: 600;
 }
 
+/* 目录选择钮（bz Reader 同款：「路径 / [图标] 选择」一颗按钮，不摆 chips 与手输框） */
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 72%;
+  padding: 6px 10px;
+  border: 1px solid var(--bzsp-line);
+  background: var(--bzsp-sunken);
+  color: var(--bzsp-t2);
+  font-family: var(--bzsp-ui);
+  font-size: 12px;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir-ico {
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir i {
+  font-style: normal;
+  color: var(--bzsp-accent);
+  flex-shrink: 0;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: .7;
+}
+.bzrv-settings-content .bzs-setgrp .bzrv-pickdir-row .bzs-pickdir:hover {
+  color: var(--bzsp-t1);
+  border-color: color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--bzsp-accent) 10%, transparent);
+}
+
 /* 分段控件（原型 .bzs-seg，对应现有 .bzrv-segmented） */
 .bzrv-settings-content .bzrv-segmented {
   display: flex;
@@ -507,6 +549,114 @@ body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
   white-space: nowrap;
   border: 0;
 }
+
+/* ── 插件组能力卡（2026-11-20：直接下载 bz Reader） ── */
+.bzrv-settings-content .bzs-plugin-grp .bzs-cap {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid var(--bzsp-line);
+  border-radius: 8px;
+  background: var(--bzsp-bg);
+  margin-top: 12px;
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-capico {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: var(--bzsp-sunken);
+  color: var(--bzsp-t3);
+  flex: none;
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-capmain { min-width: 0; }
+.bzrv-settings-content .bzs-plugin-grp .bzs-cap-t {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-cap-t b { font-weight: 600; letter-spacing: .02em; }
+.bzrv-settings-content .bzs-plugin-grp .bzs-capchip {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 7px;
+  border: 1px solid var(--bzsp-accent);
+  border-radius: var(--bzsp-r-pill);
+  font-size: 11px;
+  color: var(--bzsp-accent);
+  letter-spacing: .02em;
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-cap p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--bzsp-t2);
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-captags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 9px;
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-tag {
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: var(--bzsp-sunken);
+  font-size: 11px;
+  color: var(--bzsp-t2);
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-capfoot {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid var(--bzsp-line-2);
+  border-radius: var(--bzsp-r-ctl);
+  background: transparent;
+  color: var(--bzsp-t2);
+  font-size: 12px;
+  letter-spacing: .08em;
+  cursor: pointer;
+  box-shadow: none;
+  transition: color .16s var(--bzsp-ease), border-color .16s var(--bzsp-ease), background .16s var(--bzsp-ease);
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-btn .ic { width: 13px; height: 13px; flex: none; }
+.bzrv-settings-content .bzs-plugin-grp .bzs-btn.pri {
+  color: var(--bzsp-accent);
+  border-color: var(--bzsp-accent);
+  background: var(--bzsp-sheen);
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-btn:hover { color: var(--bzsp-t1); border-color: var(--bzsp-accent); }
+.bzrv-settings-content .bzs-plugin-grp .bzs-capnote {
+  margin-top: 12px;
+  padding: 9px 11px;
+  border: 1px dashed var(--bzsp-line);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--bzsp-t3);
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-capnote a {
+  color: var(--bzsp-accent);
+  margin-left: 6px;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+.bzrv-settings-content .bzs-plugin-grp .bzs-capnote a:hover { border-bottom-color: currentColor; }
 
 @media (prefers-reduced-motion: reduce) {
   .bzrv-settings-content.bzs-set-page * { transition: none; }

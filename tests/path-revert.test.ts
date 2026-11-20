@@ -57,14 +57,20 @@ describe('path 行 · 异步否决回退落盘', () => {
     expect(schema).toContain('return Array.isArray(res) ? applyFinal(res) : undefined');
   });
 
-  it('数据目录取消分支仍只返回回退清单（由渲染器统一负责落盘回退）', () => {
+  it('数据目录取消分支：返回旧目录且不落盘（自绘按钮自己负责迁移落盘）', () => {
     const reviewSchema = read('src/review/settings-schema.ts');
     expect(reviewSchema).toContain('已取消，数据目录没变');
-    // 取消分支返回 [prev]，落盘回退交给渲染器 applyFinal，避免两处各写一份口径
+    // 新设计：数据目录改成自绘按钮，migrateStorageDir 返回最终生效路径字符串；
+    // 取消分支 return prev 且绝不写盘（写盘只在确认迁移成功后发生），回来不会读空目录。
     const cancelBlock = reviewSchema.slice(
       reviewSchema.indexOf("已取消，数据目录没变") - 120,
       reviewSchema.indexOf("已取消，数据目录没变") + 120
     );
-    expect(cancelBlock).toContain('return [prev]');
+    expect(cancelBlock).toContain("notice('已取消，数据目录没变'");
+    expect(cancelBlock).toContain('return prev');
+    // 落盘只发生在确认迁移成功之后，取消分支不碰 getSettings().storagePath
+    expect(cancelBlock).not.toContain('getSettings().storagePath');
+    expect(reviewSchema).toContain('getSettings().storagePath = next');
+    expect(reviewSchema).toContain('await saveSettings()');
   });
 });
