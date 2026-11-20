@@ -522,6 +522,16 @@ export const reviewApp = {
     // 行为流（issue 261）：开始本轮复习入小橘行为流（review:started）
     emitDomainEvent('review', { kind: 'started' });
     let items = await this.dataManager!.loadItems();
+    /* 2026-11-20 用户拍板：只有有逾期才能开始本轮。界面按钮也加了同样的门控，
+       这里是第二道闸——命令入口 / 自动跳转同样得先有逾期。force（「不限到期，
+       全部过一遍」）是刻意例外，不受这条约束。 */
+    if (!opts.force) {
+      const hasOverdue = items.some((i) => i.isOverdue && !i.isCompleted && !i.completed && !i.isMissing);
+      if (!hasOverdue) {
+        notice('没有逾期笔记，不能开始本轮复习');
+        return;
+      }
+    }
     const pend = this.pendingRedoItems(items);
     if (pend.length && getSettings().forceQuizForReview) {
       const quiz = await this.quizWithAI();

@@ -17,9 +17,9 @@
   /* 移动端全屏（issue 254 迭代）：钉满视口，不受内容高度收缩（原 max-height:100% 短内容时缩成悬浮卡） */
   #bzrv-popup { animation: none ; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
 }
-/* 独立界面顶部的「复习计划」页签（2026-11-20，图三形制）：
-   左侧竖栏整条撤掉，那一项挪到头栏成了一个横排页签。样式对齐 bz-reader 的
-   .bzs-stunav button——图标+文字一行、选中态加深、底部 2px 强调下划线。 */
+/* 独立界面顶部的「复习」页签（2026-11-20，图三形制）：
+   左侧竖栏整条撤掉，那一项挪到头栏成了一个横排页签。图标+文字一行，选中态只靠
+   字色加深——底部强调下划线已撤（2026-11-20 用户口径）。 */
 .bzrv-stutab {
   position: relative;
   appearance: none;
@@ -33,21 +33,21 @@
   align-items: center;
   gap: 6px;
   letter-spacing: 0;
+  /* 与旁边的日期副题同一基线：副题靠 .bzrv-panel-head-sub 的 12px 垫底落在
+     头栏文字线上。页签是 button，选择器没覆盖到那条 padding，得自己补一份，
+     否则它比日期高出一截（2026-11-20 真机量到差 8px），看着像没对齐。 */
+  padding-bottom: 12px;
   transition: color var(--bzrv-dur-base) var(--bzrv-ease-out);
 }
 .bzrv-stutab:hover { color: var(--bzrv-text-2); }
 .bzrv-stutab.is-on { color: var(--bzrv-text-1); }
-.bzrv-stutab.is-on::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--bzrv-accent);
-}
+/* 下划线已撤（2026-11-20 用户口径）：选中态只靠字色加深，不再画底部强调线。
+   与日期副题同基线靠 padding-bottom 12px 保持。 */
 .bzrv-stutab .bzrv-stutab-ic { width: 16px; height: 16px; opacity: .72; flex-shrink: 0; }
 .bzrv-stutab.is-on .bzrv-stutab-ic { opacity: 1; }
+/* 「复习」与日期之间的分隔竖线加长（2026-11-20）：core 默认 14px 比两行文字都矮，
+   看着像一段没画完的短线；抬到 20px 与页签文字行齐平，分隔感才成立。 */
+#bzrv-popup .bzrv-panel-head-pipe { height: 20px; }
 /* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动）。
    不再有左栏，内容区独占整宽。 */
 #bzrv-entries { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
@@ -1171,3 +1171,95 @@
 .bzrv-flow-dialog .bzrv-edit-field input { width: 100%; box-sizing: border-box; }
 .bzrv-flow-dialog pre { white-space: pre-wrap; font-family: var(--font-monospace); line-height: 1.6; }
 .bzrv-flow-dialog p { color: var(--bzrv-text-2); font-size: var(--bzrv-font-caption); }
+
+/* ==================== 头行「更多」下拉菜单（2026-11-20） ====================
+   头行只留 filter/data/more/settings 四颗工具，arch/trash/books/manager 四个次级入口收进
+   more 下拉。菜单挂在 .bzrv-panel-head-btns 内、more 按钮旁；面板头不能裁切（overflow
+   可见），嵌入 bz-reader 时外置动作栏那份额外给高 z-index，浮在宿主动作栏之上。 */
+.bzrv-panel-head-btns { position: relative; }
+.bzrv-more-btn.is-open { color: var(--bzrv-accent); background: var(--bzrv-accent-soft); }
+.bzrv-more-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  /* 收紧宽度：内容最长一行（图标+「挂起 / 排期 / 筛选」）约 135px，232px 时右边空近 100px。
+     196px 让图文占满、留白回归正常，说明文字仍不换行。 */
+  width: 196px;
+  padding: 7px;
+  background: var(--bzrv-surface-2);
+  border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .16), 0 2px 8px rgba(0, 0, 0, .06);
+  animation: bzrv-more-pop .16s ease-out;
+}
+.bzrv-more-menu[hidden] { display: none; }
+@keyframes bzrv-more-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.bzrv-more-group {
+  font-size: var(--bzrv-font-caption);
+  color: var(--bzrv-text-3);
+  font-weight: 600;
+  padding: 7px 10px 5px;
+  letter-spacing: .04em;
+}
+.bzrv-more-item {
+  display: flex;
+  align-items: center;
+  /* 钉死 button 宿主基线：Obsidian 裸 button 默认 justify-content:center/height:32px/投影，
+     不显式覆盖会把「图标+文字」整组居中、左边空一大截（与 .bzrv-popover-item 同一坑）。 */
+  justify-content: flex-start;
+  height: auto;
+  box-shadow: none;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: var(--bzrv-radius-sm);
+  background: none;
+  color: var(--bzrv-text-1);
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.bzrv-more-item:hover { background: var(--bzrv-surface-3); }
+.bzrv-more-item.is-on { background: var(--bzrv-accent-soft); }
+.bzrv-more-item.is-on .bzrv-more-item-title { color: var(--bzrv-accent); }
+.bzrv-more-item-ic {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--bzrv-text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bzrv-more-item.is-on .bzrv-more-item-ic { color: var(--bzrv-accent); }
+.bzrv-more-item-ic svg { width: 17px; height: 17px; }
+.bzrv-more-item-txt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bzrv-more-item-title { font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); }
+.bzrv-more-item-sub { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-more-sep { height: 1px; background: var(--bzrv-border); margin: 6px 6px; }
+/* 嵌入 bz-reader 动作栏：那一条 overflow 可能裁掉下拉，抬高层级并把定位锚在可见区 */
+.bzrv-embed-acts .bzrv-more-menu { top: calc(100% + 6px); }
+
+/* ==================== 空态「看视频教程」按钮强调色（2026-11-20） ====================
+   通用 .bzrv-btn--primary 吃 --bzrv-brand（部分强调档下该变量缺失 → 背景透明、按钮
+   看着像没样式）。这颗是空态唯一的行动号召，单独钉到确定有值的 --bzrv-accent，
+   让它在空态里真正跳出来、勾起点击欲；前景用 --bzrv-on-accent 保证各档可读。 */
+.bzrv-empty [data-act="watch-video"],
+[data-act="watch-video"].bzrv-btn--primary {
+  background: var(--bzrv-accent);
+  color: var(--bzrv-on-accent);
+  border-color: transparent;
+  font-weight: var(--bzrv-weight-semibold);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--bzrv-accent) 32%, transparent);
+}
+@media (hover: hover) {
+  .bzrv-empty [data-act="watch-video"]:hover,
+  [data-act="watch-video"].bzrv-btn--primary:hover {
+    background: color-mix(in srgb, var(--bzrv-accent) 88%, #000);
+  }
+}

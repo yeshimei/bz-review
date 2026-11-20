@@ -7,13 +7,12 @@
  *       默认每次问「这段内容做成哪种卡」；勾了「记住」或设置里选了具体方式，
  *       以后不再问。选出来的方式写进 `ReviewCard.mode`，复习时就按它走。
  *
- *   二、**开卡前二次确认**（点开一张卡、真正开始复习之前）
- *       抽认卡在这里能改问句和原文；做题卡在这里能一条条删题（删错了当场能
- *       点回去补）、能「重新生成」整份题库。设置里可以整体关掉（默认开）。
+ *   二、**重新生成后的确认**。右键「重新生成 AI 内容」不再直接覆盖——先生成
+ *       草稿，用同一套确认面板给用户看，确认后才替换。
  *
- * 2026-11-19 起第三个用途：**重新生成后的确认**。右键「重新生成 AI 内容」
- * 不再直接覆盖——先生成草稿，用同一套确认面板给用户看，确认后才替换。
- * 三处共用同一个壳（core/flow-dialog）与同一套面板，别各写一份。
+ * 原「开卡前二次确认」（「开卡前先看一眼」开关）已于 2026-11-20 按用户要求整段删除：
+ * 点开卡片直接进会话，不再弹「看一遍再开始 / 这一轮的题」。两块可复用面板
+ * （buildFlashcardParts / buildQuizParts）保留给重新生成确认用，共用 core/flow-dialog 壳。
  * ============================================================ */
 import { openFlowDialog } from '../core/flow-dialog';
 import { CARD_MODE_LABELS } from './card-mode-meta';
@@ -21,16 +20,6 @@ export { CARD_MODE_LABELS, cardModeLabel } from './card-mode-meta';
 import type { CardMode } from './card-ai';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { ReviewItem } from './data';
-
-/**
- * 开卡前确认只对做题卡有意义：删题要在开始前做完。
- *
- * 抽认卡 2026-11-19 改回最朴素的形态——正面一句话，点「看答案」出背面原文。
- * 「看一遍再开始」那道确认框整段撤掉，问句不满意请到卡片管理器里改或重新生成。
- */
-export function needsCardConfirm(mode: CardMode): boolean {
-  return mode === 'quiz';
-}
 
 /** 制卡方式选择的结果：方式 + 是否要「以后别再问」 */
 export interface PickCardMethodResult {
@@ -103,29 +92,7 @@ export async function pickCardMethod(purpose: 'add' | 'regenerate' = 'add'): Pro
   return { mode, remember };
 }
 
-/** 开卡前确认框的产物 */
-export interface CardConfirmResult {
-  /** false = 用户取消（不开始、什么都不改） */
-  go: boolean;
-  /** 抽认卡：改过的原文 / 问句（没改就是原值） */
-  text?: string;
-  question?: string;
-  /** 做题卡：删剩下的题库（删光了就没法开始，调用方据此拦住） */
-  questions?: QuizQuestion[];
-}
-
-export interface CardConfirmOpts {
-  item: ReviewItem;
-  mode: CardMode;
-  /** 做题卡：当前题库（抽认卡不传） */
-  questions?: QuizQuestion[];
-  /** 点「重新生成」时重新拉一份题库（只有做题卡用） */
-  regenerateQuiz?: () => Promise<QuizQuestion[] | null>;
-  /** 点「重新生成」时重新问一次模型要问句（只有抽认卡用） */
-  regenerateAsk?: () => Promise<{ q: string; a: string } | null>;
-}
-
-/* ── 两块可复用的确认面板（开卡前 / 重新生成后共用同一套） ── */
+/* ── 两块可复用的确认面板（重新生成后用） ── */
 
 interface FlashcardParts {
   body: HTMLElement;
@@ -301,59 +268,6 @@ function buildQuizParts(
   });
 
   return { body, read: () => list };
-}
-
-/**
- * 开卡前的二次确认。
- *
- * 抽认卡：可改问句与原文（改完落盘并打 manual，后台不再覆盖）。
- * 做题卡：可一条条删题，删掉的进「已删」区，当场能点回去补；也能重新生成。
- * 其余方式没有可改的东西，直接开始（不弹空框）。
- */
-export async function confirmBeforeRound(opts: CardConfirmOpts): Promise<CardConfirmResult> {
-  const { item, mode } = opts;
-  const card = item.card!;
-
-  /* 抽认卡 / 填空 / 上下文 / 全文回忆：直接开卡，不拦一道确认框。 */
-  if (!needsCardConfirm(mode)) return { go: true };
-
-  if (mode === 'flashcard') {
-    const parts = buildFlashcardParts({
-      text: String(card.text ?? ''),
-      question: String(card.qa?.q ?? ''),
-      regenerateAsk: opts.regenerateAsk,
-    });
-    const v = await openFlowDialog({
-      title: '看一遍再开始',
-      message: '这张抽认卡的内容可以直接改；改过的卡以后不会被 AI 自动覆盖。',
-      body: parts.body,
-      actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '开始复习', value: 'ok', cta: true },
-      ],
-    });
-    if (v !== 'ok') return { go: false };
-    const read = parts.read();
-    return { go: true, text: read.text, question: read.question };
-  }
-
-  if (mode === 'quiz') {
-    const parts = buildQuizParts(opts.questions ?? [], opts.regenerateQuiz);
-    const v = await openFlowDialog({
-      title: '这一轮的题',
-      message: '做题卡可以先把不想要的题删掉，再开始复习。',
-      body: parts.body,
-      actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '开始复习', value: 'ok', cta: true },
-      ],
-    });
-    if (v !== 'ok') return { go: false };
-    return { go: true, questions: parts.read() };
-  }
-
-  // 填空 / 上下文 / 展开全文：没有值得改的东西，别弹空框
-  return { go: true };
 }
 
 /* ============================================================

@@ -5660,8 +5660,40 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   /* 移动端全屏（issue 254 迭代）：钉满视口，不受内容高度收缩（原 max-height:100% 短内容时缩成悬浮卡） */
   #bzrv-popup { animation: none ; top: 0; left: 0; transform: none; width: 100%; max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
 }
-/* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动） */
-#bzrv-entries { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+/* 独立界面顶部的「复习」页签（2026-11-20，图三形制）：
+   左侧竖栏整条撤掉，那一项挪到头栏成了一个横排页签。图标+文字一行，选中态只靠
+   字色加深——底部强调下划线已撤（2026-11-20 用户口径）。 */
+.bzrv-stutab:is([data-bzrv], [data-bzrv] *) {
+  position: relative;
+  appearance: none;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: var(--bzrv-font-body);
+  font-weight: var(--bzrv-weight-semibold);
+  color: var(--bzrv-text-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  letter-spacing: 0;
+  /* 与旁边的日期副题同一基线：副题靠 .bzrv-panel-head-sub 的 12px 垫底落在
+     头栏文字线上。页签是 button，选择器没覆盖到那条 padding，得自己补一份，
+     否则它比日期高出一截（2026-11-20 真机量到差 8px），看着像没对齐。 */
+  padding-bottom: 12px;
+  transition: color var(--bzrv-dur-base) var(--bzrv-ease-out);
+}
+.bzrv-stutab:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-text-2); }
+.bzrv-stutab.is-on:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-1); }
+/* 下划线已撤（2026-11-20 用户口径）：选中态只靠字色加深，不再画底部强调线。
+   与日期副题同基线靠 padding-bottom 12px 保持。 */
+.bzrv-stutab .bzrv-stutab-ic:is([data-bzrv], [data-bzrv] *) { width: 16px; height: 16px; opacity: .72; flex-shrink: 0; }
+.bzrv-stutab.is-on .bzrv-stutab-ic:is([data-bzrv], [data-bzrv] *) { opacity: 1; }
+/* 「复习」与日期之间的分隔竖线加长（2026-11-20）：core 默认 14px 比两行文字都矮，
+   看着像一段没画完的短线；抬到 20px 与页签文字行齐平，分隔感才成立。 */
+#bzrv-popup .bzrv-panel-head-pipe { height: 20px; }
+/* 内容区：队列视图与冲刺视图共用宿主（overflow:hidden 由视图内部接管滚动）。
+   不再有左栏，内容区独占整宽。 */
+#bzrv-entries { flex: 1; min-width: 0; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 
 /* ==================== 原生页宿主（reviewPanelMode: native） ====================
    面板住进一个普通 Obsidian 标签页（panel-view.ts）：没有可点的遮罩背景，也不该
@@ -5771,6 +5803,8 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-q-card.no:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-border); }
 }
 .bzrv-q-card.danger:is([data-bzrv], [data-bzrv] *) { border-left: 3px solid var(--bzrv-danger); }
+/* 从阅读器「去复习」跳过来的一张：短暂描边，告诉用户是哪条划线 */
+.bzrv-q-card.bzrv-card-jump:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bzrv-accent) 32%, transparent); }
 .bzrv-q-card .bzrv-q-card-top:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: flex-start; gap: 6px; justify-content: space-between; }
 /* 标题给两行：单行省略时「卡片测试 · 光合作用发生在哪」只剩「卡片测试 · 光合作用…」，
    档案卡这名字本来就长，两行比截断可认。行高收到 1.35，两行也只多出 5px。 */
@@ -6776,6 +6810,102 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-edit-actions .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 100%; min-height: 44px; }
   .bzrv-edit-area:is([data-bzrv], [data-bzrv] *) { font-size: 16px; }
 }
+/* 统一弹窗壳里的输入与纯文本：编辑/排期/恢复/负荷四屏共用 */
+.bzrv-flow-dialog .bzrv-edit-field input:is([data-bzrv], [data-bzrv] *) { width: 100%; box-sizing: border-box; }
+.bzrv-flow-dialog pre:is([data-bzrv], [data-bzrv] *) { white-space: pre-wrap; font-family: var(--font-monospace); line-height: 1.6; }
+.bzrv-flow-dialog p:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-2); font-size: var(--bzrv-font-caption); }
+
+/* ==================== 头行「更多」下拉菜单（2026-11-20） ====================
+   头行只留 filter/data/more/settings 四颗工具，arch/trash/books/manager 四个次级入口收进
+   more 下拉。菜单挂在 .bzrv-panel-head-btns 内、more 按钮旁；面板头不能裁切（overflow
+   可见），嵌入 bz-reader 时外置动作栏那份额外给高 z-index，浮在宿主动作栏之上。 */
+.bzrv-panel-head-btns:is([data-bzrv], [data-bzrv] *) { position: relative; }
+.bzrv-more-btn.is-open:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); background: var(--bzrv-accent-soft); }
+.bzrv-more-menu:is([data-bzrv], [data-bzrv] *) {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 60;
+  /* 收紧宽度：内容最长一行（图标+「挂起 / 排期 / 筛选」）约 135px，232px 时右边空近 100px。
+     196px 让图文占满、留白回归正常，说明文字仍不换行。 */
+  width: 196px;
+  padding: 7px;
+  background: var(--bzrv-surface-2);
+  border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-md);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .16), 0 2px 8px rgba(0, 0, 0, .06);
+  animation: bzrv-more-pop .16s ease-out;
+}
+.bzrv-more-menu[hidden]:is([data-bzrv], [data-bzrv] *) { display: none; }
+@keyframes bzrv-more-pop {
+  from { opacity: 0; transform: translateY(-6px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.bzrv-more-group:is([data-bzrv], [data-bzrv] *) {
+  font-size: var(--bzrv-font-caption);
+  color: var(--bzrv-text-3);
+  font-weight: 600;
+  padding: 7px 10px 5px;
+  letter-spacing: .04em;
+}
+.bzrv-more-item:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  align-items: center;
+  /* 钉死 button 宿主基线：Obsidian 裸 button 默认 justify-content:center/height:32px/投影，
+     不显式覆盖会把「图标+文字」整组居中、左边空一大截（与 .bzrv-popover-item 同一坑）。 */
+  justify-content: flex-start;
+  height: auto;
+  box-shadow: none;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: var(--bzrv-radius-sm);
+  background: none;
+  color: var(--bzrv-text-1);
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s, color .12s;
+}
+.bzrv-more-item:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-3); }
+.bzrv-more-item.is-on:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent-soft); }
+.bzrv-more-item.is-on .bzrv-more-item-title:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); }
+.bzrv-more-item-ic:is([data-bzrv], [data-bzrv] *) {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  color: var(--bzrv-text-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.bzrv-more-item.is-on .bzrv-more-item-ic:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); }
+.bzrv-more-item-ic svg:is([data-bzrv], [data-bzrv] *) { width: 17px; height: 17px; }
+.bzrv-more-item-txt:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.bzrv-more-item-title:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); }
+.bzrv-more-item-sub:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-more-sep:is([data-bzrv], [data-bzrv] *) { height: 1px; background: var(--bzrv-border); margin: 6px 6px; }
+/* 嵌入 bz-reader 动作栏：那一条 overflow 可能裁掉下拉，抬高层级并把定位锚在可见区 */
+.bzrv-embed-acts .bzrv-more-menu:is([data-bzrv], [data-bzrv] *) { top: calc(100% + 6px); }
+
+/* ==================== 空态「看视频教程」按钮强调色（2026-11-20） ====================
+   通用 .bzrv-btn--primary 吃 --bzrv-brand（部分强调档下该变量缺失 → 背景透明、按钮
+   看着像没样式）。这颗是空态唯一的行动号召，单独钉到确定有值的 --bzrv-accent，
+   让它在空态里真正跳出来、勾起点击欲；前景用 --bzrv-on-accent 保证各档可读。 */
+.bzrv-empty [data-act="watch-video"]:is([data-bzrv], [data-bzrv] *),
+[data-act="watch-video"].bzrv-btn--primary:is([data-bzrv], [data-bzrv] *) {
+  background: var(--bzrv-accent);
+  color: var(--bzrv-on-accent);
+  border-color: transparent;
+  font-weight: var(--bzrv-weight-semibold);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--bzrv-accent) 32%, transparent);
+}
+@media (hover: hover) {
+  .bzrv-empty [data-act="watch-video"]:is([data-bzrv], [data-bzrv] *):hover,
+  [data-act="watch-video"].bzrv-btn--primary:is([data-bzrv], [data-bzrv] *):hover {
+    background: color-mix(in srgb, var(--bzrv-accent) 88%, #000);
+  }
+}
 /* ==================== 记忆分析特刊（analysis/ 全屏逐幕层） ====================
    视觉语言：夜账守火——深青底、细线、磷光青强调；数字 tabular-nums，无衬线。
    颜色只走 --ra-* 变量层（明暗两套），幕内不写死颜色；滚动条不自造（ADR-0122，
@@ -7389,6 +7519,33 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bzsp-accent) 40%, transparent);
 }
 
+/* 强调色行（2026-11-20 真机反馈）：4 档横排在右列 ~340px 里，
+   「跟随 Obsidian」+ 色点会被挤破卡片右缘。标签独占一行、控件吃满整宽；
+   档位按格子下限自动定列（窄屏 2 列、宽屏 4 列），绝不让文字硬挤出去。
+   同 reader 的 .bzs-setrow.is-stack + .bzs-seg-wrap 口径。 */
+.bzrv-settings-content .setting-item.bzrv-accent-row:is([data-bzrv], [data-bzrv] *) {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.bzrv-settings-content .setting-item.bzrv-accent-row > .setting-item-info:is([data-bzrv], [data-bzrv] *) {
+  flex: 1 1 100%;
+  max-width: none;
+}
+.bzrv-settings-content .setting-item.bzrv-accent-row > .setting-item-control:is([data-bzrv], [data-bzrv] *) {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.bzrv-settings-content .bzrv-accent-seg:is([data-bzrv], [data-bzrv] *) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(88px, 100%), 1fr));
+  flex: 1 1 100%;
+}
+.bzrv-settings-content .bzrv-accent-seg button:is([data-bzrv], [data-bzrv] *) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
 /* 开关：38×21 胶囊（Obsidian 的 .checkbox-container 自带一颗 ::after 旋钮，
    这里整颗接管，别在 input 上再画一颗，否则真机会出现上下两枚圆点） */
 .bzrv-settings-content .bzs-setgrp .checkbox-container:is([data-bzrv], [data-bzrv] *) {
@@ -7412,6 +7569,13 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
   border-radius: 50%;
   background: var(--bzsp-t3);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28);
+  /* 宿主原生 .checkbox-container::after 用 transform: translateX(...) 推旋钮，
+     还带一条 margin-top:2px。这里改用 left 定位：translateX 不清会把圆点顶出
+     右缘，margin 不清则在 21px 胶囊里把圆点往下压 2px（上 5 / 下 1），
+     真机放大截图里看着贴底、显大。两条都要清零（2026-11-20 真机反馈）。 */
+  transform: none;
+  margin: 0;
+  right: auto;
   transition: left .16s var(--bzsp-ease), background .16s var(--bzsp-ease);
 }
 .bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled:is([data-bzrv], [data-bzrv] *) {
@@ -7421,6 +7585,7 @@ body.theme-light .bzrv-settings-content.bzs-set-page {
 .bzrv-settings-content .bzs-setgrp .checkbox-container.is-enabled:is([data-bzrv], [data-bzrv] *)::after {
   left: 19px;
   background: #fff;
+  transform: none;
 }
 .bzrv-settings-content .bzs-setgrp .checkbox-container input:is([data-bzrv], [data-bzrv] *) {
   appearance: none;
