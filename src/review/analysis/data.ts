@@ -32,7 +32,7 @@ export interface RaEmber {
   d: number;
   /** 兼容字段：FSRS-7 无阶梯，恒 0（保留供下游 phase 判断） */
   stage: number;
-  phase: 'ladder' | 'fsrs';
+  phase: 'ladder' | 'fsrs' | 'relearn';
   /** 逾期中 */
   overdue: boolean;
   /** 逾期天数（>0 才有意义） */

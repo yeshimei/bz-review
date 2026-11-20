@@ -59,7 +59,7 @@ export interface ReviewNoteStatus {
   nextReviewDate: string | null;
   /** 兼容字段：FSRS-7 无阶梯，恒 0（保留供契约兼容） */
   stage: number;
-  phase: 'ladder' | 'fsrs';
+  phase: 'ladder' | 'fsrs' | 'relearn';
   /** 已经复习过几次 */
   totalReviews: number;
 }

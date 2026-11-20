@@ -29,8 +29,38 @@ const MAX_INTERVAL = 36500; // 100 年，与官方 interval solver 上界一致
 const RATING_INDEX: Record<Rating, number> = { again: 0, hard: 1, good: 2, easy: 3 };
 const clamp = (x: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, x));
 
-/** 保留：最短间隔 1 分钟（评级 toast 与钳位下界的口径，虽无阶梯仍沿用）。 */
+/** 保留：最短间隔 1 分钟（评级 toast 与钳位下界的口径，学习步骤也用它作下限）。 */
 export const MIN_INTERVAL_DAYS = 1 / 1440;
+
+/**
+ * Anki 式学习步骤：解析 "1m 10m 1d" 为分钟数组。
+ * 只认 1m/10m/30m 这类"分钟"单位；≥1d 的步骤不认（FSRS 下步骤必须当天完成，
+ * Anki 官方明确反对跨天步骤），返回 null 表示整串无效（关闭）。
+ */
+export function parseLearningSteps(text: unknown): number[] | null {
+  if (typeof text !== 'string') return null;
+  const parts = text.trim().split(/[\s,，]+/).filter(Boolean);
+  if (!parts.length) return null;
+  const mins: number[] = [];
+  for (const p of parts) {
+    const m = /^(\d+(?:\.\d+)?)\s*(m|min|分钟)?$/i.exec(p);
+    if (!m) return null; // 不认 h/d —— 步骤必须当天
+    const v = Number(m[1]);
+    if (!Number.isFinite(v) || v < 1 || v > 1440) return null;
+    mins.push(v);
+  }
+  return mins.length ? mins : null;
+}
+
+/**
+ * Anki Hard 步长：第一步 = 前两步均值；其它步 = 重复当前步。
+ * 只有一步时 Hard = 该步 ×1.5（Anki 对单步的特殊规则），上限 1 天。
+ */
+export function hardStepMinutes(stepsMins: readonly number[], currentIdx: number): number {
+  if (stepsMins.length === 1) return Math.min(1440, stepsMins[0] * 1.5);
+  if (currentIdx === 0) return (stepsMins[0] + stepsMins[1]) / 2;
+  return stepsMins[Math.min(currentIdx, stepsMins.length - 1)];
+}
 
 /** 兼容旧符号：v7 无阶梯，这些常量保留给仍引用它们的数据/UI 代码。 */
 export const FSRS_FIRST_INTERVALS = [1 / 1440, 1 / 48, 1 / 4, 1, 3, 7, 15, 30, 60, 120];
@@ -166,7 +196,7 @@ export function formatInterval(days: number): string {
 
 export interface ScheduleState {
   stage: number;
-  phase: 'ladder' | 'fsrs';
+  phase: 'ladder' | 'fsrs' | 'relearn';
   stability?: number | null;      // S_long
   stabilityShort?: number | null; // S_short
   difficulty?: number | null;
@@ -175,13 +205,14 @@ export interface ScheduleState {
 }
 
 export interface ScheduleDecision {
-  stage: number;
-  phase: 'fsrs';
-  stability: number | null;       // S_long（写回）
-  stabilityShort: number | null;  // S_short（写回）
+  stage: number;                  // 步骤序号（ladder/relearn 期）/ 0（fsrs 期）
+  phase: 'ladder' | 'fsrs' | 'relearn';
+  stability: number | null;       // S_long（写回；步骤期 null = 不写）
+  stabilityShort: number | null;  // S_short（写回；步骤期 null）
   difficulty: number | null;
   intervalDays: number;
-  enteringFsrs: boolean;          // 首次评级（初始化三元组）
+  enteringFsrs: boolean;          // 毕业/首次评级（初始化三元组）
+  graduated: boolean;             // 本次是走完步骤毕业（区别于裸 FSRS 首次）
   historyStage: number;
   R: number | null;
   historyStability: number | null;
@@ -189,20 +220,144 @@ export interface ScheduleDecision {
   historyDifficulty: number | null;
 }
 
+/** 学习步骤配置（Anki 口径）。 */
+export interface LearningStepsOpts {
+  /** 步骤分钟数组（parseLearningSteps 解析结果）；空/null = 关闭，直接 FSRS */
+  stepsMins?: number[] | null;
+  /** 毕业间隔（天，下限保护）；默认 1 */
+  graduatingDays?: number;
+  /** 重新学习步骤（FSRS 阶段点"忘了"后的当天重学，分钟）；空/null = 关闭 */
+  relearnStepsMins?: number[] | null;
+  /** 当天是否还在同一天（步骤只在当天有效；false = 强制毕业） */
+  sameDay?: boolean;
+}
+
 /**
- * 调度纯函数：全量 FSRS-7，无阶梯。
- * - 首次评级（没有 lastReviewed / totalReviews===0，由调用方保证）→ 初始化三元组；
- * - 之后每轮 → 算 R、更新三元组、按 DR 二分求间隔。
- * 目标留存率由调用方从设置传入（默认 0.9）。
+ * 调度纯函数：Anki 式学习步骤 + 全量 FSRS-7。
+ * - 学习步骤（opts.stepsMins 非空、同日、未毕业）：Good 进下一步、Again 回第一步、
+ *   Hard 第一步给前两步均值、Easy 直接毕业；步骤期不写 S/D；
+ * - 毕业（走完最后一步 Good 或任意步 Easy）→ 初始化 FSRS 三元组、按 graduatingDays 排期；
+ * - 无步骤/跨天 → 直接 FSRS：首次评级初始化三元组、之后算 R 更新并二分求间隔。
  */
 export function scheduleNext(
   state: ScheduleState,
   rating: Rating,
   now: Date,
   w: number[] = DEFAULT_W,
-  desiredRetention = DEFAULT_DESIRED_RETENTION
+  desiredRetention = DEFAULT_DESIRED_RETENTION,
+  opts: LearningStepsOpts = {}
 ): ScheduleDecision {
   const fsrs = new FSRS(w);
+
+  // ===== Anki 学习步骤分支 =====
+  const steps = opts.stepsMins;
+  const inSteps = state.phase === 'ladder' && steps && steps.length > 0 && opts.sameDay !== false;
+  if (inSteps) {
+    const idx = Math.max(0, Math.min(state.stage, steps.length - 1));
+    let nextStage: number;
+    let days: number;
+    let graduate = false;
+    if (rating === 'easy') {
+      graduate = true;
+    } else if (rating === 'again') {
+      nextStage = 0;
+      days = steps[0] / 1440;
+    } else if (rating === 'hard') {
+      nextStage = idx;
+      days = hardStepMinutes(steps, idx) / 1440;
+    } else { // good
+      if (idx >= steps.length - 1) graduate = true;
+      else { nextStage = idx + 1; days = steps[idx + 1] / 1440; }
+    }
+
+    // 步骤期也更新记忆状态（Anki 源码：LearnState.memory_state = fsrs_next_states[评级].memory）。
+    // 首次评级 initState，之后 nextState（t 用当前间隔——步骤间隔是分钟级，t 很小）。
+    let sl: number, ss: number, dd: number;
+    if (!(state.stability && state.stability > 0)) {
+      const init = fsrs.initState(rating);
+      sl = init.sLong; ss = init.sShort; dd = init.d;
+    } else {
+      const prevS = state.stability;
+      const prevSs = state.stabilityShort && state.stabilityShort > 0 ? state.stabilityShort : 0.8 * prevS;
+      const prevD = state.difficulty && state.difficulty > 0 ? state.difficulty : fsrs.initD('good');
+      const t = state.lastReviewed ? Math.max(0, (now.getTime() - new Date(state.lastReviewed).getTime()) / 86400000) : 0;
+      const nx = fsrs.nextState(prevS, prevSs, prevD, t, rating);
+      sl = nx.sLong; ss = nx.sShort; dd = nx.d;
+    }
+    const rS = Math.round(sl * 100) / 100;
+    const rSs = Math.round(ss * 100) / 100;
+    const rD = Math.round(dd * 100) / 100;
+
+    if (graduate) {
+      // 毕业：三元组由本次评级重新初始化（与裸 FSRS 首次同口径），间隔 = 该评级的 FSRS 首间隔。
+      // Anki FSRS 模式下毕业间隔来自 fsrs.good/easy.interval，不是固定 graduating interval。
+      const init = fsrs.initState(rating);
+      const gS = Math.round(init.sLong * 100) / 100;
+      const gSs = Math.round(init.sShort * 100) / 100;
+      const gD = Math.round(init.d * 100) / 100;
+      const fsrsFirst = fsrs.intervalForRetention(init.sLong, init.sShort, init.d, desiredRetention);
+      const gradDays = Math.max(MIN_INTERVAL_DAYS, fsrsFirst, opts.graduatingDays ?? 1);
+      return {
+        stage: 0, phase: 'fsrs', stability: gS, stabilityShort: gSs, difficulty: gD,
+        intervalDays: gradDays, enteringFsrs: true, graduated: true,
+        historyStage: 1, R: null, historyStability: gS, historyStabilityShort: gSs, historyDifficulty: gD,
+      };
+    }
+    // 仍在步骤中：写三元组（拟合可用），phase 保持 ladder。
+    return {
+      stage: nextStage!, phase: 'ladder', stability: rS, stabilityShort: rSs, difficulty: rD,
+      intervalDays: days!, enteringFsrs: false, graduated: false,
+      historyStage: nextStage! + 1, R: null,
+      historyStability: rS, historyStabilityShort: rSs, historyDifficulty: rD,
+    };
+  }
+
+  // ===== 重新学习步骤（FSRS 阶段点"忘了"后，Anki 的 relearn_steps）=====
+  if (state.phase === 'relearn') {
+    const rsteps = opts.relearnStepsMins;
+    const idx = rsteps && rsteps.length ? Math.max(0, Math.min(state.stage, rsteps.length - 1)) : 0;
+    // 三元组已在该次 Again 时按 FSRS 更新过；这里继续按评级推进
+    const prevS = Math.max(S_MIN, state.stability || 1);
+    const prevSs = state.stabilityShort && state.stabilityShort > 0 ? state.stabilityShort : 0.8 * prevS;
+    const prevD = state.difficulty && state.difficulty > 0 ? state.difficulty : fsrs.initD('good');
+    const t = state.lastReviewed ? Math.max(0, (now.getTime() - new Date(state.lastReviewed).getTime()) / 86400000) : 0;
+    const nx = fsrs.nextState(prevS, prevSs, prevD, t, rating);
+    const rS = Math.round(nx.sLong * 100) / 100;
+    const rSs = Math.round(nx.sShort * 100) / 100;
+    const rD = Math.round(nx.d * 100) / 100;
+
+    // 无重学步骤 / 跨天 / Easy / 走完最后一步 Good → 重新毕业回 FSRS
+    let graduate = rating === 'easy' || !rsteps || !rsteps.length || opts.sameDay === false;
+    let nextStage = idx;
+    let days = 0;
+    if (!graduate) {
+      if (rating === 'again') { nextStage = 0; days = rsteps![0] / 1440; }
+      else if (rating === 'hard') { nextStage = idx; days = hardStepMinutes(rsteps!, idx) / 1440; }
+      else { // good
+        if (idx >= rsteps!.length - 1) graduate = true;
+        else { nextStage = idx + 1; days = rsteps![idx + 1] / 1440; }
+      }
+    }
+    if (graduate) {
+      // 重新毕业：间隔用更新后三元组的 FSRS good/easy 首间隔（Anki 口径）
+      const fsrsFirst = fsrs.intervalForRetention(nx.sLong, nx.sShort, nx.d, desiredRetention);
+      const gradDays = Math.max(MIN_INTERVAL_DAYS, fsrsFirst, opts.graduatingDays ?? 1);
+      return {
+        stage: 0, phase: 'fsrs', stability: rS, stabilityShort: rSs, difficulty: rD,
+        intervalDays: gradDays, enteringFsrs: false, graduated: true,
+        historyStage: (state.stage + 1), R: null,
+        historyStability: rS, historyStabilityShort: rSs, historyDifficulty: rD,
+      };
+    }
+    return {
+      stage: nextStage, phase: 'relearn', stability: rS, stabilityShort: rSs, difficulty: rD,
+      intervalDays: days, enteringFsrs: false, graduated: false,
+      historyStage: state.stage + 1, R: null,
+      historyStability: rS, historyStabilityShort: rSs, historyDifficulty: rD,
+    };
+  }
+
+  // ===== 全量 FSRS-7 =====
   const first = !state.lastReviewed || !(state.stability && state.stability > 0);
 
   let sLong: number;
@@ -230,6 +385,18 @@ export function scheduleNext(
     d = next.d;
     r = next.r;
     intervalDays = fsrs.intervalForRetention(sLong, sShort, d, desiredRetention);
+    // Anki：FSRS 阶段点"忘了" → 进重新学习步骤（当天重学后再回 FSRS）
+    if (rating === 'again' && opts.relearnStepsMins && opts.relearnStepsMins.length && opts.sameDay !== false) {
+      const rS1 = Math.round(sLong * 100) / 100;
+      const rSs1 = Math.round(sShort * 100) / 100;
+      const rD1 = Math.round(d * 100) / 100;
+      return {
+        stage: 0, phase: 'relearn', stability: rS1, stabilityShort: rSs1, difficulty: rD1,
+        intervalDays: opts.relearnStepsMins[0] / 1440, enteringFsrs: false, graduated: false,
+        historyStage: state.stage + 1, R: r,
+        historyStability: rS1, historyStabilityShort: rSs1, historyDifficulty: rD1,
+      };
+    }
   }
 
   const rS = Math.round(sLong * 100) / 100;
@@ -243,6 +410,7 @@ export function scheduleNext(
     difficulty: rD,
     intervalDays,
     enteringFsrs: first,
+    graduated: false,
     historyStage: first ? 1 : (state.stage + 1),
     R: r,
     historyStability: rS,
@@ -260,7 +428,8 @@ export function currentR(
   w: number[],
   now: number | Date = Date.now()
 ): number | null {
-  if (!item.stability || !item.lastReviewed) return null;
+  // 学习步骤期的 stability=1 只是占位初值，不是真实三元组，不算 R。
+  if (item.phase === 'ladder' || !item.stability || !item.lastReviewed) return null;
   const sLong = item.stability;
   const sShort = item.stabilityShort && item.stabilityShort > 0 ? item.stabilityShort : 0.8 * sLong;
   const d = item.difficulty && item.difficulty > 0 ? item.difficulty : 5;

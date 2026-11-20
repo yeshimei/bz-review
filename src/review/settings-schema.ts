@@ -736,6 +736,37 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             desc: '记忆分析改成纯文字报告，不跑动画（低配手机 / 远程桌面用）',
             binding: { key: 'reviewAnalysisPlain' },
           },
+          // Anki 式学习步骤：新卡当天的短重复（默认 1m 10m）。参照 Anki 官方设计——
+          // Good 进下一步、Again 回第一步、Hard 取前两步均值、Easy 直接毕业；只在建档当天有效。
+          {
+            type: 'text',
+            name: '学习步骤（分钟）',
+            desc: '新卡当天的短重复，默认 "1m 10m"；留空 = 关掉，首次评级直接进 FSRS',
+            help:
+              '模仿 Anki 的学习步骤：新卡先在当天按这里的间隔重复几次，走完才进入 FSRS 排期。' +
+              '只认分钟（如 "1m 10m 30m"），不认小时/天——官方建议步骤都在当天完成。' +
+              'Good 进下一步、忘了回第一步、困难取前两步均值、简单直接毕业。留空则新卡第一次评级就进 FSRS。',
+            binding: { key: 'reviewLearningSteps' },
+          },
+          {
+            type: 'number',
+            name: '毕业间隔（天）',
+            desc: '走完学习步骤后第一次复习间隔，默认 1 天',
+            binding: { key: 'reviewGraduatingInterval' },
+            min: 1,
+            max: 30,
+            visibleWhen: (s) => !!String(s.reviewLearningSteps || '').trim(),
+            isChild: true,
+          },
+          {
+            type: 'text',
+            name: '重学步骤（分钟）',
+            desc: 'FSRS 阶段点「忘了」后的当天重学，默认 "1m 10m"；留空 = 关掉',
+            help:
+              '模仿 Anki 的 relearn steps：已经毕业的卡点「忘了」后，先在当天按这里的间隔重学几次，' +
+              '再回到 FSRS 排期。不填则忘了之后直接进入 FSRS 的遗忘后排期。',
+            binding: { key: 'reviewRelearnSteps' },
+          },
           // 深审新-14②/A14：超界改渲染器声明钳制（min/max 进界并回写输入框，R9 通路显示值=落盘值），
           // 原.onChange「超上界回 1」复刻删除——输入 8 落 5 且回显 5，不再出现显示 8 落 1 的缝
           {
