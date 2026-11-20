@@ -1,8 +1,8 @@
 /**
  * 从 bz 导入复习数据（src/data/migrate.ts）
  *
- * bz 里的复习计划存在 `CONFIG/STORAGE/review.json`，本插件默认写库根
- * `bz-review/storage/review.json`——两个插件同时装也不会互相覆盖。
+ * bz 里的复习计划存在 `CONFIG/STORAGE/review.json`，本插件默认写
+ * `CONFIG/REVIEW/review.json`——两个插件同时装也不会互相覆盖。
  *
  * 迁移只做一次、只读源文件、目标非空就不动：迁移失败最多是「没导进来」，
  * 绝不会把 bz 那边已经攒了几个月的数据改坏。
