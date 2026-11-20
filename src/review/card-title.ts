@@ -7,8 +7,8 @@
  * ============================================================ */
 import type { ReviewCard } from './data';
 
-/** 列表标题的截断长度：一行放得下、又能区分同章的十几张卡 */
-const CARD_TITLE_MAX = 22;
+/** 列表标题的截断长度（2026-11-20 放宽）：标题给两行，40 字仍能认出是哪张卡 */
+const CARD_TITLE_MAX = 40;
 
 /** 把一行文本收成短标题：压空白、截断、补省略号 */
 function shortTitle(s: string): string {

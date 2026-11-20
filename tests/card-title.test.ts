@@ -23,16 +23,22 @@ describe('cardTitleOf：按方式取短标题', () => {
     const long = '城外的人想进去'.repeat(10);
     const got = cardTitleOf(card({ mode: 'plain', text: long }));
     expect(got).not.toContain('围城');
-    expect(got.length).toBeLessThanOrEqual(23);
+    expect(got.length).toBeLessThanOrEqual(41);
     expect(got.endsWith('…')).toBe(true);
   });
 
   it('长问句截断并补省略号，压掉多余空白', () => {
     const q = '这是一句很长很长的问句'.repeat(5);
     const got = cardTitleOf(card({ mode: 'flashcard', qa: { q, a: 'x', at: 1 } }));
-    expect(got.length).toBeLessThanOrEqual(23);
+    expect(got.length).toBeLessThanOrEqual(41);
     expect(got.endsWith('…')).toBe(true);
     expect(got).not.toContain('  ');
+  });
+
+  it('标题放宽到 40 字：三十来字的标题完整显示，不再被砍成 22 字', () => {
+    const title = '关于孙柔嘉与方鸿渐的婚姻观，下列哪一项最符合作者的原意？';
+    expect(title.length).toBeGreaterThan(22);
+    expect(cardTitleOf(card({ mode: 'quiz', displayTitle: title }))).toBe(title);
   });
 
   it('老卡（无 qa / 无 displayTitle）回落到书名·章节', () => {
