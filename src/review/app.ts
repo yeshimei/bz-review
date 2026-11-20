@@ -1087,7 +1087,7 @@ export const reviewApp = {
       }
       /* 额度到顶不是写盘失败：弹高级功能对照窗，里面能直接填码解锁。 */
       if (e instanceof QuotaExceededError) {
-        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog(e.kind));
+        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog());
         return;
       }
       throw e;

@@ -34,12 +34,11 @@
 
 ## 功能
 
-基础版免费、不限时，限 20 篇笔记与 50 条划线卡；高级版不限量。两版功能完全一样，以后新增的功能也一样。
+基础版免费、不限时，笔记与划线卡合计限 50 条；高级版不限量。两版功能完全一样，以后新增的功能也一样。
 
 | 类别 | 功能 | 基础版 | 高级版 |
 |---|---|:---:|:---:|
-| **数量上限 · 唯一差异** | 复习笔记 | 20 篇 | 不限 |
-|  | 划线卡 | 50 条 | 不限 |
+| **数量上限 · 唯一差异** | 复习笔记 + 划线卡合计 | 50 条 | 不限 |
 | **加入与复习方式** | 选中文字加入复习 | ✓ | ✓ |
 |  | 划线一键复习 | ✓ | ✓ |
 |  | 整本书批量加入：按划线 / 重点 / 章节选范围 | ✓ | ✓ |
@@ -181,7 +180,7 @@
 
 - **会和其他插件打架吗？** 不会。界面是自己的标签页，生成的 DOM 与 CSS 都限定在插件自己的作用域内（统一挂 `data-bzrv`），不污染别人的样式；数据也和 bz 分开存。
 - **和 bz 里的复习计划是什么关系？** 从 bz 独立出来的插件，bz 里那份原样保留。两边各存各的，可以同时装、互不覆盖，也能一键把 bz 的计划导进来。
-- **超过免费上限会删我的卡吗？** 不会。已有的 20 篇笔记、50 条卡继续照常复习，只是不能再加新的；升级后立即放开。
+- **超过免费上限会删我的卡吗？** 不会。已有的笔记和卡继续照常复习，只是合计满 50 条后不能再加新的；升级后立即放开。批量导入时如果这次会越过 50 条，仍会让你整批加进去，只提醒一句下次要先升级。
 - **换电脑怎么办？** 库同步过去，排期和复习历史跟着走；高级版在新设备上重新填一次激活码。
 - **手机上要单独买吗？** 不用，同一个包，桌面与移动都包含在内。
 - **没装 bz Reader 能用吗？** 能。笔记照样能排进计划，抽认卡和做题两种方式都能用。
@@ -235,7 +234,7 @@ Still in production — the link will be added here and in the plugin's "video t
 
 ### Features and pricing
 
-The free edition is complete and unlimited in time: 20 review notes and 50 highlight cards, with every feature the plugin has. The purchased edition only removes the counts — both editions are identical in features, and every future feature will be too. Existing data above the free limits is never deleted.
+The free edition is complete and unlimited in time: 50 review notes and highlight cards combined. The purchased edition only removes the count — both editions are identical in features, and every future feature will be too. Existing data above the free limit is never deleted.
 
 A single build covers desktop and mobile. License keys are verified locally, offline, and are not tied to a device count — re-enter yours on a new machine. Purchase at the [store page](https://wzyp.cn/shop/IFCEI5I3). bz-review does not accept bz Reader license keys.
 

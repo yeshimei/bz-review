@@ -101,6 +101,7 @@ export async function addNotes(dm: ReviewDataManager, app: App, paths: readonly 
     /* addItems 自己也会跳过已存在的：正常走不到，留着防两条路径口径分叉 */
     out.exists += res.skipped;
     if (res.rejected) out.rejected = res.rejected;
+    if (res.overLimitMessage) out.overLimitMessage = res.overLimitMessage;
   }
   return out;
 }
@@ -153,6 +154,7 @@ export async function addCards(dm: ReviewDataManager, cards: readonly ReviewCard
   out.added = res.added;
   out.exists = res.skipped;
   if (res.rejected) out.rejected = res.rejected;
+  if (res.overLimitMessage) out.overLimitMessage = res.overLimitMessage;
 
   /* 阅读器三选一里的「做题」会把出好的题一起交来：原样落进独立题库，
      不能让 Review 再生成一份（用户在阅读器里删过、改过的题必须保留）。 */

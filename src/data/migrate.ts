@@ -1,7 +1,7 @@
 /**
  * 从 bz 导入复习数据（src/data/migrate.ts）
  *
- * bz 里的复习计划存在 `CONFIG/STORAGE/review.json`，本插件默认写库根
+ * bz 里的复习存在 `CONFIG/STORAGE/review.json`，本插件默认写库根
  * `bz-review/storage/review.json`——两个插件同时装也不会互相覆盖。
  *
  * 迁移只做一次、只读源文件、目标非空就不动：迁移失败最多是「没导进来」，
@@ -10,7 +10,8 @@
 import type { App } from 'obsidian';
 import { jsonFileStore, storageFile } from '../core/storage';
 import { parseBzReviewJson } from './migrate-parse';
-import { FREE_CARD_LIMIT, FREE_NOTE_LIMIT } from './entitlement';
+import { FREE_ITEM_LIMIT } from './entitlement';
+import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
 
 /** 复习域自己产出的数据文件（换数据目录时要跟着走） */
 export const REVIEW_DATA_FILES = ['review.json', 'review-quiz.json', 'review-fit.json'] as const;
@@ -150,10 +151,7 @@ export interface MigrateResult {
 }
 
 export async function migrateFromBz(app: App, settings: BzSettings): Promise<MigrateResult> {
-  /* 导入目标必须和插件实际读取 review.json 的兜底同口径：data.getReviewFilePath()
-     在 storagePath 为空时兜到 'CONFIG/STORAGE'。旧代码这里兜到 DEFAULT_REVIEW_DIR
-     (bz-review/storage)，于是没设目录的库「导入写到 A、插件读 B」——提示成功却看不到数据。 */
-  const dstPath = storageFile('review.json', (settings.storagePath || 'CONFIG/STORAGE').trim());
+  const dstPath = storageFile('review.json', (settings.storagePath || DEFAULT_REVIEW_DIR).trim());
 
   const exists = async (p: string): Promise<boolean> => {
     try {
@@ -207,24 +205,14 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
     return { ok: false, message: `写入失败：${(e as Error)?.message || '未知错误'}` };
   }
   /* 导入不按配额截断——老用户攒的数据不该因为换了插件就少一半。但**得说一声**：
-     85 条原样搬进来，而免费版上限是 20 篇 + 50 条，用户完全不知道自己在超限状态，
+     85 条原样搬进来，而免费版上限是合计 50 条，用户完全不知道自己在超限状态，
      之后加任何新笔记都被拦，只会觉得「导入之后就不能用了」。 */
-  const cardCount = items.filter((i: unknown) => {
-    if (!i || typeof i !== 'object') return false;
-    const rec = i as { kind?: unknown; card?: unknown };
-    return rec.kind === 'card' && !!rec.card;
-  }).length;
-  const noteCount = items.length - cardCount;
-  const overNotes = Math.max(0, noteCount - FREE_NOTE_LIMIT);
-  const overCards = Math.max(0, cardCount - FREE_CARD_LIMIT);
-  const overPart = [overNotes > 0 ? `${overNotes} 篇笔记` : '', overCards > 0 ? `${overCards} 条划线` : '']
-    .filter(Boolean)
-    .join('、');
+  const over = Math.max(0, items.length - FREE_ITEM_LIMIT);
   return {
     ok: true,
     message:
       `已从 bz 导入 ${items.length} 条复习记录。bz 那边的数据没动。` +
-      (overPart ? ` 其中 ${overPart}超出免费版上限——已有数据不会删，但免费版不能再加新的。` : ''),
+      (over > 0 ? ` 合计超出免费版上限 ${over} 条——已有数据不会删，但免费版不能再加新的。` : ''),
     imported: items.length,
   };
 }
@@ -242,7 +230,7 @@ export async function importFromBzWithConfirm(app: App, settings: BzSettings): P
   }
   const { openFlowDialog } = await import('../core/flow-dialog');
   const choice = await openFlowDialog({
-    title: '从 bz 导入复习计划？',
+    title: '从 bz 导入复习？',
     message:
       `检测到 bz 里有 ${stats.notes} 条复习笔记，其中 ${stats.due} 条已到期，累计复习 ${stats.reviews} 次。\n` +
       '导入只复制，不改变 bz 的数据；目标已有复习数据时不覆盖。',

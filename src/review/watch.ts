@@ -112,7 +112,7 @@ export class ReviewWatcher {
       // F10：查重类错误（并发已加入）静默；额度到顶弹升级窗；写盘失败给人话提示
       if (e instanceof Error && e.message.includes('已在复习计划中')) return;
       if (e instanceof QuotaExceededError) {
-        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog(e.kind));
+        void import('./ui/unlock-dialog').then((m) => m.openQuotaUpgradeDialog());
         return;
       }
       notifySaveError(e, '自动加入复习计划');
@@ -253,7 +253,13 @@ export class ReviewWatcher {
     const res = await this.dataManager.addItems(
       candidates.map((p) => ({ filePath: p, fileName: stripMdExt(p.split('/').pop()!) }))
     );
-    notice(`已加入 ${res.added} 篇笔记到复习计划`, 'success');
+    if (res.overLimitMessage) {
+      notice(`已加入 ${res.added} 篇笔记。${res.overLimitMessage}`, 'warning');
+    } else if (res.rejected) {
+      notice(`合计已达基础版上限，这批 ${res.rejected} 篇未加入；升级高级版后可继续`, 'warning');
+    } else {
+      notice(`已加入 ${res.added} 篇笔记到复习计划`, 'success');
+    }
     await this.refresh();
     return true;
   }

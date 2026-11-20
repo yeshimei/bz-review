@@ -193,9 +193,9 @@
       <tbody></tbody>
       <tfoot>
         <tr>
-          <td class="f">合计 · 功能完全一致，仅 2 项数量不同</td>
-          <td class="c free"><b>24</b><em>项</em></td>
-          <td class="c pro"><b>24</b><em>项</em></td>
+          <td class="f" id="footLabel">合计 · 功能完全一致</td>
+          <td class="c free"><b id="footFree">24</b><em>项</em></td>
+          <td class="c pro"><b id="footPro">24</b><em>项</em></td>
         </tr>
       </tfoot>
     </table>
@@ -206,8 +206,7 @@
 <script>
 const GROUPS = [
   ['数量上限 · 唯一差异', [
-    ['复习笔记', '20 篇', '不限'],
-    ['划线卡', '50 条', '不限'],
+    ['复习笔记 + 划线卡合计', '50 条', '不限'],
   ]],
   ['加入与复习方式', [
     ['选中文字加入复习', 1, 1],
@@ -264,6 +263,16 @@ const rows = GROUPS.map(([name, list]) =>
 ).join('');
 
 document.querySelector('#plan tbody').innerHTML = rows;
+
+/* 页脚的差异项数与功能项数由数据算，不再手写：改了 GROUPS 又忘了改页脚，
+   图上就会自相矛盾（一行数量差异却写着「2 项」）。 */
+const allRows = GROUPS.flatMap(([, list]) => list);
+const diffRows = allRows.filter(([, free, pro]) => String(free) !== String(pro)).length;
+const sameRows = allRows.length - diffRows;
+document.querySelector('#footLabel').textContent =
+  `合计 · 功能完全一致，仅 ${diffRows} 项数量不同`;
+document.querySelector('#footFree').textContent = String(sameRows);
+document.querySelector('#footPro').textContent = String(sameRows);
 </script>
 </body>
 </html>
