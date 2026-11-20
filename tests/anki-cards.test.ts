@@ -98,8 +98,16 @@ describe('parseAnkiCards：Anki 导出 → 本仓卡片', () => {
     const raw = ['#html:true', '<img src="pics/a.png">这是什么\t听 [sound:audio/b.mp3]'].join('\n');
     const { cards, stats } = parseAnkiFile(raw, 'x.txt');
     expect(stats.media).toBe(2);
+    expect(stats.mediaNames).toBe(2);
     expect(cards[0].card.qa?.q).toContain('[图片：a.png]');
     expect(cards[0].card.qa?.a).toContain('[音频：b.mp3]');
+    expect(cards[0].mediaRefs).toEqual(['a.png', 'b.mp3']);
+  });
+
+  it('非 HTML 行的 [sound:…] 也收进媒体文件名', () => {
+    const { stats, cards } = parseAnkiFile('听单词\t[sound:word.mp3]', 'x.txt');
+    expect(stats.mediaNames).toBe(1);
+    expect(cards[0].mediaRefs).toEqual(['word.mp3']);
   });
 
   it('正反模板出正反两张卡，key 不同（内容不重复）', () => {
@@ -112,11 +120,21 @@ describe('parseAnkiCards：Anki 导出 → 本仓卡片', () => {
     expect(cards[0].card.key).not.toBe(cards[1].card.key);
   });
 
-  it('图片遮挡卡文本导出无文字，明确跳过并报数', () => {
-    const raw = ['#notetype:Image Occlusion', 'card1\tsomething'].join('\n');
+  it('图片遮挡卡按图片+文字导入，不再跳过；区域留空待补', () => {
+    const raw = [
+      '#notetype:Image Occlusion',
+      '<img src="pics/diagram.png">\t{{c1::长江}}是{{c2::中国}}最长的河',
+    ].join('\n');
     const { cards, stats } = parseAnkiFile(raw, 'x.txt');
-    expect(cards).toHaveLength(0);
-    expect(stats.skipped.imageOcclusion).toBe(1);
+    expect(cards).toHaveLength(1);
+    expect(stats.occlusion).toBe(1);
+    expect(cards[0].card.mode).toBe('occlusion');
+    expect(cards[0].card.occlusion?.regions).toEqual([]);
+    expect(cards[0].card.occlusion?.image).toBe('diagram.png');
+    /* 挖空标记还原成答案文字，图片名也留在正文里（配对成功后由导入层替换） */
+    expect(cards[0].card.text).toContain('长江');
+    expect(cards[0].card.text).toContain('中国');
+    expect(cards[0].mediaRefs).toEqual(['diagram.png']);
   });
 
   it('key 是内容/GUID 稳定哈希，不随来源路径与行号变化（重新导出不重复）', () => {

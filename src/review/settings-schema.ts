@@ -1025,7 +1025,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           {
             type: 'button',
             name: '从 Anki 导入',
-            desc: '打开系统文件框选一份 Anki「笔记纯文本」导出（.txt/.tsv/.csv，库外任意位置都行），先看清进来多少、跳过什么再确认。支持 Tab/逗号分隔、网页格式、{{c1::挖空}} 拆卡与反向卡；命令面板也可执行。',
+            desc: '打开系统文件框选一份 Anki「笔记纯文本」导出（.txt/.tsv/.csv，库外任意位置都行），先看清进来多少、跳过什么再确认。支持 Tab/逗号分隔、网页格式、{{c1::挖空}} 拆卡与反向卡；导出里引用的图片/音频可再多选文件按文件名补进来，图片遮挡卡按图片+文字导入（遮挡区域随后手动补）；命令面板也可执行。',
             buttonText: '选文件导入',
             onClick: () => {
               void (async () => {
