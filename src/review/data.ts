@@ -126,6 +126,21 @@ export interface ReviewItem {
   kind?: 'note' | 'card';
   /** 条目类型为 card 时的内容 */
   card?: ReviewCard;
+  /**
+   * 自建牌组（2026-11-20）：用户显式指定的牌组名，优先于 deckOf 的自动推导
+   * （笔记=文件夹、卡片=书名）。没填就继续按老办法推导，老数据零迁移。
+   */
+  deck?: string;
+  /**
+   * 自建标签（2026-11-20）：不带 # 的标签数组。笔记类另有从 Obsidian 文件元数据
+   * 读出的标签（运行时派生，见 loadItems 的 tagsFromMeta），两者合并去重后用于筛选。
+   */
+  tags?: string[];
+  /**
+   * 运行时：从 Obsidian 文件元数据读出的标签（笔记类）。不落盘、不进内容指纹，
+   * 每次加载重算；标签筛选时与自建 tags 合并。见 store-format 的 RUNTIME_FIELDS。
+   */
+  metaTags?: string[];
   reviewStart: string; // ISO
   stage: number;
   phase: 'ladder' | 'fsrs' | 'relearn';
@@ -239,6 +254,9 @@ export class ReviewDataManager {
       }
       item.file = file;
       item.name = file.basename;
+      /* 笔记的 Obsidian 标签：运行时派生，不落盘（登记在 store-format 的 RUNTIME_FIELDS）。
+         metadataCache 没索引到时给空数组，不阻塞加载。 */
+      item.metaTags = (this.app.metadataCache.getFileCache(file)?.tags ?? []).map((t) => String(t.tag ?? '').replace(/^#/, '')).filter(Boolean);
       this.finishSchedule(item);
       valid.push(item);
     }
@@ -438,6 +456,28 @@ export class ReviewDataManager {
       if (!item) return false;
       item.card = { ...item.card!, ...patch, key: item.card!.key };
       item.name = cardTitleOf(item.card);
+      return true;
+    });
+  }
+
+  /**
+   * 更新条目的自建分组信息（牌组 / 标签）。只动 deck / tags 两个字段，
+   * 排期与复习历史一律不碰；传 undefined 表示清空对应字段（回到自动推导）。
+   */
+  updateItemMeta(filePath: string, patch: { deck?: string; tags?: string[] }): Promise<boolean> {
+    return this.mutate((items) => {
+      const item = items.find((i) => i.filePath === filePath);
+      if (!item) return false;
+      if ('deck' in patch) {
+        const v = String(patch.deck ?? '').trim();
+        if (v) item.deck = v;
+        else delete item.deck;
+      }
+      if ('tags' in patch) {
+        const list = (patch.tags ?? []).map((t) => String(t ?? '').trim()).filter(Boolean);
+        if (list.length) item.tags = list;
+        else delete item.tags;
+      }
       return true;
     });
   }

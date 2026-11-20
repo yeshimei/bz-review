@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFilter, collectFacets, deckOf, describeFilter, isEmptyFilter } from '../src/review/deck';
+import { applyFilter, collectFacets, deckOf, describeFilter, isEmptyFilter, tagsOf } from '../src/review/deck';
 
 const note = (path: string, extra: Record<string, unknown> = {}) => ({
   id: path,
@@ -13,10 +13,11 @@ const note = (path: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-const card = (key: string, book: string, text: string) => ({
+const card = (key: string, book: string, text: string, extra: Record<string, unknown> = {}) => ({
   ...note(key),
   kind: 'card' as const,
   card: { key, bookTitle: book, text },
+  ...extra,
 });
 
 describe('牌组', () => {
@@ -24,6 +25,12 @@ describe('牌组', () => {
     expect(deckOf(note('课程/数学/第一章.md') as any)).toBe('课程/数学');
     expect(deckOf(note('零散笔记.md') as any)).toBe('根目录');
     expect(deckOf(card('reader:b:1', '围城', '句子') as any)).toBe('围城');
+  });
+
+  it('自建牌组优先于自动推导；没填才按文件夹/书名', () => {
+    expect(deckOf(note('课程/数学/第一章.md', { deck: '高考冲刺' }) as any)).toBe('高考冲刺');
+    expect(deckOf(card('reader:b:1', '围城', '句子', { deck: '现代文学' }) as any)).toBe('现代文学');
+    expect(deckOf(note('课程/数学/第一章.md') as any)).toBe('课程/数学');
   });
 
   it('汇总出牌组与标签，按条数从多到少', () => {
@@ -55,6 +62,21 @@ describe('筛选', () => {
     expect(applyFilter(items, { deck: '课程/英语' })).toHaveLength(1);
   });
 
+  it('按 #标签筛选：自建 tags 与 Obsidian 元数据标签都能命中（旧代码这里全过滤光）', () => {
+    const tagged = [
+      note('a.md', { tags: ['数学', '重点'] }),
+      note('b.md', { metaTags: ['数学'] }),
+      note('c.md', { tags: ['英语'] }),
+    ] as any[];
+    expect(applyFilter(tagged, { deck: '#数学' }).map((i) => i.id)).toEqual(['a.md', 'b.md']);
+    expect(applyFilter(tagged, { deck: '#英语' }).map((i) => i.id)).toEqual(['c.md']);
+    expect(applyFilter(tagged, { deck: '#不存在' })).toHaveLength(0);
+  });
+
+  it('关键字也能搜到标签', () => {
+    expect(applyFilter([note('a.md', { tags: ['冷门标签'] })] as any[], { query: '冷门标签' })).toHaveLength(1);
+  });
+
   it('空筛选等于不筛（不能把「没填」当成「匹配不到」）', () => {
     expect(applyFilter(items, {})).toHaveLength(3);
     expect(applyFilter(items, { query: '   ', kind: 'all', deck: '' })).toHaveLength(3);
@@ -81,6 +103,20 @@ describe('筛选', () => {
     expect(applyFilter(items, { status: 'today' }).map((i) => i.name)).toEqual(['今天']);
     expect(applyFilter(items, { status: 'future' }).map((i) => i.name)).toEqual(['未来']);
     expect(applyFilter(items, { status: 'all' })).toHaveLength(3);
+  });
+
+  it('自建 tags 与运行时 metaTags 合并去重，去掉 #', () => {
+    expect(tagsOf(note('a.md', { tags: ['数学', '#重点'], metaTags: ['重点', '英语'] }) as any)).toEqual([
+      '数学',
+      '重点',
+      '英语',
+    ]);
+  });
+
+  it('collectFacets 把条目自建标签也算进候选', () => {
+    const f = collectFacets([note('a.md', { tags: ['数学'] }), note('b.md', { tags: ['数学', '英语'] })] as any[]);
+    expect(f.tags).toContain('#数学');
+    expect(f.tags[0]).toBe('#数学');
   });
 
   it('状态与关键字叠加：先按关键字挑，再按状态挑', () => {

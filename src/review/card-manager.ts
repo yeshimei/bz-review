@@ -48,6 +48,25 @@ export function unsuspendAndUnbury<T extends QueueHidden>(it: T): T {
   return next as T;
 }
 
+/** 解析标签输入：逗号/空格/换行分隔，去 # 与空白，去重，保持顺序 */
+export function parseTagsInput(raw: string): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const part of String(raw ?? '').split(/[,，\s\n]+/)) {
+    const v = part.trim().replace(/^#+/, '');
+    if (v && !seen.has(v)) {
+      seen.add(v);
+      out.push(v);
+    }
+  }
+  return out;
+}
+
+/** 把标签数组显示成输入框里的文本（逗号分隔） */
+export function tagsToInput(tags: readonly string[] | undefined): string {
+  return (tags ?? []).join(', ');
+}
+
 /** 给 UI 用的一句话说明，明确「不删数据、不改排期」 */
 export function hiddenNotice(hidden: 'suspended' | 'buried'): string {
   return hidden === 'suspended'
