@@ -114,7 +114,7 @@ export function withoutPrepared(
     .filter((k) => k && !prepared.has(k));
 }
 
-/** 卡片类额度（额度逻辑只在 entitlement 里有一份，这里转个口） */
+/** 复习条目合计额度（笔记 + 划线；额度逻辑只在 entitlement 里有一份，这里转个口） */
 export function cardQuota(counts: PlanCounts): QuotaInfo {
-  return quotaInfo('card', counts);
+  return quotaInfo(counts);
 }

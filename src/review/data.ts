@@ -13,7 +13,7 @@ import { backupOriginal, diskReadText, enqueueFileTask, jsonFileStore, storageFi
 import { tryGetSettings } from '../core/settings-provider';
 import { FSRS_FIRST_INTERVALS, TOTAL_STAGES } from './fsrs';
 import { clipWToBounds } from './fit';
-import { canAddCard, canAddNote, quotaBlock, QuotaExceededError, type PlanCounts } from '../data/entitlement';
+import { batchQuota, overLimitMessage, quotaBlock, QuotaExceededError, type PlanCounts } from '../data/entitlement';
 import {
   fingerprintsOf,
   mergeReviewItems,
@@ -162,7 +162,8 @@ export function isCardItem(item: ReviewItem | null | undefined): boolean {
 }
 
 /**
- * 计划里两类各多少（免费版配额口径：划线卡与笔记**分开计数**）。
+ * 计划里两类各多少。免费版配额看的是**两者合计**（2026-11-20 起不再分开计数），
+ * 合计口径见 entitlement.totalOf / batchQuota。
  *
  * 挂起（文件缺失）和已完成的条目照样占位——数据还在库里，只是现在不复习它。
  * 迁移进来的老数据可能早就超限，那种情况按「已满」处理：不删用户的东西，
@@ -381,21 +382,26 @@ export class ReviewDataManager {
   /**
    * 批量加入划线卡。
    *
-   * 与 addItems 同一套口径：单趟 RMW、已存在跳过不抛、返回 { added, skipped }。
-   * 钥匙重复就跳过——同一段划线点两次不该排两次。
+   * 与 addItems 同一套口径：单趟 RMW、已存在跳过不抛。钥匙重复就跳过——同一段
+   * 划线点两次不该排两次。
+   *
+   * 配额按**整批**判（2026-11-20「超一次」）：先算出这批有效新卡数，一次决策——
+   * 合计已满就整批拒（rejected = 全部 incoming），没满就整批放行，哪怕加完越过
+   * 20。返回 overLimitMessage 让调用方提醒「这次全进了、下次要先升级」。不再逐条截断，
+   * 一次导 60 张书卡不会只落地前几张。
    */
   addCards(
     cards: readonly ReviewCard[],
-  ): Promise<{ added: number; skipped: number; rejected: number; keys: string[] }> {
+  ): Promise<{ added: number; skipped: number; rejected: number; keys: string[]; overLimitMessage: string }> {
     return this.mutate((items) => {
       const have = new Set(items.map((i) => i.filePath));
       const counts = planCounts(items);
       const keys: string[] = [];
-      let added = 0;
       let skipped = 0;
-      let rejected = 0;
       /* Array.isArray 把 readonly ReviewCard[] 收窄成 any[]，这里显式回断言，避免 any 泄漏。 */
       const list = Array.isArray(cards) ? (cards as ReviewCard[]) : [];
+      /* 第一趟：去重、排空，收集这批真正要新增的卡（不改 items）。 */
+      const fresh: ReviewCard[] = [];
       for (const raw of list) {
         const key = String(raw?.key ?? '').trim();
         const text = String(raw?.text ?? '').trim();
@@ -403,19 +409,20 @@ export class ReviewDataManager {
           skipped++;
           continue;
         }
-        /* 配额到顶：拒这一条，后面的也拒——但**已经进来的不退回**。用户一次加
-           六十张时前五十张该落地，而不是整批失败（免费版只是不能继续加）。 */
-        if (!canAddCard(counts.cards)) {
-          rejected++;
-          continue;
-        }
         have.add(key);
-        items.push(this.newCardItem({ ...raw, key, text }));
-        counts.cards += 1;
-        keys.push(key);
-        added++;
+        fresh.push({ ...raw, key, text });
       }
-      return { added, skipped, rejected, keys };
+      /* 第二趟：一次决策整批放行或整批拒绝。 */
+      const q = batchQuota(counts, fresh.length);
+      const msg = q.overLimit && q.allowed ? overLimitMessage(counts, fresh.length) : '';
+      if (!q.allowed) {
+        return { added: 0, skipped, rejected: fresh.length, keys, overLimitMessage: msg };
+      }
+      for (const raw of fresh) {
+        items.push(this.newCardItem(raw));
+        keys.push(raw.key);
+      }
+      return { added: fresh.length, skipped, rejected: 0, keys, overLimitMessage: msg };
     });
   }
 
@@ -434,8 +441,8 @@ export class ReviewDataManager {
   addItem(filePath: string, fileName: string): Promise<ReviewItem> {
     return this.mutate((items) => {
       if (items.some((i) => i.filePath === filePath)) throw new Error('该笔记已在复习计划中');
-      const block = quotaBlock('note', planCounts(items));
-      if (!block.ok) throw new QuotaExceededError('note', block.message);
+      const block = quotaBlock(planCounts(items));
+      if (!block.ok) throw new QuotaExceededError(block.message);
       const newItem = this.newReviewItem(filePath, fileName);
       items.push(newItem);
       return newItem;
@@ -443,33 +450,38 @@ export class ReviewDataManager {
   }
 
   /** 批量新增（A13/E4 审查修复：watch 存量收编等 N+1 场景——单趟 RMW，一读一写落盘）。
-   *  已存在/空路径跳过不抛错；返回 { added, skipped } 供调用方通知口径。
-   *  超配额的那部分记在 rejected 里：前面的照常落地，不整批失败。 */
+   *  已存在/空路径跳过不抛错；返回 { added, skipped, rejected, overLimitMessage } 供调用方通知口径。
+   *
+   *  配额按整批判（2026-11-20「超一次」）：与 addCards 同口径——合计已满就整批拒，
+   *  没满就整批放行（哪怕加完越过 50），overLimitMessage 交给调用方提醒「下次要先升级」。 */
   addItems(
     list: Array<{ filePath: string; fileName?: string }>,
-  ): Promise<{ added: number; skipped: number; rejected: number }> {
+  ): Promise<{ added: number; skipped: number; rejected: number; overLimitMessage: string }> {
     return this.mutate((items) => {
       const have = new Set(items.map((i) => i.filePath));
       const counts = planCounts(items);
-      let added = 0;
       let skipped = 0;
-      let rejected = 0;
+      /* 第一趟：去重、排空，收集真正要新增的笔记。 */
+      const fresh: Array<{ filePath: string; name: string }> = [];
       for (const { filePath, fileName } of list) {
         if (!filePath || have.has(filePath)) {
           skipped++;
           continue;
         }
-        if (!canAddNote(counts.notes)) {
-          rejected++;
-          continue;
-        }
         have.add(filePath);
         const name = fileName || stripMdExt(filePath.split('/').pop() || '') || filePath;
-        items.push(this.newReviewItem(filePath, name));
-        counts.notes += 1;
-        added++;
+        fresh.push({ filePath, name });
       }
-      return { added, skipped, rejected };
+      /* 第二趟：一次决策整批放行或整批拒绝。 */
+      const q = batchQuota(counts, fresh.length);
+      const msg = q.overLimit && q.allowed ? overLimitMessage(counts, fresh.length) : '';
+      if (!q.allowed) {
+        return { added: 0, skipped, rejected: fresh.length, overLimitMessage: msg };
+      }
+      for (const { filePath, name } of fresh) {
+        items.push(this.newReviewItem(filePath, name));
+      }
+      return { added: fresh.length, skipped, rejected: 0, overLimitMessage: msg };
     });
   }
 

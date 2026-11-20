@@ -27,7 +27,7 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 3. 命令 ID 用 `review-<动作>`；通知正文不带 emoji，新语义先查 `src/core/notice.ts` 的 `ICONS`，确无匹配再加类型（图标 + 颜色 class + 默认时长），别把 emoji 写进正文。
 4. 数据默认写库根 `bz-review/storage/review.json`（另有 `review-quiz.json` / `review-fit.json`），与 bz 的 `CONFIG/STORAGE/review.json` 分开；「从 bz 导入」只导一次、不覆盖、不动 bz 的数据（`src/data/migrate.ts`）。storagePath 已是显式值一律原样透传，别当成要搬家。
 5. 改动走仓库外 worktree 并从最新 master 分叉，worktree 内不构建。
-6. 授权是离线验签，签名密钥只在 `scripts/keys/`（gitignore），绝不进提交、绝不外发；基础版 20 篇笔记 + 50 条划线卡、高级版不限，功能两边完全一致——数量门控别写成功能差异。
+6. 授权是离线验签，签名密钥只在 `scripts/keys/`（gitignore），绝不进提交、绝不外发；基础版笔记与划线卡合计 50 条、高级版不限，功能两边完全一致——数量门控别写成功能差异；批量导入按导入后合计判断，允许越过 50 的这一次整批放行并提醒，合计已满则整批拒。
 7. 给 bz Reader 的门面是插件实例上的 `reviewApi`（`src/main.ts`），契约 `version` 只在语义变更时升；分工是「Reader 决定哪些内容值得复习，Review 只负责复习」，别在 Review 里重做选题/出题。
 8. 未定稿探索稿只放 `.scratch/<名>/`，不得混入 `src/`。
 9. 强调色是全局设计变量，不是装饰：选中态、主按钮、链接、进度条、chip、焦点环、状态点等一切「交互色」都必须走强调色 token，禁止写死铜色。每个原型 / 设计都要带强调色切换并验过每一档的可读性；规则见下节「强调色（accent）」。

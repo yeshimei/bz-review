@@ -1,11 +1,10 @@
 /* ============================================================
  * 高级功能弹窗（照 bz-reader 的功能对照表）：
- * 两版功能完全一致，只有复习笔记 / 划线卡数量不同。价格不写进插件。
+ * 两版功能完全一致，只差笔记 + 划线的合计数量上限。价格不写进插件。
  * 弹窗只做引导（去购买 / 交流群）；填激活码统一走设置页「授权」组，别在两处各做一份。
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
-import { GROUP_ID, PURCHASE_URL } from '../../data/entitlement';
-import { getLicenseState } from '../../data/entitlement';
+import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, getLicenseState } from '../../data/entitlement';
 import { openExternalUrl } from './links-bridge';
 
 interface PlanRow {
@@ -21,8 +20,7 @@ const GROUPS: Array<{ title: string; rows: PlanRow[] }> = [
   {
     title: '数量上限 · 唯一差异',
     rows: [
-      { label: '复习笔记', free: '20 篇', pro: '不限' },
-      { label: '划线卡', free: '50 条', pro: '不限' },
+      { label: '复习笔记 + 划线卡合计', free: '50 条', pro: '不限' },
     ],
   },
   {
@@ -130,11 +128,12 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
   });
 }
 
-/** 基础版额度到顶：弹同一份对照表，但顶上说明是哪一类到顶、数据不会被删。 */
-export function openQuotaUpgradeDialog(kind: 'note' | 'card'): void {
-  const reason =
-    kind === 'note'
-      ? '基础版的 20 篇复习笔记已用完，已有数据不会被删。激活高级版即可继续添加。'
-      : '基础版的 50 条划线卡已用完，已有数据不会被删。激活高级版即可继续添加。';
-  openReviewUnlockDialog({ reason });
+/**
+ * 基础版额度到顶：弹同一份对照表，顶上说明合计额度已满、数据不会被删。
+ * 额度是笔记 + 划线合计，不再按类别分两句。
+ */
+export function openQuotaUpgradeDialog(): void {
+  openReviewUnlockDialog({
+    reason: `基础版的 ${FREE_ITEM_LIMIT} 条额度（笔记 + 划线合计）已用完，已有数据不会被删。激活高级版即可继续添加。`,
+  });
 }
