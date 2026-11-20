@@ -17,17 +17,19 @@ import { tryGetSettings } from '../core/settings-provider';
 type ModeSettings = Partial<Pick<BzSettings, 'reviewCardMode' | 'reviewCardDefaultMethod'>>;
 
 /**
- * 划线卡的四种复习方式（外加 plain：不生成任何内容，直接展开全文）。
+ * 划线卡的复习方式（外加 plain：不生成任何内容，直接展开全文）。
  *
  *   flashcard 抽认卡：正面问句，背面原文
  *   cloze     填空：挖掉一两处，凭上下文补回来
  *   quiz      做题：AI 出选择题
  *   context   上下文：给前后文，回忆中间那句（不需要预先生成内容）
+ *   media     媒体卡：图片 / 音频直接嵌在卡上，复习时显示或播放
+ *   occlusion 图片遮挡：图片上盖几块区域，点开揭示被遮的内容
  */
-export type CardMode = 'flashcard' | 'cloze' | 'quiz' | 'context' | 'plain';
+export type CardMode = 'flashcard' | 'cloze' | 'quiz' | 'context' | 'plain' | 'media' | 'occlusion';
 
 /** 全部合法方式（顺序＝制卡界面里的推荐顺序） */
-export const CARD_MODES: readonly CardMode[] = ['flashcard', 'quiz', 'cloze', 'context', 'plain'];
+export const CARD_MODES: readonly CardMode[] = ['flashcard', 'quiz', 'cloze', 'media', 'occlusion', 'context', 'plain'];
 
 /** 这个字符串是不是一个合法的方式值 */
 export function isCardMode(v: unknown): v is CardMode {

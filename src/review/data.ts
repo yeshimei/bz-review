@@ -96,7 +96,17 @@ export interface ReviewCard {
    * 定下来存在卡上，每张卡各走各的（抽认卡、填空、上下文、做题、展开全文）。
    * 老卡片没有这个字段 —— `card-ai.ts` 的 `modeOfCard()` 回落到全局旧值。
    */
-  mode?: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain';
+  mode?: 'flashcard' | 'cloze' | 'context' | 'quiz' | 'plain' | 'media' | 'occlusion';
+  /**
+   * 媒体卡（2026-11-20）：库内图片/音频路径，复习时真实显示/播放，不是占位文字。
+   * images/audio 都是 vault 内相对路径（跟着库走）；没有时不渲染对应元素。
+   */
+  media?: { images?: string[]; audio?: string };
+  /**
+   * 图片遮挡（2026-11-20）：一张图 + 若干被遮区域。每个区域用百分比坐标
+   * （0-100，相对图片尺寸），复习时盖住，点开揭示 label。移动端也能用（不依赖拖拽画框）。
+   */
+  occlusion?: { image: string; regions: Array<{ x: number; y: number; w: number; h: number; label: string }> };
   /**
    * 用户手改过（批 2）：后台自动补内容一律跳过，别把刚写的话顶掉。
    * 点「重新生成」仍可覆盖（那条路走 force）。
@@ -456,6 +466,30 @@ export class ReviewDataManager {
       if (!item) return false;
       item.card = { ...item.card!, ...patch, key: item.card!.key };
       item.name = cardTitleOf(item.card);
+      return true;
+    });
+  }
+
+  /**
+   * 更新卡片的媒体/遮挡配置（真正的媒体卡与图片遮挡）。只动 media / occlusion / mode，
+   * 排期与复习历史一律不碰。传 null 清空对应字段。
+   */
+  updateCardMedia(
+    key: string,
+    patch: { media?: ReviewCard['media'] | null; occlusion?: ReviewCard['occlusion'] | null; mode?: ReviewCard['mode'] },
+  ): Promise<boolean> {
+    return this.mutate((items) => {
+      const item = items.find((i) => i.filePath === key && isCardItem(i));
+      if (!item || !item.card) return false;
+      if ('media' in patch) {
+        if (patch.media) item.card.media = patch.media;
+        else delete item.card.media;
+      }
+      if ('occlusion' in patch) {
+        if (patch.occlusion) item.card.occlusion = patch.occlusion;
+        else delete item.card.occlusion;
+      }
+      if (patch.mode) item.card.mode = patch.mode;
       return true;
     });
   }

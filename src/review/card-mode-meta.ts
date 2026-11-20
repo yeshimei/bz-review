@@ -28,6 +28,8 @@ export const CARD_MODE_META: readonly CardModeMeta[] = [
   { value: 'flashcard', label: 'AI 抽认卡', hint: '先给一句不能照抄原文的问句，想不起来再看原文', icon: '◆', tone: 'purple' },
   { value: 'quiz', label: 'AI 做题', hint: '按内容生成四选一，每轮只抽其中一部分', icon: '◇', tone: 'orange' },
   { value: 'cloze', label: '挖空卡（Cloze）', hint: '把关键短语挖掉，自己填回去（社区正名 Cloze，读作「克洛兹」）', icon: '▣', tone: 'blue' },
+  { value: 'media', label: '媒体卡', hint: '把图片或音频放进卡里，复习时直接看、直接听', icon: '▧', tone: 'cyan' },
+  { value: 'occlusion', label: '图片遮挡', hint: '图片上盖住几处，先回忆再点开对照（Anki 的 Image Occlusion）', icon: '▦', tone: 'pink' },
   { value: 'context', label: '上下文', hint: '只给前后几句，回忆被藏起来的那段', icon: '▤', tone: 'green', hidden: true },
   { value: 'plain', label: '展开全文', hint: '不调用 AI，直接摆出原文，自己评难度', icon: '▬', tone: 'gray', hidden: true },
 ];

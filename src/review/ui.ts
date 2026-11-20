@@ -62,6 +62,7 @@ import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './pl
 import { bookSummariesOf } from './book-summary';
 import { setSuspended, buryItem, unsuspendAndUnbury, hiddenNotice } from './card-manager';
 import { openDeckTagEditor, allTagsOf } from './deck-tag-dialog';
+import { openMediaEditor } from './media-dialog';
 import { deckOf } from './deck';
 import { SprintSession } from './sprint';
 import type { SprintMode } from './sprint';
@@ -927,6 +928,21 @@ export class UIManager {
       });
       row.querySelector<HTMLElement>('[data-act="mgr-regen"]')?.addEventListener('click', () => {
         void this.regenerateWithConfirm(it);
+      });
+      row.querySelector<HTMLElement>('[data-act="mgr-media"]')?.addEventListener('click', () => {
+        const card = it.card;
+        if (!card) return;
+        openMediaEditor(this.app, card, (config) => {
+          void (async () => {
+            try {
+              await this.dataManager?.updateCardMedia(card.key, config);
+              notice('已保存媒体配置', 'success');
+              await this.refreshPanel();
+            } catch (e) {
+              notifySaveError(e, '保存媒体配置');
+            }
+          })();
+        });
       });
       row.querySelector<HTMLElement>('[data-act="mgr-deck"]')?.addEventListener('click', () => {
         const decks = [...new Set(items.map((x) => deckOf(x)))];

@@ -79,6 +79,8 @@ export async function generateCardContent(
   if (ctx.mode === 'plain') return null;
   /* 上下文卡用的是阅读器给的 before/after，没有要生成的东西 */
   if (ctx.mode === 'context') return null;
+  /* 媒体卡 / 图片遮挡：内容来自用户提供的文件，不经过 AI（清单2第2条：AI 看图能力留给将来） */
+  if (ctx.mode === 'media' || ctx.mode === 'occlusion') return null;
 
   if (ctx.mode === 'flashcard') {
     const res = await generateFlashcard(card, ctx.makeAI);
@@ -138,6 +140,8 @@ export async function ensureCardContent(
   if (ctx.mode === 'plain') return false;
   // 上下文卡用的是阅读器给的 before/after，没有要生成的东西
   if (ctx.mode === 'context') return false;
+  // 媒体卡 / 图片遮挡：文件由用户配，AI 不生成内容
+  if (ctx.mode === 'media' || ctx.mode === 'occlusion') return false;
   /* 手改过的卡不再自动补：后台预生成会把手写的问答/挖空顶掉，
      而这正是用户刚动手改过的东西。显式「重新生成」走 force，照旧可以覆盖。 */
   if (!force && card.manual) return false;
