@@ -115,6 +115,21 @@ export function silentModeOf(defaultMethod: CardMode | null | undefined): CardMo
   return defaultMethod ?? null;
 }
 
+/** 回一句「这批笔记里哪些已经在计划里」——两种钥匙都要认（2026-11-22 真机踩到的） */
+export function plannedPathsFrom(
+  rows: readonly { path: string; planned: boolean }[],
+  paths: readonly string[],
+): Set<string> {
+  const byWhole = new Map(paths.map((p) => [noteWholeKey(p), p]));
+  const out = new Set<string>();
+  for (const row of rows ?? []) {
+    if (!row?.planned) continue;
+    /* row.path 可能是真实路径（旧版整篇条目），也可能是 note:<path>（新流程的整篇卡） */
+    out.add(byWhole.get(String(row.path)) ?? String(row.path));
+  }
+  return out;
+}
+
 /** 入库结果 → 一句统一话术（所有入口共用，别再各写一套「已在复习中」） */
 export function addSummaryText(res: ReviewAddSummary, unit = '条'): string {
   const added = Math.max(0, Number(res?.added) || 0);
