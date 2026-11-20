@@ -10,7 +10,7 @@ import type { App } from 'obsidian';
 import manifest from '../../../manifest.json';
 import { notice } from '../../core/notice';
 import { getLicenseState } from '../../data/entitlement';
-import { openExternalUrl, VIDEO_TUTORIAL_URL, REPO_URL, READER_DOWNLOAD_URL, READER_DOWNLOAD_MIRROR, openDownloadWithFallback } from './links-bridge';
+import { openExternalUrl, openVideoTutorial, REPO_URL, READER_DOWNLOAD_URL, READER_DOWNLOAD_MIRROR, openDownloadWithFallback } from './links-bridge';
 import { copyReviewGroupId } from './group-bridge';
 import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml } from './settings-page-pure';
 import { setHtml } from './set-html';
@@ -151,7 +151,7 @@ export async function renderReviewSettingsPage(
           openExternalUrl(REPO_URL);
           return;
         case 'aboutvideo':
-          openExternalUrl(VIDEO_TUTORIAL_URL);
+          openVideoTutorial();
           return;
         case 'copygroup':
           void copyReviewGroupId();

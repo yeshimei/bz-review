@@ -5802,7 +5802,6 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 
 .bzrv-q-card.no:is([data-bzrv], [data-bzrv] *):hover { border-color: var(--bzrv-border); }
 }
-.bzrv-q-card.danger:is([data-bzrv], [data-bzrv] *) { border-left: 3px solid var(--bzrv-danger); }
 /* 从阅读器「去复习」跳过来的一张：短暂描边，告诉用户是哪条划线 */
 .bzrv-q-card.bzrv-card-jump:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bzrv-accent) 32%, transparent); }
 .bzrv-q-card .bzrv-q-card-top:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: flex-start; gap: 6px; justify-content: space-between; }
@@ -6887,6 +6886,26 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-more-sep:is([data-bzrv], [data-bzrv] *) { height: 1px; background: var(--bzrv-border); margin: 6px 6px; }
 /* 嵌入 bz-reader 动作栏：那一条 overflow 可能裁掉下拉，抬高层级并把定位锚在可见区 */
 .bzrv-embed-acts .bzrv-more-menu:is([data-bzrv], [data-bzrv] *) { top: calc(100% + 6px); }
+
+/* ==================== Anki 导入预览（2026-11-20） ====================
+   导入前先摊开「进来多少 / 跳过什么 / 媒体带不过来」，用户确认才写盘。
+   版式只做三件事：文件行弱一档、数字块给强调色、清单左对齐便于扫读。 */
+.bzrv-anki-preview:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 10px; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1); }
+.bzrv-anki-file:is([data-bzrv], [data-bzrv] *) { margin: 0; color: var(--bzrv-text-2); line-height: 1.6; overflow-wrap: anywhere; }
+.bzrv-anki-nums:is([data-bzrv], [data-bzrv] *) {
+  display: flex; flex-wrap: wrap; gap: 8px 16px;
+  padding: 10px 12px;
+  background: var(--bzrv-surface-2);
+  border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-sm);
+  color: var(--bzrv-text-2);
+}
+.bzrv-anki-nums b:is([data-bzrv], [data-bzrv] *) { margin-right: 3px; font-size: var(--bzrv-font-emphasis); color: var(--bzrv-accent); }
+.bzrv-anki-list:is([data-bzrv], [data-bzrv] *) { margin: 0; padding-left: 18px; color: var(--bzrv-text-2); line-height: 1.7; }
+.bzrv-anki-note:is([data-bzrv], [data-bzrv] *) { margin: 0; color: var(--bzrv-text-3); line-height: 1.65; }
+.bzrv-anki-warn:is([data-bzrv], [data-bzrv] *) { margin: 0; color: var(--bzrv-warning); line-height: 1.65; }
+.bzrv-anki-acts:is([data-bzrv], [data-bzrv] *) { justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.bzrv-anki-acts .bzrv-btn--primary:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); border-color: transparent; }
 
 /* ==================== 空态「看视频教程」按钮强调色（2026-11-20） ====================
    通用 .bzrv-btn--primary 吃 --bzrv-brand（部分强调档下该变量缺失 → 背景透明、按钮
