@@ -205,7 +205,7 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
     return { ok: false, message: `写入失败：${(e as Error)?.message || '未知错误'}` };
   }
   /* 导入不按配额截断——老用户攒的数据不该因为换了插件就少一半。但**得说一声**：
-     85 条原样搬进来，而免费版上限是合计 20 条，用户完全不知道自己在超限状态，
+     85 条原样搬进来，而免费版上限是合计 50 条，用户完全不知道自己在超限状态，
      之后加任何新笔记都被拦，只会觉得「导入之后就不能用了」。 */
   const over = Math.max(0, items.length - FREE_ITEM_LIMIT);
   return {
