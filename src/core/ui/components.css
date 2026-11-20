@@ -970,7 +970,7 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 .bzrv-panel-head .bzrv-panel-title,
 .bzrv-panel-head .bzrv-panel-head-pipe,
 .bzrv-panel-head .bzrv-panel-head-sub {
-  padding-bottom: 12px;
+  padding-bottom: var(--bzrv-head-pad-bottom, 12px);
 }
 .bzrv-panel-title {
   /* 与 Reader 页签同一档（14px），字号对齐才算「同一行东西」 */

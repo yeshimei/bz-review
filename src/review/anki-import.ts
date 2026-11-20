@@ -278,10 +278,13 @@ function previewHtml(name: string, stats: AnkiParseStats): string {
 
 /** 写盘 + 结果明细（用户确认后才走到这里） */
 async function commitAnkiCards(cards: ParsedAnkiCard[], dm: ReviewDataManager): Promise<void> {
-  const { importCardsFromMarkdown } = await import('./backup-io');
-  const res = await importCardsFromMarkdown(dm, cards);
-  const qa = cards.filter((c) => c.syntax === 'qa').length;
-  const cloze = cards.filter((c) => c.syntax === 'cloze').length;
+  /* 直接取 addCards 的 keys：它才知道哪些卡因去重/额度被跳过。分项只数真正
+     新增的卡，开头 added 与括号里的问答/挖空才对得上；媒体/遮挡卡同样按 key 计入。 */
+  const res = await dm.addCards(cards.map((c) => c.card));
+  const addedKeys = new Set(res.keys);
+  const addedCards = cards.filter((c) => addedKeys.has(c.card.key));
+  const qa = addedCards.filter((c) => c.syntax === 'qa').length;
+  const cloze = addedCards.filter((c) => c.syntax === 'cloze').length;
   notice(
     `Anki 导入 ${res.added} 张（问答 ${qa} / 挖空 ${cloze}）` +
       (res.skipped ? `，跳过 ${res.skipped} 张（已存在）` : '') +

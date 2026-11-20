@@ -402,8 +402,10 @@
   cursor: pointer;
 }
 
-.bzs-sup-retry:hover {
-  background: var(--sup-line-soft);
+@media (hover: hover) {
+  .bzs-sup-retry:hover {
+    background: var(--sup-line-soft);
+  }
 }
 
 .bzs-sup-retry:focus-visible {
@@ -445,9 +447,10 @@
   padding: 0 16px;
   border-radius: 8px;
   background: var(--sup-accent);
-  /* 铜色底（尤其深色主题下的浅铜档）上 --text-on-accent 仍是白，会白字浅底；
-     用 --bg：亮主题白字压深铜、暗主题深字压浅铜，两档都够对比（同 overlay 主按钮）。 */
-  color: var(--bg);
+  /* 底色是强调色（--sup-accent 跟随 --bzrv-accent），前景必须按底色深浅走，
+     否则深色主题下的浅铜/浅蓝/浅绿档会白字浅底。--bzrv-on-accent 由档位块
+     按底色深浅给值（深档深墨字 / 亮档白字），各档对比度都够。 */
+  color: var(--bzrv-on-accent);
   font-size: 12.5px;
   font-weight: 600;
   text-align: center;

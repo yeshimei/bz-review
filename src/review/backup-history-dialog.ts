@@ -68,7 +68,14 @@ async function restorePoint(app: App, point: RestorePoint): Promise<{ ok: boolea
     }
   }
   if (raw === null) return { ok: false, message: `读不到这份备份：${point.name}` };
-  const parsed = parseReviewFile(JSON.parse(raw.replace(/^\uFEFF/, '')));
+  let json: unknown;
+  try {
+    json = JSON.parse(raw.replace(/^\uFEFF/, ''));
+  } catch {
+    /* 手动备份可能是半个文件 / 被改坏：别让 JSON.parse 抛穿，给用户一句人话 */
+    return { ok: false, message: '备份文件损坏，无法回滚' };
+  }
+  const parsed = parseReviewFile(json);
   if (parsed.broken) return { ok: false, message: '这份备份读不出复习数据，换一份试试' };
 
   const current = await diskReadText(app, getReviewFilePath());
@@ -119,23 +126,28 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
       btn.onclick = () => {
         if (busy) return;
         void (async () => {
-          const v = await openFlowDialog({
-            title: '回滚到这里？',
-            message: `${describeRestorePoint(point)}\n\n当前数据会先存成一份快照，然后整份替换成这份备份。`,
-            actions: [
-              { label: '取消', value: 'cancel' },
-              { label: '回滚', value: 'ok', cta: true, danger: true },
-            ],
-          });
-          if (v !== 'ok') return;
-          busy = true;
-          const res = await restorePoint(app, point);
-          notice(res.message, res.ok ? 'success' : 'warning');
-          if (res.ok) {
-            const { reviewApp } = await import('./app');
-            void reviewApp.refreshPanel();
-            modal.close();
-          } else busy = false;
+          try {
+            const v = await openFlowDialog({
+              title: '回滚到这里？',
+              message: `${describeRestorePoint(point)}\n\n当前数据会先存成一份快照，然后整份替换成这份备份。`,
+              actions: [
+                { label: '取消', value: 'cancel' },
+                { label: '回滚', value: 'ok', cta: true, danger: true },
+              ],
+            });
+            if (v !== 'ok') return;
+            busy = true;
+            const res = await restorePoint(app, point);
+            notice(res.message, res.ok ? 'success' : 'warning');
+            if (res.ok) {
+              const { reviewApp } = await import('./app');
+              void reviewApp.refreshPanel();
+              modal.close();
+            } else busy = false;
+          } catch (e) {
+            busy = false;
+            notice(`备份文件损坏，无法回滚：${e instanceof Error ? e.message : String(e)}`, 'warning');
+          }
         })();
       };
     }

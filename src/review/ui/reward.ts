@@ -1,5 +1,5 @@
 /* ============================================================
- * bz-reader · 支持者名单的类型与日期格式化（src/data/reward.ts）
+ * bz Review · 支持者名单的类型与日期格式化（src/review/ui/reward.ts）
  *
  * 2026-11-11 起名单**不在这个文件里**：它被搬去 bz 主仓的 `docs/patrons.json`，
  * 由 `src/data/patrons.ts` 在运行期取（两个地址并发、本机缓存）。

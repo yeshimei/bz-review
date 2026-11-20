@@ -224,7 +224,7 @@ export async function statusOf(dm: ReviewDataManager, paths: readonly string[]):
       planned: true,
       nextReviewDate: it.nextReviewDate ?? null,
       stage: Number.isFinite(it.stage) ? it.stage : 0,
-      phase: it.phase === 'fsrs' ? ('fsrs' as const) : ('ladder' as const),
+      phase: it.phase === 'fsrs' || it.phase === 'relearn' ? it.phase : ('ladder' as const),
       totalReviews: Number.isFinite(it.totalReviews) ? it.totalReviews : 0,
     };
   });

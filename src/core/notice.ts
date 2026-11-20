@@ -205,7 +205,7 @@ function defaultVariant(): NoticeVariant {
 
 /** 各变体的退出动画类（默认 out-drop） */
 const OUT_CLASS: Record<NoticeVariant, string> = {
-  drop: 'bz-notice--out-drop',
+  drop: 'bzrv-notice--out-drop',
   pop: 'bzrv-notice--out-pop',
   'slide-left': 'bzrv-notice--out-left',
   'slide-right': 'bzrv-notice--out-right',

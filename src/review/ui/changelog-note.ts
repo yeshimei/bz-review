@@ -1,5 +1,5 @@
 /* ============================================================
- * bz-reader · 更新日志弹窗（shell/changelog-note.ts）
+ * bz Review · 更新日志弹窗（src/review/ui/changelog-note.ts）
  *
  * 版式照 bz 插件的更新日志小窗（2026-11-02 定稿），两端共用一份 DOM：
  *   桌面（>768px） 214px 版本时间轴（一根细线串起点，当前版实心点）+ 右侧
@@ -465,7 +465,7 @@ function feedbackItemHtml(it: BzrFeedback): string {
     : '';
   /* 归属：bz 带功能域，bz reader 不带；只展示已知插件名，远端值先过白名单 */
   const pluginText = it.plugin
-    ? [it.plugin === 'bz-reader' ? 'bz reader' : 'bz', it.plugin === 'bz' && it.domain ? it.domain : '']
+    ? [it.plugin === 'bz-reader' ? 'bz Reader' : 'bz', it.plugin === 'bz' && it.domain ? it.domain : '']
       .filter(Boolean).join(' · ')
     : '';
   const pluginHtml = pluginText ? `<span class="bzs-chgn-fbplugin">${esc(pluginText)}</span>` : '';
@@ -682,7 +682,9 @@ function syncSupportBadges(root: HTMLElement): void {
   const n = currentPatrons().length;
   const label = c.supportTitle(n);
   root.querySelectorAll<HTMLElement>('[data-role="chgnsupport"]').forEach((btn) => {
-    btn.appendChild(Object.assign(createSpan(), { className: 'bzs-sr-only', textContent: label }));
+    const oldSr = btn.querySelector<HTMLElement>('.bzs-sr-only');
+    if (oldSr) oldSr.textContent = label;
+    else btn.appendChild(Object.assign(createSpan(), { className: 'bzs-sr-only', textContent: label }));
     const old = btn.querySelector('.bzs-chgn-count');
     if (n > 0) {
       const text = `+${n > 99 ? '99+' : n}`;
@@ -999,6 +1001,11 @@ export function openChangelogNote(
   /* 在线配置：打开时后台校验一次；拉到了就**原地换**统计卡与路线图，
      不重开弹窗（用户不会看到闪一下）。数据层有 60 秒节流与 6 小时缓存。 */
   const syncData = (d: BzrData): void => {
+    /* 工具条整块重建会丢掉视图按钮的选中态（.on / aria-pressed）：
+       先记下当前视图，重建后按同一套逻辑给两端重新套上。 */
+    const currentView = popup.querySelector<HTMLElement>('.bzs-chgn')?.dataset.view
+      || popup.querySelector<HTMLElement>('.bzs-chgn-m')?.dataset.view
+      || 'log';
     const stats = popup.querySelector<HTMLElement>('.bzs-chgn-topbar');
     const mstats = popup.querySelector<HTMLElement>('.bzs-chgn-mtop');
     if (stats) setHtml(stats, topStripHtml(d));
@@ -1016,12 +1023,15 @@ export function openChangelogNote(
       const key = b.dataset.viewBtn as 'roadmap' | 'feature' | 'bug' | undefined;
       if (n && key) n.textContent = String(counts[key]);
     });
+    setView(currentView);
   };
   offData = onBzrDataChange(syncData);
   void refreshBzrData();
 
-  /* 正文视图：log / roadmap / feature / bug，只换正文区，不动头部与页脚 */
-  const setView = (scope: HTMLElement, key: string): void => {
+  /* 正文视图：log / roadmap / feature / bug，只换正文区，不动头部与页脚。
+     桌面 .bzs-chgn 与手机 .bzs-chgn-m 各有一套 data-view 与工具条，
+     两套必须一起写：只切一端，换端看就是旧状态（高亮 / 正文都对不上）。 */
+  const applyView = (scope: HTMLElement, key: string): void => {
     scope.dataset.view = key;
     /* 显式切显示：点 tab 后反馈列表替换日志正文，不叠加在正文下面。
        CSS 已经写了同样的规则，这里再钉一层，避免被别的样式覆盖。 */
@@ -1040,6 +1050,11 @@ export function openChangelogNote(
       b.setAttribute('aria-pressed', on ? 'true' : 'false');
     });
   };
+  const setView = (key: string): void => {
+    popup.querySelectorAll<HTMLElement>('.bzs-chgn, .bzs-chgn-m').forEach((scope) => {
+      applyView(scope, key);
+    });
+  };
 
   /* 切版本：只换头部与正文两处，不重建整个弹窗（页脚的链接与关闭钮不用重绑） */
   const select = (i: number): void => {
@@ -1056,9 +1071,8 @@ export function openChangelogNote(
       if (on) el.setAttribute('aria-current', 'true');
       else el.removeAttribute('aria-current');
     });
-    /* 点版本列表 = 回日志，并清掉入口高亮 */
-    const pane = popup.querySelector<HTMLElement>('.bzs-chgn');
-    if (pane) setView(pane, 'log');
+    /* 点版本列表 = 回日志，并清掉入口高亮（桌面 + 手机两套一起清） */
+    setView('log');
     if (typeof window !== 'undefined') window.requestAnimationFrame(syncFade);
   };
 
@@ -1088,10 +1102,8 @@ export function openChangelogNote(
     const viewBtn = target.closest<HTMLElement>('[data-view-btn]');
     if (viewBtn) {
       const scope = viewBtn.closest<HTMLElement>('.bzs-chgn, .bzs-chgn-m');
-      if (scope) {
-        const key = viewBtn.dataset.viewBtn || 'roadmap';
-        setView(scope, scope.dataset.view === key ? 'log' : key);
-      }
+      const key = viewBtn.dataset.viewBtn || 'roadmap';
+      setView(scope && scope.dataset.view === key ? 'log' : key);
       return;
     }
 

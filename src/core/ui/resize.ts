@@ -160,13 +160,21 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
     setCursor(regionAt(e));
   };
 
+  /** 停止拖拽收尾：摘 document 级监听 + 恢复全局文字可选中（USER_SELECT_RESET）。
+   *  离场自愈（onDragMove/onMouseUp 的 !isConnected 分支）与正常 detach 共用，
+   *  避免拖拽中面板被关时 body.userSelect='none' 滞留导致整页文字选不中 */
+  const stopDrag = () => {
+    document.removeEventListener('mousemove', onDragMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.body.style.userSelect = USER_SELECT_RESET;
+  };
+
   /** 拖拽移动（document 上：鼠标移出面板仍持续） */
   const onDragMove = (e: MouseEvent) => {
     // C12 同款：宿主离场自摘 document 级监听——detach 契约不变，忘调时下一次
     // 全局事件自愈（原先一对监听随实例永久滞留，面板反复开关持续累积）
     if (!el.isConnected) {
-      document.removeEventListener('mousemove', onDragMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      stopDrag();
       return;
     }
     if (!dragging) return;
@@ -195,6 +203,7 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
   };
 
   const onMouseDown = (e: MouseEvent) => {
+    if (e.button !== 0) return; // 仅左键进入拖拽（右键不触发，对照 uiVSplitter）
     if (fullNow(el)) return; // 全屏期间不进入拖拽（屏幕边缘的命中热区会误伤）
     const d = regionAt(e);
     if (!d) return;
@@ -216,8 +225,7 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
 
   const onMouseUp = () => {
     if (!el.isConnected) {
-      document.removeEventListener('mousemove', onDragMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      stopDrag();
       return;
     }
     if (!dragging) return;
@@ -253,10 +261,8 @@ export function uiResizable(el: HTMLElement, opts: BzResizableOpts = {}): {
       el.removeEventListener('mousemove', onHover);
       el.removeEventListener('mouseleave', onMouseLeave);
       el.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('mousemove', onDragMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      stopDrag();
       window.removeEventListener('resize', onWinResize);
-      document.body.style.userSelect = USER_SELECT_RESET;
       setCursor(null);
     },
   };

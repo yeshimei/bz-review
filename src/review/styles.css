@@ -36,7 +36,7 @@
   /* 与旁边的日期副题同一基线：副题靠 .bzrv-panel-head-sub 的 12px 垫底落在
      头栏文字线上。页签是 button，选择器没覆盖到那条 padding，得自己补一份，
      否则它比日期高出一截（2026-11-20 真机量到差 8px），看着像没对齐。 */
-  padding-bottom: 12px;
+  padding-bottom: var(--bzrv-head-pad-bottom, 12px);
   transition: color var(--bzrv-dur-base) var(--bzrv-ease-out);
 }
 .bzrv-stutab:hover { color: var(--bzrv-text-2); }
@@ -259,12 +259,12 @@
 .bzrv-sprint-opt.is-disabled:hover { border-color: var(--bzrv-border); background: var(--bzrv-surface-1); }
 }
 
-/* 对错标记 */
-.bzrv-mark { font-style: normal; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
-.bzrv-mark.ok { color: var(--bzrv-success); }
-.bzrv-mark.ok.lg { font-size: 34px; }
-.bzrv-mark.bad { color: var(--bzrv-danger); }
-.bzrv-mark.bad.lg { font-size: 34px; }
+/* 对错标记（独立类名，避开 components.css 正文高亮 .bzrv-mark 的底色/内边距/圆角） */
+.bzrv-mark-state { font-style: normal; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; background: none; padding: 0; border-radius: 0; }
+.bzrv-mark-state.ok { color: var(--bzrv-success); }
+.bzrv-mark-state.ok.lg { font-size: 34px; }
+.bzrv-mark-state.bad { color: var(--bzrv-danger); }
+.bzrv-mark-state.bad.lg { font-size: 34px; }
 .bzrv-sprint-ic { display: inline-flex; }
 .bzrv-sprint-ic svg { width: 100%; height: 100%; }
 
@@ -658,7 +658,7 @@
   .bzrv-result-score { font-size: 38px; }
   .bzrv-result-score .sl { font-size: 20px; }
   .bzrv-result-rating { font-size: 14px; }
-  .bzrv-mark.ok.lg, .bzrv-mark.bad.lg { font-size: 38px; }
+  .bzrv-mark-state.ok.lg, .bzrv-mark-state.bad.lg { font-size: 38px; }
   .bzrv-summary { padding: 30px 12px; }
   .bzrv-summary-stats .st { padding: 14px 8px; max-width: 120px; }
   .bzrv-summary-stats .st b { font-size: 26px; }

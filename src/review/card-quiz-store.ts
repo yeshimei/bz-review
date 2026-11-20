@@ -51,8 +51,8 @@ export async function getCardQuiz(key: string): Promise<QuizQuestion[] | null> {
   const k = cleanKey(key);
   if (!k) return null;
   const bank = await readBank();
-  const entry = bank[k];
-  return Array.isArray(entry?.questions) && entry.questions.length ? entry.questions : null;
+  const list = bank[k]?.questions;
+  return isQuizQuestions(list) && list.length ? list : null;
 }
 
 /** 一次取多张（复习队列里一次问几十条，不逐条读盘） */
@@ -62,7 +62,7 @@ export async function getCardQuizzes(keys: readonly string[]): Promise<Record<st
   for (const raw of Array.isArray(keys) ? keys : []) {
     const k = cleanKey(raw);
     const list = bank[k]?.questions;
-    if (k && Array.isArray(list) && list.length) out[k] = list;
+    if (k && isQuizQuestions(list) && list.length) out[k] = list;
   }
   return out;
 }
@@ -72,13 +72,17 @@ function isQuizQuestions(v: unknown): v is QuizQuestion[] {
   return Array.isArray(v) && v.every((q: unknown) =>
     !!q && typeof q === 'object'
     && typeof (q as QuizQuestion).question === 'string'
-    && Array.isArray((q as QuizQuestion).options));
+    && Array.isArray((q as QuizQuestion).options)
+    && Array.isArray((q as QuizQuestion).correctIndices)
+    && (q as QuizQuestion).correctIndices.length > 0);
 }
 
 /** 覆盖写一张卡的题库（重新生成就是覆盖，不是追加） */
 export async function saveCardQuiz(key: string, questions: readonly QuizQuestion[]): Promise<void> {
   const k = cleanKey(key);
-  const list = isQuizQuestions(questions) ? questions.filter((q) => q && q.question && Array.isArray(q.options)) : [];
+  const list = isQuizQuestions(questions)
+    ? questions.filter((q) => q && q.question && Array.isArray(q.options) && Array.isArray(q.correctIndices) && q.correctIndices.length > 0)
+    : [];
   if (!k || !list.length) return;
   await enqueueFileTask(getCardQuizFilePath(), async () => {
     const bank = await readBank();

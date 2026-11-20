@@ -68,6 +68,7 @@
      嵌入 Reader「复习」页签时，四颗图标就住在那条动作栏里，数字对不上就会
      「一切页大小就跳」。改这里必须同步 Reader 那边，反之亦然。 */
   --bzrv-head-pad-t: 12px;
+  --bzrv-head-pad-bottom: 12px; /* 头行文字簇距底：页签/标题/副题/竖线落同一基线 */
   --bzrv-head-pad-x: 32px;
   --bzrv-head-act-gap: 4px;   /* 组内间距：Reader 定稿 4，四颗才像一组 */
   --bzrv-head-act-pb: 9px;    /* 组距底线 */

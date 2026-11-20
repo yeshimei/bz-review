@@ -70,6 +70,9 @@ export class FolderPickModal extends FuzzySuggestModal<TFolder> {
     // 多选：累加 / 取消这一项，再重开弹窗继续选
     this.picked = togglePicked(this.picked, path);
     this.refreshPlaceholder();
+    // 先清掉宿主「先 close 后 onChooseItem」埋下的提交定时器（同 settle() 口径），
+    // 否则刚点第一个就会被那枚定时器当成取消提交，弹窗立刻关掉。
+    if (this.closeTimer !== null) window.clearTimeout(this.closeTimer);
     this.closeTimer = null; // 这次 close 是 choose 触发的，不当「取消」
     this.open();
   }

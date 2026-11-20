@@ -28,8 +28,6 @@ import { clearTrash as clearTrashStore, loadTrash, pushTrash, removeTrashKeys } 
 import { writeDailySnapshot } from './snapshot-store';
 import { notice } from '../core/notice';
 
-export const REVIEW_FILE_PATH = 'CONFIG/STORAGE/review.json';
-
 /** 复习数据文件路径（ADR-0009 共享数据路径；trim 收敛至 storageFile） */
 export function getReviewFilePath(): string {
   const s = tryGetSettings();
@@ -496,6 +494,9 @@ export class ReviewDataManager {
       if (!q || !a) return { ok: false, message: '这张卡还没有问句和答案，先生成内容再反向' };
       const revKey = `${key}#rev`;
       if (items.some((i) => i.filePath === revKey)) return { ok: false, message: '反向卡已经存在了' };
+      /* 与 addItem 同口径：基础版笔记+划线合计满 50 时拒绝新增（这里用结果返回而非抛错） */
+      const block = quotaBlock(planCounts(items));
+      if (!block.ok) return { ok: false, message: block.message };
       const groupId = card.groupId || key;
       /* 原卡与反向卡都打上同一个组号，供同轮去重；不动任何排期字段 */
       items[idx] = { ...orig, card: { ...card, groupId } };

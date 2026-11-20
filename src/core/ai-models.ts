@@ -7,8 +7,9 @@
  * 「获取模型」按钮消费，端点取第二大脑的 Ollama 服务地址（移动端优先远程地址）。
  */
 import { requestUrl } from 'obsidian';
-import { getProviderDescriptor, DEFAULT_AI_PROVIDER } from './ai';
+import { getProviderDescriptor } from './ai';
 import type { AIProviderDescriptor } from './ai';
+import { resolveProviderId } from './ai-provider-id';
 import { isMobileEnv } from './mobile';
 import { tryGetSettings } from './settings-provider';
 
@@ -186,7 +187,7 @@ export async function fetchProviderModels(
   providerId?: string,
   deps: ModelsFetchDeps = {}
 ): Promise<ModelOption[]> {
-  const id = providerId || String((tryGetSettings()).aiProvider || DEFAULT_AI_PROVIDER);
+  const id = providerId || resolveProviderId((tryGetSettings()).aiProvider);
   const desc = providerDescriptorOf(id);
 
   // 端点来源：Ollama 用本地根地址（注册表 /v1 兼容面去掉后缀），自定义读设置里的地址，其余用注册表
@@ -197,8 +198,8 @@ export async function fetchProviderModels(
   }
 
   const key = keyFor(id);
-  // 除 Ollama 本地服务外，缺 key 即拦截（对齐 getAIProvider 的拦截文案）
-  if (!key && desc.id !== 'ollama') {
+  // 除 Ollama / LM Studio 本地服务外，缺 key 即拦截（对齐 getAIProvider 的拦截文案）
+  if (!key && desc.id !== 'ollama' && desc.id !== 'lmstudio') {
     throw new Error(`未配置 ${desc.label} API Key：插件设置 → AI 配置 → ${desc.apiKeyLabel}`);
   }
 

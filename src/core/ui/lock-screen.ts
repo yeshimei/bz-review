@@ -264,7 +264,7 @@ export function uiLockScreen(opts: LockScreenOpts): LockScreenHandle {
     setSec: (t, tone) => {
       secText.textContent = t;
       sec.style.display = t ? '' : 'none';
-      sec.classList.remove('bz-lockscreen-sec--ok', 'bzrv-lockscreen-sec--warn', 'bzrv-lockscreen-sec--bad');
+      sec.classList.remove('bzrv-lockscreen-sec--ok', 'bzrv-lockscreen-sec--warn', 'bzrv-lockscreen-sec--bad');
       if (tone) sec.classList.add(`bzrv-lockscreen-sec--${tone}`);
     },
     setBusy: (busy) => {

@@ -177,6 +177,10 @@ export class ReviewWatcher {
               void (async () => {
                 try {
                   for (const item of removed) await this.dataManager.restoreItem(item);
+                  // 撤销移除 = 这些路径不该继续排除，否则恢复回来的笔记会被自动加入挡住
+                  for (const path of batch.filter((p) => this.isWatched(p))) {
+                    await this.removeExcludedNote(path);
+                  }
                   await this.refresh();
                 } catch (e) {
                   notifySaveError(e, '恢复复习记录');

@@ -28,6 +28,7 @@ import { isMobileEnv } from './mobile';
 import { setIcon, type IconName } from 'obsidian';
 
 import { markOwned } from './scope';
+import { withSrText } from './ui/sr-text';
 export interface ItemAction {
   /** Obsidian 内置 lucide 图标 id（如 'pencil'/'trash-2'/'star'），经 setIcon 渲染原生 SVG；尺寸由 styles.css 控制 */
   icon: IconName;
@@ -37,8 +38,8 @@ export interface ItemAction {
   sub?: string;
   /** 强调色调：图标与右侧小字同步变色（如解锁态加密/解密用强调色）；空为默认灰调 */
   tone?: 'accent';
-  /** 桌面操作条 tooltip（空则不加 title） */
-  title?: string;
+  /** 说明文字（渲染成视觉隐藏文本供读屏；不写 DOM title，避免冒悬停气泡） */
+  srHint?: string;
   /** 危险操作（删除类）：浮层项红色强调 */
   kind?: 'normal' | 'danger';
   /** 执行后抽屉保持不关闭（域内动作变化后自行 refreshItemSheet 刷新；仅移动端抽屉生效） */
@@ -341,7 +342,7 @@ export function openItemMenu(
   for (const a of actions) {
     const item = createEl('button');
     item.type = 'button';
-    if (a.title) item.title = a.title;
+    withSrText(item, a.srHint);
     item.className =
       'bzrv-item-menu-item' +
       (a.kind === 'danger' ? ' bzrv-item-menu-item--danger' : '') +
@@ -380,7 +381,7 @@ export function openItemMenu(
 function buildSheetItem(a: ItemAction): HTMLElement {
   const item = createEl('button');
   item.type = 'button';
-  if (a.title) item.title = a.title;
+  withSrText(item, a.srHint);
   item.className =
     'bzrv-item-sheet-item' +
     (a.kind === 'danger' ? ' bzrv-item-sheet-item--danger' : '') +

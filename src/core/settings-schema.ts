@@ -510,14 +510,16 @@ function wireSecretEye(setting: Setting, el: MaskableEl): void {
   let revealed = false;
   setting.addExtraButton((b) => {
     b.setIcon('eye');
-    b.extraSettingsEl.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '显示密钥' }));
+    // 隐藏文本节点只建一次；点击只翻它的文字与按钮状态，不再追加新节点（否则每次点击都会被读屏多念一遍）
+    const srLabel = Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '显示密钥' });
+    b.extraSettingsEl.appendChild(srLabel);
     b.extraSettingsEl.setAttribute('aria-pressed', 'false');
     b.onClick(() => {
       revealed = !revealed;
       el.type = revealed ? 'text' : 'password';
       b.setIcon(revealed ? 'eye-off' : 'eye');
       b.extraSettingsEl.setAttribute('aria-pressed', String(revealed));
-      b.extraSettingsEl.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: revealed ? '隐藏密钥' : '显示密钥' }));
+      srLabel.textContent = revealed ? '隐藏密钥' : '显示密钥';
     });
   });
 }

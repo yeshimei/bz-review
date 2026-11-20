@@ -174,6 +174,8 @@ export class CardSession {
   private index = 0;
   private revealed = false;
   private busy = false;
+  /** 已退出：await 中的评分回来后不能再改序号 / 重绘，否则退出的界面会「复活」 */
+  private destroyed = false;
   private keyHandler: ((e: KeyboardEvent) => void) | null = null;
   /** 本次会话已经问过模型的卡（避免重画时反复请求） */
   private asked = new Set<string>();
@@ -246,6 +248,7 @@ export class CardSession {
   }
 
   destroy(): void {
+    this.destroyed = true;
     if (this.keyHandler) document.removeEventListener('keydown', this.keyHandler);
     this.keyHandler = null;
     if (this.noticeTimer !== null) window.clearTimeout(this.noticeTimer);
@@ -331,6 +334,8 @@ export class CardSession {
     } finally {
       this.busy = false;
     }
+    /* await 期间用户可能按 Escape 退出（已注销按键、清空 host）：不能再往下走 */
+    if (this.destroyed) return;
     this.index += 1;
     this.player.stop();
     this.resetTransient();
@@ -635,6 +640,7 @@ export class CardSession {
   // ==================== 渲染 ====================
 
   private render(): void {
+    if (this.destroyed) return;
     const host = this.opts.host;
     const item = this.current();
     if (!item || !isCardItem(item)) {
@@ -736,7 +742,11 @@ export class CardSession {
       const key = item.filePath;
       if (this.noticeTimer !== null) window.clearTimeout(this.noticeTimer);
       this.noticeTimer = window.setTimeout(() => {
-        if (this.current()?.filePath === key) this.render();
+        this.noticeTimer = null;
+        if (this.destroyed || this.current()?.filePath !== key) return;
+        /* 只摘提示条，不整段 render：render 会 replaceChildren 重建 DOM，
+           把换卡提示 1.8 秒内用户填了、还没交卷的填空输入值清掉 */
+        this.opts.host.querySelector('.bzrv-cs-notice')?.remove();
       }, 1800);
     }
     this.bind(host);

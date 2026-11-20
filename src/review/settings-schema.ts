@@ -31,6 +31,7 @@ import {
   testAIConnectivity,
   thinkingLevelsOf,
 } from '../core/ai';
+import { resolveProviderId } from '../core/ai-provider-id';
 import { fetchProviderModels, providerDescriptorOf } from '../core/ai-models';
 import { openModelPicker } from '../core/settings-model-picker';
 import { tryGetSettings } from '../core/settings-provider';
@@ -66,7 +67,8 @@ type OverrideMapKey = 'aiModelOverrides' | 'aiMaxTokensOverrides';
 
 function currentProviderId(): string {
   const s = tryGetSettings() as { aiProvider?: string } | null;
-  return String(s?.aiProvider || DEFAULT_AI_PROVIDER);
+  // 空串 = 用户主动「不启用」；不能再被 || 兜底成缺省服务商（同 core/ai-provider-id 口径）
+  return resolveProviderId(s?.aiProvider);
 }
 
 function providerValue(kind: 'model' | 'maxTokens'): string {

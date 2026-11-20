@@ -74,5 +74,7 @@
   font-size: 12px;
   cursor: pointer;
 }
-.bzs-btn:hover { border-color: var(--un-accent); color: var(--un-accent); }
-.bzs-btn.pri { background: var(--un-accent); border-color: var(--un-accent); color: #fff; font-weight: 600; }
+@media (hover: hover) {
+  .bzs-btn:hover { border-color: var(--un-accent); color: var(--un-accent); }
+}
+.bzs-btn.pri { background: var(--un-accent); border-color: var(--un-accent); color: var(--bzrv-on-accent); font-weight: 600; }

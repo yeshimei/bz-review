@@ -21,10 +21,10 @@ const licenseBound = new WeakSet<HTMLElement>();
 
 /** 原型里那一段快捷键（命令 id 与 manifest / main.ts 对齐） */
 const HOTKEYS: Array<[string, string]> = [
-  ['开始复习', 'bz-review:start'],
-  ['把当前笔记加入复习', 'bz-review:add'],
-  ['打开复习面板', 'bz-review:open'],
-  ['标记复习（评级）', 'bz-review:rate'],
+  ['开始复习', 'review-start'],
+  ['把当前笔记加入复习', 'review-add'],
+  ['打开复习面板', 'review-open'],
+  ['标记复习（评级）', 'review-rate'],
 ];
 
 function shortcutsHtml(): string {
