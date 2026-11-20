@@ -106,9 +106,9 @@ const DOWNLOAD_SVG =
 
 /**
  * 插件组 HTML（2026-11-20）：能力卡形态，直接下载 bz Reader。
- * 主按钮走 GitHub Release，卡底备注留码云备份——GitHub 连不上时兜底。
+ * 下载按钮走 GitHub 主线路，连不通自动切码云——兜底内置在动作层，不给用户多一行说明。
  */
-export function pluginGroupHtml(mirrorUrl: string): string {
+export function pluginGroupHtml(): string {
   return `<div class="bzs-setgrp wide bzs-plugin-grp">
       <h3 data-en="Plugins">插件</h3>
       <div class="bzs-cap is-on">
@@ -122,6 +122,5 @@ export function pluginGroupHtml(mirrorUrl: string): string {
           </div>
         </div>
       </div>
-      <div class="bzs-capnote">商城可直接搜索安装；这里下载 main.js / manifest.json / styles.css 三个文件放进插件目录。<a href="${esc(mirrorUrl)}" target="_blank" rel="noopener noreferrer">备用下载（码云）</a></div>
     </div>`;
 }
