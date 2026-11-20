@@ -57,7 +57,7 @@ export interface ReviewNoteStatus {
   planned: boolean;
   /** 下次复习日期（ISO）；没进计划 / 还没排期时为 null */
   nextReviewDate: string | null;
-  /** 当前级数（阶梯阶段是 0–9，FSRS 阶段沿用进入时的级数） */
+  /** 兼容字段：FSRS-7 无阶梯，恒 0（保留供契约兼容） */
   stage: number;
   phase: 'ladder' | 'fsrs';
   /** 已经复习过几次 */

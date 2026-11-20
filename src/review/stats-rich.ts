@@ -16,6 +16,7 @@
 import type { ReviewItem } from './data';
 import { DEFAULT_W, currentR } from './fsrs';
 import { localDayKey } from '../core/ui/str';
+import { maturityLevel, MATURITY_LABELS } from './render';
 
 const DAY = 86_400_000;
 const HEAT_DAYS = 365;
@@ -132,15 +133,12 @@ function median(xs: number[]): number | null {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
-/** 阶段分档：阶梯 0-9 按三档，FSRS（stage ≥ 9）按 Lv 三档 */
-function stageBucket(stage: number): number {
-  const s = Number.isFinite(stage) ? Math.max(0, Math.floor(stage)) : 0;
-  if (s < 9) return Math.min(2, Math.floor(s / 3));
-  const lv = s - 9;
-  return 3 + Math.min(2, Math.floor(lv / 3));
+/** 成熟度分档（FSRS-7 无阶梯）：按复习次数分 5 档，单源复用 render.maturityLevel。 */
+function stageBucket(reviews: number): number {
+  return maturityLevel(reviews) - 1;
 }
 
-const STAGE_LABELS = ['阶梯 1-3', '阶梯 4-6', '阶梯 7-10', 'FSRS L1-3', 'FSRS L4-6', 'FSRS L7+'];
+const STAGE_LABELS = MATURITY_LABELS;
 
 export interface RichOptions {
   /** R 口径权重（拟合优先；缺省回退默认，与调度同口径） */
@@ -160,8 +158,8 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
   const months = new Array(12).fill(0) as number[];
   const monthsPrevYear = new Array(12).fill(0) as number[];
   const rating: Record<RatingKey, number> = { again: 0, hard: 0, good: 0, easy: 0 };
-  const stageN = new Array(6).fill(0) as number[];
-  const stageAgain = new Array(6).fill(0) as number[];
+  const stageN = new Array(5).fill(0) as number[];
+  const stageAgain = new Array(5).fill(0) as number[];
 
   let reviews = 0;
   let today = 0;
@@ -189,7 +187,7 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
 
   for (const item of items) {
     const isCard = item.kind === 'card';
-    for (const h of item.reviewHistory || []) {
+    for (const [ri, h] of (item.reviewHistory || []).entries()) {
       const t = new Date(h?.timestamp).getTime();
       if (!Number.isFinite(t)) continue;
       const d = new Date(t);
@@ -207,7 +205,7 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
       const rk = String(h.rating) as RatingKey;
       if (rk in rating) rating[rk] += 1;
 
-      const b = stageBucket(h.stage ?? 0);
+      const b = stageBucket(ri + 1);
       stageN[b] += 1;
       if (h.rating === 'again') stageAgain[b] += 1;
 
@@ -282,7 +280,7 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
   }
   strengths.sort((a, b) => b.s - a.s);
 
-  /* 阶段与类型 */
+  /* 成熟度与类型（FSRS-7 无阶梯）：ladder 语义 = 0 次复习的新卡数，fsrs = 已复习数 */
   const stageItems = new Array(5).fill(0) as number[];
   let ladder = 0;
   let fsrs = 0;
@@ -293,13 +291,10 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
     if (item.suspended) suspended += 1;
     if (item.kind === 'card') cards += 1;
     else notes += 1;
-    if (item.phase === 'fsrs') {
-      fsrs += 1;
-      stageItems[3 + Math.min(1, Math.floor(Math.max(0, item.stage - 9) / 5))] += 1;
-    } else {
-      ladder += 1;
-      stageItems[Math.min(2, Math.floor(Math.max(0, item.stage) / 3))] += 1;
-    }
+    const n = Number(item.totalReviews) || (item.reviewHistory || []).length;
+    if (n === 0) ladder += 1;
+    else fsrs += 1;
+    stageItems[maturityLevel(n) - 1] += 1;
   }
 
   /* 负载：未来 30 天 + 逾期分档。
@@ -396,13 +391,7 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
     strongest: strengths.slice(0, 5),
     weakest: [...strengths].slice(-5).reverse(),
     phase: { ladder, fsrs },
-    stages: [
-      { label: '阶梯 1-3', n: stageItems[0] },
-      { label: '阶梯 4-6', n: stageItems[1] },
-      { label: '阶梯 7-10', n: stageItems[2] },
-      { label: 'FSRS L1-5', n: stageItems[3] },
-      { label: 'FSRS L6+', n: stageItems[4] },
-    ],
+    stages: STAGE_LABELS.map((label, i) => ({ label, n: stageItems[i] })),
     kinds: { note: notes, card: cards, noteReviews, cardReviews },
     suspended,
     load,

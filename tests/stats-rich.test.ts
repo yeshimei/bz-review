@@ -7,6 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { computeRichStats } from '../src/review/stats-rich';
+import { maturityLevel, stageNum, MATURITY_LABELS } from '../src/review/render';
 import type { ReviewItem } from '../src/review/data';
 
 const at = (day: number, hour = 9): string => new Date(2026, 10, day, hour, 0, 0).toISOString();
@@ -105,19 +106,22 @@ describe('computeRichStats · 节律与质量', () => {
     expect(s.rating.again).toBe(1);
   });
 
-  it('按阶段统计遗忘率，阶梯与 FSRS 分桶', () => {
+  it('按复习次数分档统计遗忘率（FSRS-7 无阶梯，5 档成熟度）', () => {
     const s = computeRichStats([item({
       history: [
-        { t: at(19), stage: 0, rating: 'again' },
-        { t: at(19), stage: 1, rating: 'good' },
-        { t: at(19), stage: 10, rating: 'again' },
-        { t: at(19), stage: 11, rating: 'good' },
+        { t: at(19), stage: 0, rating: 'again' }, // 第 1 次 → Lv.1 档
+        { t: at(19), stage: 0, rating: 'good' },  // 第 2 次 → Lv.2 档
+        { t: at(19), stage: 0, rating: 'again' }, // 第 3 次 → Lv.2 档
+        { t: at(19), stage: 0, rating: 'good' },  // 第 4 次 → Lv.3 档
       ],
     })], { now: NOW });
-    const low = s.stageAgain.find((x) => x.label === '阶梯 1-3');
-    expect(low).toMatchObject({ n: 2, again: 1 });
-    const fsrs = s.stageAgain.find((x) => x.label === 'FSRS L1-3');
-    expect(fsrs).toMatchObject({ n: 2, again: 1 });
+    expect(s.stageAgain).toHaveLength(5);
+    const l1 = s.stageAgain.find((x) => x.label === '新卡 0-1次');
+    expect(l1).toMatchObject({ n: 1, again: 1 });
+    const l2 = s.stageAgain.find((x) => x.label === '2-3次');
+    expect(l2).toMatchObject({ n: 2, again: 1 });
+    const l3 = s.stageAgain.find((x) => x.label === '4-7次');
+    expect(l3).toMatchObject({ n: 1, again: 0 });
   });
 });
 
@@ -190,5 +194,27 @@ describe('computeRichStats · 成就', () => {
     );
     expect(s1.badges.find((x) => x.id === 's100')?.got).toBe(true);
     expect(s1.badges.length).toBe(13);
+  });
+});
+
+describe('成熟度档位单源（FSRS-7 无阶梯）', () => {
+  it('5 档边界与标签一一对应', () => {
+    expect(MATURITY_LABELS).toHaveLength(5);
+    expect(maturityLevel(0)).toBe(1);
+    expect(maturityLevel(1)).toBe(1);
+    expect(maturityLevel(2)).toBe(2);
+    expect(maturityLevel(3)).toBe(2);
+    expect(maturityLevel(4)).toBe(3);
+    expect(maturityLevel(7)).toBe(3);
+    expect(maturityLevel(8)).toBe(4);
+    expect(maturityLevel(15)).toBe(4);
+    expect(maturityLevel(16)).toBe(5);
+  });
+
+  it('历史弹窗阶段文案走单源：stage=0 的新卡显示 FSRS Lv.1，不再是负数', () => {
+    const fresh = item({ stage: 0, totalReviews: 0 });
+    expect(stageNum(fresh)).toBe('FSRS Lv.1');
+    const old = item({ stage: 0, totalReviews: 20 });
+    expect(stageNum(old)).toBe('FSRS Lv.5');
   });
 });

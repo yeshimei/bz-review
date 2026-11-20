@@ -9,12 +9,13 @@
  * 词汇（表演层的语言，源自这里的数据形状）：
  * - 忆炭 ember：一条在册笔记的记忆余温（R）——R 高是青焰、临期是烛橙、逾期成熄红；
  * - 忘坡：FSRS 幂律遗忘曲线（主视觉母题）；S=稳定性（耐烧度）、D=难度、R=留存率；
- * - 欠账：逾期未还的复习；添柴：一次复习动作；阶石：阶梯十级；墨晶：稳定性的结晶。
+ * - 欠账：逾期未还的复习；添柴：一次复习动作；阶石：按复习次数分的成熟度档；墨晶：稳定性的结晶。
  */
 import type { ReviewItem } from '../data';
 import { DEFAULT_W, currentR } from '../fsrs';
 import { partitionQueue } from '../queue';
 import { dateKey } from '../stats';
+import { maturityLevel } from '../render';
 
 /** 评级四档键序（忘了→简单；ratingDist/lastDiffDist 统一按此序出幕） */
 export const RA_RATING_ORDER = ['again', 'hard', 'good', 'easy'] as const;
@@ -23,13 +24,13 @@ export const RA_RATING_NAMES: Record<string, string> = { again: '忘了', hard: 
 /** 单条在册笔记的「忆炭」（一条炭火 = 一份记忆的当前状态） */
 export interface RaEmber {
   name: string;
-  /** 当前留存率 0..1（仅 FSRS 相位且可算；阶梯/缺失为 null） */
+  /** 当前留存率 0..1（仅已首次复习且可算；新卡/缺失为 null） */
   r: number | null;
-  /** 稳定性（天） */
+  /** 稳定性（天，长期 S_long） */
   s: number;
-  /** 难度（0.3..10；阶梯默认 0.3） */
+  /** 难度（1..10） */
   d: number;
-  /** 阶段号（阶梯 0..8；FSRS 恒 9） */
+  /** 兼容字段：FSRS-7 无阶梯，恒 0（保留供下游 phase 判断） */
   stage: number;
   phase: 'ladder' | 'fsrs';
   /** 逾期中 */
@@ -58,9 +59,11 @@ export interface RaData {
   active: number;
   doneN: number;
   missingN: number;
+  /** 新卡数（从未复习，totalReviews=0）——FSRS-7 无阶梯，替代旧的 ladderN */
   ladderN: number;
+  /** 已复习过的在册卡数——替代旧的 fsrsN */
   fsrsN: number;
-  /** 阶段分布：10 桶 = 阶梯 stage0..8 + FSRS（index 9） */
+  /** 成熟度分布 5 档（按复习次数）：0次 / 1-2 / 3-7 / 8-15 / 16+ */
   stageDist: number[];
   /** 最多条目所在档（无条目 -1） */
   stagePeak: number;
@@ -176,12 +179,13 @@ export function deriveAnalysis(
   const live = embers.filter((e) => !e.done && !e.missing);
   const doneN = embers.filter((e) => e.done).length;
   const missingN = embers.filter((e) => e.missing).length;
-  const ladderN = live.filter((e) => e.phase === 'ladder').length;
-  const fsrsN = live.filter((e) => e.phase === 'fsrs').length;
+  // FSRS-7 无阶梯：ladderN 语义改为 0 次复习的新卡数，fsrsN = 已复习过的在册数
+  const ladderN = live.filter((e) => e.reviews === 0).length;
+  const fsrsN = live.filter((e) => e.reviews > 0).length;
 
-  // 阶段分布：阶梯 stage0..8 各一桶，FSRS 并入第 9 桶（index 9）
-  const stageDist = new Array<number>(10).fill(0);
-  for (const e of live) stageDist[e.phase === 'fsrs' ? 9 : Math.min(8, e.stage)]++;
+  // 阶石：按复习次数分的 5 档成熟度（单源 maturityLevel，与卡片徽标/统计弹窗同口径）
+  const stageDist = new Array<number>(5).fill(0);
+  for (const e of live) stageDist[maturityLevel(e.reviews) - 1]++;
   const stagePeak = stageDist.some((n) => n > 0) ? stageDist.indexOf(Math.max(...stageDist)) : -1;
 
   // 队列三区（复用 queue.partitionQueue 单源口径；rThreshold 用默认——分析层只看形状）

@@ -76,7 +76,7 @@ Obsidian 插件，从 bz 的「复习计划」独立出来。域 = `src/<域>/`�
 | 复习数据落在哪 / 键常量 | `src/review/keys.ts`；迁移与双插件路径 `src/data/migrate.ts` |
 | 命令清单 | `src/main.ts` 的 `addCommand` |
 | 给 Reader 的契约 / 卡片输入 | `src/review/reader-api.ts` + `src/main.ts` 的 `reviewApi` |
-| 排期算法（FSRS / 阶梯） | `src/review/fsrs.ts`、`src/review/queue.ts`、`src/review/weights.ts` |
+| 排期算法（FSRS-7 全量，无阶梯） | `src/review/fsrs.ts`、`src/review/queue.ts`、`src/review/weights.ts` |
 | 四种复习方式 | `src/review/card-mode.ts` + `tests/card-mode.test.ts` |
 | 激活码 / 数量门控 | `src/data/entitlement.ts`、`src/data/license.ts`、`scripts/gen-keys.mjs`、`scripts/issue-license.mjs` |
 | 样式作用域与聚合 | `scripts/build-css.mjs`、`scripts/css-scope.mjs` 文件头 |

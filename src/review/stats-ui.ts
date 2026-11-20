@@ -25,6 +25,7 @@ import type { ReviewDataManager, ReviewItem, FittedParams } from './data';
 import { computeStats, compareReviewLoad, historyOf, RATING_NAMES, RATING_COLORS } from './stats';
 import { computeRichStats, shortDate, type DayCount } from './stats-rich';
 import { DEFAULT_W, currentR as fsrsCurrentR } from './fsrs';
+import { stageNum } from './render';
 import { motionStats, motionHistory } from './motion';
 
 import { markOwned } from '../core/scope';
@@ -394,7 +395,7 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
       `平均 R ${rich.avgR === null ? '-' : `${Math.round(rich.avgR * 100)}%`}`,
       `S 中位数 ${rich.sMedian === null ? '-' : `${Math.round(rich.sMedian)} 天`}`,
       `平均间隔 ${rich.avgInterval === null ? '-' : `${rich.avgInterval.toFixed(1)} 天`}`,
-      `阶梯 ${rich.phase.ladder} 条`,
+      `新卡 ${rich.phase.ladder} 条`,
       `FSRS ${rich.phase.fsrs} 条`,
     ]) +
     barRowHTML(['0-20%', '20-40%', '40-60%', '60-80%', '80-100%'].map((l, i) => ({
@@ -492,9 +493,8 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   // 当前状态（替代标题栏：笔记名 + 阶段/当前 R 小字，紧凑一行）
   const status = createDiv();
   status.className = 'bzrv-review-history-status';
-  const stageText = item.phase === 'fsrs'
-    ? `FSRS Lv.${(item.stage || 0) - 9 + 1}`
-    : `${(item.stage || 0) + 1}/10`;
+  // FSRS-7 无阶梯：阶段文案走 render.stageNum 单源，避免写死 n/10 与负 Lv。
+  const stageText = stageNum(item);
   // A7：R 公式单源 fsrs.currentR（权重=拟合 currentW 回退默认）
   const R = fsrsCurrentR(item, w || DEFAULT_W);
   const curR = R === null ? null : ` · 当前 R ${Math.round(R * 100)}%`;
