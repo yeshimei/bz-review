@@ -13,17 +13,18 @@
  * 这两条是自动清理，弹窗只会打断无人值守的流程。
  */
 import { openFlowDialog } from '../core/flow-dialog';
+import { t } from '../i18n';
 
 /** 确认移出：name 只给单条用；给了 count 就按批量口径写标题 */
 export async function confirmRemovePlan(opts: { name?: string; count?: number } = {}): Promise<boolean> {
   const count = Math.max(1, Math.round(opts.count ?? 1));
-  const what = count > 1 ? `${count} 条` : opts.name ? `「${opts.name}」` : '这条';
+  const what = count > 1 ? t('confirm.items', { n: count }) : opts.name ? t('confirm.named', { name: opts.name }) : t('confirm.thisOne');
   const v = await openFlowDialog({
-    title: `移出${what}？`,
-    message: '移出后先进回收站，30 天内都能恢复，排期与复习历史一并保留。',
+    title: t('confirm.removeTitle', { what }),
+    message: t('confirm.removeBody'),
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '移出', value: 'ok', cta: true, danger: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('confirm.remove'), value: 'ok', cta: true, danger: true },
     ],
   });
   return v === 'ok';
@@ -34,11 +35,11 @@ export async function confirmPostponePlan(count: number, days: number): Promise<
   const n = Math.max(1, Math.round(count));
   const span = Math.max(1, Math.round(days));
   const v = await openFlowDialog({
-    title: n > 1 ? `把 ${n} 条顺延 ${span} 天？` : `顺延 ${span} 天？`,
-    message: `下次复习日期整体往后推 ${span} 天；想改回来可以去卡片管理器里手动排期。`,
+    title: n > 1 ? t('confirm.postponeTitle', { n, span }) : t('confirm.postponeTitleOne', { span }),
+    message: t('confirm.postponeBody', { span }),
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '顺延', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('confirm.postpone'), value: 'ok', cta: true },
     ],
   });
   return v === 'ok';
