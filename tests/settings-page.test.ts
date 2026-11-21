@@ -98,7 +98,8 @@ describe('复习设置页 · 两列骨架与关于条', () => {
 
   it('授权组有高级功能对照弹窗入口', () => {
     const schema = read('src/review/settings-schema.ts');
-    expect(schema).toContain("name: '高级版功能'");
+    /* 文案走语言包：源码断言 key，中文原文在 src/i18n/zh.ts。 */
+    expect(schema).toContain("name: t('settings.license.features')");
     expect(schema).toContain('openReviewUnlockDialog');
     const build = read('scripts/build-css.mjs');
     expect(build).toContain('unlock.css');
@@ -106,7 +107,7 @@ describe('复习设置页 · 两列骨架与关于条', () => {
 
   it('数据目录行是 Reader 同款选择钮，不是 chips / 手输框', () => {
     const schema = read('src/review/settings-schema.ts');
-    const at = schema.indexOf("name: '数据目录'");
+    const at = schema.indexOf("name: t('settings.data.dir')");
     const dataRow = schema.slice(Math.max(0, at - 120), at + 1800);
     expect(dataRow).toContain("type: 'custom'");
     expect(dataRow).toContain('bzs-pickdir');
