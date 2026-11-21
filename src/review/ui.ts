@@ -59,6 +59,7 @@ import {
 import { DEFAULT_R_THRESHOLD, isDueToday } from './queue';
 import { ratingForKey } from './keys';
 import { FILTER_CLICK_STATE, nextPanelPage, type PanelPage } from './panel-nav';
+import { t } from '../i18n';
 import { applyFilter, collectFacets, describeFilter, isEmptyFilter, type ItemFilter } from './deck';
 import { removeNote as planRemoveNote, removeCard as planRemoveCard } from './plan-ops';
 import { bookSummariesOf } from './book-summary';
@@ -116,12 +117,12 @@ function promptDate(app: App, message: string, initial: string): Promise<string 
   input.type = 'text';
   input.value = initial;
   return openFlowDialog({
-    title: '手动排期',
+    title: t('ui.reschedule'),
     message: '',
     body,
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '确定', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('common.confirm'), value: 'ok', cta: true },
     ],
   }).then((v) => (v === 'ok' ? input.value : null));
 }
@@ -559,13 +560,13 @@ export class UIManager {
         const clearBtn = createEl('button');
         clearBtn.className = 'bzrv-btn bzrv-btn--ghost';
         clearBtn.dataset.act = 'filter-clear';
-        clearBtn.textContent = '清除筛选';
+        clearBtn.textContent = t('mgr.clearFilter');
         acts.appendChild(clearBtn);
         host.appendChild(
           uiEmpty({
             icon: 'list-filter',
-            title: '没有符合筛选的条目',
-            desc: `当前条件：${describeFilter(this.filter)}，清除后看全部`,
+            title: t('ui.emptyFiltered'),
+            desc: t('ui.emptyFilteredHint', { text: describeFilter(this.filter) }),
             actions: acts,
           })
         );
@@ -578,27 +579,27 @@ export class UIManager {
         const videoBtn = createEl('button');
         videoBtn.className = 'bzrv-btn bzrv-btn--primary';
         videoBtn.dataset.act = 'watch-video';
-        videoBtn.textContent = '看视频教程';
+        videoBtn.textContent = t('ui.watchTutorial');
         acts.appendChild(videoBtn);
         /* 视频还没发布：空态不能只剩一颗只会弹「制作中」的按钮，给一条能立刻
            落地内容的路——Anki 导入（系统文件选择框，不要求文件在库内）。 */
         const ankiBtn = createEl('button');
         ankiBtn.className = 'bzrv-btn bzrv-btn--ghost';
         ankiBtn.dataset.act = 'empty-anki-import';
-        ankiBtn.textContent = '从 Anki 导入';
+        ankiBtn.textContent = t('ui.importAnki');
         acts.appendChild(ankiBtn);
         /* 装了 bz Reader 的用户，最顺的落地路是从书里挑——放在空态第二条，
            不再只给「看视频教程」一颗按钮。 */
         const readerBtn = createEl('button');
         readerBtn.className = 'bzrv-btn bzrv-btn--ghost';
         readerBtn.dataset.act = 'empty-reader-add';
-        readerBtn.textContent = '从阅读器加入复习';
+        readerBtn.textContent = t('ui.addFromReader');
         acts.appendChild(readerBtn);
         host.appendChild(
           uiEmpty({
             icon: 'inbox',
-            title: '复习还是空的',
-            desc: 'bz review 把制卡、整卡交给 AI，让你专注阅读与复习。内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。',
+            title: t('ui.emptyTitle'),
+            desc: t('ui.emptyDesc'),
             actions: acts,
           })
         );
@@ -631,18 +632,18 @@ export class UIManager {
   /** 内置页（批 8）：数据 / 设置 / 已完成 / 已移出——同一个内容区，头行换成「返回 + 标题」 */
   private renderPage(container: HTMLElement, items: ReviewItem[]): void {
     const title = this.page === 'stats'
-      ? '数据'
+      ? t('more.data')
       : this.page === 'achv'
-        ? '成就'
+        ? t('more.achv')
         : this.page === 'arch'
-        ? '已完成'
+        ? t('more.arch')
         : this.page === 'trash'
-          ? '已移出'
+          ? t('more.trash')
           : this.page === 'books'
-            ? '按书档案'
+            ? t('more.books')
             : this.page === 'manager'
-              ? '卡片管理器'
-              : '设置';
+              ? t('more.manager')
+              : t('more.settings');
     setMarkup(container, `<div class="bzrv-q-view bzrv-page">
       ${panelHeadHtml({ activePage: this.page ?? undefined, title })}
       <div class="bzrv-page-body" data-page-body></div>
@@ -726,7 +727,7 @@ export class UIManager {
     renderForecastInto(bars, forecastToText(forecastLoad(items, 30), 21));
     fc.appendChild(bars);
     const tip = createEl('p');
-    tip.textContent = '峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。';
+    tip.textContent = t('ui.forecastHint');
     fc.appendChild(tip);
     holder.appendChild(fc);
     /* 按书档案 / 卡片管理器的入口已收进头行「更多」菜单（2026-11-20）：数据页底部
@@ -742,13 +743,13 @@ export class UIManager {
     row.className = 'bzrv-btn-row';
     const exp = createEl('button');
     exp.className = 'bzrv-btn';
-    exp.textContent = '导出按书报告（Markdown）';
+    exp.textContent = t('cmd.exportBookReport');
     exp.addEventListener('click', () => void this.exportBookReport(items));
     row.appendChild(exp);
     if (!items.length) {
       const go = createEl('button');
       go.className = 'bzrv-btn bzrv-btn--primary';
-      go.textContent = '去添加条目';
+      go.textContent = t('mgr.goAdd');
       go.addEventListener('click', () => {
         this.page = null;
         void this.refreshPanel();
@@ -764,9 +765,9 @@ export class UIManager {
     try {
       const { exportBookReportMarkdown } = await import('./export-actions');
       const path = await exportBookReportMarkdown(this.app, items);
-      notice(path ? `按书报告已导出：${path}` : '还没有复习数据，先加入条目并完成一次复习。', path ? 'success' : 'warning');
+      notice(path ? t('notice.exportBookReport.done', { path }) : t('notice.exportBookReport.empty'), path ? 'success' : 'warning');
     } catch (e) {
-      notifySaveError(e, '导出按书报告');
+      notifySaveError(e, t('notice.exportBookReport.action'));
     }
   }
 
@@ -848,12 +849,12 @@ export class UIManager {
           if (next.buriedUntil) d.buriedUntil = next.buriedUntil;
         });
         notice(
-          kind === 'restore' ? '已恢复：这条回到本轮队列，排期没有变。' : hiddenNotice(kind === 'suspend' ? 'suspended' : 'buried'),
+          kind === 'restore' ? t('ui.restoredNote') : hiddenNotice(kind === 'suspend' ? 'suspended' : 'buried'),
           'success'
         );
         await this.refreshPanel();
       } catch (e) {
-        notifySaveError(e, kind === 'restore' ? '恢复条目' : '更新条目状态');
+        notifySaveError(e, kind === 'restore' ? t('ui.restoreItem') : t('ui.updateState'));
       }
     };
     const remove = async (it: ReviewItem): Promise<void> => {
@@ -865,18 +866,18 @@ export class UIManager {
         if (it.kind === 'card') await planRemoveCard(this.dataManager, it.filePath);
         else await planRemoveNote(this.dataManager, it.filePath);
         await this.refreshPanel();
-        notifyUndo(`已移出「${it.name}」`, () => {
+        notifyUndo(t('ui.removedItem', { name: it.name }), () => {
           void (async () => {
             try {
               await this.dataManager.restoreItem(it);
               await this.refreshPanel();
             } catch (e) {
-              notifySaveError(e, '恢复复习条目');
+              notifySaveError(e, t('ui.restoreReview'));
             }
           })();
         });
       } catch (e) {
-        notifySaveError(e, '移出复习条目');
+        notifySaveError(e, t('ui.removeReview'));
       }
     };
     const schedule = async (it: ReviewItem): Promise<void> => {
@@ -884,36 +885,36 @@ export class UIManager {
       try {
         const { openFlowDialog } = await import('../core/flow-dialog');
         const choice = await openFlowDialog({
-          title: '手动排期',
-          message: `给「${it.name}」安排下次复习：可以指定具体日期，或整体顺延 7 天。`,
+          title: t('ui.reschedule'),
+          message: t('ui.rescheduleBody', { name: it.name }),
           actions: [
-            { label: '指定日期', value: 'date', cta: true },
-            { label: '顺延 7 天', value: 'postpone' },
-            { label: '取消', value: 'cancel' },
+            { label: t('ui.pickDate'), value: 'date', cta: true },
+            { label: t('ui.postpone7'), value: 'postpone' },
+            { label: t('common.cancel'), value: 'cancel' },
           ],
         });
         if (choice === 'postpone') {
           const n = await this.dataManager.postponeItems([it.filePath], 7);
-          notice(n ? '已顺延 7 天' : '没找到这条', n ? 'success' : 'warning');
+          notice(n ? t('ui.postponed') : t('ui.notFound'), n ? 'success' : 'warning');
         } else if (choice === 'date') {
           /* 本地日期默认值：toISOString 是 UTC，东八区会预填前一天。 */
           const nd = it.nextReviewDate ? new Date(it.nextReviewDate) : null;
           const fallback = nd && Number.isFinite(nd.getTime())
             ? `${nd.getFullYear()}-${String(nd.getMonth() + 1).padStart(2, '0')}-${String(nd.getDate()).padStart(2, '0')}`
             : '';
-          const raw = await promptDate(this.app, '下次复习日期（YYYY-MM-DD）：', fallback);
+          const raw = await promptDate(this.app, t('ui.nextDatePrompt'), fallback);
           if (!raw) return;
-          const t = Date.parse(raw);
-          if (!Number.isFinite(t)) {
-            notice('日期看不懂，请用 YYYY-MM-DD 这种写法', 'warning');
+          const stamp = Date.parse(raw);
+          if (!Number.isFinite(stamp)) {
+            notice(t('ui.badDate'), 'warning');
             return;
           }
-          const ok = await this.dataManager.setNextReview(it.filePath, new Date(t).toISOString());
-          notice(ok ? '已改期' : '没找到这条', ok ? 'success' : 'warning');
+          const ok = await this.dataManager.setNextReview(it.filePath, new Date(stamp).toISOString());
+          notice(ok ? t('ui.rescheduled') : t('ui.notFound'), ok ? 'success' : 'warning');
         }
         if (choice === 'date' || choice === 'postpone') await this.refreshPanel();
       } catch (e) {
-        notifySaveError(e, '手动排期');
+        notifySaveError(e, t('ui.reschedule'));
       }
     };
     root.querySelectorAll<HTMLElement>('.bzrv-mgr-row[data-path]').forEach((row) => {
@@ -933,10 +934,10 @@ export class UIManager {
           void (async () => {
             try {
               await this.dataManager?.updateCard(card.key, { text: values.text, comment: values.comment, manual: true });
-              notice('已保存，之后不会被 AI 自动改写', 'success');
+              notice(t('ui.savedNoRewrite'), 'success');
               await this.refreshPanel();
             } catch (e) {
-              notifySaveError(e, '保存卡片修改');
+              notifySaveError(e, t('ui.saveCard'));
             }
           })();
         });
@@ -951,10 +952,10 @@ export class UIManager {
           void (async () => {
             try {
               await this.dataManager?.updateCardMedia(card.key, config);
-              notice('已保存媒体配置', 'success');
+              notice(t('ui.savedMedia'), 'success');
               await this.refreshPanel();
             } catch (e) {
-              notifySaveError(e, '保存媒体配置');
+              notifySaveError(e, t('ui.saveMedia'));
             }
           })();
         });
@@ -966,10 +967,10 @@ export class UIManager {
           void (async () => {
             try {
               await this.dataManager?.updateCardTemplate(card.key, tpl);
-              notice(tpl ? '已保存自定义模板' : '已恢复默认模板', 'success');
+              notice(tpl ? t('ui.savedTemplate') : t('ui.resetTemplate'), 'success');
               await this.refreshPanel();
             } catch (e) {
-              notifySaveError(e, '保存卡片模板');
+              notifySaveError(e, t('ui.saveTemplate'));
             }
           })();
         });
@@ -980,10 +981,10 @@ export class UIManager {
           void (async () => {
             try {
               await this.dataManager?.updateItemMeta(it.filePath, values);
-              notice('已保存牌组与标签', 'success');
+              notice(t('ui.savedDeck'), 'success');
               await this.refreshPanel();
             } catch (e) {
-              notifySaveError(e, '保存牌组与标签');
+              notifySaveError(e, t('ui.saveDeck'));
             }
           })();
         });
@@ -996,7 +997,7 @@ export class UIManager {
             notice(res.message, res.ok ? 'success' : 'warning');
             if (res.ok) await this.refreshPanel();
           } catch (e) {
-            notifySaveError(e, '生成反向卡');
+            notifySaveError(e, t('ui.makeReverse'));
           }
         })();
       });
@@ -1024,8 +1025,8 @@ export class UIManager {
       wrap.appendChild(
         uiEmpty({
           icon: 'folder-check',
-          title: '还没有复习完的条目',
-          desc: '走到最后阶段的条目会收在这里，随时能移回计划',
+          title: t('ui.archEmpty'),
+          desc: t('ui.archEmptyHint'),
         })
       );
       body.appendChild(wrap);
@@ -1045,13 +1046,13 @@ export class UIManager {
       if (it.card) {
         const tag = createSpan();
         tag.className = 'bzrv-q-tag is-kind-card';
-        tag.textContent = '划线卡';
+        tag.textContent = t('trash.highlightCard');
         row.appendChild(tag);
       }
 
       const btn = createEl('button');
       btn.className = 'bzrv-btn bzrv-btn--ghost';
-      btn.textContent = '移回计划';
+      btn.textContent = t('ui.moveBack');
       btn.addEventListener('click', () => {
         void (async () => {
           try {
@@ -1062,10 +1063,10 @@ export class UIManager {
               entry.pendingRedo = false;
               entry.nextReviewDate = new Date().toISOString();
             });
-            notice(`「${it.name || it.filePath}」已移回复习`);
+            notice(t('ui.movedBack', { name: it.name || it.filePath }));
             await this.refreshPanel();
           } catch (e) {
-            notifySaveError(e, '移回复习');
+            notifySaveError(e, t('ui.moveBackAction'));
           }
         })();
       });
@@ -1093,8 +1094,8 @@ export class UIManager {
         host.appendChild(
           uiEmpty({
             icon: 'archive-restore',
-            title: '还没有移出过条目',
-            desc: '从计划里移走的笔记和划线会先来这里，30 天内都能恢复；排期和复习历史不丢',
+            title: t('ui.trashEmpty'),
+            desc: t('ui.trashEmptyHint'),
           })
         );
       }
@@ -1116,17 +1117,17 @@ export class UIManager {
   private async batchRemove(): Promise<void> {
     const keys = [...this.selected];
     if (!keys.length) {
-      notice('先点几张卡片选中', 'warning');
+      notice(t('ui.pickCardsFirst'), 'warning');
       return;
     }
     if (!(await confirmRemovePlan({ count: keys.length }))) return;
     try {
       const n = await this.dataManager.removeItems(keys);
-      notice(n ? `已移出 ${n} 条，可在「已移出」里恢复` : '没找到这些条目', n ? 'success' : 'warning');
+      notice(n ? t('ui.batchRemoved', { n }) : t('ui.noneFound'), n ? 'success' : 'warning');
       this.selected.clear();
       this.selectMode = false;
     } catch (e) {
-      notifySaveError(e, '移出复习');
+      notifySaveError(e, t('ui.removeFromReview'));
     }
     await this.refreshPanel();
   }
@@ -1135,17 +1136,17 @@ export class UIManager {
   private async batchPostpone(): Promise<void> {
     const keys = [...this.selected];
     if (!keys.length) {
-      notice('先点几张卡片选中', 'warning');
+      notice(t('ui.pickCardsFirst'), 'warning');
       return;
     }
     if (!(await confirmPostponePlan(keys.length, 7))) return;
     try {
       const n = await this.dataManager.postponeItems(keys, 7);
-      notice(`已把 ${n} 条顺延 7 天`, 'success');
+      notice(t('ui.batchPostponed', { n }), 'success');
       this.selected.clear();
       this.selectMode = false;
     } catch (e) {
-      notifySaveError(e, '批量顺延');
+      notifySaveError(e, t('ui.batchPostpone'));
     }
     await this.refreshPanel();
   }
@@ -1156,13 +1157,13 @@ export class UIManager {
     if (!keys.length) return;
     try {
       const n = await this.dataManager.restoreFromTrash(keys);
-      notice(n ? `已恢复 ${n} 条` : '没有可恢复的条目', n ? 'success' : 'warning');
+      notice(n ? t('ui.restoredN', { n }) : t('ui.nothingToRestore'), n ? 'success' : 'warning');
       if (n) {
         const { reviewApp } = await import('./app');
         await reviewApp.applyReviewStyles(this.app);
       }
     } catch (e) {
-      notifySaveError(e, '恢复复习条目');
+      notifySaveError(e, t('ui.restoreReview'));
     }
     await this.refreshPanel();
   }
@@ -1173,14 +1174,14 @@ export class UIManager {
     try {
       const n = await this.dataManager.restoreFromTrash([key]);
       if (!n) {
-        notice('这条已经不在回收站了', 'warning');
+        notice(t('ui.notInTrash'), 'warning');
       } else {
-        notice('已恢复，排期和复习历史都回来了', 'success');
+        notice(t('ui.restoredFull'), 'success');
         const { reviewApp } = await import('./app');
         await reviewApp.applyReviewStyles(this.app);
       }
     } catch (e) {
-      notifySaveError(e, '恢复复习条目');
+      notifySaveError(e, t('ui.restoreReview'));
     }
     await this.refreshPanel();
   }
@@ -1190,19 +1191,19 @@ export class UIManager {
     const count = this.trashEntries.length;
     if (!count) return;
     const v = await openFlowDialog({
-      title: '清空回收站？',
-      message: `这 ${count} 条会被彻底删掉，排期与复习历史一起消失。`,
+      title: t('ui.clearTrashTitle'),
+      message: t('ui.clearTrashBody', { n: count }),
       actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '清空', value: 'ok', cta: true, danger: true },
+        { label: t('common.cancel'), value: 'cancel' },
+        { label: t('ui.clear'), value: 'ok', cta: true, danger: true },
       ],
     });
     if (v !== 'ok') return;
     try {
       await this.dataManager.clearTrash();
-      notice('回收站已清空', 'success');
+      notice(t('ui.trashCleared'), 'success');
     } catch (e) {
-      notifySaveError(e, '清空回收站');
+      notifySaveError(e, t('ui.clearTrash'));
     }
     await this.refreshPanel();
   }
@@ -1512,7 +1513,7 @@ export class UIManager {
             check.textContent = this.selected.has(path) ? '✓' : '';
           }
           const strip = container.querySelector<HTMLElement>('.bzrv-q-strip.is-batch strong');
-          if (strip) strip.textContent = `已选 ${this.selected.size} 条`;
+          if (strip) strip.textContent = t('batch.selected', { n: this.selected.size });
           return;
         }
         const it = items.find((x) => x.id === card.dataset.id);
@@ -1536,19 +1537,19 @@ export class UIManager {
         const it = items.find((x) => x.id === card.dataset.id);
         if (!it) return;
         void openFlowDialog({
-          title: '这篇笔记不在了',
-          message: `「${it.name}」的文件找不到（可能被删除、改名或移走了）。要把它移出复习吗？移出后可以重新加入。`,
+          title: t('ui.noteGoneTitle'),
+          message: t('ui.noteGoneBody', { name: it.name }),
           actions: [
-            { label: '留着', value: 'cancel' },
-            { label: '移出', value: 'ok', cta: true, danger: true },
+            { label: t('ui.keep'), value: 'cancel' },
+            { label: t('ui.remove'), value: 'ok', cta: true, danger: true },
           ],
         }).then(async (v) => {
           if (v !== 'ok' || !this.dataManager) return;
           try {
             await planRemoveNote(this.dataManager, it.filePath);
-            notice('已移出复习', 'success');
+            notice(t('ui.removedReview'), 'success');
           } catch (e) {
-            notifySaveError(e, '移出复习');
+            notifySaveError(e, t('ui.removeFromReview'));
           }
           await this.refreshPanel();
         });
@@ -1572,9 +1573,9 @@ export class UIManager {
   /** 空库引导（保留给可能的调用点）：先看视频教程了解用法 */
   private async showWatchHelp(): Promise<void> {
     await openFlowDialog({
-      title: '怎么把内容加进复习',
-      message: '先看视频教程，了解制卡、划线与自动收编的用法。',
-      actions: [{ label: '知道了', value: 'ok', cta: true }],
+      title: t('ui.helpTitle'),
+      message: t('ui.helpBody'),
+      actions: [{ label: t('common.gotIt'), value: 'ok', cta: true }],
     });
   }
 
@@ -1753,9 +1754,9 @@ export class UIManager {
         // 调用方（bz-review-rate 命令）实为 async 回调：签名 void 但运行时返回 promise，
         // 兜底 catch 防 unhandled rejection（U10）
         const r = onSelect(diff) as unknown;
-        if (r instanceof Promise) r.catch((e: unknown) => notifySaveError(e, '标记复习'));
+        if (r instanceof Promise) r.catch((e: unknown) => notifySaveError(e, t('ui.markReview')));
       } catch (e) {
-        notifySaveError(e, '标记复习');
+        notifySaveError(e, t('ui.markReview'));
       }
     };
     // 1-4 快捷键：flow-dialog 多动作按钮 id 契约 `bz-flow-dialog-action-<i>`；修饰键组合不劫持；
@@ -1772,14 +1773,14 @@ export class UIManager {
     };
     document.addEventListener('keydown', onKey);
     void openFlowDialog({
-      title: `标记复习：${item.name}`,
-      message: '选择本次复习的难度（快捷键 1-4）',
+      title: t('ui.markReviewTitle', { name: item.name }),
+      message: t('ui.markReviewDesc'),
       actions: [
-        { label: '忘了（Again）', value: 'again' },
-        { label: '困难（Hard）', value: 'hard' },
-        { label: '一般（Good）', value: 'good' },
-        { label: '简单（Easy）', value: 'easy' },
-        { label: '取消', value: 'cancel' },
+        { label: t('ui.rateAgain'), value: 'again' },
+        { label: t('ui.rateHard'), value: 'hard' },
+        { label: t('ui.rateGood'), value: 'good' },
+        { label: t('ui.rateEasy'), value: 'easy' },
+        { label: t('common.cancel'), value: 'cancel' },
       ],
     }).then((v) => {
       document.removeEventListener('keydown', onKey);
@@ -1808,7 +1809,7 @@ export class UIManager {
    */
   private async regenerateWithConfirm(item: ReviewItem): Promise<void> {
     const { aiReadyOrGuide } = await import('./ai-guide');
-    if (!(await aiReadyOrGuide('重新生成要用 AI'))) return;
+    if (!(await aiReadyOrGuide(t('ui.regenNeedsAi')))) return;
 
     /* 先选题再生成：与「加入复习」同一套四选一卡片，取消则一个字节不动。 */
     const current = item.card?.mode ?? 'flashcard';
@@ -1816,18 +1817,18 @@ export class UIManager {
       ? (current as WizardMode)
       : 'flashcard';
     const mode = await pickModeModal({
-      title: '重新生成用哪种方式？',
-      lead: '选一种方式重新出题面；原卡不会动，直到你点「确认修改」。',
+      title: t('ui.regenTitle'),
+      lead: t('ui.regenBody'),
       mode: seed,
     });
     if (!mode) return;
 
-    const progress = notify('正在按新方式生成…', { type: 'progress' });
+    const progress = notify(t('ui.regenBusy'), { type: 'progress' });
     const { generateCardRegenerateDraft, applyCardRegenerateDraft } = await import('./index');
     const entry = await generateCardRegenerateDraft(item.filePath, mode);
     progress.hide();
     if (!entry) {
-      notify('这次没生成出来（看看 AI 配置）', { type: 'warning' });
+      notify(t('ui.regenFailed'), { type: 'warning' });
       return;
     }
 
@@ -1847,7 +1848,7 @@ export class UIManager {
     if (res.cloze) draft.cloze = { ...res.cloze, at: Date.now() };
     if (res.questions) draft.questions = res.questions;
     const ok = await applyCardRegenerateDraft({ ...entry, draft });
-    notify(ok ? '已修改题面' : '这次没生成出来（看看 AI 配置）', { type: ok ? 'success' : 'warning' });
+    notify(ok ? t('ui.regenDone') : t('ui.regenFailed'), { type: ok ? 'success' : 'warning' });
     if (ok) await this.refreshPanel();
   }
 
@@ -1860,20 +1861,20 @@ export class UIManager {
         ? [
             {
               icon: 'refresh-cw',
-              label: '重新生成 AI 内容',
+              label: t('mgr.regen'),
               onClick: () => void this.regenerateWithConfirm(item),
             } as ItemActionLite,
           ]
         : [
             {
               icon: 'file-text',
-              label: '打开原文',
+              label: t('ui.openSource'),
               onClick: () => void this.openItemFile(item),
             },
           ]),
       {
         icon: 'history',
-        label: '查看历史',
+        label: t('ui.viewHistory'),
         onClick: () => {
           void (async () => {
             const { showTimeline } = await import('./stats-ui');
@@ -1883,7 +1884,7 @@ export class UIManager {
       },
       {
         icon: 'trash-2',
-        label: '移出复习',
+        label: t('ui.removeFromReview'),
         kind: 'danger',
         onClick: () => {
           /* 2026-11-19 用户口径：先二次确认（此处不再走「免确认直达」）。
@@ -1902,7 +1903,7 @@ export class UIManager {
               await this.refreshPanel();
               const { reviewApp } = await import('./app');
               await reviewApp.applyReviewStyles(this.app);
-              notifyUndo(`已移出「${item.name}」`, () => {
+              notifyUndo(t('ui.removedItem', { name: item.name }), () => {
                 void (async () => {
                   try {
                     await this.dataManager.restoreItem(item);
@@ -1910,12 +1911,12 @@ export class UIManager {
                     const { reviewApp: ra } = await import('./app');
                     await ra.applyReviewStyles(this.app);
                   } catch (e) {
-                    notifySaveError(e, '恢复复习条目');
+                    notifySaveError(e, t('ui.restoreReview'));
                   }
                 })();
               });
             } catch (e) {
-              notifySaveError(e, '移出复习条目');
+              notifySaveError(e, t('ui.removeReview'));
             }
           })();
         },
@@ -1930,7 +1931,7 @@ export class UIManager {
   private async openItemFile(item: ReviewItem): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(item.filePath);
     if (!(file instanceof TFile)) {
-      notice(`笔记「${item.name}」的文件已删除`, 'warning');
+      notice(t('ui.fileDeleted', { name: item.name }), 'warning');
       return;
     }
     const leaf = this.app.workspace.getLeaf(false);
