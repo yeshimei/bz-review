@@ -17,6 +17,7 @@ import type { ReviewItem } from './data';
 import { DEFAULT_W, currentR } from './fsrs';
 import { localDayKey } from '../core/ui/str';
 import { maturityLevel, MATURITY_LABELS } from './render';
+import { t } from '../i18n/strings';
 
 const DAY = 86_400_000;
 const HEAT_DAYS = 365;
@@ -139,6 +140,12 @@ function stageBucket(reviews: number): number {
 }
 
 const STAGE_LABELS = MATURITY_LABELS;
+
+/** 成熟度档位名按当前语言出词（中文基准仍是 MATURITY_LABELS） */
+const STAGE_KEYS = ['stats.stage.0', 'stats.stage.1', 'stats.stage.2', 'stats.stage.3', 'stats.stage.4'] as const;
+function stageLabel(i: number): string {
+  return t(STAGE_KEYS[i] ?? 'stats.stage.0');
+}
 
 export interface RichOptions {
   /** R 口径权重（拟合优先；缺省回退默认，与调度同口径） */
@@ -384,22 +391,22 @@ export function computeRichStats(items: ReviewItem[], opts?: RichOptions): RichS
     gap,
     rating,
     passRate,
-    stageAgain: STAGE_LABELS.map((label, i) => ({ label, n: stageN[i], again: stageAgain[i] })),
+    stageAgain: STAGE_LABELS.map((_label, i) => ({ label: stageLabel(i), n: stageN[i], again: stageAgain[i] })),
     avgR: rN ? rSum / rN : null,
     rBuckets,
     sMedian,
     strongest: strengths.slice(0, 5),
     weakest: [...strengths].slice(-5).reverse(),
     phase: { ladder, fsrs },
-    stages: STAGE_LABELS.map((label, i) => ({ label, n: stageItems[i] })),
+    stages: STAGE_LABELS.map((_label, i) => ({ label: stageLabel(i), n: stageItems[i] })),
     kinds: { note: notes, card: cards, noteReviews, cardReviews },
     suspended,
     load,
     overdue: [
-      { label: '今天到期', n: overdue[0], again: 0 },
-      { label: '逾期 1-3 天', n: overdue[1], again: 0 },
-      { label: '逾期 4-7 天', n: overdue[2], again: 0 },
-      { label: '逾期 8 天以上', n: overdue[3], again: 0 },
+      { label: t('achv.dueToday'), n: overdue[0], again: 0 },
+      { label: t('achv.due1to3'), n: overdue[1], again: 0 },
+      { label: t('achv.due4to7'), n: overdue[2], again: 0 },
+      { label: t('achv.due8plus'), n: overdue[3], again: 0 },
     ],
     top,
     avgInterval: intervalN ? intervalSum / intervalN : null,
@@ -451,19 +458,19 @@ function buildBadges(b: BadgeInput): BadgeRow[] {
     goal,
   });
   return [
-    mk('streak7', '连续 7 天', b.streak, 7),
-    mk('streak30', '连续 30 天', b.streak, 30),
-    mk('streak100', '连续 100 天', b.bestStreak, 100),
-    mk('reviews100', '复习 100 次', b.reviews, 100),
-    mk('reviews500', '复习 500 次', b.reviews, 500),
-    mk('reviews2000', '复习 2000 次', b.reviews, 2000),
-    mk('notes10', '复习 10 篇', b.notes, 10),
-    mk('notes50', '复习 50 篇', b.notes, 50),
-    mk('notes100', '复习 100 篇', b.notes, 100),
-    mk('day50', '单日 50 次', peak, 50),
-    mk('s30', '稳定度 30 天以上的条目 10 条', b.strengths, 10),
-    mk('s100', '记忆常青：S ≥ 100 天的条目 5 条', b.veryStable, 5),
-    mk('pass80', '一次通过率 80%（≥50 次）', b.reviews >= 50 ? Math.round(b.passRate * 100) : 0, 80),
+    mk('streak7', t('achv.streak7'), b.streak, 7),
+    mk('streak30', t('achv.streak30'), b.streak, 30),
+    mk('streak100', t('achv.streak100'), b.bestStreak, 100),
+    mk('reviews100', t('achv.reviews100'), b.reviews, 100),
+    mk('reviews500', t('achv.reviews500'), b.reviews, 500),
+    mk('reviews2000', t('achv.reviews2000'), b.reviews, 2000),
+    mk('notes10', t('achv.notes10'), b.notes, 10),
+    mk('notes50', t('achv.notes50'), b.notes, 50),
+    mk('notes100', t('achv.notes100'), b.notes, 100),
+    mk('day50', t('achv.day50'), peak, 50),
+    mk('s30', t('achv.stable10'), b.strengths, 10),
+    mk('s100', t('achv.evergreen5'), b.veryStable, 5),
+    mk('pass80', t('achv.passRate80'), b.reviews >= 50 ? Math.round(b.passRate * 100) : 0, 80),
   ];
 }
 
