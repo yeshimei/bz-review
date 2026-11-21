@@ -8,3 +8,5 @@ scripts/keys/
 *.log
 .build/
 prototypes/
+*.zip
+deploy*.txt

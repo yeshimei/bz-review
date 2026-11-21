@@ -81,10 +81,10 @@ export function clozeToRanges(text: string, blanks: readonly string[]): ClozeRan
 /** 区间规范化：裁到文本内、丢掉空区间、排序、去掉重叠（先到先得） */
 export function normalizeSpans(plain: string, spans: readonly ClozeSpan[]): ClozeSpan[] {
   const len = String(plain ?? '').length;
-  const raw = (Array.isArray(spans) ? spans : [])
+  const raw = spans
     .map((s) => ({
-      start: Math.max(0, Math.min(len, Math.round(Number(s?.start) || 0))),
-      end: Math.max(0, Math.min(len, Math.round(Number(s?.end) || 0))),
+      start: Math.max(0, Math.min(len, Math.round(Number(s.start) || 0))),
+      end: Math.max(0, Math.min(len, Math.round(Number(s.end) || 0))),
     }))
     .filter((s) => s.end > s.start)
     .sort((a, b) => a.start - b.start);
@@ -217,7 +217,7 @@ export function addSpan(
 
 /** 点中一个空位 → 还原 */
 export function removeSpan(spans: readonly ClozeSpan[], start: number, end: number): ClozeSpan[] {
-  return (Array.isArray(spans) ? spans : []).filter((s) => !(s.start === start && s.end === end));
+  return spans.filter((s) => !(s.start === start && s.end === end));
 }
 
 /**
@@ -232,7 +232,7 @@ export function removeRangeFromSpans(
   end: number,
 ): ClozeSpan[] {
   const out: ClozeSpan[] = [];
-  for (const s of Array.isArray(spans) ? spans : []) {
+  for (const s of spans) {
     if (s.end <= start || s.start >= end) {
       out.push({ start: s.start, end: s.end });
       continue;
