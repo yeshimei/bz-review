@@ -13,7 +13,7 @@ import { getLicenseState } from '../../data/entitlement';
 import { openExternalUrl, openVideoTutorial, REVIEW_REPO_URL } from './links-bridge';
 import { isMobileEnv } from '../../core/mobile';
 import { openHotkeySettings, readHotkeys } from '../../core/hotkeys';
-import { installReaderPlugin, openReaderShelf, readReaderInstall, type ReaderInstallState } from '../../core/reader-install';
+import { enableReaderPlugin, installReaderPlugin, openReaderShelf, readReaderInstall, type ReaderInstallState } from '../../core/reader-install';
 import { copyReviewGroupId } from './group-bridge';
 import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml, type ReaderPluginState } from './settings-page-pure';
 import { setHtml } from './set-html';
@@ -256,6 +256,23 @@ export async function renderReviewSettingsPage(
           if (!openReaderShelf(deps.app)) {
             notice('bz Reader 还没加载好，稍后到命令面板运行「打开书架」', 'info');
           }
+          return;
+        /* 已装未启用（2026-11-21）：空态引导过来的落点，点一下直接启用，不用再翻三方插件页 */
+        case 'readerenable':
+          void (async () => {
+            const btn = act as HTMLButtonElement;
+            if (btn.dataset.busy === '1') return;
+            btn.dataset.busy = '1';
+            btn.disabled = true;
+            const ok = await enableReaderPlugin(deps.app);
+            await refreshPluginGroup();
+            notice(
+              ok
+                ? 'bz reader 已启用，回到空态再点「从 bz reader 加入复习」即可'
+                : '没能自动启用：到第三方插件里把 bz reader 打开',
+              ok ? 'success' : 'warning'
+            );
+          })();
           return;
       }
     }

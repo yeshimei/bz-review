@@ -592,7 +592,7 @@ export class UIManager {
         const readerBtn = createEl('button');
         readerBtn.className = 'bzrv-btn bzrv-btn--ghost';
         readerBtn.dataset.act = 'empty-reader-add';
-        readerBtn.textContent = '从阅读器加入复习';
+        readerBtn.textContent = '从 bz reader 加入复习';
         acts.appendChild(readerBtn);
         host.appendChild(
           uiEmpty({

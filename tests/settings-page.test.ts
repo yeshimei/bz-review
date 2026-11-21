@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { aboutBarHtml, groupColumns, GROUP_ORDER, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups } from '../src/review/ui/settings-page-pure';
+import { aboutBarHtml, groupColumns, GROUP_ORDER, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml } from '../src/review/ui/settings-page-pure';
 
 const read = (rel: string) => readFileSync(resolve(process.cwd(), rel), 'utf8');
 
@@ -94,6 +94,18 @@ describe('复习设置页 · 两列骨架与关于条', () => {
     expect(page).toContain('openReviewChangelog');
     expect(page).toContain('openReviewSupportDialog');
     expect(page).toContain('copyReviewGroupId');
+  });
+
+  it('插件组三态：未装安装、装了没启用启用、已启用打开', () => {
+    /* 2026-11-21 用户要求：Reader 没安装或没启用时，空态点入口要能把人送到这里 */
+    const off = pluginGroupHtml({ installed: false, enabled: false, broken: false, version: '' });
+    expect(off).toContain('data-act="readerinstall"');
+    expect(off).toContain('data-group="插件"');
+    const disabled = pluginGroupHtml({ installed: true, enabled: false, broken: false, version: '1.0.0' });
+    expect(disabled).toContain('data-act="readerenable"');
+    expect(disabled).toContain('（未启用）');
+    const on = pluginGroupHtml({ installed: true, enabled: true, broken: false, version: '1.0.0' });
+    expect(on).toContain('data-act="readeropen"');
   });
 
   it('授权组有高级功能对照弹窗入口', () => {

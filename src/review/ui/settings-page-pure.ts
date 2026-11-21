@@ -152,15 +152,19 @@ export interface ReaderPluginState {
 /**
  * 插件组 HTML（2026-11-20；2026-11-21 改成真安装）：
  * 未装 → 「安装」，点击后按钮原地 loading、直接下载三件套并启用；
- * 已装 → 「打开」，点击直接开 bz Reader 书架。版本号只做展示，不参与判断。
+ * 已装未启用 → 「启用」，点击直接调宿主启用，不用再去找第三方插件开关；
+ * 已装已启用 → 「打开」，点击直接开 bz Reader 书架。版本号只做展示，不参与判断。
  */
 export function pluginGroupHtml(reader?: ReaderPluginState): string {
   const installed = !!reader?.installed && !reader?.broken;
+  const enabled = installed && !!reader?.enabled;
   const version = String(reader?.version || '').replace(/[^\w.+-]/g, '');
   const desc = installed
-    ? `已安装${version ? ` v${version}` : ''}${reader?.enabled ? '' : '（未启用）'}。桌面 + 手机、多种格式、AI 追问与全文问答、离线朗读、阅读统计，数据全留本地。`
+    ? `已安装${version ? ` v${version}` : ''}${enabled ? '' : '（未启用）'}。桌面 + 手机、多种格式、AI 追问与全文问答、离线朗读、阅读统计，数据全留本地。`
     : '把库变成阅读器：桌面 + 手机、多种格式、AI 追问与全文问答、离线朗读、阅读统计，数据全留本地。';
-  return `<div class="bzs-setgrp wide bzs-plugin-grp">
+  const act = !installed ? 'readerinstall' : enabled ? 'readeropen' : 'readerenable';
+  const label = !installed ? '安装' : enabled ? '打开' : '启用';
+  return `<div class="bzs-setgrp wide bzs-plugin-grp" data-group="插件">
       <h3 data-en="Plugins">插件</h3>
       <div class="bzs-cap is-on">
         <span class="bzs-capico">${READER_ICON_SVG}</span>
@@ -169,7 +173,7 @@ export function pluginGroupHtml(reader?: ReaderPluginState): string {
           <p>${desc}</p>
           <div class="bzs-captags"><span class="bzs-tag">多格式</span><span class="bzs-tag">AI 问答</span><span class="bzs-tag">离线朗读</span></div>
           <div class="bzs-capfoot">
-            <button class="bzs-btn sm pri" type="button" data-act="${installed ? 'readeropen' : 'readerinstall'}">${DOWNLOAD_SVG}<span class="bzs-btn-label">${installed ? '打开' : '安装'}</span></button>
+            <button class="bzs-btn sm pri" type="button" data-act="${act}">${DOWNLOAD_SVG}<span class="bzs-btn-label">${label}</span></button>
           </div>
         </div>
       </div>

@@ -441,7 +441,7 @@ async function writeVaultText(app: unknown, path: string, text: string): Promise
  * 软加载：首次安装时 Obsidian 的内存清单还没有这个目录，不 refresh 就 enable 不到。
  * 任何一步失败都只降级成「已安装，请手动启用」——三件套已经在磁盘上，说成失败反而误导。
  */
-async function enableReaderPlugin(app: unknown): Promise<boolean> {
+export async function enableReaderPlugin(app: unknown): Promise<boolean> {
   const plugins = pluginsOf(app);
   if (!plugins) return false;
   if (isReaderEnabled(app)) return true;
