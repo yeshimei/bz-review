@@ -23,6 +23,7 @@ import type { AIService } from '../../core/ai';
 import { motionQuizCard, motionQuizJudge } from '../motion';
 
 import { markOwned } from '../../core/scope';
+import { t } from '../../i18n/strings';
 
 /** 做题家从全局设置读取的子集（ensureQuiz 注入的 getSettings() 形状兼容此接口） */
 interface QuizSettings {
@@ -168,7 +169,7 @@ export class QuizMasterUI {
         // 外层接管进度时不另起一条（见方法头注释）
         const h = opts?.onProgress
           ? null
-          : notify(`正在为 ${missing.length} 篇笔记批量生成题目…`, { type: 'progress', dedupeKey: 'quiz-generate' });
+          : notify(t('qs.batchStart', { n: missing.length }), { type: 'progress', dedupeKey: 'quiz-generate' });
         const batchResult = await this.generator.generateBatch(missing, QuizMasterUI.ai, enableMultipleChoice, questionsPerNote, difficulty);
         let batchOk = 0;
         // G3：AI 返回后 RMW 入队基于磁盘现值合并——批量出题的长耗时窗口内并发删题
@@ -183,14 +184,14 @@ export class QuizMasterUI {
         });
         if (h) {
           h.setType('success');
-          h.setMessage(`已为 ${batchOk} 篇笔记生成题目`);
+          h.setMessage(t('qs.batchDone', { n: batchOk }));
         } else {
-          opts?.onProgress?.(`已为 ${batchOk} 篇笔记生成题目`);
+          opts?.onProgress?.(t('qs.batchDone', { n: batchOk }));
         }
         return;
       } catch (e: unknown) {
         console.warn('批量出题失败，降级为逐篇:', errMessage(e));
-        if (opts?.onProgress) opts.onProgress('批量出题失败，改为逐篇生成');
+        if (opts?.onProgress) opts.onProgress(t('qs.batchFallback'));
         else notify('批量出题失败，已改为逐篇生成', { type: 'warning', dedupeKey: 'quiz-generate' });
       }
     }
@@ -201,7 +202,7 @@ export class QuizMasterUI {
     let firstError = '';
     for (const note of missing) {
       try {
-        if (!QuizMasterUI.ai) throw new Error('AI 未初始化');
+        if (!QuizMasterUI.ai) throw new Error(t('qs.noAi'));
         const qs = await this.generator.generate(note.content, QuizMasterUI.ai, enableMultipleChoice, questionsPerNote, difficulty);
         if (qs.length) {
           // G3：单篇写走 RMW（saveQuestionsForNote），不再持陈旧快照整体覆盖
@@ -213,11 +214,11 @@ export class QuizMasterUI {
       } catch (e: unknown) {
         const msg = errMessage(e);
         console.warn(`出题失败 ${note.id}:`, msg);
-        if (!firstError) firstError = msg || '未知错误';
+        if (!firstError) firstError = msg || t('ai.error.unknown');
         failCount++;
       }
     }
-    if (okCount > 0) notify(`已为 ${okCount} 篇笔记生成题目`, { type: 'success' });
+    if (okCount > 0) notify(t('qs.batchDone', { n: okCount }), { type: 'success' });
     if (failCount > 0) notify(`${failCount} 篇笔记出题失败${firstError ? `（${firstError}）` : ''}`, { type: 'warning', dedupeKey: 'quiz-generate' });
   }
 
@@ -443,11 +444,11 @@ export class QuizMasterUI {
     if (!isSingle) {
       const submitBtn = createEl('button');
       submitBtn.className = 'quiz-submit-btn';
-      submitBtn.textContent = '提交答案';
+      submitBtn.textContent = t('qs.submit');
       submitBtn.onclick = () => {
         if (answeredRef.value) return;
         if (selectedIndices.size === 0) {
-          notice('请至少选择一项', 'warning'); // ticket 15：多选零选择提示
+          notice(t('qs.pickOne'), 'warning'); // ticket 15：多选零选择提示
           return;
         }
         answeredRef.value = true;
@@ -534,7 +535,7 @@ export class QuizMasterUI {
       })
       .catch((e) => {
         // C9：错误文案走 core 单源（不再手拼「X失败：msg，请重试」）
-        notifyActionError(e, '删除题目');
+        notifyActionError(e, t('qs.deleteQuestion'));
         onFailRestore();
       });
   }
@@ -573,7 +574,7 @@ export class QuizMasterUI {
     if (oldBtn) oldBtn.remove();
     const nextBtn = createEl('button');
     nextBtn.className = 'quiz-next-btn';
-    nextBtn.textContent = '下一题 →';
+    nextBtn.textContent = t('qs.next');
     nextBtn.onclick = () => {
       this.showQuestion();
     };
@@ -613,15 +614,15 @@ export class QuizMasterUI {
     if (this.confirming) return;
     this.confirming = true;
     void openFlowDialog({
-      title: '放弃本次做题？',
-      message: '未完成的题目将丢弃，已答的题目照常记入结果',
+      title: t('qs.abandonTitle'),
+      message: t('qs.abandonBody'),
       /* 标准双动作右侧恒为主按钮：原来「放弃」顶着品牌色高亮、最该点的「继续做题」是灰字
          （主次颠倒）。对调语义页——左「放弃」次要，右「继续做题」主按钮并默认聚焦。
          刻意不标 danger（issue 291 评审）：同 sprint.requestQuit —— 丢弃的是本轮未答的
          临时状态，已答题目照常结算评级，不删任何持久化数据。 */
       actions: [
-        { label: '放弃', value: 'quit' },
-        { label: '继续做题', value: 'cancel' },
+        { label: t('qs.abandon'), value: 'quit' },
+        { label: t('qs.continue'), value: 'cancel' },
       ],
     }).then((v) => {
       this.confirming = false; // U1：settle 复位（取消/确认都走这里）
