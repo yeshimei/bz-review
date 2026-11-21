@@ -45,6 +45,7 @@
  */
 import type { RaData } from './data';
 import { RA_RATING_NAMES, RA_RATING_ORDER } from './data';
+import { ratingName, t as tr } from '../../i18n/strings';
 import {
   at, clamp01, easeOut, easeInOut, easeBack, spring, stagger, rng,
   canvas, sampleText, rgba, qsa, rollTo, lerp, toward, type Palette,
@@ -120,7 +121,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
             return Array.from({ length: N }, (_, i) => raw[Math.floor((i / N) * raw.length)]);
           };
           const a = resample(String(data.active), fontPx);
-          const b = resample('忆', fontPx * .9);
+          const b = resample(tr('an.memoryGlyph'), fontPx * .9);
           ps = a.map((p, i) => {
             const ang = (i / Math.max(1, N)) * Math.PI * 2 + roll() * .6;
             const rad = Math.max(w, h) * (.5 + roll() * .45);
@@ -192,7 +193,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
         hot = nearest(spots, localAt(cv?.el, p), .09);
         if (hot >= 0) {
           const e = embers[hot];
-          const rTxt = e.r == null ? '新卡' : `R ${Math.round(e.r * 100)}%`;
+          const rTxt = e.r == null ? tr('an.newCard') : `R ${Math.round(e.r * 100)}%`;
           tip(host, `${e.name} · ${rTxt}`, p.cx, p.cy);
         } else tip(host, '');
       },
@@ -282,9 +283,9 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
         const l = localAt(cursor?.offsetParent as HTMLElement ?? null, p);
         if (hotI >= 0) {
           const e = data.liveEmbers.filter((x) => x.r != null && x.ageDays != null && x.s > 0)[hotI];
-          if (e) tip(host, `${e.name} · 龄 ${Math.round(e.ageDays as number)} 天 / 稳 ${Math.round(e.s)} 天 · R ${Math.round((e.r as number) * 100)}%`, p.cx, p.cy);
+          if (e) tip(host, tr('an.emberTip', { name: e.name, age: Math.round(e.ageDays as number), s: Math.round(e.s), r: Math.round((e.r as number) * 100) }), p.cx, p.cy);
         } else if (l) {
-          tip(host, `龄期 ${Math.round(l.x * 3 * 10) / 10}×S`, p.cx, p.cy);
+          tip(host, tr('an.ageAxis', { n: Math.round(l.x * 3 * 10) / 10 }), p.cx, p.cy);
         } else tip(host, '');
       },
       update({ t, pal, px }) {
@@ -361,7 +362,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
           S(oncliff, `opacity:${p.toFixed(3)}`);
           /* 「在崖上」= 留存率落在 50%~90% 的可算条目数。旧式用 active（含 R=null 的
              新卡项）减两端，既把新卡算进来、===total 判断又几乎恒假。 */
-          T(oncliff, `${data.rMid} 篇`);
+          T(oncliff, tr('an.notesN', { n: data.rMid }));
         }
       },
     });
@@ -734,7 +735,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
         }
         if (hotK >= 0) {
           const k = RA_RATING_ORDER[hotK];
-          tip(host, `${RA_RATING_NAMES[k]} · ${data.ratingDist[k] || 0} 次`, p.cx, p.cy);
+          tip(host, tr('an.ratingTimes', { rating: ratingName(k), n: data.ratingDist[k] || 0 }), p.cx, p.cy);
         } else tip(host, '');
       },
       update({ t, pal }) {
@@ -775,7 +776,7 @@ export function buildPerfs(root: HTMLElement, data: RaData, host: HTMLElement = 
           ctx.fillText(String(Math.round(data.verdictTotal * grow)), cx, cy);
           ctx.font = `${Math.round(Math.min(w, h) * .07)}px "Segoe UI", system-ui, sans-serif`;
           ctx.fillStyle = rgba(pal.inkRgb, .5 * at(t, .5, 1.2));
-          ctx.fillText('次批改', cx, cy + Math.min(w, h) * .11);
+          ctx.fillText(tr('an.gradingUnit'), cx, cy + Math.min(w, h) * .11);
         }
         // 图例联动
         vRows.forEach((row, i) => {
