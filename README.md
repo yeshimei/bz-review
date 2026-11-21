@@ -38,23 +38,8 @@
 
 <p align="center"><b>移动端 · 复习计划 · 抽认卡</b></p>
 
-<p align="center">
-  <img src="docs/images/review-manager-light.webp" alt="卡片管理器：搜索、类型筛选、挂起 / 埋藏 / 手动排期">
-</p>
 
-<p align="center"><b>卡片管理器 · 搜索 · 挂起 · 排期</b></p>
 
-<p align="center">
-  <img src="docs/images/review-stats-light.webp" alt="统计：复习量账本、24 小时与星期节律、年度热力、一次通过率">
-</p>
-
-<p align="center"><b>统计 · 复习节律 · 热力 · 一次通过率</b></p>
-
-<p align="center">
-  <img src="docs/images/review-achievements-light.webp" alt="成就：连续天数、复习量、稳定度、记忆常青">
-</p>
-
-<p align="center"><b>成就 · 连续 / 复习量 / 稳定度 / 记忆常青</b></p>
 
 ## 安装
 

@@ -16,6 +16,7 @@
  * 校验：解出来的字节先比**声明长度**再比 **crc32**。两者都对才返回——少了这层，
  * 一个坏包会写成半截 node.exe，症状是「下载完成但一跑就崩」，几乎无法归因。
  * ============================================================ */
+import { t } from '../i18n/strings';
 
 /** 中央目录条目（只留解析与解压要用的字段） */
 export interface ZipEntry {
@@ -83,7 +84,7 @@ export function crc32(bytes: Uint8Array): number {
  */
 export function readZipEntries(bytes: Uint8Array): ZipEntry[] {
   const len = bytes.length;
-  if (len < 22) throw new Error('不是有效的 zip（文件太小）');
+  if (len < 22) throw new Error(t('zip.err.small'));
   const floor = Math.max(0, len - 22 - 0xffff);
   let eocd = -1;
   for (let i = len - 22; i >= floor; i--) {
@@ -92,20 +93,20 @@ export function readZipEntries(bytes: Uint8Array): ZipEntry[] {
       break;
     }
   }
-  if (eocd < 0) throw new Error('不是有效的 zip（找不到目录尾）');
+  if (eocd < 0) throw new Error(t('zip.err.noEocd'));
 
   const count = u16(bytes, eocd + 10);
   const cdSize = u32(bytes, eocd + 12);
   const cdOffset = u32(bytes, eocd + 16);
   if (count === 0xffff || cdOffset === 0xffffffff || cdSize === 0xffffffff) {
-    throw new Error('不支持 zip64 格式的压缩包');
+    throw new Error(t('zip.err.zip64'));
   }
-  if (cdOffset + cdSize > len) throw new Error('zip 目录越界（文件可能未下载完整）');
+  if (cdOffset + cdSize > len) throw new Error(t('zip.err.dirRange'));
 
   const out: ZipEntry[] = [];
   let p = cdOffset;
   for (let i = 0; i < count; i++) {
-    if (p + 46 > len || u32(bytes, p) !== SIG_CEN) throw new Error('zip 目录结构损坏');
+    if (p + 46 > len || u32(bytes, p) !== SIG_CEN) throw new Error(t('zip.err.dirBroken'));
     const method = u16(bytes, p + 10);
     const crc = u32(bytes, p + 16);
     const compressedSize = u32(bytes, p + 20);
@@ -130,10 +131,10 @@ function defaultInflateRaw(data: Uint8Array): Uint8Array {
   } catch {
     zlib = undefined;
   }
-  if (!zlib?.inflateRawSync) throw new Error('当前环境不支持解压（zip 需要桌面端）');
+  if (!zlib?.inflateRawSync) throw new Error(t('zip.err.noDesktop'));
   let Buf: BufferCtor | undefined = typeof Buffer !== 'undefined' ? Buffer : undefined;
   if (!Buf) Buf = (w?.require?.('buffer') as { Buffer: BufferCtor } | undefined)?.Buffer;
-  if (!Buf) throw new Error('当前环境不支持解压（缺少 Buffer）');
+  if (!Buf) throw new Error(t('zip.err.noBuffer'));
   const out = zlib.inflateRawSync(Buf.from(data.buffer, data.byteOffset, data.byteLength));
   return new Uint8Array(out.buffer, out.byteOffset, out.byteLength);
 }
@@ -148,23 +149,23 @@ export interface ZipDeps {
  */
 export function extractZipEntry(bytes: Uint8Array, entry: ZipEntry, deps: ZipDeps = {}): Uint8Array {
   const o = entry.localOffset;
-  if (o + 30 > bytes.length || u32(bytes, o) !== SIG_LOC) throw new Error(`zip 条目头损坏：${entry.name}`);
+  if (o + 30 > bytes.length || u32(bytes, o) !== SIG_LOC) throw new Error(t('zip.err.entryHead', { name: entry.name }));
   const nameLen = u16(bytes, o + 26);
   const extraLen = u16(bytes, o + 28);
   const start = o + 30 + nameLen + extraLen;
   const end = start + entry.compressedSize;
-  if (end > bytes.length) throw new Error(`zip 条目越界：${entry.name}`);
+  if (end > bytes.length) throw new Error(t('zip.err.entryRange', { name: entry.name }));
   const raw = bytes.subarray(start, end);
 
   let out: Uint8Array;
   if (entry.method === 0) out = raw.slice();
   else if (entry.method === 8) out = (deps.inflateRaw ?? defaultInflateRaw)(raw);
-  else throw new Error(`不支持的压缩方式 ${entry.method}（${entry.name}）`);
+  else throw new Error(t('zip.err.method', { method: entry.method, name: entry.name }));
 
   if (entry.size && out.byteLength !== entry.size) {
-    throw new Error(`${entry.name} 解压后大小不符（期望 ${entry.size}，实际 ${out.byteLength}）`);
+    throw new Error(t('zip.err.size', { name: entry.name, want: entry.size, got: out.byteLength }));
   }
-  if (entry.crc && crc32(out) !== entry.crc) throw new Error(`${entry.name} 校验失败（crc32 不符）`);
+  if (entry.crc && crc32(out) !== entry.crc) throw new Error(t('zip.err.crc', { name: entry.name }));
   return out;
 }
 

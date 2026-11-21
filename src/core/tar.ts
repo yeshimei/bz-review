@@ -18,6 +18,7 @@
  *  - **只收普通文件与目录**：符号链接、硬链接、设备节点一概忽略（我们不打包这类东西，
  *    出现了就是被换过）。
  * ============================================================ */
+import { t } from '../i18n/strings';
 
 /** 解出的一条文件（目录不产出条目——调用方按路径自行建目录） */
 export interface TarFile {
@@ -99,10 +100,10 @@ export function untar(bytes: Uint8Array, limits: UntarLimits = UNTAR_LIMITS): Ta
     if (zero) break;
 
     const magic = cstr(bytes, off + 257, 5);
-    if (magic !== 'ustar') throw new Error('不是 ustar 格式的 tar（头部 magic 不符）');
+    if (magic !== 'ustar') throw new Error(t('tar.err.magic'));
 
     const size = octal(bytes, off + 124, 12);
-    if (size < 0) throw new Error('tar 头部 size 字段损坏');
+    if (size < 0) throw new Error(t('tar.err.size'));
     const typeflag = String.fromCharCode(bytes[off + 156] || 48); // 0 字节按 '0' 处理
 
     // ustar 的长路径：prefix + '/' + name
@@ -112,7 +113,7 @@ export function untar(bytes: Uint8Array, limits: UntarLimits = UNTAR_LIMITS): Ta
 
     const dataStart = off + BLOCK;
     const dataEnd = dataStart + size;
-    if (dataEnd > bytes.length) throw new Error('tar 条目越界（归档被截断）');
+    if (dataEnd > bytes.length) throw new Error(t('tar.err.truncated'));
 
     // 目录 / 只认普通文件；其余（链接、设备）静默忽略
     if (typeflag === '5') {
@@ -125,16 +126,16 @@ export function untar(bytes: Uint8Array, limits: UntarLimits = UNTAR_LIMITS): Ta
     }
 
     const path = safeTarPath(rawPath);
-    if (!path) throw new Error(`tar 条目路径不安全：${rawPath || '(空)'}`);
+    if (!path) throw new Error(t('tar.err.unsafePath', { path: rawPath || '(empty)' }));
 
     total += size;
-    if (out.length + 1 > limits.maxEntries) throw new Error(`tar 条目过多（>${limits.maxEntries}）`);
-    if (total > limits.maxTotalBytes) throw new Error(`tar 解包总大小超限（>${limits.maxTotalBytes} 字节）`);
+    if (out.length + 1 > limits.maxEntries) throw new Error(t('tar.err.tooMany', { max: limits.maxEntries }));
+    if (total > limits.maxTotalBytes) throw new Error(t('tar.err.tooLarge', { max: limits.maxTotalBytes }));
 
     out.push({ path, data: bytes.subarray(dataStart, dataEnd) });
     off = dataStart + Math.ceil(size / BLOCK) * BLOCK;
   }
 
-  if (out.length === 0) throw new Error('tar 里没有文件');
+  if (out.length === 0) throw new Error(t('tar.err.empty'));
   return out;
 }

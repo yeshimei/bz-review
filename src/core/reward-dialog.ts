@@ -33,6 +33,7 @@ import { getApp } from './app';
 import { REWARD_NAMES, formatRewardDate, type RewardName } from './reward-names';
 import { SUPPORT_PITCH, SUPPORT_PITCH_REST } from './support-prompt';
 import rewardCodeUrl from './assets/reward-code.png';
+import { t } from '../i18n/strings';
 
 /** 赞助商店（2026-11-10 用户给）：不走赞赏码的那条路——在店里买东西也算支持。
  *  码下面那行出口的左半边「成为赞助人」，点开系统浏览器。 */
@@ -89,7 +90,7 @@ export function renderRewardList(names: readonly RewardName[]): HTMLOListElement
 export function renderRewardEmpty(): HTMLDivElement {
   const el = createDiv();
   el.className = 'bzrv-rw-empty';
-  setMarkup(el, '<div class="bzrv-rw-mark"></div><p>还没有人打赏。</p>');
+  setMarkup(el, `<div class="bzrv-rw-mark"></div><p>${t('rw.empty')}</p>`);
   return el;
 }
 
@@ -123,7 +124,7 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   const close = createEl('button');
   close.className = 'bzrv-rw-close';
   close.type = 'button';
-  close.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
+  close.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: t('common.close') }));
   setMarkup(close,
     '<svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" ' +
     'stroke-width="1.3" stroke-linecap="round"><path d="M1 1l11 11M12 1L1 12"/></svg>');
@@ -133,7 +134,7 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   const head = createDiv();
   head.className = 'bzrv-rw-head';
   setMarkup(head,
-    '<div class="bzrv-rw-kicker">题赠</div>' +
+    `<div class="bzrv-rw-kicker">${t('rw.kicker')}</div>` +
     `<p class="bzrv-rw-lead">${SUPPORT_PITCH}<br>${SUPPORT_PITCH_REST}</p>`);
   root.appendChild(head);
 
@@ -143,12 +144,12 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   box.className = 'bzrv-rw-code-box';
   const img = createEl('img');
   img.src = rewardCodeUrl;
-  img.alt = '微信赞赏码';
+  img.alt = t('rw.wxCode');
   box.appendChild(img);
   code.appendChild(box);
   const ways = createEl('p');
   ways.className = 'bzrv-rw-ways';
-  ways.textContent = '微信扫码';
+  ways.textContent = t('rw.wxScan');
   code.appendChild(ways);
 
   // 码下面一行出口（2026-11-11 用户拍板把原来两行并成一行）：
@@ -164,9 +165,9 @@ export function buildRewardBody(names: readonly RewardName[], onClose: () => voi
   sep.className = 'bzrv-rw-exit-sep';
   sep.setAttribute('aria-hidden', 'true');
   sep.textContent = '·';
-  exits.appendChild(exitLink('成为赞助人', SPONSOR_URL));
+  exits.appendChild(exitLink(t('rw.becomePatron'), SPONSOR_URL));
   exits.appendChild(sep);
-  exits.appendChild(exitLink('给个 Star', REPO_URL));
+  exits.appendChild(exitLink(t('rw.star'), REPO_URL));
   code.appendChild(exits);
 
   root.appendChild(code);

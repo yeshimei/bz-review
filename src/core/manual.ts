@@ -23,6 +23,7 @@ import {
 } from './remote-asset';
 import { cachedSha256For } from './download-manifest';
 import { downloadsVaultPath } from './remote-asset';
+import { t as tr } from '../i18n/strings';
 
 /** 手册文件名（写入插件目录时用；ASCII，避免 file:/// 转义麻烦） */
 export const MANUAL_FILENAME = 'bz-manual.html';
@@ -35,7 +36,7 @@ export function manualVaultPath(app: unknown): string {
 /** 内容是否像手册页（最宽校验：HTML 文档头或含产品名即可，防 CDN 错误页） */
 function looksLikeManual(text: string): boolean {
   const t = String(text || '');
-  return /<!DOCTYPE/i.test(t) || /<html/i.test(t) || t.includes('包仔');
+  return /<!DOCTYPE/i.test(t) || /<html/i.test(t) || t.includes(tr('mb.name'));
 }
 
 /** 手册是否已经下载到插件目录 */
@@ -45,7 +46,7 @@ export function hasManual(app: unknown): Promise<boolean> {
 
 /** 从 GitHub 下载手册，写入插件安装目录（覆盖旧版）；全败抛人话 Error */
 export function downloadManual(app: unknown): Promise<void> {
-  return downloadAsset(app, MANUAL_FILENAME, looksLikeManual, '手册');
+  return downloadAsset(app, MANUAL_FILENAME, looksLikeManual, tr('mb.manual'));
 }
 
 /** 读已下载的手册文本；未下载/读失败 → null（调用方决定引导下载） */
@@ -59,7 +60,7 @@ export function readManual(app: unknown): Promise<string | null> {
  * 下载失败抛人话 Error；本地读取异常视同未下载走重下（自愈陈旧半截文件）。
  */
 export function ensureManualReady(app: unknown): Promise<string> {
-  return ensureAssetReady(app, MANUAL_FILENAME, looksLikeManual, '手册');
+  return ensureAssetReady(app, MANUAL_FILENAME, looksLikeManual, tr('mb.manual'));
 }
 
 /**
@@ -71,5 +72,5 @@ export function ensureManualReady(app: unknown): Promise<string> {
  * 直接跳过远端拉取（327KB 不必每次打开都白拉）；清单缺席回落全量核对。
  */
 export async function refreshManual(app: unknown): Promise<string | null> {
-  return refreshAsset(app, MANUAL_FILENAME, looksLikeManual, '手册', await cachedSha256For(app, MANUAL_FILENAME));
+  return refreshAsset(app, MANUAL_FILENAME, looksLikeManual, tr('mb.manual'), await cachedSha256For(app, MANUAL_FILENAME));
 }

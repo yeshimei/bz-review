@@ -17,10 +17,11 @@ import { setHtml } from './ui/set-html';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
 import { DEFAULT_ACCENT, applyAccent } from '../settings';
+import { LOCALES, LOCALE_NAMES, hostLanguageCode, isLocale, resolveLocale, setLocale, t, type LanguagePref, type MsgKey } from '../i18n';
 
 import { openFlowDialog } from '../core/flow-dialog';
 import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
-import { getSettings, saveSettings } from '../core/settings-provider';
+import { getSettings, requestSettingsPanel, saveSettings } from '../core/settings-provider';
 import type { SettingsSchema, SettingsRow } from '../core/settings-schema';
 import {
   AI_PROVIDER_REGISTRY,
@@ -30,6 +31,9 @@ import {
   resetAIProviderCache,
   testAIConnectivity,
   thinkingLevelsOf,
+  providerLabelOf,
+  providerKeyLabelOf,
+  providerKeyDescOf,
 } from '../core/ai';
 import { resolveProviderId } from '../core/ai-provider-id';
 import { fetchProviderModels, providerDescriptorOf } from '../core/ai-models';
@@ -122,10 +126,10 @@ function setProviderValue(mapKey: OverrideMapKey, raw: string): void {
 function providerModelRow(): SettingsRow {
   return {
     type: 'text',
-    name: '模型名称',
-    desc: 'AI 生成使用的模型，按服务商分别保存',
-    help: '留空用注册表默认模型。「获取模型名」从当前服务商拉真实模型列表；切服务商后需重新获取。',
-    placeholder: '默认模型',
+    name: t('settings.ai.model'),
+    desc: t('settings.ai.modelDesc'),
+    help: t('settings.ai.modelHelp'),
+    placeholder: t('settings.ai.modelPlaceholder'),
     binding: {
       get: () => providerValue('model'),
       set: (v) => setProviderValue('aiModelOverrides', v),
@@ -134,7 +138,7 @@ function providerModelRow(): SettingsRow {
     refreshKey: () => providerValue('model'),
     actions: [
       {
-        text: '获取模型名',
+        text: t('settings.ai.fetchModels'),
         onClick: async (_value, ctx) => {
           try {
             await saveSettings();
@@ -142,18 +146,18 @@ function providerModelRow(): SettingsRow {
             const desc = providerDescriptorOf(providerId);
             const models = await fetchProviderModels(providerId);
             if (currentProviderId() !== providerId) {
-              notice('服务商已切换，请重新获取', 'warning');
+              notice(t('settings.ai.providerChanged'), 'warning');
               return;
             }
             await new Promise<void>((resolve) => {
               openModelPicker({
-                providerLabel: desc.label,
+                providerLabel: providerLabelOf(desc),
                 current: providerValue('model'),
                 models,
                 onPick: (m) => {
                   setProviderValue('aiModelOverrides', m.id);
                   ctx.refreshVisibility();
-                  notice(`模型已设为 ${m.id}`, 'success');
+                  notice(t('settings.ai.modelSet', { model: m.id }), 'success');
                 },
                 onClose: () => resolve(),
               });
@@ -170,9 +174,9 @@ function providerModelRow(): SettingsRow {
 function providerMaxTokensRow(): SettingsRow {
   return {
     type: 'number',
-    name: '最大输出 token',
-    desc: '单次回复的长度上限，按服务商分别保存',
-    help: '封顶值，不是每次都消耗这么多。留空或 0 = 用该模型的官方最大档。',
+    name: t('settings.ai.maxTokens'),
+    desc: t('settings.ai.maxTokensDesc'),
+    help: t('settings.ai.maxTokensHelp'),
     min: 0,
     max: () => providerMaxOutputCap(),
     binding: {
@@ -184,16 +188,16 @@ function providerMaxTokensRow(): SettingsRow {
       save: () => saveSettings(),
     },
     refreshKey: () => providerValue('maxTokens'),
-    placeholder: '默认上限',
+    placeholder: t('settings.ai.maxTokensPlaceholder'),
   };
 }
 
 function providerThinkingRow(): SettingsRow {
   return {
     type: 'select',
-    name: '思考 reasoning',
-    desc: '思考档位，随服务商不同',
-    help: '档位表按服务商分别存；「跟随」＝不注入参数。自定义没有固定口径，这一行不显示。',
+    name: t('settings.ai.thinking'),
+    desc: t('settings.ai.thinkingDesc'),
+    help: t('settings.ai.thinkingHelp'),
     binding: {
       get: () => providerThinkingValue(),
       set: (v) => setProviderThinkingValue(v),
@@ -202,7 +206,8 @@ function providerThinkingRow(): SettingsRow {
     options: (snap) =>
       thinkingLevelsOf(String((snap as { aiProvider?: string }).aiProvider || DEFAULT_AI_PROVIDER)).map((l) => ({
         value: l.value,
-        label: l.label,
+        /* 档位名按当前语言出词：注册表里的 label 是中文基准，labelKey 才是界面真源 */
+        label: l.labelKey ? t(l.labelKey as MsgKey) : l.label,
       })),
     visibleWhen: (snap) =>
       thinkingLevelsOf(String((snap as { aiProvider?: string }).aiProvider || DEFAULT_AI_PROVIDER)).length > 0,
@@ -215,15 +220,15 @@ export function reviewLlmRows(): SettingsRow[] {
   const rows: SettingsRow[] = [
     {
       type: 'select',
-      name: 'AI 服务商',
-      desc: '当前使用的 AI 服务商（18 家在册，未列出的走自定义）',
+      name: t('settings.ai.provider'),
+      desc: t('settings.ai.providerDesc'),
       binding: { key: 'aiProvider' },
-      options: AI_PROVIDER_REGISTRY.map((p) => ({ value: p.id, label: p.label })),
+      options: AI_PROVIDER_REGISTRY.map((p) => ({ value: p.id, label: providerLabelOf(p) })),
     },
     {
       type: 'text',
-      name: '自定义 API 地址',
-      desc: 'OpenAI 兼容服务的完整接口地址，填到 /v1 为止',
+      name: t('settings.ai.customEndpoint'),
+      desc: t('settings.ai.customEndpointDesc'),
       binding: { key: 'aiCustomEndpoint' },
       placeholder: 'https://api.example.com/v1',
       inputMode: 'url',
@@ -231,11 +236,11 @@ export function reviewLlmRows(): SettingsRow[] {
     },
     {
       type: 'select',
-      name: '自定义协议',
-      desc: '自定义服务用哪种报文',
+      name: t('settings.ai.customProtocol'),
+      desc: t('settings.ai.customProtocolDesc'),
       binding: { key: 'aiCustomProtocol' },
       options: [
-        { value: 'openai', label: 'OpenAI 兼容' },
+        { value: 'openai', label: t('settings.ai.protocolOpenai') },
         { value: 'anthropic', label: 'Anthropic（Claude）' },
       ],
       visibleWhen: (snapshot) => snapshot.aiProvider === 'custom',
@@ -244,8 +249,8 @@ export function reviewLlmRows(): SettingsRow[] {
   for (const p of AI_PROVIDER_REGISTRY) {
     rows.push({
       type: 'secret',
-      name: p.apiKeyLabel,
-      desc: p.apiKeyDesc,
+      name: providerKeyLabelOf(p),
+      desc: providerKeyDescOf(p),
       binding: p.apiKeyKey
         ? { key: p.apiKeyKey as never }
         : {
@@ -261,11 +266,11 @@ export function reviewLlmRows(): SettingsRow[] {
             },
             save: () => {},
           },
-      placeholder: '粘贴密钥',
+      placeholder: t('settings.ai.pasteKey'),
       visibleWhen: (snapshot) => snapshot.aiProvider === p.id,
       actions: [
         {
-          text: '测试',
+          text: t('settings.ai.test'),
           stateful: true,
           onClick: async () => {
             await saveSettings();
@@ -280,8 +285,8 @@ export function reviewLlmRows(): SettingsRow[] {
      它的语义是「上面都空着时去哪儿找」，不是又一个服务商选项。 */
   rows.push({
     type: 'toggle',
-    name: '共享 bz Reader 的 AI 配置',
-    desc: '自己没配时借用 bz Reader 填好的那一份；只读，不会写回它',
+    name: t('settings.ai.shareReader'),
+    desc: t('settings.ai.shareReaderDesc'),
     binding: { key: 'aiShareReader' },
     onChange: () => {
       /* 配置源变了：清掉解析缓存，下一次调用按新开关重新决定借不借 */
@@ -307,15 +312,15 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
     const prev = lastDir;
     if (!next || next === prev) return prev;
     const ok = await openFlowDialog({
-      title: '迁移数据目录？',
-      message: `会把「${prev}」里的复习数据复制到「${next}」。旧目录保留，搬错了改回去就能自愈；新目录已有数据时不覆盖。`,
+      title: t('settings.data.migrateTitle'),
+      message: t('settings.data.migrateBody', { prev, next }),
       actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '确认迁移', value: 'ok', cta: true },
+        { label: t('common.cancel'), value: 'cancel' },
+        { label: t('settings.data.migrateConfirm'), value: 'ok', cta: true },
       ],
     });
     if (ok !== 'ok') {
-      notice('已取消，数据目录没变', 'info');
+      notice(t('settings.data.cancelled'), 'info');
       return prev;
     }
     try {
@@ -326,24 +331,22 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
       getSettings().storagePath = next;
       await saveSettings();
       if (copied.length) {
-        notice(`已把复习数据复制到 ${next}（${copied.length} 个文件），原目录保留`, 'success');
+        notice(t('settings.data.migrated', { next, copied: copied.length }), 'success');
       } else if (kept.length) {
-        notice(`${next} 里已有复习数据，没有覆盖。旧数据仍在 ${prev}`, 'warning');
+        notice(t('settings.data.kept', { next, prev }), 'warning');
       } else {
-        notice(`已切到 ${next}，旧目录没有需要迁移的数据`, 'info');
+        notice(t('settings.data.switched', { next }), 'info');
       }
       return next;
     } catch {
-      notice(`已切换数据目录，但数据没能搬过去。旧数据仍在 ${prev}`, 'warning');
+      notice(t('settings.data.failed', { prev }), 'warning');
       return prev;
     }
   };
 
-  const ACCENT_NAME = '强调色';
-  const ACCENT_DESC = '跟随 Obsidian / 铜金 / 黛蓝 / 苔青；换色后全插件交互色一起变';
-  const ACCENT_HELP =
-    '「跟随 Obsidian」跟着宿主的强调色走，读不到时回退铜金；其余三档是固定色板。\n' +
-    '选中态、主按钮、链接、进度条、状态点、焦点环都会跟着变，明暗色各自适配。';
+  const ACCENT_NAME = t('settings.ui.accent');
+  const ACCENT_DESC = t('settings.ui.accentDesc');
+  const ACCENT_HELP = t('settings.ui.accentHelp');
   return {
     groups: [
       /* 授权 / 数据 / AI 三组原先只在原生设置页（settings-tab.ts）里。2026-11-13 用户拍板：
@@ -358,14 +361,14 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                标签在左、控件在右；购买 / 交流群收进「高级版功能」弹窗底部，
                不再往状态行塞两颗按钮。 */
             type: 'custom',
-            name: '当前状态',
+            name: t('settings.license.state'),
             render: (body) => {
-              const setting = new Setting(body).setName('当前状态');
+              const setting = new Setting(body).setName(t('settings.license.state'));
               /* Reader 的状态行只有「基础版 / 高级版」这么短；把长句收进弹窗和激活提示，
                  右栏只留一句能一眼读完的状态，避免在窄控制区里折行被裁。 */
               const state = setting.controlEl.createSpan({ cls: 'bzrv-license-state' });
               const paint = (): void => {
-                state.textContent = isPaid() ? '高级版 · 不限数量' : `基础版 · ${FREE_ITEM_LIMIT} 条上限`;
+                state.textContent = isPaid() ? t('settings.license.proState') : t('settings.license.baseState', { n: FREE_ITEM_LIMIT });
                 state.classList.toggle('is-paid', isPaid());
               };
               paint();
@@ -376,18 +379,18 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           },
           {
             type: 'custom',
-            name: '激活码',
+            name: t('settings.license.code'),
             render: (body) => {
-              const setting = new Setting(body).setName('激活码');
+              const setting = new Setting(body).setName(t('settings.license.code'));
               const wrap = setting.controlEl.createDiv({ cls: 'bzrv-license-code' });
               const input = wrap.createEl('input', {
                 type: 'text',
                 cls: 'bzrv-license-input',
-                placeholder: 'BZP2.… 或 BZR2.…',
+                placeholder: t('settings.license.placeholder'),
               });
               const btn = wrap.createEl('button', {
                 cls: 'bzrv-btn bzrv-btn--primary',
-                text: '激活',
+                text: t('settings.license.activate'),
                 type: 'button',
               });
               /* paid + 未点「重新激活」时输入框只读，避免手滑改掉生效码；
@@ -398,7 +401,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 const locked = paid && !relicense;
                 input.readOnly = locked;
                 input.value = locked ? currentLicenseCode() : licenseDraft;
-                btn.setText(locked ? '重新激活' : '激活');
+                btn.setText(locked ? t('settings.license.reactivate') : t('settings.license.activate'));
                 wrap.classList.toggle('is-paid', locked);
               };
               input.addEventListener('input', () => {
@@ -415,7 +418,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                   }
                   const code = licenseDraft.trim();
                   if (!code) {
-                    notice('先填激活码再点激活', 'info');
+                    notice(t('settings.license.needCode'), 'info');
                     input.focus();
                     return;
                   }
@@ -432,7 +435,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                       new Event('bz-review:license-changed', { bubbles: true })
                     );
                     notice(
-                      `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`,
+                      (state.name ? t('notice.license.activatedName', { name: state.name }) : t('notice.license.activated')) + t('notice.license.unlimitedNote'),
                       'success'
                     );
                     return;
@@ -440,7 +443,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                   /* 失败：授权状态和落盘码都没被这枚错码碰过，输入框回显生效码。 */
                   licenseDraft = '';
                   paint();
-                  notice('激活码无效或已过期，原来的激活码已保留。', 'warning');
+                  notice(t('settings.license.invalid'), 'warning');
                 })();
               });
               paint();
@@ -450,9 +453,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             /* 和 bz Reader 一样，授权组里给一颗「看看包含什么」的入口。
                弹窗按需加载，只有点开才付那一份 DOM/CSS 的代价。 */
             type: 'button',
-            name: '高级版功能',
-            desc: '两版功能完全一样，只有数量上限不同。',
-            buttonText: '查看',
+            name: t('settings.license.features'),
+            desc: t('settings.license.featuresDesc'),
+            buttonText: t('common.view'),
             onClick: () => {
               void import('./ui/unlock-dialog').then((m) => m.openReviewUnlockDialog());
             },
@@ -467,12 +470,12 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             /* 2026-11-20：目录行跟 bz Reader 同形——只一颗「路径 / 选择」按钮。
                不摆 chips / ✕ / 手输框：vault 路径有口径，手打错了还不报错，文件写到别处。 */
             type: 'custom',
-            name: '数据目录',
-            desc: '复习数据存在这个目录下的 review.json。换目录会先确认，再把数据复制过去。',
+            name: t('settings.data.dir'),
+            desc: t('settings.data.dirDesc'),
             render: (body) => {
               const setting = new Setting(body)
-                .setName('数据目录')
-                .setDesc('复习数据存在这个目录下的 review.json。换目录会先确认，再把数据复制过去。');
+                .setName(t('settings.data.dir'))
+                .setDesc(t('settings.data.dirDesc'));
               setting.settingEl.classList.add('bzrv-pickdir-row');
               const btn = createEl('button');
               btn.type = 'button';
@@ -480,7 +483,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               btn.appendChild(
                 Object.assign(createSpan(), {
                   className: 'bzs-sr-only',
-                  textContent: '从列表选择复习数据目录',
+                  textContent: t('settings.data.pickSr'),
                 }),
               );
               const pathEl = createSpan();
@@ -488,7 +491,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               const ico = createSpan();
               ico.className = 'bzs-pickdir-ico';
               setHtml(ico, FOLDER_SVG);
-              btn.append(pathEl, ico, createEl('i', { text: '选择' }));
+              btn.append(pathEl, ico, createEl('i', { text: t('common.choose') }));
               const current = (): string => String(getSettings().storagePath || DEFAULT_REVIEW_DIR);
               const paint = (dir: string): void => {
                 pathEl.textContent = `${dir}/`;
@@ -496,13 +499,13 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               paint(current());
               btn.addEventListener('click', () => {
                 void pickFolderNative(deps.app, {
-                  title: '选择复习数据目录',
+                  title: t('settings.data.pickTitle'),
                   mode: 'single',
                   selected: [current()],
                 }).then(async (list) => {
                   const picked = String(list[0] || '').trim();
                   if (!picked) {
-                    notice('数据目录不能是库根目录，请选一个文件夹', 'warning');
+                    notice(t('settings.data.rootRejected'), 'warning');
                     return;
                   }
                   paint(await migrateStorageDir(picked));
@@ -515,9 +518,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             /* 只有 bz 真的装了并加载了才显示——没装却摆一颗按钮，点了只能得到
                「没找到数据」，用户会以为插件坏了。 */
             type: 'button',
-            name: '从 bz 导入',
-            desc: '检测到 bz 后才显示。先看统计、再确认导入；只复制不改动 bz，目标已有数据就不覆盖。',
-            buttonText: '导入',
+            name: t('settings.data.importBz'),
+            desc: t('settings.data.importBzDesc'),
+            buttonText: t('settings.data.import'),
             visibleWhen: () => isBzPluginEnabled(deps.app),
             onClick: () => {
               void importFromBzWithConfirm(deps.app, getSettings());
@@ -527,15 +530,15 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             /* 快照是最后一道保险：合并写错、同步出事、手滑清空，都能从这里退回去。
                备份/回滚都走二次确认；回滚前先给当前数据留一份，所以「回滚」本身也能反悔。 */
             type: 'info',
-            name: '备份与回滚',
-            desc: '每次写数据前留一份当天的快照（最多 30 份）。点开可挑任意时间点回滚；备份和回滚都要二次确认，回滚前会先给当前数据存一份。',
+            name: t('settings.data.backup'),
+            desc: t('settings.data.backupDesc'),
             actions: [
               {
-                text: '备份与回滚',
+                text: t('settings.data.backup'),
                 onClick: () => openBackupHistoryDialog(deps.app),
               },
               {
-                text: '回滚到最近',
+                text: t('settings.data.rollbackLatest'),
                 onClick: () => restoreLatestWithConfirm(deps.app),
               },
             ],
@@ -546,6 +549,65 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         icon: 'layout-panel-left',
         name: '界面',
         rows: [
+          {
+            /* 界面语言（2026-11-21）：放最前——它是「其他设置长什么样」的前提。
+               照 bz Reader 的口径：语言名用**自称**（中文 / English），这三条不走
+               t()，必须与当前界面语言无关；auto = 跟随 Obsidian。切换后整页重开，
+               否则只有这一行跟着变、别行还是旧语言。命令名要重启才更新，提示写清楚。 */
+            type: 'custom',
+            name: t('settings.language'),
+            desc: t('settings.language.desc'),
+            help: t('settings.language.hint'),
+            render: (body: HTMLElement) => {
+              const setting = new Setting(body).setName(t('settings.language')).setDesc(t('settings.language.desc'));
+              setting.settingEl.classList.add('bzrv-accent-row');
+              const nameEl = (setting as unknown as { nameEl?: HTMLElement }).nameEl;
+              if (nameEl) attachHelpTip(nameEl, { text: t('settings.language.hint') });
+              const prefs: Array<{ value: string; label: string }> = [
+                { value: 'auto', label: t('settings.language.auto') },
+                ...LOCALES.map((l) => ({ value: l, label: LOCALE_NAMES[l] })),
+              ];
+              const seg = createDiv();
+              seg.className = 'bzrv-segmented bzrv-accent-seg';
+              seg.setAttribute('role', 'radiogroup');
+              withSrText(seg, t('settings.language'));
+              const btns: HTMLButtonElement[] = [];
+              const current = (): string => {
+                const v = String(getSettings().language || 'auto');
+                return v === 'auto' || isLocale(v) ? v : 'auto';
+              };
+              const paint = (): void => {
+                const cur = current();
+                for (const b of btns) {
+                  const on = b.dataset.value === cur;
+                  b.classList.toggle('is-on', on);
+                  b.setAttribute('aria-checked', String(on));
+                }
+              };
+              for (const m of prefs) {
+                const btn = createEl('button');
+                btn.type = 'button';
+                btn.className = 'bzrv-segmented-btn';
+                btn.dataset.value = m.value;
+                btn.setAttribute('role', 'radio');
+                btn.setAttribute('aria-checked', 'false');
+                btn.appendChild(document.createTextNode(m.label));
+                btn.addEventListener('click', () => {
+                  const next: LanguagePref = isLocale(m.value) ? m.value : 'auto';
+                  getSettings().language = next;
+                  void saveSettings();
+                  const changed = setLocale(resolveLocale(next, hostLanguageCode()));
+                  /* 整页重开：设置页每行文案都是渲染时取的，只重画这一行不够。 */
+                  requestSettingsPanel(undefined, '界面');
+                  if (changed) notice(t('notice.language.changed'));
+                });
+                btns.push(btn);
+                seg.appendChild(btn);
+              }
+              setting.controlEl.appendChild(seg);
+              paint();
+            },
+          },
           {
             /* 强调色：4 档分段 + 彩色圆点，自绘插槽（core 渲染器对 custom 行只建包装容器，
                名称/说明需自己用 Setting 渲出来）。切换即写内存 + 落盘 + 改 body 属性实时生效。 */
@@ -561,10 +623,10 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               const nameEl = (setting as unknown as { nameEl?: HTMLElement }).nameEl;
               if (nameEl) attachHelpTip(nameEl, { text: ACCENT_HELP });
               const modes = [
-                { value: 'auto', label: '跟随 Obsidian' },
-                { value: 'copper', label: '铜金' },
-                { value: 'indigo', label: '黛蓝' },
-                { value: 'moss', label: '苔青' },
+                { value: 'auto', label: t('settings.ui.accentAuto') },
+                { value: 'copper', label: t('settings.ui.accentCopper') },
+                { value: 'indigo', label: t('settings.ui.accentIndigo') },
+                { value: 'moss', label: t('settings.ui.accentMoss') },
               ] as const;
               const seg = createDiv();
               seg.className = 'bzrv-segmented bzrv-accent-seg';
@@ -600,7 +662,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                   applyAccent(m.value);
                   void saveSettings();
                   paint();
-                  notice(`强调色：${m.label}`);
+                  notice(t('settings.ui.accentChanged', { label: m.label }));
                 });
                 btns.push(btn);
                 seg.appendChild(btn);
@@ -611,12 +673,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           },
           {
             type: 'select',
-            name: '打开方式',
-            desc: '复习面板开成标签页，还是屏幕中央的浮层',
-            help:
-              '「Obsidian 标签页」跟工作区一起保存和恢复，能分屏，也不挡正在看的笔记；' +
-              '「独立弹窗」压在所有东西上面，适合小屏临时看一眼。' +
-              '改完从下一次打开生效，已经开着的那个不会自己变形。',
+            name: t('settings.ui.openMode'),
+            desc: t('settings.ui.openModeDesc'),
+            help: t('settings.ui.openModeHelp'),
             binding: {
               get: () => panelModeOf(getSettings()),
               set: (v: string) => {
@@ -625,15 +684,13 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               save: () => saveSettings(),
             },
             options: [
-              { value: 'native', label: 'Obsidian 标签页（默认）' },
-              { value: 'popup', label: '独立弹窗' },
+              { value: 'native', label: t('settings.ui.openNative') },
+              { value: 'popup', label: t('settings.ui.openPopup') },
             ],
           },
           {
-            type: 'toggle', name: '文件树标记', desc: '文件树中标记复习笔记',
-            help:
-              '在 Obsidian 文件树里给复习中的笔记染色并挂阶段徽标，不开复习面板也能看出哪些到期、处在哪个阶段。' +
-              '关掉只是不画这些视觉标记，排期计算与到期提醒都不受影响，文件树恢复宿主原样。',
+            type: 'toggle', name: t('settings.ui.treeBadge'), desc: t('settings.ui.treeBadgeDesc'),
+            help: t('settings.ui.treeBadgeHelp'),
             binding: { key: 'reviewTreeBadge' },
           },
         ],
@@ -642,7 +699,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         icon: 'bell',
         name: '检查提醒',
         rows: [
-          { type: 'toggle', name: '到期提醒', desc: '有笔记到期待复习时自动弹出提醒', binding: { key: 'enableAutoNotify' } },
+          { type: 'toggle', name: t('settings.remind.auto'), desc: t('settings.remind.autoDesc'), binding: { key: 'enableAutoNotify' } },
         ],
       },
       {
@@ -658,14 +715,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                定下来、存在卡上，每张卡各走各的。设置里只留「新卡默认用哪种」，
                默认「手动」= 每次加卡都问一句（选择框还能勾「以后别问」）。 */
             type: 'select',
-            name: '新卡默认方式',
-            desc: '加卡时用哪种方式制卡；选「每次问我」就每张都问一遍',
-            help:
-              '这张卡做成什么形式，在「加入复习那一刻」定下来，之后复习就按它走，' +
-              '同一份计划里抽认卡、做题卡可以并存。\n' +
-              '选「每次问我」：每次加卡都弹一个选择框（里面可以勾「以后别再问」）；' +
-              '选了具体方式：加卡不再打扰，直接按它制。\n' +
-              '已经建好的老卡不受影响，换方式请在复习面板里右键那张卡点「重新生成」。',
+            name: t('settings.cards.defaultMethod'),
+            desc: t('settings.cards.defaultMethodDesc'),
+            help: t('settings.cards.defaultMethodHelp'),
             binding: {
               get: () => String((getSettings()).reviewCardDefaultMethod || 'manual'),
               set: (v: string) => {
@@ -679,16 +731,16 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             /* 2026-11-20 挖空（Cloze）解锁为可选项；上下文 / 展开全文仍不提供新入口，
                但上面 set 校验的合法值仍保留这两种，老卡数据与存量设置照常生效。 */
             options: [
-              { value: 'manual', label: '每次问我（默认）' },
-              { value: 'flashcard', label: 'AI 抽认卡' },
-              { value: 'quiz', label: 'AI 做题' },
-              { value: 'cloze', label: '挖空卡（Cloze）' },
+              { value: 'manual', label: t('settings.cards.method.manual') },
+              { value: 'flashcard', label: t('mode.flashcard') },
+              { value: 'quiz', label: t('mode.quiz') },
+              { value: 'cloze', label: t('mode.cloze') },
             ],
           },
           {
             type: 'select',
-            name: '每轮抽题比例',
-            desc: '题库固定，每轮只抽其中一部分',
+            name: t('settings.cards.quizRatio'),
+            desc: t('settings.cards.quizRatioDesc'),
             binding: {
               get: () =>
                 String(Math.min(4, Math.max(2, Math.round(Number((getSettings()).reviewCardQuizRatio) || 3)))),
@@ -701,9 +753,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               save: () => saveSettings(),
             },
             options: [
-              { value: '2', label: '一半' },
-              { value: '3', label: '三分之一' },
-              { value: '4', label: '四分之一' },
+              { value: '2', label: t('settings.cards.ratioHalf') },
+              { value: '3', label: t('settings.cards.ratioThird') },
+              { value: '4', label: t('settings.cards.ratioQuarter') },
             ],
             visibleWhen: (s) => s.reviewCardDefaultMethod === 'quiz',
             isChild: true,
@@ -714,19 +766,17 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         icon: 'graduation-cap',
         name: '做题家',
         rows: [
-          { type: 'toggle', name: '用做题测难度', desc: '开始复习即做题，按正确率自动定难度',
-            help:
-              '打开后「开始复习」先出题，再按正确率定本次难度。' +
-              '下面多选、题量、打乱顺序、出题难度四行是它的子项，只在开着时显示；关掉则回到普通跳转复习。',
+          { type: 'toggle', name: t('settings.quiz.force'), desc: t('settings.quiz.forceDesc'),
+            help: t('settings.quiz.forceHelp'),
             binding: { key: 'forceQuizForReview' } },
           // 出题子项：仅「用做题测难度」开启时显示（ticket 170 isChild 联动 + visibleWhen 兜底）
-          { type: 'toggle', name: '允许多选题', desc: '开启后 AI 可能出多选题，关闭则只出单选题', binding: { key: 'enableMultipleChoice' }, visibleWhen: (s) => s.forceQuizForReview === true, isChild: true },
+          { type: 'toggle', name: t('settings.quiz.multi'), desc: t('settings.quiz.multiDesc'), binding: { key: 'enableMultipleChoice' }, visibleWhen: (s) => s.forceQuizForReview === true, isChild: true },
           // 数量语义行口径对齐全域（深审新-14①）：number 行 + min 钳制（原 text 行可输 -5/abc）。
           // 键仍为 string 型（session parseInt||0 消费），binding 自管转 string 落盘；0=自动语义保留
           {
             type: 'number',
-            name: '每篇笔记出题数量',
-            desc: '固定每篇笔记出题的数量，0 为自动',
+            name: t('settings.quiz.perNote'),
+            desc: t('settings.quiz.perNoteDesc'),
             binding: {
               get: () => Number((getSettings()).questionsPerNote) || 0,
               set: (v) => { (getSettings()).questionsPerNote = String(v); },
@@ -737,17 +787,17 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             visibleWhen: (s) => s.forceQuizForReview === true,
             isChild: true,
           },
-          { type: 'toggle', name: '打乱出题顺序', desc: '做题时随机排列题目顺序', binding: { key: 'shuffleQuestions' }, visibleWhen: (s) => s.forceQuizForReview === true, isChild: true },
+          { type: 'toggle', name: t('settings.quiz.shuffle'), desc: t('settings.quiz.shuffleDesc'), binding: { key: 'shuffleQuestions' }, visibleWhen: (s) => s.forceQuizForReview === true, isChild: true },
           {
             type: 'select',
-            name: '出题难度',
-            desc: '控制 AI 出题深浅',
+            name: t('settings.quiz.difficulty'),
+            desc: t('settings.quiz.difficultyDesc'),
             binding: { key: 'difficulty' },
             options: [
-              { value: 'random', label: '随机' },
-              { value: 'easy', label: '简单' },
-              { value: 'medium', label: '中等' },
-              { value: 'hard', label: '困难' },
+              { value: 'random', label: t('settings.quiz.diffRandom') },
+              { value: 'easy', label: t('settings.quiz.diffEasy') },
+              { value: 'medium', label: t('settings.quiz.diffMedium') },
+              { value: 'hard', label: t('settings.quiz.diffHard') },
             ],
             visibleWhen: (s) => s.forceQuizForReview === true,
             isChild: true,
@@ -759,47 +809,44 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '复习节奏',
         rows: [
           // 非正数钳制为 0（原 onChange 口径：>0 保留否则 0）；空串不写（防脏值落盘）
-          { type: 'number', name: '每日复习上限', desc: '一轮最多复习的篇数', binding: { key: 'reviewDailyLimit' }, min: 0, max: 1000 },
+          { type: 'number', name: t('settings.schedule.dailyLimit'), desc: t('settings.schedule.dailyLimitDesc'), binding: { key: 'reviewDailyLimit' }, min: 0, max: 1000 },
           {
             /* 键位只有四个位置，顺序固定（忘了/困难/一般/简单）。填错不报错、不拦保存，
                用的时候按 1234 兜底——设置填坏了也不该让复习键失效。 */
             type: 'text',
-            name: '评级键位',
-            desc: '四个字符，顺序＝忘了 / 困难 / 一般 / 简单（默认 1234，也可填 asdf 或 hjkl）',
+            name: t('settings.schedule.ratingKeys'),
+            desc: t('settings.schedule.ratingKeysDesc'),
             binding: { key: 'reviewRatingKeys' },
             placeholder: '1234',
           },
           {
             /* 过了点才提醒、同一天只提醒一次；留空等于关掉，仍保留「有逾期就提示」。 */
             type: 'text',
-            name: '每日提醒',
-            desc: '填 09:00 这样的时间；留空 = 不提醒',
+            name: t('settings.schedule.remindAt'),
+            desc: t('settings.schedule.remindAtDesc'),
             binding: { key: 'reviewRemindAt' },
-            placeholder: '例如 20:00',
+            placeholder: t('settings.schedule.remindPlaceholder'),
           },
           {
             /* 低配机 / 远程桌面：16 幕动效是负担，直接给文字报告。 */
             type: 'toggle',
-            name: '简化分析',
-            desc: '记忆分析改成纯文字报告，不跑动画（低配手机 / 远程桌面用）',
+            name: t('settings.schedule.plainAnalysis'),
+            desc: t('settings.schedule.plainAnalysisDesc'),
             binding: { key: 'reviewAnalysisPlain' },
           },
           // Anki 式学习步骤：新卡当天的短重复（默认 1m 10m）。参照 Anki 官方设计——
           // Good 进下一步、Again 回第一步、Hard 取前两步均值、Easy 直接毕业；只在建档当天有效。
           {
             type: 'text',
-            name: '学习步骤（分钟）',
-            desc: '新卡当天的短重复，默认 "1m 10m"；留空 = 关掉，首次评级直接进 FSRS',
-            help:
-              '模仿 Anki 的学习步骤：新卡先在当天按这里的间隔重复几次，走完才进入 FSRS 排期。' +
-              '只认分钟（如 "1m 10m 30m"），不认小时/天——官方建议步骤都在当天完成。' +
-              'Good 进下一步、忘了回第一步、困难取前两步均值、简单直接毕业。留空则新卡第一次评级就进 FSRS。',
+            name: t('settings.schedule.learningSteps'),
+            desc: t('settings.schedule.learningStepsDesc'),
+            help: t('settings.schedule.learningStepsHelp'),
             binding: { key: 'reviewLearningSteps' },
           },
           {
             type: 'number',
-            name: '毕业间隔（天）',
-            desc: '走完学习步骤后第一次复习间隔，默认 1 天',
+            name: t('settings.schedule.graduating'),
+            desc: t('settings.schedule.graduatingDesc'),
             binding: { key: 'reviewGraduatingInterval' },
             min: 1,
             max: 30,
@@ -808,22 +855,18 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           },
           {
             type: 'text',
-            name: '重学步骤（分钟）',
-            desc: 'FSRS 阶段点「忘了」后的当天重学，默认 "1m 10m"；留空 = 关掉',
-            help:
-              '模仿 Anki 的 relearn steps：已经毕业的卡点「忘了」后，先在当天按这里的间隔重学几次，' +
-              '再回到 FSRS 排期。不填则忘了之后直接进入 FSRS 的遗忘后排期。',
+            name: t('settings.schedule.relearnSteps'),
+            desc: t('settings.schedule.relearnStepsDesc'),
+            help: t('settings.schedule.relearnStepsHelp'),
             binding: { key: 'reviewRelearnSteps' },
           },
           // 深审新-14②/A14：超界改渲染器声明钳制（min/max 进界并回写输入框，R9 通路显示值=落盘值），
           // 原.onChange「超上界回 1」复刻删除——输入 8 落 5 且回显 5，不再出现显示 8 落 1 的缝
           {
             type: 'number',
-            name: '复习间隔缩放',
-            desc: '数值越小复习越频繁，数值越大越宽松',
-            help:
-              '作用在 FSRS 间隔上的乘数：间隔 = intervalDays × scale。' +
-              '范围 0.1 到 5，填 0.5 更勤、填 2 更宽松。',
+            name: t('settings.schedule.intervalScale'),
+            desc: t('settings.schedule.intervalScaleDesc'),
+            help: t('settings.schedule.intervalScaleHelp'),
             binding: { key: 'reviewIntervalScale' },
             min: 0.1,
             max: 5,
@@ -832,70 +875,62 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             /* Anki fuzz：>=2.5 天的间隔在 ±(1 天 + 比例×天数) 内抖开。
                不改平均留存，只把扎堆到期的卡摊到相邻几天。 */
             type: 'toggle',
-            name: '间隔抖动（Anki fuzz）',
-            desc: '长间隔上下浮动、学习步骤略微延长，避免复习扎堆（默认开）',
-            help:
-              '模仿 Anki 的间隔抖动：2.5 天以上的间隔会在一个随机范围内前后挪动，越长的间隔浮动越大；' +
-              '学习步骤（1m/10m）会在原时长上再加 0~25%（最多 5 分钟），避免每次都在同一秒复习同一张卡。' +
-              '它不改变平均复习量，只是把扎堆的卡摊开。随机值由卡片 ID 和复习次数决定，结果稳定可复现。',
+            name: t('settings.schedule.fuzz'),
+            desc: t('settings.schedule.fuzzDesc'),
+            help: t('settings.schedule.fuzzHelp'),
             binding: { key: 'reviewFuzz' },
           },
           // FSRS-7：目标留存率（desired retention）——既决定排期间隔，也用于提前复习判定。
           // 默认 0.9 是 Anki 官方推荐值（留存与负担的平衡点）。
           {
             type: 'number',
-            name: '目标留存率',
-            desc: '到期时希望还记得的比例，默认 90%',
-            help:
-              'FSRS 会把卡片排到「你还有这么多概率记得」的那一天。90% 是官方推荐的默认值，' +
-              '在记得牢和复习量之间最均衡。调高（如 95%）间隔变短、复习更勤，越接近 100% 复习量增长越快；' +
-              '调低则更省时间但忘得更多。官方建议不要超过 97%。',
+            name: t('settings.schedule.retention'),
+            desc: t('settings.schedule.retentionDesc'),
+            help: t('settings.schedule.retentionHelp'),
             binding: { key: 'reviewRThreshold' },
             min: 0.5,
             max: 0.99,
           },
           {
             type: 'toggle',
-            name: '兄弟卡不扎堆',
-            desc: '反向卡 / 挖空拆卡同一轮只出一张，默认开',
-            help: '同一段内容生成的几张卡（正反对调、多处挖空）如果连着复习，正确率会被虚高、也浪费时间。开启后同一轮只挑一张，其余留到下一轮；不改排期、不删卡。',
+            name: t('settings.schedule.siblings'),
+            desc: t('settings.schedule.siblingsDesc'),
+            help: t('settings.schedule.siblingsHelp'),
             binding: { key: 'reviewBurySiblings' },
           },
           /* 批 3：新卡与到期分两个额度，各自截断。合成一个上限时，新卡多的一天
              会被新卡吃光，剩下的时间全在啃新的，复习效率反而更低。 */
           {
             type: 'number',
-            name: '每轮新条上限',
-            desc: '本轮最多上几条从没复习过的；0 = 不限',
+            name: t('settings.schedule.newLimit'),
+            desc: t('settings.schedule.newLimitDesc'),
             binding: { key: 'reviewNewLimit' },
             min: 0,
             max: 500,
           },
           {
             type: 'number',
-            name: '每轮到期上限',
-            desc: '本轮最多清几条已经复习过的；0 = 不限',
+            name: t('settings.schedule.reviewLimit'),
+            desc: t('settings.schedule.reviewLimitDesc'),
             binding: { key: 'reviewReviewLimit' },
             min: 0,
             max: 500,
           },
           {
             type: 'select',
-            name: '本轮顺序',
-            desc: '先清到期，还是趁精神好先上新卡',
+            name: t('settings.schedule.order'),
+            desc: t('settings.schedule.orderDesc'),
             binding: { key: 'reviewOrder' },
             options: [
-              { value: 'due-first', label: '先清到期' },
-              { value: 'new-first', label: '先上新卡' },
+              { value: 'due-first', label: t('settings.schedule.dueFirst') },
+              { value: 'new-first', label: t('settings.schedule.newFirst') },
             ],
           },
           {
             type: 'number',
-            name: '最长复习间隔（天）',
-            desc: '超过这个天数的间隔会被截断；0 = 不限',
-            help:
-              'FSRS 在稳定度很高时会算出几千天的间隔，实质等于「这条以后不再出现」。' +
-              '填 365 表示任何一条一年内至少会再见一次；填 0 表示不限制。',
+            name: t('settings.schedule.maxInterval'),
+            desc: t('settings.schedule.maxIntervalDesc'),
+            help: t('settings.schedule.maxIntervalHelp'),
             binding: { key: 'reviewMaxIntervalDays' },
             min: 0,
             max: 3650,
@@ -904,10 +939,10 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             /* 只认一个结束日期：那天之前不提醒、不进本轮、逾期也不累计；
                结束那天把整份计划的日期整体顺延，回来不会一屏逾期。 */
             type: 'text',
-            name: '休假到',
-            desc: '填 2026-12-01 这样的日期；这天之前不提醒、不算逾期，结束时计划整体顺延',
+            name: t('settings.schedule.vacation'),
+            desc: t('settings.schedule.vacationDesc'),
             binding: { key: 'reviewVacationUntil' },
-            placeholder: '例如 2026-12-01',
+            placeholder: t('settings.schedule.vacationPlaceholder'),
             /* 记下开始时间：结束那天要靠它算出该顺延多久。
                只记第一次，之后改结束日不会把开始时间往后挪。 */
             onChange: (v) => {
@@ -920,13 +955,13 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             },
             actions: [
               {
-                text: '取消休假',
+                text: t('settings.schedule.cancelVacation'),
                 onClick: () => {
                   const live = getSettings();
                   live.reviewVacationUntil = '';
                   live.reviewVacationFrom = '';
                   void saveSettings();
-                  notice('已取消休假');
+                  notice(t('settings.schedule.vacationCancelled'));
                 },
               },
             ],
@@ -938,15 +973,13 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '记忆算法',
         rows: [
           // ADR-0077：FSRS 参数自动拟合（全自动定期重算）
-          { type: 'toggle', name: '参数自动拟合', desc: '按个人复习历史拟合记忆参数，优化复习节奏',
-            help:
-              '用你的复习记录重新拟合 FSRS 参数。' +
-              '样本少于 100 条直接跳过（沿用默认参数），100 到 300 条只拟合基础八参，300 条以上拟合全参——所以刚开始用看不出差别。',
+          { type: 'toggle', name: t('settings.algo.fit'), desc: t('settings.algo.fitDesc'),
+            help: t('settings.algo.fitHelp'),
             binding: { key: 'reviewEnableFit' } },
           {
             type: 'number',
-            name: '每 N 次复习重算',
-            desc: '累计 N 次评级后自动重拟合一次',
+            name: t('settings.algo.fitEveryN'),
+            desc: t('settings.algo.fitEveryNDesc'),
             binding: { key: 'reviewFitEveryN' },
             min: 1,
             visibleWhen: (s) => s.reviewEnableFit === true,
@@ -967,18 +1000,16 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           {
             type: 'path',
             mode: 'multi',
-            name: '监听文件夹',
-            desc: '新笔记自动加入复习',
-            help:
-              '目录里的新笔记自动加入复习。库根目录不支持监听，会被拦下。' +
-              '首次添加目录时会问是否把目录内已有笔记一并收编：取消 = 该目录不加入监听（新老笔记都不收），确认才加入。',
+            name: t('settings.auto.watchedFolders'),
+            desc: t('settings.auto.watchedFoldersDesc'),
+            help: t('settings.auto.watchedFoldersHelp'),
             binding: {
               get: () => (getSettings()).reviewWatchedFolders || [],
               set: () => {},
               save: () => {},
             },
-            pickerTitle: '选择监听文件夹',
-            pickerDesc: '文件夹里的新笔记自动加入复习，包括子文件夹',
+            pickerTitle: t('settings.auto.pickerTitle'),
+            pickerDesc: t('settings.auto.pickerDesc'),
             onChange: (list) => {
               const prev = [...((getSettings()).reviewWatchedFolders || [])];
               return (async (): Promise<string[]> => {
@@ -987,7 +1018,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 const kept: string[] = [];
                 for (const folder of list) {
                   if (!folder) {
-                    notice('暂不支持监听库根目录', 'warning');
+                    notice(t('settings.auto.rootUnsupported'), 'warning');
                     continue;
                   }
                   if (prev.includes(folder)) {
@@ -1001,7 +1032,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                   if (list.includes(folder)) continue;
                   // 移除：同时清空其下排除记录（否则二次添加时存量被旧黑名单挡住）
                   const cleared = await watcher.removeWatchedFolder(folder);
-                  notice(cleared > 0 ? `已移除监听文件夹，并清理其下 ${cleared} 条排除记录` : '已移除监听文件夹', 'success');
+                  notice(cleared > 0 ? t('settings.auto.removedFolderCleared', { n: cleared }) : t('settings.auto.removedFolder'), 'success');
                 }
                 (getSettings()).reviewWatchedFolders = kept;
                 await saveSettings();
@@ -1012,11 +1043,11 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           // 排除名单（通用 list 行，chips 自绘 DOM 已退役）：单条解除 = 移除按钮，逐条清理
           {
             type: 'list',
-            name: '排除名单',
-            desc: '自动加入的排除名单',
+            name: t('settings.auto.excluded'),
+            desc: t('settings.auto.excludedDesc'),
             items: () => ((getSettings()).reviewExcludedNotes || []).map((path: string) => ({ key: path, label: path })),
-            emptyText: '暂无排除笔记',
-            removeLabel: '解除',
+            emptyText: t('settings.auto.excludedEmpty'),
+            removeLabel: t('settings.auto.excludedRemove'),
             onChange: (keys) => {
               void (async () => {
                 const prev: string[] = (getSettings()).reviewExcludedNotes || [];
@@ -1025,7 +1056,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 const { ReviewWatcher } = await import('./watch');
                 const watcher = new ReviewWatcher(deps.app, deps.dataManager);
                 for (const path of removed) await watcher.removeExcludedNote(path);
-                notice('已解除排除', 'success');
+                notice(t('settings.auto.excludedRemoved'), 'success');
               })();
             },
           },
@@ -1047,9 +1078,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         rows: [
           {
             type: 'button',
-            name: '从 Anki 导入',
-            desc: '选一份 Anki 导出的笔记纯文本（.txt / .tsv / .csv），先看清进来多少、跳过什么再确认。导出里引用的图片和音频可以再选文件补进来。',
-            buttonText: '选文件导入',
+            name: t('settings.explore.anki'),
+            desc: t('settings.explore.ankiDesc'),
+            buttonText: t('settings.explore.ankiPick'),
             onClick: () => {
               void (async () => {
                 const { importAnkiFromPicker } = await import('./anki-import');

@@ -37,6 +37,7 @@
 import { requestUrl } from 'obsidian';
 import { withTimeout } from './http';
 import { compareVersions, normalizeVersion } from './version';
+import { t } from '../i18n/strings';
 
 /** bz-reader 的 Obsidian 插件 id（= 社区目录键 = 其 manifest.id） */
 export const READER_PLUGIN_ID = 'bz-reader';
@@ -260,12 +261,12 @@ export function readerActionOf(state: ReaderInstallState, latest?: string | null
 export function readerStateText(state: ReaderInstallState, latest?: string | null): string {
   // 半装与没装在界面上是同一句话（2026-11-05 用户拍板）：用户只需知道「没装好、点安装」，
   // 「安装不完整（需重装）」这种词只会让人犹豫要不要先卸载。
-  if (!isReaderHealthy(state)) return '未安装';
-  const head = `已安装 ${state.version || '版本未知'}`;
+  if (!isReaderHealthy(state)) return t('ri.notInstalled');
+  const head = t('ri.installed', { version: state.version || t('ri.versionUnknown') });
   if (readerActionOf(state, latest) === 'update') {
-    return `${head} · 新版 ${normalizeVersion(String(latest))}`;
+    return t('ri.updateAvailable', { head, version: normalizeVersion(String(latest)) });
   }
-  return `${head} · ${state.enabled ? '已启用' : '未启用'}`;
+  return t('ri.stateLine', { head, state: state.enabled ? t('ri.enabled') : t('ri.disabled') });
 }
 
 /* ==================== 网络 ==================== */
@@ -291,18 +292,18 @@ function parseManifest(text: string, channel: string): { version: string } {
   try {
     json = JSON.parse(text);
   } catch {
-    throw new Error(`${channel} 返回的不是 manifest.json（可能被代理或镜像改写）`);
+    throw new Error(t('ri.badManifest', { channel }));
   }
   const obj = json as { id?: string; version?: string };
-  if (!obj || obj.id !== READER_PLUGIN_ID) throw new Error(`${channel} 的清单 id 不是 ${READER_PLUGIN_ID}`);
+  if (!obj || obj.id !== READER_PLUGIN_ID) throw new Error(t('ri.badId', { channel, id: READER_PLUGIN_ID }));
   const version = normalizeVersion(String(obj.version || ''));
-  if (!version) throw new Error(`${channel} 的清单没有版本号`);
+  if (!version) throw new Error(t('ri.noVersion', { channel }));
   return { version };
 }
 
 /** 主通道：GitHub 免 tag 别名（同时拿到版本与要写盘的 manifest 正文） */
 async function fetchLatestFromGithub(): Promise<ReaderRelease> {
-  const text = await fetchText(`${GITHUB_LATEST}/manifest.json`, MANIFEST_TIMEOUT_MS, 'bz reader 最新版清单');
+  const text = await fetchText(`${GITHUB_LATEST}/manifest.json`, MANIFEST_TIMEOUT_MS, t('ri.manifestTitle'));
   const { version } = parseManifest(text, 'GitHub');
   return { version, manifestText: text, tag: version, via: 'github' };
 }
@@ -311,7 +312,7 @@ async function fetchLatestFromGithub(): Promise<ReaderRelease> {
 async function fetchLatestFromGitee(): Promise<ReaderRelease> {
   let tag = '';
   try {
-    const raw = await fetchText(GITEE_LATEST_API, MANIFEST_TIMEOUT_MS, 'bz reader 最新版（码云 API）');
+    const raw = await fetchText(GITEE_LATEST_API, MANIFEST_TIMEOUT_MS, t('ri.manifestGiteeApi'));
     tag = String((JSON.parse(raw) as { tag_name?: string })?.tag_name || '');
   } catch {
     /* API 限流 / 失败：下面用 raw master 兜底 */
@@ -320,14 +321,14 @@ async function fetchLatestFromGitee(): Promise<ReaderRelease> {
     const text = await fetchText(
       `${GITEE_BASE}/releases/download/${encodeURIComponent(tag)}/manifest.json`,
       MANIFEST_TIMEOUT_MS,
-      'bz reader 清单（码云 Release）',
+      t('ri.manifestGiteeRelease'),
     );
-    const { version } = parseManifest(text, '码云');
+    const { version } = parseManifest(text, t('ri.gitee'));
     // 码云 Release 的 tag 可能与 manifest.version 不同形（例如带 v），下载按 tag 拼
     return { version, manifestText: text, tag, via: 'gitee' };
   }
-  const text = await fetchText(`${GITEE_BASE}/raw/master/manifest.json`, MANIFEST_TIMEOUT_MS, 'bz reader 清单（码云 raw）');
-  const { version } = parseManifest(text, '码云 raw');
+  const text = await fetchText(`${GITEE_BASE}/raw/master/manifest.json`, MANIFEST_TIMEOUT_MS, t('ri.manifestGiteeRaw'));
+  const { version } = parseManifest(text, t('ri.giteeRaw'));
   return { version, manifestText: text, tag: version, via: 'gitee' };
 }
 
@@ -342,7 +343,7 @@ export async function fetchLatestReaderRelease(): Promise<ReaderRelease> {
     try {
       return await fetchLatestFromGitee();
     } catch (geErr) {
-      throw new Error(`两条通道都拿不到最新版：GitHub ${messageOf(ghErr)}；码云 ${messageOf(geErr)}`);
+      throw new Error(t('ri.bothChannels', { gh: messageOf(ghErr), gitee: messageOf(geErr) }));
     }
   }
 }
@@ -379,16 +380,16 @@ async function downloadAssets(tag: string): Promise<ReaderAssets> {
     const a = await fetchAssetsFrom(`${GITEE_BASE}/releases/download/${safeTag}`);
     return { ...a, via: 'gitee' };
   } catch (e) {
-    throw new Error(`两件套下载失败：GitHub ${messageOf(ghErr)}；码云 ${messageOf(e)}`);
+    throw new Error(t('ri.downloadFailed', { gh: messageOf(ghErr), gitee: messageOf(e) }));
   }
 }
 
 /** 内容像不像资产（挡住 404 页面、CDN 错误页、被截断的空文件） */
 function assertAsset(name: string, text: string, minBytes: number): void {
-  if (!text || text.length < minBytes) throw new Error(`${name} 内容不完整（${text.length} 字节）`);
+  if (!text || text.length < minBytes) throw new Error(t('ri.incomplete', { name, bytes: text.length }));
   const head = text.slice(0, 200).toLowerCase();
   if (head.includes('<!doctype html') || head.includes('<html')) {
-    throw new Error(`${name} 拿到的是网页而不是文件（通道被劫持或镜像配错）`);
+    throw new Error(t('ri.webPage', { name }));
   }
 }
 
@@ -416,7 +417,7 @@ async function ensureDir(app: unknown, dir: string): Promise<void> {
  */
 async function writeVaultText(app: unknown, path: string, text: string): Promise<void> {
   const adapter = adapterOf(app);
-  if (!adapter?.write) throw new Error('当前环境无法写入插件文件（需要在桌面端操作）');
+  if (!adapter?.write) throw new Error(t('ri.desktopOnly'));
   const tmp = `${path}.bz-tmp`;
   await adapter.write(tmp, text);
   if (adapter.rename) {
@@ -497,15 +498,15 @@ export function installReaderPlugin(
 async function installReader(app: unknown, hooks: ReaderInstallHooks): Promise<ReaderInstallResult> {
   const stage = (text: string): void => hooks.onStage?.(text);
 
-  stage('获取最新版…');
+  stage(t('ri.stageFetch'));
   const release = await fetchLatestReaderRelease();
 
-  stage(`下载 ${release.version}…`);
+  stage(t('ri.stageDownload', { version: release.version }));
   const assets = await downloadAssets(release.tag);
   assertAsset('main.js', assets.mainJs, 1000);
   assertAsset('styles.css', assets.styles, 1);
 
-  stage('写入插件目录…');
+  stage(t('ri.stageWrite'));
   const dir = readerPluginDirOf(app);
   await ensureDir(app, dir);
   // manifest 最后写：中途失败时 Obsidian 仍按旧版加载，不会出现「声称装好却打不开」的坏条目
@@ -513,15 +514,15 @@ async function installReader(app: unknown, hooks: ReaderInstallHooks): Promise<R
   await writeVaultText(app, `${dir}/styles.css`, assets.styles);
   await writeVaultText(app, `${dir}/manifest.json`, release.manifestText);
 
-  stage('核对安装结果…');
+  stage(t('ri.stageVerify'));
   const check = await readReaderInstall(app);
   if (!check.installed || compareVersions(check.version, release.version) !== 0) {
     throw new Error(
-      `安装后版本对不上（磁盘 ${check.version || '读不到'}，期望 ${release.version}）；可重试一次`,
+      t('ri.versionMismatch', { disk: check.version || '-', want: release.version }),
     );
   }
 
-  stage('启用插件…');
+  stage(t('ri.stageEnable'));
   const enabled = await enableReaderPlugin(app);
   return { version: release.version, dir, enabled, via: assets.via };
 }

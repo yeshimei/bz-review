@@ -9,6 +9,7 @@
  * ============================================================ */
 import { openFlowDialog } from '../core/flow-dialog';
 import { requestSettingsPanel } from '../core/settings-provider';
+import { t } from '../i18n/strings';
 
 /** 把错误压成人话（缺密钥的原始错误已经够清楚，别再套一层） */
 function errText(e: unknown): string {
@@ -27,16 +28,16 @@ export async function aiReadyOrGuide(why?: string): Promise<boolean> {
     await getAIProvider();
     return true;
   } catch (e) {
-    const detail = errText(e) || '还没配置 AI 服务';
+    const detail = errText(e) || t('aig.notConfigured');
     void openFlowDialog({
-      title: 'AI 还没配置',
+      title: t('aig.notConfiguredShort'),
       message:
         `${why ? `${why}，` : ''}${detail}。` +
-        '在下面的「AI」里选服务商、填密钥与模型就能用；' +
-        '如果 bz Reader 里已经配过，把「共享 bz Reader 的 AI 配置」打开也能直接用。',
+        t('aig.howto') +
+        t('aig.shareHint'),
       actions: [
-        { label: '去设置 AI', value: 'settings', cta: true },
-        { label: '稍后再说', value: 'cancel' },
+        { label: t('aig.goSettings'), value: 'settings', cta: true },
+        { label: t('aig.later'), value: 'cancel' },
       ],
     }).then((v) => {
       if (v !== 'settings') return;

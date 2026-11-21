@@ -9,6 +9,7 @@
  */
 import type { ReviewItem } from './data';
 import { DEFAULT_W, currentR } from './fsrs';
+import { t } from '../i18n/strings';
 
 export type BookGroupKind = 'book' | 'notes';
 
@@ -49,13 +50,13 @@ interface Grouped {
 
 function groupOf(it: ReviewItem): { key: string; book: string; kind: BookGroupKind } {
   if (it?.kind === 'card' && it.card) {
-    const book = String(it.card.bookTitle ?? '').trim() || '未命名书';
+    const book = String(it.card.bookTitle ?? '').trim() || t('books.untitledBook');
     return { key: `book:${book}`, book, kind: 'book' };
   }
   const path = String(it?.filePath ?? '');
   const cut = path.lastIndexOf('/');
   const folder = cut > 0 ? path.slice(0, cut) : '';
-  const book = folder || '未分组笔记';
+  const book = folder || t('books.ungrouped');
   return { key: `notes:${book}`, book, kind: 'notes' };
 }
 
@@ -64,7 +65,7 @@ function nameOf(it: ReviewItem): string {
   if (name) return name;
   const text = String(it.card?.text ?? '').trim();
   if (text) return text.slice(0, 24);
-  return String(it?.filePath ?? '未命名');
+  return String(it?.filePath ?? t('common.untitled'));
 }
 
 /** 旧数据里可能还留着 isCompleted / isMissing 两个历史字段名，读取时类型收窄后再取 */
@@ -162,18 +163,33 @@ export function bookReportMarkdown(
   /* 本地日期：toISOString() 是 UTC，东八区凌晨导出会写成前一天。 */
   const d = new Date(opts?.now ?? Date.now());
   const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const lines = ['# 复习档案', '', `> 导出于 ${day}，共 ${summaries.length} 组`, ''];
+  const lines = [t('books.reportTitle'), '', t('books.reportIntro', { date: day, n: summaries.length }), ''];
   if (!summaries.length) {
-    lines.push('还没有复习数据，先加入条目并完成一次复习。', '');
+    lines.push(t('books.reportEmpty'), '');
     return lines.join('\n');
   }
   for (const s of summaries) {
-    const unit = s.kind === 'book' ? '张卡' : '篇笔记';
+    const unit = s.kind === 'book' ? t('books.cards') : t('books.notesUnit');
     lines.push(`## ${s.book}`, '');
-    lines.push(`- ${s.total} ${unit} · 在复习 ${s.active} · 已完成 ${s.done}${s.kind === 'book' ? ` · 章节 ${s.chapters}` : ''}`);
-    lines.push(`- 平均留存率 ${pct(s.avgR)} · 忘了率 ${pct(s.againRate)} · 评级 ${s.reviews} 次 · 逾期 ${s.overdue}`);
-    if (s.weak.length) lines.push(`- 最容易忘：${s.weak.map((e) => `${e.name}（${pct(e.r)}）`).join('、')}`);
-    if (s.strong.length) lines.push(`- 记得最牢：${s.strong.map((e) => `${e.name}（${pct(e.r)}）`).join('、')}`);
+    lines.push(
+      t('books.reportLine', {
+        n: s.total,
+        unit,
+        active: s.active,
+        done: s.done,
+        chapter: s.kind === 'book' ? t('books.reportChapter', { n: s.chapters }) : '',
+      })
+    );
+    lines.push(
+      t('books.reportAvg', {
+        avg: pct(s.avgR),
+        again: pct(s.againRate),
+        reviews: s.reviews,
+        overdue: s.overdue,
+      })
+    );
+    if (s.weak.length) lines.push(t('books.reportWeak', { list: s.weak.map((e) => `${e.name}（${pct(e.r)}）`).join('、') }));
+    if (s.strong.length) lines.push(t('books.reportStrong', { list: s.strong.map((e) => `${e.name}（${pct(e.r)}）`).join('、') }));
     lines.push('');
   }
   return lines.join('\n');

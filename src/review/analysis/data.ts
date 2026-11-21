@@ -16,6 +16,7 @@ import { DEFAULT_W, currentR } from '../fsrs';
 import { partitionQueue } from '../queue';
 import { dateKey } from '../stats';
 import { maturityLevel } from '../render';
+import { ratingName, t } from '../../i18n/strings';
 
 /** 评级四档键序（忘了→简单；ratingDist/lastDiffDist 统一按此序出幕） */
 export const RA_RATING_ORDER = ['again', 'hard', 'good', 'easy'] as const;
@@ -124,10 +125,10 @@ export interface RaData {
 
 const sBucketsOf = (list: number[]): RaBucket[] => {
   const def: Array<[string, (v: number) => boolean]> = [
-    ['<7 天', (v) => v < 7],
-    ['7-30 天', (v) => v >= 7 && v < 30],
-    ['30-90 天', (v) => v >= 30 && v < 90],
-    ['≥90 天', (v) => v >= 90],
+    [t('an.age.0'), (v) => v < 7],
+    [t('an.age.1'), (v) => v >= 7 && v < 30],
+    [t('an.age.2'), (v) => v >= 30 && v < 90],
+    [t('an.age.3'), (v) => v >= 90],
   ];
   return def.map(([label, hit]) => ({ label, n: list.filter(hit).length }));
 };
@@ -266,7 +267,7 @@ export function deriveAnalysis(
     d.setDate(todayStart.getDate() + i);
     const key = dateKey(d);
     tideIdx.set(key, next8.length);
-    next8.push({ date: key, label: i === 0 ? '今' : `+${i}`, count: 0 });
+    next8.push({ date: key, label: i === 0 ? t('stats.todayShort') : `+${i}`, count: 0 });
   }
   for (const it of items) {
     if (it.completed || it.isCompleted || it.isMissing || !it.nextReviewDate) continue;

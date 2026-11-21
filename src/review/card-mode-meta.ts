@@ -6,6 +6,19 @@
  * 依赖的模块。这里把纯数据单独放出来，两边共用一份，避免「同一个方式两种叫法」。
  * ============================================================ */
 import type { CardMode } from './card-mode';
+import { t, type MsgKey } from '../i18n/strings';
+
+/** 方式名与说明的文案 key：模块级常量 CARD_MODE_META 仍是中文基准（测试与结构查询用），
+ *  界面上一律走 cardModeMetaList() 现取当前语言。 */
+const MODE_KEYS: Record<CardMode, { label: MsgKey; hint: MsgKey }> = {
+  flashcard: { label: 'mode.flashcard', hint: 'mode.flashcard.hint' },
+  quiz: { label: 'mode.quiz', hint: 'mode.quiz.hint' },
+  cloze: { label: 'mode.cloze', hint: 'mode.cloze.hint' },
+  media: { label: 'mode.media', hint: 'mode.media.hint' },
+  occlusion: { label: 'mode.occlusion', hint: 'mode.occlusion.hint' },
+  context: { label: 'mode.context', hint: 'mode.context.hint' },
+  plain: { label: 'mode.plain', hint: 'mode.plain.hint' },
+};
 
 export interface CardModeMeta {
   value: CardMode;
@@ -23,7 +36,8 @@ export interface CardModeMeta {
   hidden?: boolean;
 }
 
-/** 全量元数据（含暂不对外展示的三种）：老卡复习与名字查询都走它 */
+/** 全量元数据（含暂不对外展示的三种）：老卡复习与名字查询都走它。
+ *  这是**中文基准**常量；界面渲染请用 cardModeMetaList()。 */
 export const CARD_MODE_META: readonly CardModeMeta[] = [
   { value: 'flashcard', label: 'AI 抽认卡', hint: '先给一句不能照抄原文的问句，想不起来再看原文', icon: '◆', tone: 'purple' },
   { value: 'quiz', label: 'AI 做题', hint: '按内容生成四选一，每轮只抽其中一部分', icon: '◇', tone: 'orange' },
@@ -34,6 +48,11 @@ export const CARD_MODE_META: readonly CardModeMeta[] = [
   { value: 'plain', label: '展开全文', hint: '不调用 AI，直接摆出原文，自己评难度', icon: '▬', tone: 'gray', hidden: true },
 ];
 
+/** 当前语言的全量元数据（图标 / 色调 / hidden 与基准一致，只换文案） */
+export function cardModeMetaList(): CardModeMeta[] {
+  return CARD_MODE_META.map((m) => ({ ...m, label: t(MODE_KEYS[m.value].label), hint: t(MODE_KEYS[m.value].hint) }));
+}
+
 /**
  * 制卡界面/设置里可选的入口：过滤掉 hidden 的方式。
  * 2026-11-20 挖空（Cloze）解锁——社区正名、Anki 通用写法，归到「探索」组介绍；
@@ -42,12 +61,21 @@ export const CARD_MODE_META: readonly CardModeMeta[] = [
 export const CARD_MODE_LABELS: ReadonlyArray<{ value: CardMode; label: string; hint: string }> =
   CARD_MODE_META.filter((m) => !m.hidden).map(({ value, label, hint }) => ({ value, label, hint }));
 
+/** 当前语言的可选入口（制卡 / 重新生成的选择框） */
+export function cardModeLabels(): ReadonlyArray<{ value: CardMode; label: string; hint: string }> {
+  return cardModeMetaList()
+    .filter((m) => !m.hidden)
+    .map(({ value, label, hint }) => ({ value, label, hint }));
+}
+
 /** 一句人话的名字：设置页、提示、工作台徽标都用它 */
 export function cardModeLabel(mode: CardMode): string {
-  return CARD_MODE_META.find((m) => m.value === mode)?.label ?? mode;
+  const meta = cardModeMetaList().find((m) => m.value === mode);
+  return meta ? meta.label : mode;
 }
 
 /** 工作台徽标整套元数据；没写 mode 的老卡按抽认卡显示 */
 export function modeMetaOf(mode: CardMode | null | undefined): CardModeMeta {
-  return CARD_MODE_META.find((m) => m.value === mode) ?? CARD_MODE_META[0];
+  const list = cardModeMetaList();
+  return list.find((m) => m.value === mode) ?? list[0];
 }

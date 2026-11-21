@@ -26,6 +26,7 @@ import { esc } from './ui/html-bridge';
 import { parseAnkiFile, type AnkiParseStats, type ParsedAnkiCard } from './anki-cards';
 import { isAudioName, isImageName, mediaBaseName, planAnkiMedia } from './anki-media';
 import type { ReviewDataManager } from './data';
+import { t } from '../i18n/strings';
 
 /* 文本导出后缀；text/* 兜住浏览器/移动端把 .tsv 报成 text/tab-separated-values 的情况 */
 const ANKI_ACCEPT = '.txt,.tsv,.csv,text/plain,text/tab-separated-values';
@@ -70,9 +71,9 @@ function pickAnkiTextFile(): Promise<{ name: string; raw: string } | null> {
         return;
       }
       void file.text().then(
-        (raw) => finish({ name: file.name || 'Anki 导出', raw }),
+        (raw) => finish({ name: file.name || t('anki.exportTitle'), raw }),
         () => {
-          notice('读不到这个文件，换一个试试', 'warning');
+          notice(t('anki.readFailed'), 'warning');
           finish(null);
         },
       );
@@ -120,11 +121,11 @@ function pickAnkiMediaFiles(): Promise<File[]> {
 function skipParts(stats: AnkiParseStats): string[] {
   const s = stats.skipped;
   const out: string[] = [];
-  if (s.empty) out.push(`空行 ${s.empty}`);
-  if (s.short) out.push(`字段不足 ${s.short}`);
-  if (s.emptyFront) out.push(`正面为空 ${s.emptyFront}`);
-  if (s.emptyBack) out.push(`背面为空 ${s.emptyBack}`);
-  if (s.noCloze) out.push(`挖空类型没找到 {{c1::…}} 标记 ${s.noCloze}`);
+  if (s.empty) out.push(t('anki.skip.empty', { n: s.empty }));
+  if (s.short) out.push(t('anki.skip.short', { n: s.short }));
+  if (s.emptyFront) out.push(t('anki.skip.emptyFront', { n: s.emptyFront }));
+  if (s.emptyBack) out.push(t('anki.skip.emptyBack', { n: s.emptyBack }));
+  if (s.noCloze) out.push(t('anki.skip.noCloze', { n: s.noCloze }));
   return out;
 }
 
@@ -158,15 +159,15 @@ async function attachMedia(app: App, cards: ParsedAnkiCard[], stats: AnkiParseSt
   const refs = collectRefs(cards);
   if (!refs.length) return;
 
-  const names = refs.slice(0, 4).join('、') + (refs.length > 4 ? ` 等 ${refs.length} 个` : '');
+  const names = refs.slice(0, 4).join('、') + (refs.length > 4 ? t('anki.andMore', { n: refs.length }) : '');
   const choice = await openFlowDialog({
-    title: '补选 Anki 媒体文件',
+    title: t('anki.mediaTitle'),
     message:
-      `这份导出引用了 ${refs.length} 个图片 / 音频文件（${names}）。` +
-      'Anki 的纯文本导出不带文件本身，现在可以多选这些文件补进来：按文件名配对、存入库内 anki-media 目录，卡片上的图片 / 音频就能真实显示；跳过则只保留占位文字。',
+      t('anki.mediaIntro', { n: refs.length, names }) +
+      t('anki.mediaDesc'),
     actions: [
-      { label: '跳过，保留占位文字', value: 'skip' },
-      { label: '选择媒体文件', value: 'pick', cta: true },
+      { label: t('anki.skipMedia'), value: 'skip' },
+      { label: t('anki.chooseMedia'), value: 'pick', cta: true },
     ],
   });
   if (choice !== 'pick') {
@@ -242,7 +243,7 @@ async function attachMedia(app: App, cards: ParsedAnkiCard[], stats: AnkiParseSt
 function previewHtml(name: string, stats: AnkiParseStats): string {
   const skips = skipParts(stats);
   const lines: string[] = [];
-  if (skips.length) lines.push(`<li>跳过：${skips.join('、')}</li>`);
+  if (skips.length) lines.push(t('anki.listSkipped', { list: skips.join('、') }));
   if (stats.mediaNames || stats.mediaMatched || stats.mediaMissing) {
     lines.push(
       `<li>媒体引用 ${stats.media} 处、${stats.mediaNames} 个文件：` +
@@ -250,10 +251,10 @@ function previewHtml(name: string, stats: AnkiParseStats): string {
     );
   }
   if (stats.occlusion) {
-    lines.push(`<li>图片遮挡卡 ${stats.occlusion} 张：按图片 + 文字导入，遮挡区域待你手动补</li>`);
+    lines.push(t('anki.listOcclusion', { n: stats.occlusion }));
   }
-  if (stats.renamed) lines.push(`<li>${stats.renamed} 个媒体文件撞名，已自动改名保存</li>`);
-  if (stats.tagged) lines.push(`<li>标签 ${stats.tagged} 条：写进卡片备注</li>`);
+  if (stats.renamed) lines.push(t('anki.listRenamed', { n: stats.renamed }));
+  if (stats.tagged) lines.push(t('anki.listTags', { n: stats.tagged }));
 
   return `
     <div class="bzrv-anki-preview">
@@ -262,9 +263,9 @@ function previewHtml(name: string, stats: AnkiParseStats): string {
         <span><b>${stats.cards}</b> 张待导入</span>
         <span>问答 <b>${stats.qa}</b></span>
         <span>挖空 <b>${stats.cloze}</b></span>
-        ${stats.occlusion ? `<span>遮挡 <b>${stats.occlusion}</b></span>` : ''}
-        ${stats.reversed ? `<span>反向 <b>${stats.reversed}</b></span>` : ''}
-        ${stats.multiCloze ? `<span>拆空 <b>${stats.multiCloze}</b> 条笔记</span>` : ''}
+        ${stats.occlusion ? t('anki.statOcclusion', { n: stats.occlusion }) : ''}
+        ${stats.reversed ? t('anki.statReversed', { n: stats.reversed }) : ''}
+        ${stats.multiCloze ? t('anki.statMultiCloze', { n: stats.multiCloze }) : ''}
       </div>
       ${lines.length ? `<ul class="bzrv-anki-list">${lines.join('')}</ul>` : ''}
       <p class="bzrv-anki-note">只认 Anki「笔记纯文本」导出（.txt / .tsv / .csv）；.apkg / .colpkg 请回 Anki 重新导出。挖空按编号拆成多张卡、含反向卡的笔记出正反两张，与 Anki 的卡数一致。</p>
@@ -286,9 +287,9 @@ async function commitAnkiCards(cards: ParsedAnkiCard[], dm: ReviewDataManager): 
   const qa = addedCards.filter((c) => c.syntax === 'qa').length;
   const cloze = addedCards.filter((c) => c.syntax === 'cloze').length;
   notice(
-    `Anki 导入 ${res.added} 张（问答 ${qa} / 挖空 ${cloze}）` +
-      (res.skipped ? `，跳过 ${res.skipped} 张（已存在）` : '') +
-      (res.rejected ? `，${res.rejected} 张超出基础版上限` : ''),
+    t('anki.doneTitle', { n: res.added, qa, cloze }) +
+      (res.skipped ? t('anki.doneSkipped', { n: res.skipped }) : '') +
+      (res.rejected ? t('anki.doneOverLimit', { n: res.rejected }) : ''),
     res.added ? 'success' : 'warning',
   );
   const { reviewApp } = await import('./app');
@@ -306,7 +307,7 @@ export async function importAnkiFromPicker(app: App, dm: ReviewDataManager): Pro
   const { cards, stats } = parseAnkiFile(picked.raw, picked.name);
   if (!cards.length) {
     const why = skipParts(stats).join('、');
-    notice(`这份文件里没认出可导入的卡片${why ? `（${why}）` : ''}`, 'warning');
+    notice(why ? t('anki.nothingWhy', { why }) : t('anki.nothing'), 'warning');
     return;
   }
 
@@ -315,7 +316,7 @@ export async function importAnkiFromPicker(app: App, dm: ReviewDataManager): Pro
 
   const modal = uiModal({
     content: previewHtml(picked.name, stats),
-    title: '导入 Anki 卡片',
+    title: t('anki.title'),
     head: true,
     className: 'bzrv-anki-modal',
   });

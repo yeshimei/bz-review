@@ -18,6 +18,7 @@ import type { App } from 'obsidian';
 import { notice, notifyActionError } from '../core/notice';
 import { QuotaExceededError } from '../data/entitlement';
 import { uiModal } from '../core/ui/modal';
+import { t } from '../i18n';
 import { openCardWizard, type CardWizardSource } from './card-wizard';
 import { getReviewPlanApi } from './reader-api';
 import {
@@ -149,7 +150,7 @@ function selectionSource(input: Extract<AddFlowInput, { kind: 'selection' }>): C
     || (sourceNote ? noteCardKey(sourceNote) : `sel:${input.path}:${Date.now()}`);
   return {
     key,
-    bookTitle: String(input.title ?? '').trim() || String(input.path ?? '').split('/').pop() || '笔记',
+    bookTitle: String(input.title ?? '').trim() || String(input.path ?? '').split('/').pop() || t('add.note'),
     text,
     ...(sourceNote ? { sourceNote } : {}),
   };
@@ -175,7 +176,7 @@ export async function openAddToReviewFlow(app: App, input: AddFlowInput): Promis
     if (input.kind === 'selection') {
       const src = selectionSource(input);
       if (!src) {
-        notice('先选中要加入复习的内容', 'info');
+        notice(t('add.pickHint'), 'info');
         return;
       }
       deliver(app, [src]);
@@ -194,7 +195,7 @@ export async function openAddToReviewFlow(app: App, input: AddFlowInput): Promis
       openQuotaUpgradeDialog();
       return;
     }
-    notifyActionError(e, '加入复习', {
+    notifyActionError(e, t('add.title'), {
       onRetry: () => void openAddToReviewFlow(app, input),
     });
   }
@@ -205,19 +206,19 @@ async function addFolder(app: App, folder: string): Promise<void> {
   const all = vaultOf(app).getFiles().map((f) => f.path);
   const paths = folderNotePaths(all, folder);
   if (!paths.length) {
-    notice('这个文件夹里没有笔记', 'info');
+    notice(t('add.folderEmpty'), 'info');
     return;
   }
   const planned = await plannedNotePaths(paths);
   const fresh = paths.filter((p) => !planned.has(p));
   if (!fresh.length) {
-    notice('这个文件夹里的笔记都已经在复习计划里了', 'info');
+    notice(t('add.folderAllIn'), 'info');
     return;
   }
   const picked = await pickFolderNotes(folder, fresh);
   if (picked === null) return; // 取消：什么都不加
   if (!picked.length) {
-    notice('没有勾选要加入的笔记', 'info');
+    notice(t('add.pickNone'), 'info');
     return;
   }
   await addPaths(app, picked);
@@ -227,14 +228,14 @@ async function addFolder(app: App, folder: string): Promise<void> {
 async function addPaths(app: App, paths: readonly string[]): Promise<void> {
   const got = await collectSources(app, paths);
   const skipped: string[] = [];
-  if (got.exists) skipped.push(`${got.exists} 篇本来就在复习计划里`);
-  if (got.missing) skipped.push(`${got.missing} 篇找不到`);
-  if (got.empty) skipped.push(`${got.empty} 篇是空的`);
+  if (got.exists) skipped.push(t('add.existsN', { n: got.exists }));
+  if (got.missing) skipped.push(t('add.missingN', { n: got.missing }));
+  if (got.empty) skipped.push(t('add.emptyN', { n: got.empty }));
   if (!got.sources.length) {
-    notice(skipped.length ? `${skipped.join('，')}，没有可加入的内容` : '没有可加入的内容', 'info');
+    notice(skipped.length ? t('add.nothingWithReasons', { reasons: skipped.join('，') }) : t('add.nothing'), 'info');
     return;
   }
-  if (skipped.length) notice(`${skipped.join('，')}，已跳过`, 'info');
+  if (skipped.length) notice(t('add.skippedWithReasons', { reasons: skipped.join('，') }), 'info');
   deliver(app, got.sources);
 }
 
@@ -242,7 +243,7 @@ async function addPaths(app: App, paths: readonly string[]): Promise<void> {
 function deliver(app: App, sources: CardWizardSource[], opts?: { focusKey?: string }): void {
   const api = getReviewPlanApi();
   if (!api) {
-    notice('复习模块还没准备好，稍后再试一次', 'warning');
+    notice(t('add.moduleNotReady'), 'warning');
     return;
   }
   openCardWizard(app, {
@@ -277,29 +278,33 @@ async function focusAfterAdd(key: string): Promise<void> {
  */
 export async function openCreateCardFlow(app: App): Promise<void> {
   const body = createDiv({ cls: 'bzrv-create-card' });
-  body.createDiv({ cls: 'bzrv-create-card-desc', text: '写点要记住的内容，下一步选复习方式、确认题面后加入计划。' });
+  body.createDiv({ cls: 'bzrv-create-card-desc', text: t('add.manualHint') });
   const area = body.createEl('textarea', { cls: 'bzrv-create-card-input' });
   area.rows = 8;
-  area.placeholder = '例如：光速约每秒 30 万公里，绕地球一圈约 7.5 圈。';
+  area.placeholder = t('add.manualPlaceholder');
   const counter = body.createDiv({ cls: 'bzrv-create-card-count' });
 
   const modal = uiModal({
-    title: '创建卡牌',
+    title: t('add.createCard'),
     head: true,
     content: body,
     size: 'md',
     className: 'bzrv-create-card-modal',
   });
   const actions = modal.popup.createDiv({ cls: 'bzrv-edit-actions bzrv-create-card-actions' });
-  const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: '取消' });
+  const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: t('common.cancel') });
   cancel.onclick = () => modal.close();
-  const ok = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: '下一步' });
+  const ok = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: t('wiz.next') });
 
   const paint = (): void => {
     const r = normalizeManualText(area.value);
     /* 计数按归一后的正文算，与截断口径一致：首尾空白不该让提示说「超限」而内容没被截 */
     const n = Array.from(r.text).length;
-    counter.textContent = `${n} / ${MANUAL_TEXT_LIMIT} 字${r.clipped ? '（超出部分会被截掉）' : ''}`;
+    counter.textContent = t('add.chars', {
+      n,
+      limit: MANUAL_TEXT_LIMIT,
+      clipped: r.clipped ? t('add.clippedNote') : '',
+    });
     counter.classList.toggle('is-over', r.clipped);
     ok.disabled = !!r.error;
   };
@@ -319,7 +324,7 @@ export async function openCreateCardFlow(app: App): Promise<void> {
         try {
           const rows = await api.statusOf([key]);
           if (rows.some((row) => row.planned)) {
-            notice('这段文字已经在复习计划里了', 'info');
+            notice(t('add.alreadyIn'), 'info');
             return;
           }
         } catch {
@@ -367,13 +372,13 @@ export function pickFolderNotes(folder: string, candidates: readonly string[]): 
     const body = createDiv({ cls: 'bzrv-folder-add' });
     body.createDiv({
       cls: 'bzrv-folder-add-desc',
-      text: `文件夹「${folder}」里有 ${list.length} 篇笔记还没加入复习。勾选要加入的笔记：`,
+      text: t('add.folderPick', { folder, n: list.length }),
     });
     const tools = body.createDiv({ cls: 'bzrv-folder-add-tools' });
     const all = tools.createEl('input', { type: 'checkbox' });
     all.checked = true;
     const allLabel = tools.createEl('label', { cls: 'bzrv-folder-add-all' });
-    allLabel.append(all, createSpan({ text: '全选' }));
+    allLabel.append(all, createSpan({ text: t('add.selectAll') }));
     const countEl = tools.createSpan({ cls: 'bzrv-folder-add-count' });
 
     const host = body.createDiv({ cls: 'bzrv-folder-add-list' });
@@ -393,10 +398,10 @@ export function pickFolderNotes(folder: string, candidates: readonly string[]): 
     const selected = (): string[] => boxes.filter((b) => b.box.checked).map((b) => b.path);
     const paint = (): void => {
       const n = selected().length;
-      countEl.textContent = `已选 ${n} / ${boxes.length}`;
+      countEl.textContent = t('add.selectedN', { n, total: boxes.length });
       all.checked = n === boxes.length;
       all.indeterminate = n > 0 && n < boxes.length;
-      ok.setText(n ? `加入 ${n} 篇` : '加入');
+      ok.setText(n ? t('add.addNNotes', { n }) : t('add.add'));
       ok.disabled = n === 0;
     };
     all.onchange = () => {
@@ -406,7 +411,7 @@ export function pickFolderNotes(folder: string, candidates: readonly string[]): 
     for (const b of boxes) b.box.onchange = paint;
 
     const modal = uiModal({
-      title: '加入复习',
+      title: t('add.title'),
       head: true,
       content: body,
       maxWidth: 560,
@@ -414,12 +419,12 @@ export function pickFolderNotes(folder: string, candidates: readonly string[]): 
       onClose: () => finish(null),
     });
     const actions = modal.popup.createDiv({ cls: 'bzrv-edit-actions bzrv-folder-add-actions' });
-    const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: '取消' });
+    const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: t('common.cancel') });
     cancel.onclick = () => {
       finish(null);
       modal.close();
     };
-    const ok = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: '加入' });
+    const ok = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: t('add.add') });
     ok.onclick = () => {
       const picked = selected();
       finish(picked);

@@ -11,6 +11,7 @@
  * 普通高级版码只在本插件有效；**例外**是赞助人 / 专属定制码
  * （payload.patron === true，Reader 私钥签发），两款插件都能激活。
  * ============================================================ */
+import { t } from '../i18n/strings';
 
 /** ECDSA P-256 公钥（SPKI DER 的 base64）。由 scripts/gen-keys.mjs 生成。 */
 const PUBKEY_SPKI_B64 =
@@ -119,16 +120,16 @@ function dateText(ms: number): string {
 
 /** 验一枚激活码。任何一步不过都给人话，不抛。 */
 export async function verifyLicense(code: string): Promise<LicenseCheck> {
-  if (!code.trim()) return { ok: false, reason: 'empty', message: '还没有填激活码。' };
+  if (!code.trim()) return { ok: false, reason: 'empty', message: t('lic.noCode') };
   if (!PUBKEY_SPKI_B64 && !testLocalPubB64) {
-    return { ok: false, reason: 'no-pubkey', message: '发行方还没配置公钥。' };
+    return { ok: false, reason: 'no-pubkey', message: t('lic.noPublicKey') };
   }
   const parsed = parseLicense(code);
   if (!parsed) {
     return {
       ok: false,
       reason: 'format',
-      message: '激活码格式不对：应为 BZP1 / BZP2 / BZR1 / BZR2 开头的三段式。',
+      message: t('lic.badFormat'),
     };
   }
   const fromReader = parsed.prefix === 'BZR1' || parsed.prefix === 'BZR2';
@@ -145,28 +146,28 @@ export async function verifyLicense(code: string): Promise<LicenseCheck> {
       new Uint8Array(parsed.sig).buffer,
       new Uint8Array(parsed.payloadBytes).buffer,
     );
-    if (!ok) return { ok: false, reason: 'invalid', message: '激活码验签失败：内容或签名被改过。' };
+    if (!ok) return { ok: false, reason: 'invalid', message: t('lic.badSignature') };
     /* Reader 的码只对「赞助人 / 专属定制」开口子：普通高级版码仍各自激活。
        用 Reader 私钥签的普通码前缀换成 BZP2 也过不了——公钥跟着前缀走。 */
     if (fromReader && parsed.payload.patron !== true) {
       return {
         ok: false,
         reason: 'scope',
-        message: '这是 bz Reader 的高级版激活码。只有赞助人与专属定制码可跨插件使用；两款插件的高级版码请分别在各自的插件激活。',
+        message: t('lic.wrongPlugin'),
       };
     }
     const exp = parsed.payload.exp ?? 0;
     if (exp && Date.now() > exp) {
-      return { ok: false, reason: 'expired', message: `激活码已于 ${dateText(exp)} 过期。` };
+      return { ok: false, reason: 'expired', message: t('lic.expired', { date: dateText(exp) }) };
     }
     const who = parsed.payload.name ? `，${parsed.payload.name}` : '';
-    const until = exp ? `有效期到 ${dateText(exp)}` : '永久有效';
-    return { ok: true, message: `已激活${who}，${until}。`, payload: parsed.payload };
+    const until = exp ? t('lic.until', { date: dateText(exp) }) : t('lic.forever');
+    return { ok: true, message: t('lic.activated', { who, until }), payload: parsed.payload };
   } catch (e) {
     return {
       ok: false,
       reason: 'env-error',
-      message: `验签出错：${(e as Error)?.message || '环境不支持 WebCrypto'}`,
+      message: t('lic.verifyError', { reason: (e as Error)?.message || 'WebCrypto unavailable' }),
     };
   }
 }

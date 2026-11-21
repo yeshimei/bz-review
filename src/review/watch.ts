@@ -13,6 +13,7 @@ import { openFlowDialog } from '../core/flow-dialog';
 import { tryGetSettings, saveSettings } from '../core/settings-provider';
 import { ReviewDataManager } from './data';
 import { openAddToReviewFlow, pickFolderNotes } from './add-flow';
+import { t } from '../i18n/strings';
 
 /** 设置里的数组字段运行期可能被旧数据写脏：只认数组，再按 string[] 读 */
 function stringArray(v: unknown): string[] {
@@ -141,16 +142,16 @@ export class ReviewWatcher {
         // C10：口径与 confirmBatchAddForFolder 对齐——展示名剥 .md 扩展名
         const firstName = stripMdExt((batch[0] || '').split('/').pop() || '');
         void openFlowDialog({
-          title: n > 1 ? `删除 ${n} 篇笔记` : '笔记已删除',
+          title: n > 1 ? t('watch.deleteTitleN', { n }) : t('watch.deleteTitle'),
           message:
             n > 1
-              ? `有 ${n} 篇笔记已从 vault 删除，是否同步移除复习里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。`
-              : `「${firstName}」已从 vault 删除，是否同步移除复习里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。`,
+              ? t('watch.deleteBodyN', { n })
+              : t('watch.deleteBodyOne', { name: firstName }),
           actions: [
-            { label: '保留', value: 'cancel' },
+            { label: t('watch.keep'), value: 'cancel' },
             // danger（issue 291 评审补）：移除 = 同步删掉复习里的记录并写入排除名单
             //（删除类主动作，故主按钮不高亮；「保留」才是无损选项，手册 §9/§10）
-            { label: '移除', value: 'ok', cta: true, danger: true },
+            { label: t('watch.remove'), value: 'ok', cta: true, danger: true },
           ],
         }).then(async (v) => {
           if (v === 'ok') {
@@ -162,7 +163,7 @@ export class ReviewWatcher {
             await this.dataManager.removeItems(batch);
             // 仅监听目录内的删除写排除名单（防自动加回；目录外的删除无监听风险）
             await this.excludePaths(batch.filter((p) => this.isWatched(p)));
-            notifyUndo(`已移除 ${n} 条复习记录`, () => {
+            notifyUndo(t('watch.removed', { n }), () => {
               void (async () => {
                 try {
                   for (const item of removed) await this.dataManager.restoreItem(item);
@@ -172,7 +173,7 @@ export class ReviewWatcher {
                   }
                   await this.refresh();
                 } catch (e) {
-                  notifySaveError(e, '恢复复习记录');
+                  notifySaveError(e, t('watch.restored'));
                 }
               })();
             });
@@ -197,7 +198,7 @@ export class ReviewWatcher {
       const updated = await this.dataManager.updateFilePath(oldPath, file.path, file.basename);
       if (!updated) {
         // F11：新路径已被另一条目占用 → 条目悬挂旧路径成删除线，给人话提示而非静默
-        notice('新路径已存在复习条目，未能自动更新路径，请手动处理');
+        notice(t('watch.pathExists'));
         return;
       }
       await this.refresh(); // 列表自动更新（即时）
@@ -209,9 +210,11 @@ export class ReviewWatcher {
         this.renameQueue = [];
         if (!batch.length) return;
         const shown = batch.slice(0, 3).join('、');
-        const tail = batch.length > 3 ? `，等 ${batch.length - 3} 篇` : '';
+        const tail = batch.length > 3 ? t('watch.andMore', { n: batch.length - 3 }) : '';
         notice(
-          batch.length > 1 ? `已更新 ${batch.length} 篇笔记的复习路径：${shown}${tail}` : '已更新复习路径',
+          batch.length > 1
+            ? t('watch.pathsUpdated', { n: batch.length, shown, tail })
+            : t('watch.pathsUpdatedShort'),
           'success'
         );
       }, RENAME_MERGE_MS);
@@ -234,11 +237,11 @@ export class ReviewWatcher {
     const candidates = this.collectAutoaddCandidates(folder, items);
     if (!candidates.length) return true; // 无存量候选：直接接受
     const v = await openFlowDialog({
-      title: '批量加入复习',
-      message: `监听文件夹「${folder}」下有 ${candidates.length} 篇笔记未加入复习，是否一并加入？`,
+      title: t('watch.batchAddTitle'),
+      message: t('watch.batchAddBody', { folder, n: candidates.length }),
       actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '加入', value: 'ok', cta: true },
+        { label: t('common.cancel'), value: 'cancel' },
+        { label: t('common.add'), value: 'ok', cta: true },
       ],
     });
     if (v !== 'ok') return false;
@@ -247,7 +250,7 @@ export class ReviewWatcher {
     const picked = await pickFolderNotes(folder, candidates);
     if (picked === null) return false;
     if (picked.length === 0) {
-      notice('已加入监听，但没有勾选要加入的笔记', 'info');
+      notice(t('watch.noneChosen'), 'info');
       return true;
     }
     await openAddToReviewFlow(this.app, { kind: 'notes', paths: picked, from: 'folder' });

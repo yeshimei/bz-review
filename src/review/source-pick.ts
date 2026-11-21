@@ -15,6 +15,7 @@
  * 本文件零 DOM、零 obsidian 依赖，ask / chapterText 注入，单测直接跑。
  * ============================================================ */
 import type { CardWizardSource } from './card-wizard';
+import { locale } from '../i18n/strings';
 
 /* ─────────── 数据形状（与 bz-reader 的 readerApi 对齐） ─────────── */
 
@@ -149,13 +150,40 @@ export interface PickCandidate {
  * 于是一本划得很克制的书也被砍掉一半——用户划的时候已经筛过一遍了。
  */
 export function buildMarkPickPrompt(bookTitle: string, chapterTitle: string, candidates: readonly PickCandidate[]): string {
-  const where = chapterTitle ? `《${bookTitle}》${chapterTitle}` : `《${bookTitle}》`;
+  const zh = locale() === 'zh';
+  const where = zh
+    ? chapterTitle
+      ? `《${bookTitle}》${chapterTitle}`
+      : `《${bookTitle}》`
+    : chapterTitle
+      ? `"${bookTitle}" ${chapterTitle}`
+      : `"${bookTitle}"`;
   const lines = candidates
     .map((c, i) => {
       const idea = String(c.comment ?? '').trim();
-      return `${i + 1}. [id=${c.id}] ${String(c.text ?? '').trim()}${idea ? `\n   我的想法：${idea}` : ''}`;
+      const ideaLine = idea ? (zh ? `\n   我的想法：${idea}` : `\n   My note: ${idea}`) : '';
+      return `${i + 1}. [id=${c.id}] ${String(c.text ?? '').trim()}${ideaLine}`;
     })
     .join('\n');
+  if (!zh) {
+    return [
+      `Below are reading highlights from ${where}, ${candidates.length} in total. Decide which ones are worth remembering long-term and reviewing repeatedly.`,
+      '',
+      'Criteria:',
+      '1. Has a viewpoint, explains cause and effect, gives a method, or stands alone as a question — worth keeping.',
+      '2. Pure scenery, pure transitions, pure sentiment, nothing testable after reading — not worth keeping.',
+      '3. Several highlights about the same point: keep only the most informative one.',
+      '',
+      'Important: the user already filtered while highlighting, so **do not cut just to hit a ratio**.',
+      'If all of them are worth keeping, keep them all; rather cut too little than delete a real insight.',
+      '',
+      'Output only one JSON object, no explanation, no code block:',
+      '{"keep": ["id1", "id2"]}',
+      '',
+      'Highlights:',
+      lines,
+    ].join('\n');
+  }
   return [
     `下面是${where}的读书划线，一共 ${candidates.length} 条。请判断哪些值得长期记住、反复复习。`,
     '',
@@ -215,8 +243,35 @@ export function parsePickedIds(reply: string, validIds: readonly string[]): stri
  * 给了上限才在末尾补一句，而且用的是「最多」——不是「必须出够」。
  */
 export function buildChapterCardPrompt(bookTitle: string, chapterTitle: string, body: string, limit = 0): string {
-  const where = chapterTitle ? `《${bookTitle}》${chapterTitle}` : `《${bookTitle}》`;
+  const zh = locale() === 'zh';
+  const where = zh
+    ? chapterTitle
+      ? `《${bookTitle}》${chapterTitle}`
+      : `《${bookTitle}》`
+    : chapterTitle
+      ? `"${bookTitle}" ${chapterTitle}`
+      : `"${bookTitle}"`;
   const cap = Math.max(0, Math.round(Number(limit) || 0));
+  if (!zh) {
+    const countRule = cap
+      ? `4. Output at most ${cap} cards; decide the actual number by this chapter's density, and do not pad when it is not warranted.`
+      : '4. The number follows the chapter\u2019s length and density: 3-5 for short chapters, 5-8 for medium, 8-12 for long. Fewer and sharper beats padding.';
+    return [
+      `Below is the body of ${where}. Pick the content worth remembering long-term and turn it into Q&A cards.`,
+      '',
+      'Requirements:',
+      '1. One idea per card: text is the exact sentence from the source (quoted verbatim, no rewriting or summarizing).',
+      '2. q is a question that cannot copy the source and must stand on its own; a is a short answer, which may quote the source.',
+      '3. Do not ask things guessable from metadata such as "which book is this from", "who is the author" or "what is the chapter title".',
+      countRule,
+      '',
+      'Output only one JSON object, no explanation, no code block:',
+      '{"cards": [{"text": "the source sentence", "q": "question", "a": "answer"}]}',
+      '',
+      'Body:',
+      String(body ?? ''),
+    ].join('\n');
+  }
   const countRule = cap
     ? `4. 最多出 ${cap} 张，按这一章的信息密度自己决定实际出几张，不够就不出满。`
     : '4. 张数由这一章的长度和信息密度决定：短章 3~5 张，中等 5~8 张，长章 8~12 张。宁可少而精，不要凑数。';

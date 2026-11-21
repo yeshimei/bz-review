@@ -29,6 +29,7 @@ import { stageNum } from './render';
 import { motionStats, motionHistory } from './motion';
 
 import { markOwned } from '../core/scope';
+import { locale, ratingName, t } from '../i18n';
 /* 统计弹窗的两个根节点与 ESC 句柄已随「内置页」一并退役（2026-11-15）；
    复习历史弹窗仍是独立浮层，状态在下方 hist* 一组里。 */
 
@@ -63,7 +64,7 @@ function sectionHTML(title: string, icon: string, body: string): string {
 }
 
 function emptyHTML(): string {
-  return '<div class="bzrv-stats-empty"><i data-lucide="inbox" class="bzrv-ic bzrv-stats-empty-ic"></i></div><div class="bzrv-stats-hint">还没有复习数据，完成一次复习后这里会有统计</div>';
+  return `<div class="bzrv-stats-empty"><i data-lucide="inbox" class="bzrv-ic bzrv-stats-empty-ic"></i></div><div class="bzrv-stats-hint">${t('stats.empty')}</div>`;
 }
 
 /** 水平条形行（cinema bar-row 形制；默认走强调色 token，color 仅在数据驱动的评级色时内联） */
@@ -132,7 +133,7 @@ function heatHTML(heat: DayCount[]): string {
     })
     .join('');
   const total = heat.reduce((a, d) => a + d.count, 0);
-  return `<div class="heat"><span class="bzrv-sr-only">近一年复习热力图，共 ${total} 次</span>${cells}</div>`;
+  return `<div class="heat"><span class="bzrv-sr-only">${t('stats.heatSr', { n: total })}</span>${cells}</div>`;
 }
 
 /** 成就徽章（实时算，不落盘；未解锁给进度条） */
@@ -145,7 +146,7 @@ function badgesHTML(rows: Array<{ id: string; name: string; got: boolean; cur: n
         <i class="bzrv-ic bd" data-lucide="${b.got ? 'award' : 'lock'}"></i>
         <span class="bn">${esc(b.name)}</span>
         <span class="bp"><i style="width:${p}%"></i></span>
-        <span class="bv">${b.got ? '已达成' : `${b.cur}/${b.goal}`}</span>
+        <span class="bv">${b.got ? t('stats.done') : `${b.cur}/${b.goal}`}</span>
       </div>`;
     })
     .join('')}</div>`;
@@ -168,10 +169,11 @@ function rankRowHTML(rows: Array<{ name: string; meta: string; sub?: string }>):
 
 /** 环比文案：上期 0 时不显示百分比（除以 0 只会得到「+∞」这种没有意义的东西）；unit 区分周/月 */
 function deltaText(cur: number, prev: number, unit = '周'): string {
-  if (prev <= 0) return `上${unit}无记录，暂无环比`;
+  const u = unit === '月' ? t('stats.monthUnit') : t('stats.weekUnit');
+  if (prev <= 0) return t('stats.noDelta', { unit: u });
   const d = Math.round(((cur - prev) / prev) * 100);
-  if (d === 0) return `与上${unit}持平`;
-  return `环比 ${d > 0 ? '+' : ''}${d}%`;
+  if (d === 0) return t('stats.flat', { unit: u });
+  return t('stats.delta', { sign: d > 0 ? '+' : '', n: d, unit: u });
 }
 
 // ======================= 统计（内置页） =======================
@@ -240,12 +242,12 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   // 天数单列一张，两个口径都在，不会再看串。
   const cards = `
     <div class="stat-cards">
-      ${statCardHTML('总复习（次）', rich.reviews)}
-      ${statCardHTML('有复习的天数', rich.days)}
-      ${statCardHTML('连续天数', rich.streak)}
-      ${statCardHTML('今日复习', rich.today)}
-      ${statCardHTML('一次通过率', Math.round(rich.passRate * 100) + '%')}
-      ${statCardHTML('平均 R', rich.avgR === null ? '-' : Math.round(rich.avgR * 100) + '%')}
+      ${statCardHTML(t('stats.totalReviews'), rich.reviews)}
+      ${statCardHTML(t('stats.activeDays'), rich.days)}
+      ${statCardHTML(t('stats.streakDays'), rich.streak)}
+      ${statCardHTML(t('stats.todayReview'), rich.today)}
+      ${statCardHTML(t('stats.firstPass'), Math.round(rich.passRate * 100) + '%')}
+      ${statCardHTML(t('stats.avgR'), rich.avgR === null ? '-' : Math.round(rich.avgR * 100) + '%')}
     </div>`;
 
   // 拟合档位标注（issue 361；人话 + title 悬浮注解保留）：
@@ -254,32 +256,32 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   const fitChips = fit
     ? statInlineHTML([
         {
-          text: fit.full ? '记忆曲线：按你的记录定制' : '记忆曲线：简化版',
-          title: fit.full
-            ? '用全部 19 个记忆参数拟合你的复习记录，越用越贴合你的节奏'
-            : '先用 8 个核心参数拟合的简化版，复习记录攒够后会自动升级为完整定制',
+          text: fit.full ? t('stats.curveCustom') : t('stats.curveSimple'),
+          title: fit.full ? t('stats.curveCustomDesc') : t('stats.curveSimpleDesc'),
         },
-        `样本 ${fit.fitCount} 条`,
-        `拟合于 ${formatRelativeTime(new Date(fit.fitAt))}`,
+        t('stats.fitSamples', { n: fit.fitCount }),
+        t('stats.fitAt', { time: formatRelativeTime(new Date(fit.fitAt)) }),
       ])
-    : statInlineHTML([{ text: '记忆曲线：默认参数，复习积累后自动拟合', title: '复习记录攒够（约 100 条评级）后会自动拟合你的记忆曲线' }]);
+    : statInlineHTML([{ text: t('stats.curveDefault'), title: t('stats.curveDefaultDesc') }]);
 
   // 复习量对比（2026-11-16）：「动态抗遗忘省了多少」从形容词变成两个并排的数。
   // 只摆算术，不承诺效果——固定间隔不一定达到同样的记忆强度，所以文案只说次数。
   const cmp = compareReviewLoad(items);
   let compareHTML = '';
   if (cmp && cmp.notes >= 3) {
-    const savedTxt = cmp.saved >= 0 ? `少 ${cmp.saved} 次（${Math.round(cmp.percent * 100)}%）` : `多 ${-cmp.saved} 次`;
+    const savedTxt = cmp.saved >= 0
+      ? t('stats.savedTimes', { n: cmp.saved, pct: Math.round(cmp.percent * 100) })
+      : t('stats.moreTimes', { n: -cmp.saved });
     const hint =
       cmp.saved >= 0
-        ? `按 1/2/4/7/15/30/60/120 天的老办法，同样这些笔记、同样这些天，要复习 ${cmp.fixed} 次。参与对比 ${cmp.notes} 条，跨度最长的一条已经撑了 ${cmp.spanDays} 天。`
-        : `比老办法多出来的部分，通常是提前复习或答错重来——这些都会让下一次间隔更准。参与对比 ${cmp.notes} 条。`;
+        ? t('stats.compareSavedNote', { fixed: cmp.fixed, notes: cmp.notes, days: cmp.spanDays })
+        : t('stats.compareMoreNote', { notes: cmp.notes });
     compareHTML = sectionHTML(
-      '复习量对比',
+      t('stats.compare'),
       'trending-down',
       statInlineHTML([
-        { text: `实际 ${cmp.actual} 次`, title: '这套排期实际让你复习的条次（同一天复习多次算一次）' },
-        { text: `固定间隔 ${cmp.fixed} 次`, title: '同样的笔记、同样的时间跨度，按固定间隔复习法要复习的条次' },
+        { text: t('stats.actualTimes', { n: cmp.actual }), title: t('stats.actualDesc') },
+        { text: t('stats.fixedTimes', { n: cmp.fixed }), title: t('stats.fixedDesc') },
         { text: savedTxt },
       ]) + `<div class="bzrv-stats-hint">${esc(hint)}</div>`,
     );
@@ -288,24 +290,24 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   // 评级分布（soft-row 软条 + 评级色数据驱动）
   const ratingSum = Object.values(stats.ratingDist).reduce((a, b) => a + b, 0);
   const ratingBars = (['again', 'hard', 'good', 'easy'] as const).map((r) => ({
-    label: RATING_NAMES[r],
+    label: ratingName(r),
     value: stats.ratingDist[r] || 0,
     color: RATING_COLORS[r] || '#D6E4FF',
   }));
-  const ratingHTML = sectionHTML('评级分布', 'gauge',
+  const ratingHTML = sectionHTML(t('stats.ratingDist'), 'gauge',
     ratingBars.map((e) => softRowHTML([e], e.color)).join('') +
-    statInlineHTML([ratingSum ? `共 ${ratingSum} 次评级` : '暂无评级记录']));
+    statInlineHTML([ratingSum ? t('stats.ratingSum', { n: ratingSum }) : t('stats.ratingEmpty')]));
 
   // 复习负载：未来 30 天迷你柱 + 逾期分档（14 天横条看不清「哪天砸下来」）
   const loadTotal = rich.load.reduce((a, b) => a + b, 0);
-  const loadHTML = sectionHTML('到期与逾期', 'calendar-days',
+  const loadHTML = sectionHTML(t('stats.dueSection'), 'calendar-days',
     statInlineHTML([
-      `今日 ${rich.load[0]} 条`,
-      `明日 ${rich.load[1]} 条`,
-      `未来 30 天 ${loadTotal} 条`,
-      `挂起 ${rich.suspended} 条`,
+      t('stats.todayN', { n: rich.load[0] }),
+      t('stats.tomorrowN', { n: rich.load[1] }),
+      t('stats.future30', { n: loadTotal }),
+      t('stats.suspendedN', { n: rich.suspended }),
     ]) +
-    stripHTML(rich.load, rich.load.map((_, i) => (i === 0 ? '今' : i % 7 === 0 ? `+${i}` : null))) +
+    stripHTML(rich.load, rich.load.map((_, i) => (i === 0 ? t('stats.todayShort') : i % 7 === 0 ? `+${i}` : null))) +
     barRowHTML(rich.overdue.filter((o) => o.n > 0).map((o) => ({ label: o.label, value: o.n }))));
 
   // 复习时间线（top-row 排名行，点行/Enter → 独立复习历史弹窗）
@@ -322,33 +324,33 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
     const cnt = h.length;
     return {
       name: stripTitleMarks(i.name),
-      sub: `${cnt} 次`,
+      sub: t('stats.timesN', { n: cnt }),
       meta: lastTs ? formatRelativeTime(new Date(lastTs)) : '',
     };
   });
-  const timelineHTML = sectionHTML('复习时间线', 'history',
-    rankListHTML(tlItems) + '<div class="bzrv-stats-hint">点击笔记查看复习历史</div>');
+  const timelineHTML = sectionHTML(t('stats.timeline'), 'history',
+    rankListHTML(tlItems) + `<div class="bzrv-stats-hint">${t('stats.timelineHint')}</div>`);
 
   // 最近 7 天（bar-row 水平条）
   const daily7 = stats.daily7.map((d) => ({ label: d.date.slice(5).replace('-', '/'), value: d.count }));
-  const weekHTML = sectionHTML('最近 7 天复习量', 'bar-chart-3', barRowHTML(daily7));
+  const weekHTML = sectionHTML(t('stats.last7'), 'bar-chart-3', barRowHTML(daily7));
 
   /* ── 加厚层 ──
      全部由 stats-rich 一次算完，这里只排版。口径与上面 6 张卡同一份数据，
      页面里不会出现「卡片说 100 次、下面说 97 次」这种自己打自己。 */
 
-  const ledgerHTML = sectionHTML('复习量账本', 'sigma', statInlineHTML([
-    `今日 ${rich.today} 次`,
-    `本周 ${rich.weekCur} 次`,
-    { text: deltaText(rich.weekCur, rich.weekPrev), title: `上周 ${rich.weekPrev} 次` },
-    `本月 ${rich.monthCur} 次`,
-    { text: deltaText(rich.monthCur, rich.monthPrev, '月'), title: `上月 ${rich.monthPrev} 次` },
-    `今年 ${rich.yearCur} 次`,
-    `累计 ${rich.reviews} 次`,
-    `活跃日均 ${rich.perActiveDay.toFixed(1)} 次`,
+  const ledgerHTML = sectionHTML(t('stats.ledger'), 'sigma', statInlineHTML([
+    t('stats.todayTimes', { n: rich.today }),
+    t('stats.weekCur', { n: rich.weekCur }),
+    { text: deltaText(rich.weekCur, rich.weekPrev), title: t('stats.weekPrev', { n: rich.weekPrev }) },
+    t('stats.monthCur', { n: rich.monthCur }),
+    { text: deltaText(rich.monthCur, rich.monthPrev, '月'), title: t('stats.monthPrev', { n: rich.monthPrev }) },
+    t('stats.yearCurTimes', { n: rich.yearCur }),
+    t('stats.totalTimes', { n: rich.reviews }),
+    t('stats.perActiveDay', { n: rich.perActiveDay.toFixed(1) }),
     {
-      text: `单日峰值 ${rich.bestDay ? `${rich.bestDay.count} 次` : '-'}`,
-      title: rich.bestDay ? `${shortDate(rich.bestDay.date)} 那天` : '',
+      text: t('stats.peakDay', { value: rich.bestDay ? t('stats.timesN', { n: rich.bestDay.count }) : '-' }),
+      title: rich.bestDay ? t('stats.bestDay', { date: shortDate(rich.bestDay.date) }) : '',
     },
   ]));
 
@@ -356,78 +358,79 @@ function buildStatsHTML(app: App, dm: ReviewDataManager, items: ReviewItem[], st
   const peakHour = hoursTotal > 0 ? rich.hours.indexOf(Math.max(...rich.hours)) : null;
   const workday = rich.weekdays.slice(0, 5).reduce((a, b) => a + b, 0);
   const weekend = rich.weekdays.slice(5).reduce((a, b) => a + b, 0);
-  const rhythmHTML = sectionHTML('复习节律', 'clock',
+  const weekdayLabels = locale() === 'zh' ? ['一', '二', '三', '四', '五', '六', '日'] : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const rhythmHTML = sectionHTML(t('stats.rhythm'), 'clock',
     statInlineHTML([
-      peakHour === null ? '最集中的时段 —' : `最集中的时段 ${peakHour}:00-${peakHour + 1}:00`,
-      `工作日 ${workday} 次`,
-      `周末 ${weekend} 次`,
+      peakHour === null ? t('stats.peakNone') : t('stats.peakHour', { from: peakHour, to: peakHour + 1 }),
+      t('stats.workday', { n: workday }),
+      t('stats.weekend', { n: weekend }),
     ]) +
-    '<div class="sub-h">一天 24 小时</div>' +
+    `<div class="sub-h">${t('stats.hours24')}</div>` +
     stripHTML(rich.hours, rich.hours.map((_, i) => ([0, 6, 12, 18, 23].includes(i) ? String(i) : null))) +
-    '<div class="sub-h">一周</div>' +
-    barRowHTML(['一', '二', '三', '四', '五', '六', '日'].map((l, i) => ({ label: l, value: rich.weekdays[i] }))) +
-    '<div class="sub-h">今年各月</div>' +
+    `<div class="sub-h">${t('stats.weekHead')}</div>` +
+    barRowHTML(weekdayLabels.map((l, i) => ({ label: l, value: rich.weekdays[i] }))) +
+    `<div class="sub-h">${t('stats.monthsHead')}</div>` +
     stripHTML(rich.months, rich.months.map((_, i) => String(i + 1))) +
     statInlineHTML([
-      `今年 ${rich.yearCur} 次`,
-      `去年 ${rich.monthsPrevYear.reduce((a, b) => a + b, 0)} 次`,
+      t('stats.yearCurTimes', { n: rich.yearCur }),
+      t('stats.yearPrevTimes', { n: rich.monthsPrevYear.reduce((a, b) => a + b, 0) }),
     ]));
 
-  const streakHTML = sectionHTML('连续与活跃', 'flame',
+  const streakHTML = sectionHTML(t('stats.streakSection'), 'flame',
     statInlineHTML([
-      `当前连续 ${rich.streak} 天`,
-      `历史最长 ${rich.bestStreak} 天`,
-      `最长断更 ${rich.gap} 天`,
-      `活跃 ${rich.days} 天`,
+      t('stats.currentStreak', { n: rich.streak }),
+      t('stats.bestStreak', { n: rich.bestStreak }),
+      t('stats.longestGap', { n: rich.gap }),
+      t('stats.activeDaysN', { n: rich.days }),
     ]) +
     heatHTML(rich.heat) +
-    '<div class="bzrv-stats-hint">近一年 · 每格一天，颜色越深复习越多</div>');
+    `<div class="bzrv-stats-hint">${t('stats.heatHint')}</div>`);
 
   const stageQ = rich.stageAgain.filter((s) => s.n > 0);
-  const stageHTML = sectionHTML('哪一段最容易被忘', 'trending-down',
+  const stageHTML = sectionHTML(t('stats.forgetSection'), 'trending-down',
     barRowHTML(stageQ.map((s) => ({ label: s.label, value: s.again }))) +
     statInlineHTML(stageQ.map(
-      (s) => `${s.label} 忘掉 ${Math.round((s.again / Math.max(1, s.n)) * 100)}%`,
+      (s) => t('stats.forgetRate', { label: s.label, pct: Math.round((s.again / Math.max(1, s.n)) * 100) }),
     )));
 
-  const memHTML = sectionHTML('记忆状态', 'brain',
+  const memHTML = sectionHTML(t('stats.memoryState'), 'brain',
     statInlineHTML([
-      `平均 R ${rich.avgR === null ? '-' : `${Math.round(rich.avgR * 100)}%`}`,
-      `S 中位数 ${rich.sMedian === null ? '-' : `${Math.round(rich.sMedian)} 天`}`,
-      `平均间隔 ${rich.avgInterval === null ? '-' : `${rich.avgInterval.toFixed(1)} 天`}`,
-      `新卡 ${rich.phase.ladder} 条`,
-      `FSRS ${rich.phase.fsrs} 条`,
+      t('stats.avgRValue', { value: rich.avgR === null ? '-' : `${Math.round(rich.avgR * 100)}%` }),
+      t('stats.sMedianValue', { value: rich.sMedian === null ? '-' : `${Math.round(rich.sMedian)}` }),
+      t('stats.avgIntervalValue', { value: rich.avgInterval === null ? '-' : rich.avgInterval.toFixed(1) }),
+      t('stats.newCardsN', { n: rich.phase.ladder }),
+      t('stats.fsrsN', { n: rich.phase.fsrs }),
     ]) +
     barRowHTML(['0-20%', '20-40%', '40-60%', '60-80%', '80-100%'].map((l, i) => ({
       label: l,
       value: rich.rBuckets[i],
     }))) +
-    '<div class="sub-h">最稳的 5 条</div>' +
+    `<div class="sub-h">${t('stats.stablest')}</div>` +
     rankRowHTML(rich.strongest.map((s) => ({
       name: stripTitleMarks(s.name),
-      meta: `S ${Math.round(s.s)} 天`,
+      meta: t('stats.sDays', { n: Math.round(s.s) }),
     }))) +
-    '<div class="sub-h">最容易忘的 5 条</div>' +
+    `<div class="sub-h">${t('stats.mostForgotten')}</div>` +
     rankRowHTML(rich.weakest.map((s) => ({
       name: stripTitleMarks(s.name),
-      meta: `S ${Math.round(s.s)} 天`,
+      meta: t('stats.sDays', { n: Math.round(s.s) }),
     }))));
 
-  const kindHTML = sectionHTML('内容构成', 'layers',
+  const kindHTML = sectionHTML(t('stats.contentMix'), 'layers',
     statInlineHTML([
-      `笔记 ${rich.kinds.note} 条`,
-      `划线卡 ${rich.kinds.card} 条`,
+      t('stats.noteN', { n: rich.kinds.note }),
+      t('stats.cardN', { n: rich.kinds.card }),
     ]) +
     barRowHTML([
-      { label: '笔记', value: rich.kinds.noteReviews },
-      { label: '划线卡', value: rich.kinds.cardReviews },
+      { label: t('tag.kind.note'), value: rich.kinds.noteReviews },
+      { label: t('tag.kind.highlight'), value: rich.kinds.cardReviews },
     ]) +
-    '<div class="sub-h">阶段分布</div>' +
+    `<div class="sub-h">${t('stats.phaseDist')}</div>` +
     barRowHTML(rich.stages.filter((s) => s.n > 0).map((s) => ({ label: s.label, value: s.n }))));
 
-  const topHTML = sectionHTML('复习次数排行', 'list-ordered',
-    rankRowHTML(rich.top.map((t) => ({ name: stripTitleMarks(t.name), meta: `${t.n} 次` }))) +
-    '<div class="bzrv-stats-hint">上面的「复习时间线」点一条，可看它的完整历史</div>');
+  const topHTML = sectionHTML(t('stats.rankByReviews'), 'list-ordered',
+    rankRowHTML(rich.top.map((it) => ({ name: stripTitleMarks(it.name), meta: t('stats.timesN', { n: it.n }) }))) +
+    `<div class="bzrv-stats-hint">${t('stats.rankHint')}</div>`);
 
   /* 徽章墙不在这里：它有自己的「成就」页，统计页只管统计 */
 
@@ -445,8 +448,8 @@ export function paintAchievementsInto(body: HTMLElement, items: ReviewItem[], w?
   const rich = computeRichStats(items, { w });
   const got = rich.badges.filter((b) => b.got).length;
   setMarkup(body,
-    `<div class="achv-head">已解锁 <b>${got}</b> / ${rich.badges.length} 枚 · 全部按当前记录实时算，清空数据也不会留下空徽章</div>` +
-    sectionHTML('成就', 'trophy', badgesHTML(rich.badges)));
+    `<div class="achv-head">${t('stats.achvHead', { got, total: rich.badges.length })}</div>` +
+    sectionHTML(t('stats.achvTitle'), 'trophy', badgesHTML(rich.badges)));
   mountIcons(body);
   motionStats(body);
 }
@@ -497,17 +500,17 @@ export async function showTimeline(app: App, dm: ReviewDataManager, item: Review
   const stageText = stageNum(item);
   // A7：R 公式单源 fsrs.currentR（权重=拟合 currentW 回退默认）
   const R = fsrsCurrentR(item, w || DEFAULT_W);
-  const curR = R === null ? null : ` · 当前 R ${Math.round(R * 100)}%`;
+  const curR = R === null ? null : t('stats.currentR', { pct: Math.round(R * 100) });
   setMarkup(status, `
     <div class="bzrv-review-history-name">${escapeHtml(stripTitleMarks(item.name))}</div>
-    <div class="bzrv-review-history-sub">${stageText} · 共 ${history.length} 次复习${curR || ''}</div>
+    <div class="bzrv-review-history-sub">${stageText} · ${t('stats.historyCount', { n: history.length })}${curR || ''}</div>
   `);
   body.appendChild(status);
 
   if (!history.length) {
     const empty = createDiv();
     empty.className = 'bzrv-review-history-empty';
-    empty.textContent = '完成一次复习后，这里会记下每次评级、留存率 r 和稳定性 s';
+    empty.textContent = t('stats.achvEmpty');
     body.appendChild(empty);
     histEsc = escManager.register('bzrv-review-history', { isVisible: () => !!histMask && histMask.style.display === 'block', close: closeTimeline });
     return;

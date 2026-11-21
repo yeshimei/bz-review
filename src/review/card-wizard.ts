@@ -21,6 +21,7 @@ import { Platform, type App } from 'obsidian';
 import { notice } from '../core/notice';
 import { uiModal } from '../core/ui/modal';
 import { getSettings, saveSettings } from '../core/settings-provider';
+import { t } from '../i18n';
 import { aiReadyOrGuide } from './ai-guide';
 import {
   generateCardContent,
@@ -102,9 +103,9 @@ interface ClozeEditState {
 }
 
 const STATE_LABEL: Record<WizardState, string> = {
-  new: '新增',
-  exists: '已在计划',
-  over: '超出上限',
+  new: t('wiz.new'),
+  exists: t('wiz.inPlan'),
+  over: t('wiz.overLimit'),
 };
 
 function srOnly(text: string): HTMLElement {
@@ -202,7 +203,7 @@ class CardWizard {
       list = (await this.opts.load!()) ?? [];
     } catch {
       if (this.closed) return;
-      this.errorText = '挑内容的时候出错了，稍后再试一次';
+      this.errorText = t('wiz.pickError');
       this.step = 'empty';
       this.render();
       return;
@@ -301,10 +302,10 @@ class CardWizard {
   }
 
   private titleOf(): string {
-    if (this.step === 'edit') return '确认题面';
-    if (this.step === 'empty') return '没有可加入的内容';
-    if (this.step === 'loading') return '正在挑内容';
-    return '选一种复习方式';
+    if (this.step === 'edit') return t('wiz.confirmTitle');
+    if (this.step === 'empty') return t('wiz.nothing');
+    if (this.step === 'loading') return t('wiz.picking');
+    return t('wiz.chooseMode');
   }
 
   private renderHead(): HTMLElement {
@@ -312,7 +313,7 @@ class CardWizard {
     head.createDiv({ cls: 'bzrv-wiz-title', text: this.titleOf() });
     const x = head.createEl('button', { cls: 'bzrv-wiz-x' });
     x.type = 'button';
-    x.appendChild(srOnly('关闭'));
+    x.appendChild(srOnly(t('common.close')));
     x.createSpan({ text: '✕' });
     x.addEventListener('click', () => this.close());
     return head;
@@ -329,20 +330,20 @@ class CardWizard {
     };
 
     if (this.step === 'loading') {
-      add('取消', false, () => this.close());
+      add(t('common.cancel'), false, () => this.close());
       return foot;
     }
     if (this.step === 'empty') {
-      add('关闭', true, () => this.close());
+      add(t('common.close'), true, () => this.close());
       return foot;
     }
     if (this.step === 'pick') {
-      add('取消', false, () => this.close());
-      add('下一步', true, () => void this.beginGeneration(), this.busy);
+      add(t('common.cancel'), false, () => this.close());
+      add(t('wiz.next'), true, () => void this.beginGeneration(), this.busy);
       return foot;
     }
 
-    add('返回', false, () => {
+    add(t('wiz.back'), false, () => {
       if (this.busy) return;
       this.step = 'pick';
       this.presetMode = null;
@@ -352,26 +353,26 @@ class CardWizard {
       this.render();
     }, this.busy);
     const n = this.drafts.length;
-    add(`确认加入（${n} 张）`, true, () => void this.submit(), this.busy || !n);
+    add(t('wiz.addN', { n }), true, () => void this.submit(), this.busy || !n);
     return foot;
   }
 
   private renderLoading(body: HTMLElement): void {
-    body.createEl('p', { cls: 'bzrv-wiz-lead', text: 'AI 挑完就在这一页选复习方式，不用再开一个窗口。' });
+    body.createEl('p', { cls: 'bzrv-wiz-lead', text: t('wiz.pickHint') });
     const row = body.createDiv({ cls: 'bzrv-wiz-loading' });
     row.createDiv({ cls: 'bzrv-wiz-spinner' });
-    row.createSpan({ text: this.opts.loadingText || '正在挑要加入的内容…' });
+    row.createSpan({ text: this.opts.loadingText || t('wiz.pickingBody') });
   }
 
   private renderPick(body: HTMLElement): void {
     body.createEl('p', {
       cls: 'bzrv-wiz-lead',
-      text: '选定方式后会先出一遍题面，确认之后才进复习计划。',
+      text: t('wiz.modeHint'),
     });
     if (this.skipped > 0) {
       body.createDiv({
         cls: 'bzrv-wiz-note',
-        text: `其中 ${this.skipped} 条已经在复习计划里，已跳过，不会重复加入。`,
+        text: t('wiz.skippedN', { n: this.skipped }),
       });
     }
 
@@ -387,20 +388,20 @@ class CardWizard {
     box.checked = this.remember;
     box.addEventListener('change', () => { this.remember = box.checked; });
     const text = remember.createDiv({ cls: 'bzrv-wiz-remember-text' });
-    text.createEl('b', { text: '以后都用这个方式，不再出现这一屏' });
-    text.createEl('small', { text: '想改回来，去设置里的「新卡默认方式」改回「每次问我」。' });
+    text.createEl('b', { text: t('wiz.rememberMode') });
+    text.createEl('small', { text: t('wiz.rememberHint') });
   }
 
   private renderEmpty(body: HTMLElement): void {
     const text = this.errorText
       || (this.skipped > 0
-        ? `这 ${this.skipped} 条都已经在复习计划里，不会重复加入。`
-        : '没有可加入的内容——先划几笔，或换一段试试。');
+        ? t('wiz.allSkipped', { n: this.skipped })
+        : t('wiz.nothingHint'));
     body.createEl('p', { cls: 'bzrv-wiz-lead', text });
   }
 
   private renderEdit(body: HTMLElement): void {
-    body.createEl('p', { cls: 'bzrv-wiz-lead', text: '题面确认后才进复习计划，之后按它复习。' });
+    body.createEl('p', { cls: 'bzrv-wiz-lead', text: t('wiz.confirmHint') });
     if (this.presetMode && this.step === 'edit') {
       body.createDiv({
         cls: 'bzrv-wiz-note',
@@ -442,7 +443,7 @@ class CardWizard {
   }
 
   private progressText(): string {
-    return `正在出题（${this.genDone}/${Math.max(1, this.sources.length)}）`;
+    return t('wiz.generating', { done: this.genDone, total: Math.max(1, this.sources.length) });
   }
 
   /* ── 单张卡 ───────────────────────────────────────────── */
@@ -464,7 +465,7 @@ class CardWizard {
     if (d.aiFailed) {
       box.createDiv({
         cls: 'bzrv-wiz-note is-warn',
-        text: '这张 AI 没生成出来，先用本地兜底出了一版。点下面「重新生成」再试一次。',
+        text: t('wiz.fallback'),
       });
     }
 
@@ -475,7 +476,7 @@ class CardWizard {
       );
       const busy = body.createDiv({ cls: 'bzrv-wiz-row-busy' });
       busy.createDiv({ cls: 'bzrv-wiz-spinner' });
-      busy.createSpan({ text: '正在重新生成这一张…' });
+      busy.createSpan({ text: t('wiz.regenerating') });
       return box;
     }
 
@@ -483,33 +484,33 @@ class CardWizard {
       body.createEl('p', { cls: 'bzrv-wiz-src', text: d.text });
     } else if (d.mode === 'flashcard') {
       const field = body.createDiv({ cls: 'bzrv-wiz-field' });
-      field.createSpan({ cls: 'bzrv-wiz-label', text: '标题' });
+      field.createSpan({ cls: 'bzrv-wiz-label', text: t('wiz.fieldTitle') });
       const input = field.createEl('input', { cls: 'bzrv-wiz-input' });
       input.type = 'text';
       input.value = d.front;
-      input.placeholder = '正面提醒';
+      input.placeholder = t('wiz.fieldFront');
       input.addEventListener('input', () => { d.front = input.value; });
       const back = body.createDiv({ cls: 'bzrv-wiz-field' });
-      back.createSpan({ cls: 'bzrv-wiz-label', text: '正文' }).append(srOnly('只读'));
+      back.createSpan({ cls: 'bzrv-wiz-label', text: t('wiz.fieldBody') }).append(srOnly(t('wiz.readonly')));
       back.createDiv({ cls: 'bzrv-wiz-src', text: d.text });
     } else if (d.mode === 'quiz') {
       const field = body.createDiv({ cls: 'bzrv-wiz-field' });
-      field.createSpan({ cls: 'bzrv-wiz-label', text: '标题' });
+      field.createSpan({ cls: 'bzrv-wiz-label', text: t('wiz.fieldTitle') });
       const input = field.createEl('input', { cls: 'bzrv-wiz-input' });
       input.type = 'text';
       input.value = d.title;
-      input.placeholder = '这批题的标题';
+      input.placeholder = t('wiz.batchTitle');
       input.addEventListener('input', () => { d.title = input.value; });
 
       const qs = body.createDiv({ cls: 'bzrv-wiz-qs' });
       if (!d.questions.length && this.fillIndex !== i) {
-        qs.createEl('p', { cls: 'bzrv-wiz-empty', text: '没出到题，点「补一道题」或「重新生成」。' });
+        qs.createEl('p', { cls: 'bzrv-wiz-empty', text: t('wiz.noQuestion') });
       }
       d.questions.forEach((q, qi) => qs.appendChild(this.renderQuestion(d, qi, q)));
       if (this.fillIndex === i) {
         const busy = qs.createDiv({ cls: 'bzrv-wiz-row-busy' });
         busy.createDiv({ cls: 'bzrv-wiz-spinner' });
-        busy.createSpan({ text: '正在补一道题…' });
+        busy.createSpan({ text: t('wiz.addingQuestion') });
       }
       if (this.pendingScrollKey === d.key) qs.lastElementChild?.setAttr('data-newq', '1');
     } else {
@@ -526,7 +527,7 @@ class CardWizard {
     head.createSpan({ cls: 'bzrv-wiz-q-no', text: String(qi + 1) });
     const del = head.createEl('button', { cls: 'bzrv-wiz-q-del' });
     del.type = 'button';
-    del.appendChild(srOnly('删掉这题'));
+    del.appendChild(srOnly(t('wiz.deleteQuestion')));
     del.createSpan({ text: '✕' });
     del.disabled = this.busy;
     del.addEventListener('click', () => {
@@ -555,12 +556,12 @@ class CardWizard {
     if (!d) return;
     const bar = body.createDiv({ cls: 'bzrv-wiz-tools' });
     if (d.mode === 'quiz') {
-      const add = bar.createEl('button', { cls: 'bzrv-wiz-mini', text: '补一道题' });
+      const add = bar.createEl('button', { cls: 'bzrv-wiz-mini', text: t('wiz.addQuestion') });
       add.type = 'button';
       add.disabled = this.busy;
       add.addEventListener('click', () => void this.fillOne(i));
     }
-    const regen = bar.createEl('button', { cls: 'bzrv-wiz-mini', text: '重新生成' });
+    const regen = bar.createEl('button', { cls: 'bzrv-wiz-mini', text: t('wiz.regenerate') });
     regen.type = 'button';
     regen.disabled = this.busy;
     regen.addEventListener('click', () => void this.regenOne(i));
@@ -590,21 +591,21 @@ class CardWizard {
     const box = createDiv({ cls: 'bzrv-wiz-cloze' });
 
     const bar = box.createDiv({ cls: 'bzrv-wiz-cloze-bar' });
-    bar.createSpan({ cls: 'bzrv-wiz-count', text: `已挖 ${st.spans.length} 处` });
+    bar.createSpan({ cls: 'bzrv-wiz-count', text: t('wiz.clozeCount', { n: st.spans.length }) });
     bar.createSpan({ cls: 'bzrv-wiz-grow' });
     const mini = (label: string, fn: () => void): void => {
       const b = bar.createEl('button', { cls: 'bzrv-wiz-mini', text: label });
       b.type = 'button';
       b.addEventListener('click', fn);
     };
-    mini('撤销', () => this.clozeUndo(d));
-    mini('清空', () => {
+    mini(t('wiz.undo'), () => this.clozeUndo(d));
+    mini(t('wiz.clear'), () => {
       if (!st.spans.length) return;
       st.history.push(JSON.stringify(st.spans));
       st.spans = [];
       this.render();
     });
-    mini(st.preview ? '回到编辑' : '看复习时的样子', () => {
+    mini(st.preview ? t('wiz.backToEdit') : t('wiz.preview'), () => {
       st.preview = !st.preview;
       this.render();
     });
@@ -636,8 +637,8 @@ class CardWizard {
       box.createEl('p', {
         cls: 'bzrv-wiz-hint',
         text: st.preview
-          ? '复习时长这样：空位藏起来，只留下划线让你回忆。'
-          : '用鼠标拖选要挖掉的文字；拖选（或点一下）紫色空位就能还原。',
+          ? t('wiz.previewHint')
+          : t('wiz.clozeHint'),
       });
     }
     if (st.msg) box.createDiv({ cls: 'bzrv-wiz-note', text: st.msg });
@@ -704,7 +705,7 @@ class CardWizard {
         if (window.getSelection()?.toString()) return;
         st.history.push(JSON.stringify(st.spans));
         st.spans = removeSpan(st.spans, gs, ge);
-        st.msg = '已还原';
+        st.msg = t('wiz.restored');
         this.render();
       });
     }
@@ -721,10 +722,10 @@ class CardWizard {
   private paintWordPicker(d: WizardDraft, st: ClozeEditState, box: HTMLElement): void {
     const wrap = box.createDiv({ cls: 'bzrv-wiz-picker' });
     const bar = wrap.createDiv({ cls: 'bzrv-wiz-picker-bar' });
-    bar.createSpan({ cls: 'bzrv-wiz-picker-label', text: '点词挖空（再点一次取消）' });
+    bar.createSpan({ cls: 'bzrv-wiz-picker-label', text: t('wiz.tapWord') });
     const grain = bar.createEl('button', {
       cls: 'bzrv-wiz-mini',
-      text: st.granularity === 'char' ? '按词切' : '按字切',
+      text: st.granularity === 'char' ? t('wiz.byWord') : t('wiz.byChar'),
     });
     grain.type = 'button';
     grain.addEventListener('click', () => {
@@ -747,7 +748,7 @@ class CardWizard {
           text: token.text,
         });
         chip.type = 'button';
-        if (on) chip.appendChild(createSpan({ cls: 'bzrv-sr-only', text: '已挖空' }));
+        if (on) chip.appendChild(createSpan({ cls: 'bzrv-sr-only', text: t('wiz.clozeDone') }));
         chip.addEventListener('click', () => this.toggleChip(d, st, start, end));
       }
       base += text.length + 1;
@@ -805,8 +806,8 @@ class CardWizard {
     const res = addSpan(st.plain, st.spans, start, end);
     if (res.action === 'rejected') {
       st.msg = res.reason === 'visible'
-        ? '再挖下去就没有提示了，留一点原文'
-        : '这段没有可挖的文字';
+        ? t('wiz.keepHint')
+        : t('wiz.noText');
       this.render();
       return;
     }
@@ -834,16 +835,16 @@ class CardWizard {
     const res = addSpan(st.plain, st.spans, start, end);
     if (res.action === 'rejected') {
       st.msg = res.reason === 'tooLong'
-        ? '一次挖太长了，挑一个关键词就好'
+        ? t('wiz.tooLong')
         : res.reason === 'visible'
-          ? '再挖下去就没有提示了，留一点原文'
-          : '这段没有可挖的文字';
+          ? t('wiz.keepHint')
+          : t('wiz.noText');
       this.render();
       return;
     }
     st.history.push(JSON.stringify(st.spans));
     st.spans = res.spans;
-    st.msg = res.action === 'removed' ? `已还原 ${res.count ?? 1} 处` : '';
+    st.msg = res.action === 'removed' ? t('wiz.restoredN', { n: res.count ?? 1 }) : '';
     this.render();
   }
 
@@ -872,7 +873,7 @@ class CardWizard {
     const prev = st.history.pop();
     if (!prev) return;
     st.spans = JSON.parse(prev) as ClozeSpan[];
-    st.msg = '已撤销';
+    st.msg = t('wiz.undone');
     this.render();
   }
 
@@ -888,7 +889,7 @@ class CardWizard {
       settings.reviewCardDefaultMethod = this.mode;
       await saveSettings().catch(() => undefined);
     }
-    if (modeNeedsAI(this.mode) && !(await aiReadyOrGuide('制卡要用 AI'))) return;
+    if (modeNeedsAI(this.mode) && !(await aiReadyOrGuide(t('wiz.needAi')))) return;
     await this.generateAll();
   }
 
@@ -1028,13 +1029,13 @@ class CardWizard {
     if (this.cancelled) return;
     if (!q) {
       this.render();
-      notice('这次没补出题来，待会儿再试', 'warning');
+      notice(t('wiz.retryLater'), 'warning');
       return;
     }
     const flat = (s: string): string => s.replace(/\s+/g, '');
     if (d.questions.some((x) => flat(x.question) === flat(q.question))) {
       this.render();
-      notice('这道题已经有了', 'info');
+      notice(t('wiz.duplicate'), 'info');
       return;
     }
     d.questions.push(q);
@@ -1059,7 +1060,7 @@ class CardWizard {
       if (d.mode !== 'cloze') continue;
       const st = this.clozeState(d);
       const cloze = rangesToCloze(st.plain, st.spans);
-      if (!cloze.blanks.length) return '挖空卡还没有空位：在原文上拖选一段就能挖。';
+      if (!cloze.blanks.length) return t('wiz.clozeEmpty');
     }
     return null;
   }
@@ -1073,7 +1074,7 @@ class CardWizard {
     }
     const fresh = this.drafts.filter((_, i) => this.states[i] !== 'exists');
     if (!fresh.length) {
-      notice('这些内容都已经在复习计划里了', 'info');
+      notice(t('wiz.allInPlan'), 'info');
       this.close();
       return;
     }
@@ -1091,7 +1092,7 @@ class CardWizard {
       const res = await this.host.addCards(fresh.map(draftToInput));
       /* 所有入口共用同一句结果话术（2026-11-21 统一流程）：
          别再每个入口各写一套「已在复习中」「加了 0 条」的说法。 */
-      notice(addSummaryText(res, '张'), addHappened(res) ? 'success' : 'warning');
+      notice(addSummaryText(res, t('wiz.sheet')), addHappened(res) ? 'success' : 'warning');
       try {
         this.opts.onAdded?.(res);
       } catch {
@@ -1099,7 +1100,7 @@ class CardWizard {
       }
       this.close();
     } catch {
-      notice('加入复习失败，稍后再试一次', 'error');
+      notice(t('wiz.addFailed'), 'error');
       this.busy = false;
       this.render();
     }

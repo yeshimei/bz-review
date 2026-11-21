@@ -41,6 +41,7 @@ import { markOwned } from '../core/scope';
 import { diskPathStat } from '../core/storage';
 import { REVIEW_VIEW_TYPE } from './panel-mode';
 import { stripRuntime } from './store-format';
+import { t } from '../i18n';
 
 /** item 5：普通复习离篇宽限期（ms）——持续离篇超过此时长才算中断；测试可注入 */
 export let REVIEW_AWAY_GRACE_MS = 120000;
@@ -75,7 +76,7 @@ let quizAiWarned = false;
 function warnQuizAiOnce(): void {
   if (quizAiWarned) return;
   quizAiWarned = true;
-  notify('没配 AI，这次按普通复习走（设置 → 复习 → AI 里可配）', {
+  notify(t('app.noAi'), {
     type: 'warning',
     dedupeKey: 'review-quiz-ai',
   });
@@ -85,7 +86,7 @@ function warnQuizAiOnce(): void {
  *  外层 catch 转人话 notice，防与真实写盘错误混淆 */
 export class ReviewGateRejected extends Error {
   constructor(public readonly waitMins: number) {
-    super(`还未到复习时间（${waitMins}分钟后）`);
+    super(t('app.notDueYet', { n: waitMins }));
     this.name = 'ReviewGateRejected';
   }
 }
@@ -221,11 +222,11 @@ export const reviewApp = {
         await saveFittedParams(app, meta);
         this._fitMeta = meta;
         this._fittedW = mergeFittedW(result.fit.w);
-        notice(`已根据 ${result.count} 条复习记录拟合记忆参数`, 'success');
+        notice(t('app.fitDone', { n: result.count }), 'success');
       }
       // 样本不足 → 静默保留默认（不提示）
     } catch (e) {
-      console.warn('复习参数拟合失败，回退默认:', e);
+      console.warn(t('app.fitFailed'), e);
     } finally {
       this._fitRunning = false;
     }
@@ -267,11 +268,11 @@ export const reviewApp = {
     const items = await dm.loadItems();
     const item = items.find((i) => i.filePath === filePath);
     if (!item) {
-      notice('条目不存在');
+      notice(t('app.itemGone'));
       return;
     }
     if (item.completed) {
-      notice('该笔记已完成全部复习');
+      notice(t('app.allDone'));
       return;
     }
 
@@ -381,9 +382,9 @@ export const reviewApp = {
 
     // 学习步骤期报分钟级短间隔；毕业报"完成学习"；FSRS 报动态间隔。
     if (decision.graduated) {
-      notifyUndo(`完成学习，下次复习：${formatInterval(fuzzedDays)}后`, undo, { type: 'success' });
+      notifyUndo(t('app.learned', { interval: formatInterval(fuzzedDays) }), undo, { type: 'success' });
     } else {
-      notifyUndo(`下次复习：${formatInterval(fuzzedDays)}后`, undo, { type: 'success' });
+      notifyUndo(t('app.nextReview', { interval: formatInterval(fuzzedDays) }), undo, { type: 'success' });
     }
     // ADR-0077：评级也累计拟合计数（含首次评级；样本过滤在 fit.ts 内做）。
     // fire-and-forget：计数在入口同步累加，拟合自防重入；不 await 避免大历史时卡评级路径
@@ -445,7 +446,7 @@ export const reviewApp = {
   async batchGenerateQuestions(items: ReviewItem[]): Promise<Record<string, QuizQuestion[]>> {
     const quiz = await this.getQuiz();
     if (!quiz || !quiz.ai || !(await aiReady())) {
-      console.warn('做题家未初始化（缺少 AI）');
+      console.warn(t('app.quizNotReady'));
       warnQuizAiOnce();
       return {};
     }
@@ -489,12 +490,12 @@ export const reviewApp = {
    *  不再无声忽略（forceQuiz 开的原路径会静默开第二个会话与普通轮并行），也不自动收旧轮。 */
   async startSingleSprint(item: ReviewItem): Promise<void> {
     if (this._reviewLoops.size > 0) {
-      notice('本轮复习进行中，先完成当前轮次再做单条');
+      notice(t('app.roundInProgress'));
       return;
     }
     const { uiManager } = await import('./index');
     if (uiManager?.inSprint) {
-      notice('本轮复习进行中，先完成当前轮次再做单条');
+      notice(t('app.roundInProgress'));
       return;
     }
     const app = getApp();
@@ -526,7 +527,7 @@ export const reviewApp = {
   async startRoundSprint(opts: { force?: boolean } = {}): Promise<void> {
     const { uiManager } = await import('./index');
     if (uiManager?.inSprint) {
-      notice('做题冲刺进行中，先结束当前会话再开始本轮');
+      notice(t('app.sprintInProgress'));
       return;
     }
     /* 暂停着还点「开始本轮」= 接着上一轮走。重开一轮会把断点白扔掉，用户看到的是
@@ -539,7 +540,7 @@ export const reviewApp = {
     this.ensure(app);
     await this.syncVacation();
     if (isOnVacation((getSettings()).reviewVacationUntil)) {
-      notice('休假中，先取消休假或等到期再复习');
+      notice(t('app.vacation'));
       return;
     }
     // 行为流（issue 261）：开始本轮复习入小橘行为流（review:started）
@@ -551,7 +552,7 @@ export const reviewApp = {
     if (!opts.force) {
       const hasOverdue = items.some((i) => i.isOverdue && !i.isCompleted && !i.completed && !i.isMissing);
       if (!hasOverdue) {
-        notice('没有逾期笔记，不能开始本轮复习');
+        notice(t('app.noOverdue'));
         return;
       }
     }
@@ -580,16 +581,16 @@ export const reviewApp = {
       ? items.filter((i) => !i.isCompleted && !i.completed && !i.isMissing)
       : roundQueue(items, rThreshold, this.currentW(), bury);
     if (!round.length) {
-      notice(opts.force ? '计划里还没有可复习的条目' : '没有逾期笔记', 'success');
+      notice(opts.force ? t('app.planEmpty') : t('app.noOverdueShort'), 'success');
       return;
     }
     if (opts.force) {
-      notice(`不限到期，本轮把 ${round.length} 条全部过一遍`, 'info');
+      notice(t('app.forceAll', { n: round.length }), 'info');
     }
     // item 9：纳入了「今日到期但时刻未到」的篇目 → 明确反馈
     const earlyToday = round.filter((i) => !i.isOverdue && !isEarlyDue(i, rThreshold, this.currentW()));
     if (earlyToday.length) {
-      notice(`今日到期 ${earlyToday.length} 条已提前纳入本轮`, 'info');
+      notice(t('app.earlyToday', { n: earlyToday.length }), 'info');
     }
     const s = getSettings();
     const dailyLimit = Number(s.reviewDailyLimit) || 0;
@@ -603,7 +604,7 @@ export const reviewApp = {
     });
     if (dailyLimit > 0) limited = limited.slice(0, dailyLimit);
     if (limited.length < round.length) {
-      notice(`本轮复习 ${limited.length} 条，剩余 ${round.length - limited.length} 条留到下次`, 'info');
+      notice(t('app.limitedRound', { n: limited.length, left: round.length - limited.length }), 'info');
     }
 
     /* 划线卡和笔记不是一个界面：卡片在自己的会话里复习，笔记要么跳转要么做题。
@@ -764,7 +765,7 @@ export const reviewApp = {
     // 防双 interval 并行翻篇竞态（悬浮条互覆、_reviewNotice/_pendingRound 单槽互覆）。
     // 正常翻篇递归前已 clearLoop，不受此守卫影响
     if (this._reviewLoops.size > 0) {
-      notice('本轮复习已在进行');
+      notice(t('app.roundRunning'));
       return;
     }
     const app = getApp();
@@ -775,10 +776,10 @@ export const reviewApp = {
       this.hideReviewBar();
       if (this._reviewNotice) {
         this._reviewNotice.setType('success');
-        this._reviewNotice.setMessage('所有逾期笔记已复习完成');
+        this._reviewNotice.setMessage(t('app.overdueDone'));
         this._reviewNotice = null;
       } else {
-        notice('所有逾期笔记已复习完成', 'success');
+        notice(t('app.overdueDone'), 'success');
       }
       return;
     }
@@ -824,7 +825,7 @@ export const reviewApp = {
       this._reviewNotice = null;
     } else {
       // 连续复习：常驻单框动态更新（同键存活时原地合并，不刷屏）
-      const reviewMsg = `复习中 (${index + 1}/${overdueNotes.length}): ${item.name}`;
+      const reviewMsg = t('app.reviewingOf', { index: index + 1, total: overdueNotes.length, name: item.name });
       // U9：复用前验活（对齐 _overdueNotice 先例）——progress 通知到期消失后旧句柄 setMessage
       // 是 no-op，不验活会让后续每篇的进度提示静默失效
       if (this._reviewNotice && this._reviewNotice.el?.isConnected) {
@@ -866,13 +867,13 @@ export const reviewApp = {
         this._pendingRound = { items: overdueNotes, index: index + 1 };
         const left = Math.max(0, overdueNotes.length - index - 1);
         if (this._reviewNotice) {
-          this._reviewNotice.setMessage(`已暂停，还剩 ${left} 条`);
+          this._reviewNotice.setMessage(t('app.pausedLeft', { n: left }));
           this._reviewNotice.setType('info');
           this._reviewNotice = null;
         }
-        notify(`已暂停本轮，还剩 ${left} 条`, {
+        notify(t('app.pausedRound', { n: left }), {
           type: 'info',
-          action: { label: '继续', onClick: () => void reviewApp.resumeRound() },
+          action: { label: t('app.resume'), onClick: () => void reviewApp.resumeRound() },
         });
         return;
       }
@@ -892,14 +893,14 @@ export const reviewApp = {
         clearLoop();
         // P1-2：本轮连续复习中断（保留 _pendingRound 供「继续本轮」断点续跑）
         if (this._reviewNotice) {
-          this._reviewNotice.setMessage('已离开当前笔记，本轮复习中断');
+          this._reviewNotice.setMessage(t('app.leftNote'));
           this._reviewNotice.setType('warning');
           this._reviewNotice = null;
         }
-        notify('已离开当前笔记，本轮复习中断', {
+        notify(t('app.leftNote'), {
           type: 'warning',
           dedupeKey: 'review-loop-interrupted',
-          action: { label: '继续本轮', onClick: () => void reviewApp.resumeRound() },
+          action: { label: t('app.resumeRound'), onClick: () => void reviewApp.resumeRound() },
         });
         return;
       }
@@ -910,16 +911,16 @@ export const reviewApp = {
         this.hideReviewBar();
         clearLoop();
         if (this._reviewNotice) {
-          this._reviewNotice.setMessage('复习超时，请手动继续');
+          this._reviewNotice.setMessage(t('app.timeout'));
           this._reviewNotice.setType('warning');
           this._reviewNotice = null;
         } else {
-          notice('复习超时，请手动继续', 'warning');
+          notice(t('app.timeout'), 'warning');
         }
-        notify('复习超时，可从断点继续本轮', {
+        notify(t('app.timeoutResume'), {
           type: 'info',
           dedupeKey: 'review-loop-timeout',
-          action: { label: '继续本轮', onClick: () => void reviewApp.resumeRound() },
+          action: { label: t('app.resumeRound'), onClick: () => void reviewApp.resumeRound() },
         });
         return;
       }
@@ -949,7 +950,7 @@ export const reviewApp = {
   resumeRound(): void {
     const r = this._pendingRound;
     if (!r) {
-      notice('没有进行中的本轮复习');
+      notice(t('app.noRound'));
       return;
     }
     this._roundPaused = false;
@@ -984,14 +985,14 @@ export const reviewApp = {
        再挂个点了没反应的「继续」，直接说结束。 */
     if (!r) {
       this._roundPaused = false;
-      notice('本轮已经结束了', 'info');
+      notice(t('app.roundEnded'), 'info');
       return;
     }
     const left = Math.max(0, r.items.length - r.index);
     // 提示条只是顺手给个入口；真正的恢复入口是面板「开始本轮」与「开始复习」命令
-    notify(`已暂停，还有 ${left} 条没看（点「开始本轮」接着走）`, {
+    notify(t('app.pausedUnseen', { n: left }), {
       type: 'info',
-      action: { label: '继续', onClick: () => void this.resumeRound() },
+      action: { label: t('app.resume'), onClick: () => void this.resumeRound() },
     });
   },
 
@@ -1010,11 +1011,11 @@ export const reviewApp = {
     if (!round.length) return;
     s.reviewRemindLast = dateKey(now);
     void saveSettings();
-    notify(`今天有 ${round.length} 条要复习`, {
+    notify(t('app.todayDue', { n: round.length }), {
       type: 'info',
       duration: 0,
       dedupeKey: 'review-daily-remind',
-      action: { label: '去复习', onClick: () => void this.startRoundSprint() },
+      action: { label: t('app.goReview'), onClick: () => void this.startRoundSprint() },
     });
   },
 
@@ -1036,7 +1037,7 @@ export const reviewApp = {
     live.reviewVacationUntil = '';
     live.reviewVacationFrom = '';
     void saveSettings();
-    notice(`休假结束，复习整体顺延 ${Math.round(shift / 86400000)} 天`, 'success');
+    notice(t('app.vacationEnded', { n: Math.round(shift / 86400000) }), 'success');
     if (shift > 0) {
       try {
         const { uiManager } = await import('./index');
@@ -1051,16 +1052,16 @@ export const reviewApp = {
   async undoLastRating(): Promise<boolean> {
     const last = this._undoStack.pop();
     if (!last) {
-      notice('没有可撤销的评级');
+      notice(t('app.nothingToUndo'));
       return false;
     }
     this.ensure(getApp());
     const ok = await this.dataManager!.restoreSnapshot(last.filePath, last.item);
     if (!ok) {
-      notice('这一条已经不在了，撤销不了', 'warning');
+      notice(t('app.itemGoneUndo'), 'warning');
       return false;
     }
-    notice('已撤销上一次评级', 'success');
+    notice(t('app.undone'), 'success');
     try {
       const { uiManager } = await import('./index');
       if (uiManager) void uiManager.refreshPanel().catch(() => undefined);
@@ -1260,12 +1261,12 @@ export const reviewApp = {
         // ticket 153：「去复习」不再只打开单篇（旧 ticket 58/修 #1 语义），
         // 而是走 autoJumpOverdue 完整复习流程（按 forceQuizForReview 分流做题/普通复习），
         // 通知名单仍只报 newly（diff 记忆语义保留，见上方过滤）。
-        const handle = notify(`有 ${overdueMap.size} 条待复习逾期`, {
+        const handle = notify(t('app.overdueNotice', { n: overdueMap.size }), {
           type: 'info',
           duration: 0, // 常驻不自动消失，靠点击「去复习」/本体收起
           dedupeKey: 'review-overdue-notice',
           action: {
-            label: '去复习', // action 文案不带 emoji（通知规范）
+            label: t('app.goReview'), // action 文案不带 emoji（通知规范）
             onClick: () => {
               // ticket 153：走统一开始复习流程（autoJumpOverdue 内按 forceQuizForReview 分流：
               // 开启 → 批量出题做题；关闭 → 普通复习跳转笔记），不再裸开最早逾期笔记
@@ -1295,7 +1296,7 @@ export const reviewApp = {
        认回那条常驻逾期通知直接摘掉；别的通知没有「去复习」按钮，不会误伤。 */
     if (typeof document === 'undefined') return;
     document.querySelectorAll<HTMLElement>('.bzrv-notice').forEach((el) => {
-      if (el.querySelector('.bzrv-notice-action')?.textContent === '去复习') el.remove();
+      if (el.querySelector('.bzrv-notice-action')?.textContent === t('app.goReview')) el.remove();
     });
   },
 

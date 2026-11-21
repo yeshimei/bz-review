@@ -27,6 +27,7 @@ import { resolveModelLimits } from './model-limits';
 import { toBase64 } from './crypto';
 import { DEFAULT_AI_PROVIDER, resolveProviderId } from './ai-provider-id';
 import { ensureReaderAi, ownAiConfigured } from './ai-share';
+import { locale, t } from '../i18n';
 
 export { DEFAULT_AI_PROVIDER };
 
@@ -98,7 +99,7 @@ interface QuickAddConfig {
 /** 从未知 rejection 原因安全取文案（throw 原因未必是 Error） */
 function errorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
-  return typeof e === 'string' ? e : '未知错误';
+  return typeof e === 'string' ? e : t('ai.error.unknown');
 }
 
 /** Promise rejection reason 归一为 Error（满足 prefer-promise-reject-errors，保留原 Error） */
@@ -112,8 +113,10 @@ function asError(e: unknown): Error {
 export interface AIThinkingLevel {
   /** 档位值（存设置 aiThinkingOverrides；跨 provider 复用同一词表 auto/off/low/medium/high/max） */
   value: string;
-  /** 设置面板展示名 */
+  /** 设置面板展示名（中文基准；界面渲染请优先取 labelKey） */
   label: string;
+  /** 展示名的文案 key（按当前语言出词） */
+  labelKey?: string;
   /** 该档位注入的请求体键值；null = 不注入 */
   body: Record<string, unknown> | null;
 }
@@ -135,12 +138,12 @@ export interface AIThinkingSpec {
 }
 
 /** 存档/注入共用的档位动词表（逐家档位表由此取项，避免各写一份字面量） */
-const THINK_AUTO: AIThinkingLevel = { value: 'auto', label: '跟随模型默认', body: null };
-const THINK_OFF: AIThinkingLevel = { value: 'off', label: '关闭（省 token）', body: null };
-const THINK_LOW: AIThinkingLevel = { value: 'low', label: '低', body: null };
-const THINK_MEDIUM: AIThinkingLevel = { value: 'medium', label: '中', body: null };
-const THINK_HIGH: AIThinkingLevel = { value: 'high', label: '高', body: null };
-const THINK_MAX: AIThinkingLevel = { value: 'max', label: '最高', body: null };
+const THINK_AUTO: AIThinkingLevel = { value: 'auto', label: '跟随模型默认', labelKey: 'ai.thinking.auto', body: null };
+const THINK_OFF: AIThinkingLevel = { value: 'off', label: '关闭（省 token）', labelKey: 'ai.thinking.off', body: null };
+const THINK_LOW: AIThinkingLevel = { value: 'low', label: '低', labelKey: 'ai.thinking.low', body: null };
+const THINK_MEDIUM: AIThinkingLevel = { value: 'medium', label: '中', labelKey: 'ai.thinking.mid', body: null };
+const THINK_HIGH: AIThinkingLevel = { value: 'high', label: '高', labelKey: 'ai.thinking.high', body: null };
+const THINK_MAX: AIThinkingLevel = { value: 'max', label: '最高', labelKey: 'ai.thinking.max', body: null };
 
 export interface AIProviderDescriptor {
   /** 注册表键（settings.aiProvider 取值） */
@@ -171,6 +174,12 @@ export interface AIProviderDescriptor {
   apiKeyLabel: string;
   /** 密钥行描述（设置页；约 20 字自然句，ticket 100 文案规范） */
   apiKeyDesc?: string;
+  /** 英文界面用的展示名（缺省回退中文 label；中文基准仍是 label） */
+  labelEn?: string;
+  /** 英文界面用的密钥行标题 */
+  apiKeyLabelEn?: string;
+  /** 英文界面用的密钥行描述 */
+  apiKeyDescEn?: string;
   /** 该 provider 的思考档位表（缺省 = 不注入任何思考参数；设置面板选项与请求注入同源） */
   thinking?: AIThinkingSpec;
 }
@@ -189,6 +198,8 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
   {
     id: 'deepseek',
     label: 'DeepSeek',
+
+    labelEn: 'DeepSeek',
     endpoint: 'https://api.deepseek.com',
     model: '', // 空 = 沿用调用方默认模型（原行为：deepseek 不强制模型）
     // 兜底 = 端点在售模型的官方最大档（2026-09-16 核对：上下文 1M / 最大输出 384K）；
@@ -198,7 +209,11 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
     maxOutputCap: 393216,
     apiKeyKey: 'deepseekApiKey',
     apiKeyLabel: 'DeepSeek 密钥',
+
+    apiKeyLabelEn: 'DeepSeek API key',
     apiKeyDesc: 'DeepSeek 官方的接口密钥',
+
+    apiKeyDescEn: 'API key for the official DeepSeek platform',
     // 思考：官方 OpenAI 格式开关 thinking.type + 强度 reasoning_effort（默认开、默认 high）
     thinking: {
       levels: [
@@ -214,6 +229,8 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
     // Coding 套餐（Lite/Pro/Max）额度只在 coding 专用端点生效；走标准 paas/v4 会按量计费报余额不足
     id: 'zhipu-plan',
     label: '智谱 Plan',
+
+    labelEn: 'Zhipu Plan',
     endpoint: 'https://open.bigmodel.cn/api/coding/paas/v4',
     model: 'glm-5.3-flash',
     // glm-5.3 / 5.3-flash 官方最大输出 131072（默认 65536，上下文 1M）
@@ -221,7 +238,11 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
     maxOutputCap: 131072, // 硬护栏：glm-5.3 系官方最大输出（填超即服务端 400 / 1210）
     apiKeyKey: 'zhipuPlanApiKey',
     apiKeyLabel: '智谱 Plan 密钥',
+
+    apiKeyLabelEn: 'Zhipu Plan API key',
     apiKeyDesc: '智谱 Coding 套餐的接口密钥',
+
+    apiKeyDescEn: 'API key for the Zhipu Coding plan',
     // 思考：glm-5.3 / 5.3-flash **强制思考**（发 disabled 无效），故只给强度档
     thinking: {
       levels: [
@@ -235,6 +256,8 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
   {
     id: 'ollama',
     label: 'Ollama（本地）',
+
+    labelEn: 'Ollama (local)',
     endpoint: 'http://localhost:11434/v1',
     model: 'llama3.1',
     defaultMaxTokens: 8192,
@@ -243,7 +266,11 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
 
     apiKeyKey: 'ollamaApiKey',
     apiKeyLabel: 'Ollama 密钥',
+
+    apiKeyLabelEn: 'Ollama API key',
     apiKeyDesc: '本地服务无需密钥',
+
+    apiKeyDescEn: 'No key needed for local services',
     // 思考：兼容层把 reasoning_effort 映射为内部 Think（none = 关；省略 = 有能力则开）
     thinking: {
       levels: [
@@ -260,140 +287,224 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
   {
     id: 'zhipu',
     label: '智谱 GLM',
+
+    labelEn: 'Zhipu GLM',
     endpoint: 'https://open.bigmodel.cn/api/paas/v4',
     model: 'glm-5.3-flash',
     defaultMaxTokens: 131072,
     maxOutputCap: 131072,
     apiKeyLabel: '智谱 GLM 密钥',
+
+    apiKeyLabelEn: 'Zhipu GLM API key',
     apiKeyDesc: '智谱开放平台的接口密钥',
+
+    apiKeyDescEn: 'API key for the Zhipu open platform',
   },
   {
     id: 'qwen',
     label: '通义千问',
+
+    labelEn: 'Qwen (Alibaba)',
     endpoint: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     model: 'qwen3.8-flash',
     defaultMaxTokens: 131072,
     maxOutputCap: 131072,
     apiKeyLabel: '通义千问密钥',
+
+    apiKeyLabelEn: 'Qwen API key',
     apiKeyDesc: '阿里云百炼的接口密钥',
+
+    apiKeyDescEn: 'API key for Alibaba Cloud Bailian',
   },
   {
     id: 'kimi',
     label: 'Kimi',
+
+    labelEn: 'Kimi',
     endpoint: 'https://api.moonshot.cn/v1',
     model: 'kimi-k3',
     defaultMaxTokens: 32768,
     maxOutputCap: 1048576,
     apiKeyLabel: 'Kimi 密钥',
+
+    apiKeyLabelEn: 'Kimi API key',
     apiKeyDesc: '月之暗面开放平台的接口密钥',
+
+    apiKeyDescEn: 'API key for the Moonshot open platform',
   },
   {
     id: 'siliconflow',
     label: '硅基流动',
+
+    labelEn: 'SiliconFlow',
     endpoint: 'https://api.siliconflow.cn/v1',
     model: 'zai-org/GLM-5.3-Flash',
     defaultMaxTokens: 131072,
     maxOutputCap: 131072,
     apiKeyLabel: '硅基流动密钥',
+
+    apiKeyLabelEn: 'SiliconFlow API key',
     apiKeyDesc: '硅基流动的接口密钥',
+
+    apiKeyDescEn: 'API key for SiliconFlow',
   },
   {
     id: 'volcengine',
     label: '火山方舟',
+
+    labelEn: 'Volcengine Ark',
     endpoint: 'https://ark.cn-beijing.volces.com/api/v3',
     model: 'doubao-seed-2-1-pro-260628',
     defaultMaxTokens: 32768,
     maxOutputCap: 256000,
     apiKeyLabel: '火山方舟密钥',
+
+    apiKeyLabelEn: 'Volcengine Ark API key',
     apiKeyDesc: '火山引擎方舟的接口密钥',
+
+    apiKeyDescEn: 'API key for Volcengine Ark',
   },
   {
     id: 'stepfun',
     label: '阶跃星辰',
+
+    labelEn: 'StepFun',
     endpoint: 'https://api.stepfun.com/v1',
     model: 'step-3.7-flash',
     defaultMaxTokens: 32768,
     maxOutputCap: 256000,
     apiKeyLabel: '阶跃星辰密钥',
+
+    apiKeyLabelEn: 'StepFun API key',
     apiKeyDesc: '阶跃星辰开放平台的接口密钥',
+
+    apiKeyDescEn: 'API key for the StepFun open platform',
   },
   {
     id: 'openai',
     label: 'OpenAI',
+
+    labelEn: 'OpenAI',
     endpoint: 'https://api.openai.com/v1',
     model: 'gpt-6-luna',
     defaultMaxTokens: 128000,
     maxOutputCap: 128000,
     apiKeyLabel: 'OpenAI 密钥',
+
+    apiKeyLabelEn: 'OpenAI API key',
     apiKeyDesc: 'OpenAI 官方平台的接口密钥',
+
+    apiKeyDescEn: 'API key for the official OpenAI platform',
   },
   {
     id: 'anthropic',
     label: 'Claude（Anthropic）',
+
+    labelEn: 'Claude (Anthropic)',
     endpoint: 'https://api.anthropic.com/v1',
     model: 'claude-haiku-5-5',
     defaultMaxTokens: 128000,
     maxOutputCap: 128000,
     apiKeyLabel: 'Claude 密钥',
+
+    apiKeyLabelEn: 'Claude API key',
     apiKeyDesc: 'Anthropic 官方平台的接口密钥',
+
+    apiKeyDescEn: 'API key for the official Anthropic platform',
   },
   {
     id: 'google',
     label: 'Google Gemini',
+
+    labelEn: 'Google Gemini',
     endpoint: 'https://generativelanguage.googleapis.com/v1beta/openai',
     model: 'gemini-3.8-flash',
     defaultMaxTokens: 65536,
     maxOutputCap: 65536,
     apiKeyLabel: 'Gemini 密钥',
+
+    apiKeyLabelEn: 'Gemini API key',
     apiKeyDesc: 'Google AI Studio 的接口密钥',
+
+    apiKeyDescEn: 'API key for Google AI Studio',
   },
   {
     id: 'xai',
     label: 'xAI Grok',
+
+    labelEn: 'xAI Grok',
     endpoint: 'https://api.x.ai/v1',
     model: 'grok-4.7',
     defaultMaxTokens: 32768,
     maxOutputCap: 500000,
     apiKeyLabel: 'xAI 密钥',
+
+    apiKeyLabelEn: 'xAI API key',
     apiKeyDesc: 'xAI 控制台的接口密钥',
+
+    apiKeyDescEn: 'API key for the xAI console',
   },
   {
     id: 'mistral',
     label: 'Mistral',
+
+    labelEn: 'Mistral',
     endpoint: 'https://api.mistral.ai/v1',
     model: 'mistral-large-4',
     defaultMaxTokens: 32768,
     maxOutputCap: 262144,
     apiKeyLabel: 'Mistral 密钥',
+
+    apiKeyLabelEn: 'Mistral API key',
     apiKeyDesc: 'Mistral 控制台的接口密钥',
+
+    apiKeyDescEn: 'API key for the Mistral console',
   },
   {
     id: 'groq',
     label: 'Groq',
+
+    labelEn: 'Groq',
     endpoint: 'https://api.groq.com/openai/v1',
     model: 'qwen/qwen3.8-27b',
     defaultMaxTokens: 16384,
     maxOutputCap: 16384,
     apiKeyLabel: 'Groq 密钥',
+
+    apiKeyLabelEn: 'Groq API key',
     apiKeyDesc: 'Groq 控制台的接口密钥',
+
+    apiKeyDescEn: 'API key for the Groq console',
   },
   {
     id: 'openrouter',
     label: 'OpenRouter',
+
+    labelEn: 'OpenRouter',
     endpoint: 'https://openrouter.ai/api/v1',
     model: '',
     defaultMaxTokens: 8192,
     apiKeyLabel: 'OpenRouter 密钥',
+
+    apiKeyLabelEn: 'OpenRouter API key',
     apiKeyDesc: 'OpenRouter 开放平台的密钥',
+
+    apiKeyDescEn: 'API key for the OpenRouter platform',
   },
   {
     id: 'lmstudio',
     label: 'LM Studio（本地）',
+
+    labelEn: 'LM Studio (local)',
     endpoint: 'http://127.0.0.1:1234/v1',
     model: '',
     defaultMaxTokens: 8192,
     apiKeyLabel: 'LM Studio 密钥',
+
+    apiKeyLabelEn: 'LM Studio API key',
     apiKeyDesc: '本地服务无需密钥',
+
+    apiKeyDescEn: 'No key needed for local services',
   },
   {
     /**
@@ -406,13 +517,19 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
      */
     id: 'custom',
     label: '自定义（OpenAI 兼容）',
+
+    labelEn: 'Custom (OpenAI compatible)',
     endpoint: '',
     model: '',
     /* 兜底档：自定义没有官方上限可依（同 Ollama），面板可自由调大 */
     defaultMaxTokens: 8192,
     apiKeyKey: 'aiCustomApiKey',
     apiKeyLabel: '自定义 API 密钥',
+
+    apiKeyLabelEn: 'Custom API key',
     apiKeyDesc: '在服务官网获取后填入这里',
+
+    apiKeyDescEn: 'Get one from the provider and paste it here',
     /* 不设 thinking：不认识的服务商冒进发思考参数有 400 风险，一律不注入 */
   },
 ];
@@ -424,6 +541,18 @@ export function getProviderDescriptor(id?: string): AIProviderDescriptor {
     AI_PROVIDER_REGISTRY.find((p) => p.id === DEFAULT_AI_PROVIDER) ||
     AI_PROVIDER_REGISTRY[0]
   );
+}
+
+/* 以下三个取词函数：中文界面原样返回注册表里的中文基准，英文界面取 *_En 字段
+   （缺省回退中文，避免新增服务商忘了写英文时变成空白）。 */
+export function providerLabelOf(d: AIProviderDescriptor): string {
+  return locale() === 'zh' ? d.label : d.labelEn ?? d.label;
+}
+export function providerKeyLabelOf(d: AIProviderDescriptor): string {
+  return locale() === 'zh' ? d.apiKeyLabel : d.apiKeyLabelEn ?? d.apiKeyLabel;
+}
+export function providerKeyDescOf(d: AIProviderDescriptor): string | undefined {
+  return locale() === 'zh' ? d.apiKeyDesc : d.apiKeyDescEn ?? d.apiKeyDesc;
 }
 
 /** 该 provider 的档位表（设置面板选项与请求注入同源；未知 id 回退缺省服务商档位表） */
@@ -519,7 +648,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     /* 对象形态的 override 缺 apiKey 时，旧代码会让整段 if 落空、悄悄退回当前设置的
        服务商——用户填的 endpoint/model 全失效且毫无提示。这里显式报错，别静默切换。 */
     if (!override.apiKey) {
-      throw new Error('自定义 AI 配置缺少 apiKey：请提供密钥，或改用服务商 ID 走设置里的密钥');
+      throw new Error(t('ai.error.customNoKey'));
     }
     return {
       endpoint: String(override.endpoint || 'https://api.deepseek.com').replace(/\/+$/, ''),
@@ -534,7 +663,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
      真机事故：设置页写「不启用」，复习时模型照样被调用——界面说关了，实际每张卡都在烧钱。
      只有字段真的缺失（undefined / null，例如旧数据里没这一项）才回落到缺省服务商。 */
   if (!name) {
-    throw new Error('未启用 AI：请在插件设置 → AI 里选一个服务商并填密钥');
+    throw new Error(t('ai.error.notEnabled'));
   }
   const desc = getProviderDescriptor(name);
   /* 自定义（OpenAI 兼容）：端点/密钥/模型全来自设置，注册表描述只给密钥键与兜底档。
@@ -544,7 +673,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     const customKey = String(s.aiCustomApiKey || '').trim();
     if (!endpoint || !customKey) {
       throw new Error(
-        '未配置自定义 AI 服务：请在 AI 配置的 LLM 组填写「自定义 API 地址」与「自定义 API 密钥」'
+        t('ai.error.customNotConfigured')
       );
     }
     const overrideModel = s.aiModelOverrides?.['custom'];
@@ -583,7 +712,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
   }
   // ollama 本地服务无鉴权：空密钥放行（其余提供商缺 key 即拦截）
   if (!key && name !== 'ollama') {
-    throw new Error(`未配置 ${desc.label} API Key：插件设置 → AI 配置 → ${desc.apiKeyLabel}`);
+    throw new Error(t('ai.error.missingKey', { provider: providerLabelOf(desc), label: providerKeyLabelOf(desc) }));
   }
   // ticket 172 per-provider 覆盖：用户设置的模型/上下文/max token 优先于注册表默认；
   // issue 342/ADR-0151 起，中间插入「按当前模型名查官方档位」（model-limits 单一事实源）——
@@ -619,7 +748,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
 
 /** 取消异常（AbortError 语义；调用方以 signal.aborted 判定取消路径，ticket 141 对话可取消） */
 function abortError(): Error {
-  const e = new Error('请求已取消');
+  const e = new Error(t('ai.error.cancelled'));
   e.name = 'AbortError';
   return e;
 }
@@ -636,7 +765,7 @@ export const AI_IMAGE_IDLE_TIMEOUT_MS = 180000;
 
 /** 超时异常（TimeoutError 语义，区别于用户取消的 AbortError——超时允许走 requestUrl 兜底重试） */
 function timeoutError(idleMs: number = AI_IDLE_TIMEOUT_MS): Error {
-  const e = new Error(`AI 请求超时（${Math.round(idleMs / 1000)} 秒无响应）`);
+  const e = new Error(t('ai.error.timeout', { n: Math.round(idleMs / 1000) }));
   e.name = 'TimeoutError';
   return e;
 }
@@ -776,7 +905,7 @@ async function chatCompletionsNonStream(provider: AIProvider, body: ChatBody, si
   const errMsg = (data.error && (data.error.message || data.error.type)) || (data.message && data.message);
   if (errMsg) throw new Error(`API ${resp.status}: ${errMsg}`);
   const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-  if (content === undefined || content === null) throw new Error(`API ${resp.status}: 响应缺少 content`);
+  if (content === undefined || content === null) throw new Error(t('ai.error.noContent', { status: resp.status }));
   return content;
 }
 
@@ -837,9 +966,9 @@ export function imageExtOfMime(mime: string): string | null {
  */
 export function imageDataUrl(bytes: ArrayBuffer | Uint8Array, mime: string): string {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  if (u8.byteLength === 0) throw new Error('图片内容为空');
+  if (u8.byteLength === 0) throw new Error(t('ai.error.emptyImage'));
   if (u8.byteLength > AI_IMAGE_MAX_BYTES) {
-    throw new Error(`图片过大（${Math.round(u8.byteLength / 1024 / 1024)} MiB），上限 ${AI_IMAGE_MAX_BYTES / 1024 / 1024} MiB`);
+    throw new Error(t('ai.error.imageTooLarge', { size: Math.round(u8.byteLength / 1024 / 1024), max: AI_IMAGE_MAX_BYTES / 1024 / 1024 }));
   }
   return `data:${mime};base64,${toBase64(u8)}`;
 }
@@ -936,7 +1065,7 @@ export class AIService {
         const content = await chatCompletionsNonStream(provider, body, signal);
         return content;
       } catch (e: unknown) {
-        throw new Error(`AI 请求失败: ${errorMessage(streamError)}（fallback: ${errorMessage(e)}）`);
+        throw new Error(t('ai.error.requestFailed', { error: errorMessage(streamError), fallback: errorMessage(e) }));
       }
     }
   }
@@ -1011,7 +1140,7 @@ export interface AITestResult {
 }
 
 /** 测试题面：诱导极短输出，控制真实调用的费用（deepseek/智谱按 token 计费，ollama 本地零成本） */
-const AI_TEST_PROMPT = '这是一次连通性测试。请只回复两个字母：OK';
+const AI_TEST_PROMPT = t('ai.testPrompt');
 
 /**
  * 连通性测试：对指定服务商发一次**真实**的极小对话请求，走完整链路（鉴权 / 端点 / 流式 /
@@ -1029,6 +1158,6 @@ export async function testAIConnectivity(providerId?: string): Promise<AITestRes
   const t0 = Date.now();
   const svc = createAI();
   const reply = (await svc.prompt(AI_TEST_PROMPT, model, { provider: effective })).trim();
-  if (!reply) throw new Error(`${desc.label} 连通异常：请求成功但回复为空`);
-  return { label: desc.label, model: model || '默认模型', ms: Date.now() - t0, reply };
+  if (!reply) throw new Error(t('ai.error.emptyReply', { provider: providerLabelOf(desc) }));
+  return { label: providerLabelOf(desc), model: model || t('ai.defaultModel'), ms: Date.now() - t0, reply };
 }

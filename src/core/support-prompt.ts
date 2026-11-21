@@ -17,15 +17,16 @@
  * README 是文档、不进构建，那边仍需手动同步。
  * ============================================================ */
 import { uiModal } from './ui/modal';
+import { t } from '../i18n/strings';
 
 /** 正文第一行（「作者一个人」那半句。标记里的断行就落在它后面） */
-export const SUPPORT_PITCH = '插件的开发维护和教程视频制作都是作者一个人，';
+export const SUPPORT_PITCH = t('sup.line1');
 
 /** 正文第二行 */
-export const SUPPORT_PITCH_REST = '完全免费、无广告，也没有任何其他渠道的收益。';
+export const SUPPORT_PITCH_REST = t('sup.line2');
 
 /** 正文下方那行小字：打赏的后果说在扫码之前，不画饼 */
-export const SUPPORT_NOTE = '打赏后会出现在支持者名单中';
+export const SUPPORT_NOTE = t('sup.thanks');
 
 /** 用户的选择：「支持作者」= 去扫码窗；「以后再说」= 收掉 */
 export type SupportChoice = 'support' | 'dismiss';
@@ -56,7 +57,7 @@ export function openSupportPrompt(): Promise<SupportChoice> {
 
     const kicker = createDiv();
     kicker.className = 'bzrv-sup-kicker';
-    kicker.textContent = '支持作者';
+    kicker.textContent = t('sup.title');
     root.appendChild(kicker);
 
     // 两句话分两行：这句是「作者处境」+「没有别的收入」，中间断在逗号后最自然，
@@ -83,14 +84,14 @@ export function openSupportPrompt(): Promise<SupportChoice> {
     const later = createEl('button');
     later.className = 'bzrv-sup-btn bzrv-sup-later';
     later.type = 'button';
-    later.textContent = '以后再说';
+    later.textContent = t('sup.later');
     later.addEventListener('click', () => settle('dismiss'));
     acts.appendChild(later);
 
     const go = createEl('button');
     go.className = 'bzrv-sup-btn bzrv-sup-go';
     go.type = 'button';
-    go.textContent = '支持作者';
+    go.textContent = t('sup.title');
     go.addEventListener('click', () => settle('support'));
     acts.appendChild(go);
 

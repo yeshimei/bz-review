@@ -19,6 +19,7 @@
  * anki-import.ts。所有「读不进来」的行都会在 stats 里分原因记数，绝不静默吞掉。
  * ============================================================ */
 import type { ReviewCard } from './data';
+import { t } from '../i18n/strings';
 
 export interface ParsedAnkiCard {
   card: ReviewCard;
@@ -110,11 +111,11 @@ const SEPARATOR_MAP: Record<string, string> = {
 
 const SEPARATOR_LABEL: Record<string, string> = {
   '\t': 'Tab',
-  ',': '逗号',
-  ';': '分号',
-  '|': '竖线',
-  ':': '冒号',
-  ' ': '空格',
+  ',': t('anki.c.comma'),
+  ';': t('anki.c.semicolon'),
+  '|': t('anki.c.pipe'),
+  ':': t('anki.c.colon'),
+  ' ': t('anki.c.space'),
 };
 
 /** Anki 挖空标记：{{c1::答案}} 或 {{c1::答案::提示}} */
@@ -294,12 +295,12 @@ function htmlToText(raw: string, onMedia: (name: string) => void): string {
     const m = /\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag);
     const name = baseName(m?.[1] || m?.[2] || m?.[3] || '');
     if (name) onMedia(name);
-    return name ? `[图片：${name}]` : '[图片]';
+    return name ? t('anki.imgPlaceholder', { name }) : t('anki.imgPlaceholderBare');
   });
   s = s.replace(/\[sound:([^\]]+)\]/gi, (_all, name: string) => {
     const file = baseName(name);
     if (file) onMedia(file);
-    return `[音频：${file}]`;
+    return t('anki.audioPlaceholder', { file });
   });
   s = s.replace(/<br\s*\/?>/gi, '\n');
   s = s.replace(/<\/(div|p|li|tr|h[1-6]|blockquote|table|section|article)>/gi, '\n');
@@ -459,8 +460,8 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
           key: baseKey,
           bookTitle: book,
           text: spoken || image,
-          displayTitle: (spoken.split('\n')[0] || image || '图片遮挡卡').slice(0, 40),
-          comment: tagText ? `标签：${tagText}` : 'Anki 图片遮挡卡，遮挡区域待补',
+          displayTitle: (spoken.split('\n')[0] || image || t('anki.occlusionCard')).slice(0, 40),
+          comment: tagText ? t('anki.tagsLine', { tags: tagText }) : t('anki.occlusionNote'),
           mode: 'occlusion',
           occlusion: { image, regions: [] },
         },
@@ -475,7 +476,7 @@ export function parseAnkiFile(content: string, sourceName: string, title?: strin
       continue;
     }
 
-    const comment = tagText ? `标签：${tagText}` : undefined;
+    const comment = tagText ? t('anki.tagsLine', { tags: tagText }) : undefined;
     if (tagText) stats.tagged += 1;
 
     const ntLower = notetype.toLowerCase();

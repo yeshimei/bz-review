@@ -19,6 +19,7 @@ import { countRestoreRaw, describeRestorePoint, restoreStampOf, sortRestorePoint
 import { exportBackupFile, listBackupFiles } from './backup-io';
 import { listSnapshots, readSnapshot, snapshotDir, writeSnapshotNow } from './snapshot-store';
 import { parseReviewFile, serializeReviewItems, reviewMeta } from './store-format';
+import { t } from '../i18n';
 
 /** 收集所有可回滚的时间点：自动快照 + 手动 JSON 备份（CSV 不能导回，不算） */
 async function collectRestorePoints(app: App): Promise<RestorePoint[]> {
@@ -56,9 +57,9 @@ async function collectRestorePoints(app: App): Promise<RestorePoint[]> {
 async function deleteRestorePoint(app: App, point: RestorePoint): Promise<{ ok: boolean; message: string }> {
   try {
     await app.vault.adapter.remove(point.path);
-    return { ok: true, message: '已删除这份备份' };
+    return { ok: true, message: t('backup.deleted') };
   } catch (e) {
-    return { ok: false, message: `删除失败：${e instanceof Error ? e.message : String(e)}` };
+    return { ok: false, message: t('backup.deleteFailed', { reason: e instanceof Error ? e.message : String(e) }) };
   }
 }
 
@@ -77,32 +78,32 @@ async function restorePoint(app: App, point: RestorePoint): Promise<{ ok: boolea
       raw = null;
     }
   }
-  if (raw === null) return { ok: false, message: `读不到这份备份：${point.name}` };
+  if (raw === null) return { ok: false, message: t('backup.readFailed', { name: point.name }) };
   let json: unknown;
   try {
     json = JSON.parse(raw.replace(/^\uFEFF/, ''));
   } catch {
     /* 手动备份可能是半个文件 / 被改坏：别让 JSON.parse 抛穿，给用户一句人话 */
-    return { ok: false, message: '备份文件损坏，无法回滚' };
+    return { ok: false, message: t('backup.corrupt') };
   }
   const parsed = parseReviewFile(json);
-  if (parsed.broken) return { ok: false, message: '这份备份读不出复习数据，换一份试试' };
+  if (parsed.broken) return { ok: false, message: t('backup.noData') };
 
   const current = await diskReadText(app, getReviewFilePath());
   if (current) await writeSnapshotNow(app, current, new Date());
   await jsonFileStore<unknown>(getReviewFilePath(), { app }).write(serializeReviewItems(parsed.items));
   await jsonFileStore<unknown>(getReviewMetaPath(), { app }).write(reviewMeta(new Date()));
-  return { ok: true, message: `已回滚 ${parsed.items.length} 条（回滚前已给当前数据留快照）` };
+  return { ok: true, message: t('backup.rolledBack', { n: parsed.items.length }) };
 }
 
 /** 二次确认后做一份手动备份（写到 export 目录，跟库走） */
 async function backupNow(app: App): Promise<void> {
   const v = await openFlowDialog({
-    title: '现在备份一次？',
-    message: '会把当前复习数据另存一份，方便以后回滚。',
+    title: t('backup.askNowTitle'),
+    message: t('backup.askNowBody'),
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '备份', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('backup.doBackup'), value: 'ok', cta: true },
     ],
   });
   if (v !== 'ok') return;
@@ -110,7 +111,7 @@ async function backupNow(app: App): Promise<void> {
   items.ensure(app);
   const list = await items.dataManager!.loadItems();
   const path = await exportBackupFile(app, list, 'json');
-  notice(`已备份 ${list.length} 条：${path}`, 'success');
+  notice(t('backup.backedUp', { n: list.length, path }), 'success');
 }
 
 /** 打开「备份与回滚」弹窗 */
@@ -123,8 +124,8 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
     body.createDiv({
       cls: 'bzrv-edit-desc',
       text: points.length
-        ? '选一份，点「回滚到这里」。回滚前会先把当前数据存成快照，退错还能再退回来。'
-        : '还没有备份或快照。点下方「立即备份」存一份。',
+        ? t('backup.hint')
+        : t('backup.empty'),
     });
     const list = body.createDiv({ cls: 'bzrv-backup-list' });
     for (const point of points) {
@@ -132,15 +133,15 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
       const info = row.createDiv({ cls: 'bzrv-backup-info' });
       info.createSpan({ cls: 'bzrv-backup-time', text: describeRestorePoint(point) });
       const rowActions = row.createDiv({ cls: 'bzrv-backup-row-actions' });
-      const del = rowActions.createEl('button', { cls: 'bzrv-btn bzrv-btn--danger-ghost', text: '删除' });
+      const del = rowActions.createEl('button', { cls: 'bzrv-btn bzrv-btn--danger-ghost', text: t('backup.delete') });
       del.onclick = () => {
         void (async () => {
           const v = await openFlowDialog({
-            title: '删除这份备份？',
-            message: `${describeRestorePoint(point)}\n\n删除后无法恢复；当前复习数据不受影响。`,
+            title: t('backup.deleteTitle'),
+            message: t('backup.deleteBody', { desc: describeRestorePoint(point) }),
             actions: [
-              { label: '取消', value: 'cancel' },
-              { label: '删除', value: 'ok', cta: true, danger: true },
+              { label: t('common.cancel'), value: 'cancel' },
+              { label: t('backup.delete'), value: 'ok', cta: true, danger: true },
             ],
           });
           if (v !== 'ok') return;
@@ -152,18 +153,18 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
           }
         })();
       };
-      const btn = rowActions.createEl('button', { cls: 'bzrv-btn', text: '回滚到这里' });
+      const btn = rowActions.createEl('button', { cls: 'bzrv-btn', text: t('backup.restoreHere') });
       let busy = false;
       btn.onclick = () => {
         if (busy) return;
         void (async () => {
           try {
             const v = await openFlowDialog({
-              title: '回滚到这里？',
-              message: `${describeRestorePoint(point)}\n\n当前数据会先存成一份快照，然后整份替换成这份备份。`,
+              title: t('backup.restoreTitle'),
+              message: t('backup.restoreBody', { desc: describeRestorePoint(point) }),
               actions: [
-                { label: '取消', value: 'cancel' },
-                { label: '回滚', value: 'ok', cta: true, danger: true },
+                { label: t('common.cancel'), value: 'cancel' },
+                { label: t('backup.restore'), value: 'ok', cta: true, danger: true },
               ],
             });
             if (v !== 'ok') return;
@@ -177,7 +178,7 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
             } else busy = false;
           } catch (e) {
             busy = false;
-            notice(`备份文件损坏，无法回滚：${e instanceof Error ? e.message : String(e)}`, 'warning');
+            notice(t('backup.corruptReason', { reason: e instanceof Error ? e.message : String(e) }), 'warning');
           }
         })();
       };
@@ -186,7 +187,7 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
   render();
 
   const modal = uiModal({
-    title: '备份与回滚',
+    title: t('backup.title'),
     head: true,
     content: body,
     size: 'md',
@@ -195,14 +196,14 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
 
   /* 顶部动作条：立即备份（二次确认）+ 关掉。滚动区已在 body 内，这里贴底排按钮。 */
   const actions = modal.popup.createDiv({ cls: 'bzrv-edit-actions bzrv-backup-actions' });
-  const refresh = actions.createEl('button', { cls: 'bzrv-btn', text: '刷新列表' });
+  const refresh = actions.createEl('button', { cls: 'bzrv-btn', text: t('backup.refresh') });
   refresh.onclick = () => {
     void (async () => {
       points = await collectRestorePoints(app);
       render();
     })();
   };
-  const backupBtn = actions.createEl('button', { cls: 'bzrv-btn', text: '立即备份' });
+  const backupBtn = actions.createEl('button', { cls: 'bzrv-btn', text: t('backup.backupNow') });
   backupBtn.onclick = () => {
     void (async () => {
       await backupNow(app);
@@ -210,7 +211,7 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
       render();
     })();
   };
-  const closeBtn = actions.createEl('button', { cls: 'bzrv-btn', text: '关闭' });
+  const closeBtn = actions.createEl('button', { cls: 'bzrv-btn', text: t('common.close') });
   closeBtn.onclick = () => modal.close();
   // 默认焦点别落在列表里的危险「删除」按钮上（打开时按 Enter 会进删除确认）
   closeBtn.focus();
@@ -221,15 +222,15 @@ export async function restoreLatestWithConfirm(app: App): Promise<void> {
   const points = await collectRestorePoints(app);
   const latest = points[0];
   if (!latest) {
-    notice('还没有任何备份或快照', 'warning');
+    notice(t('backup.emptyList'), 'warning');
     return;
   }
   const v = await openFlowDialog({
-    title: '回滚到最近一份？',
-    message: `${describeRestorePoint(latest)}\n\n当前数据会先存成快照，再整份替换。`,
+    title: t('backup.restoreLatestTitle'),
+    message: t('backup.restoreLatestBody', { desc: describeRestorePoint(latest) }),
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '回滚', value: 'ok', cta: true, danger: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('backup.restore'), value: 'ok', cta: true, danger: true },
     ],
   });
   if (v !== 'ok') return;

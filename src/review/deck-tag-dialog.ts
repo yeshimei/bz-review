@@ -10,6 +10,7 @@ import type { ReviewItem } from './data';
 import { openFlowDialog } from '../core/flow-dialog';
 import { parseTagsInput, tagsToInput } from './card-manager';
 import { tagsOf } from './deck';
+import { t } from '../i18n';
 
 export interface DeckTagValues {
   deck: string;
@@ -32,10 +33,10 @@ export function openDeckTagEditor(
   root.className = 'bzrv-edit-modal';
 
   const deckField = root.createDiv({ cls: 'bzrv-edit-field' });
-  deckField.createDiv({ cls: 'bzrv-edit-head', text: '牌组' });
+  deckField.createDiv({ cls: 'bzrv-edit-head', text: t('decktag.deck') });
   deckField.createDiv({
     cls: 'bzrv-edit-desc',
-    text: '留空则按原来的文件夹 / 书名自动分组；填了就以这里为准。可直接输入新牌组名。',
+    text: t('decktag.deckDesc'),
   });
   const deckInput = deckField.createEl('input');
   deckInput.type = 'text';
@@ -49,8 +50,8 @@ export function openDeckTagEditor(
   }
 
   const tagField = root.createDiv({ cls: 'bzrv-edit-field' });
-  tagField.createDiv({ cls: 'bzrv-edit-head', text: '标签' });
-  tagField.createDiv({ cls: 'bzrv-edit-desc', text: '逗号或空格分隔，支持新建。笔记原有的 Obsidian 标签会自动一起参与筛选。' });
+  tagField.createDiv({ cls: 'bzrv-edit-head', text: t('decktag.tags') });
+  tagField.createDiv({ cls: 'bzrv-edit-desc', text: t('decktag.tagsDesc') });
   const tagInput = tagField.createEl('input');
   tagInput.type = 'text';
   tagInput.value = tagsToInput(item.tags);
@@ -63,12 +64,12 @@ export function openDeckTagEditor(
   }
 
   void openFlowDialog({
-    title: '牌组与标签',
-    message: '保存只改分组与标签，复习排期和历史都不动。',
+    title: t('decktag.title'),
+    message: t('decktag.desc'),
     body: root,
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '保存', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('common.save'), value: 'ok', cta: true },
     ],
   }).then((v) => {
     if (v !== 'ok') return;

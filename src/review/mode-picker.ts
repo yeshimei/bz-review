@@ -8,7 +8,8 @@
  * 只有一处 DOM 结构，不碰 AI、不碰设置。
  * ============================================================ */
 import { uiModal } from '../core/ui/modal';
-import { WIZARD_MODE_META, type WizardMode } from './card-wizard-model';
+import { wizardModeMetaList, type WizardMode } from './card-wizard-model';
+import { t } from '../i18n/strings';
 
 export interface ModePickerOptions {
   /** 初始选中 */
@@ -29,7 +30,7 @@ export function buildModePicker(opts: ModePickerOptions): ModePickerView {
   const root = createDiv({ cls: 'bzrv-wiz-modes' });
   const cards = new Map<WizardMode, HTMLElement>();
 
-  for (const meta of WIZARD_MODE_META) {
+  for (const meta of wizardModeMetaList()) {
     /* 用真按钮而不是 div：Tab 能走到、回车能选，读屏也知道这是可选项 */
     const card = root.createEl('button', { cls: 'bzrv-wiz-mode' });
     card.type = 'button';
@@ -37,7 +38,7 @@ export function buildModePicker(opts: ModePickerOptions): ModePickerView {
     if (meta.value !== 'plain' && chars > 0) {
       card.createSpan({
         cls: 'bzrv-wiz-mode-sub',
-        text: `预计发送 ${chars.toLocaleString('en-US')} 字`,
+        text: t('wiz.estimatedChars', { n: chars.toLocaleString('en-US') }),
       });
     }
     card.addEventListener('click', () => {

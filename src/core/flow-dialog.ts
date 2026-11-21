@@ -40,6 +40,7 @@ import { allocZ } from './z-order';
 import { trapFocus } from './ui/focus-trap';
 
 import { markOwned } from './scope';
+import { t } from '../i18n/strings';
 export interface FlowDialogAction {
   /** 按钮文案（纯文本语义，渲染前 escapeHtml） */
   label: string;
@@ -127,7 +128,7 @@ export function buildFlowDialogParts(
     if (safeIdx >= 0) focusIdx = safeIdx;
   }
   const html =
-    '<h4>' + escapeHtml(title || '确认') + '</h4>' +
+    '<h4>' + escapeHtml(title || t('flow.confirm')) + '</h4>' +
     // 效率审查#4：转义后再把 \n 换 <br>——多段确认文案（后果说明）分行显示，无注入面
     '<p>' + escapeHtml(message).replace(/\n/g, '<br>') + '</p>' +
     '<div class="confirm-actions">' +
@@ -192,7 +193,7 @@ export function openFlowDialog(opts: FlowDialogOptions): Promise<string | undefi
     // 统一关闭入口：与 uiModal 头行 ✕ 同款（sr-only 名字，禁悬停气泡属性）
     const flowX = createEl('button', { cls: 'bzrv-dialog-x bzrv-flow-x' });
     flowX.type = 'button';
-    flowX.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
+    flowX.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: t('flow.close') }));
     flowX.createSpan({ text: '✕' });
     flowX.addEventListener('click', () => settle(undefined));
     popup.appendChild(flowX);
@@ -255,12 +256,12 @@ export function cancelActiveFlowDialog(): void {
  */
 export function confirmDiscard(proceed: () => void, message?: string, className?: string): void {
   void openFlowDialog({
-    title: '放弃未保存的内容？',
-    message: message || '弹窗内有未保存的输入，关闭后将丢失',
+    title: t('flow.discardTitle'),
+    message: message || t('flow.discardBody'),
     className,
     actions: [
-      { label: '放弃', value: 'ok' },
-      { label: '继续编辑', value: 'cancel' },
+      { label: t('flow.discard'), value: 'ok' },
+      { label: t('flow.keepEditing'), value: 'cancel' },
     ],
   }).then((v) => {
     if (v === 'ok') proceed();

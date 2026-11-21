@@ -10,6 +10,7 @@
 import type { CardMode } from './card-mode';
 import type { ReviewCardInput } from './reader-api';
 import type { QuizQuestion } from './quiz-core/manager';
+import { t as tr, type MsgKey } from '../i18n/strings';
 
 /** 统一弹窗里可选的方式（其余方式老卡照常复习，但不再从这里新造） */
 export type WizardMode = Extract<CardMode, 'plain' | 'flashcard' | 'quiz' | 'cloze'>;
@@ -30,6 +31,23 @@ export const WIZARD_MODE_META: readonly WizardModeMeta[] = [
   { value: 'cloze', label: '挖空', hint: '把关键短语挖掉，自己填回去' },
 ];
 
+/** 方式名与说明的文案 key（WIZARD_MODE_META 是中文基准，渲染取这里） */
+const WIZARD_MODE_KEYS: Record<WizardMode, { label: MsgKey; hint: MsgKey }> = {
+  plain: { label: 'cwm.label.plain', hint: 'cwm.hint.plain' },
+  flashcard: { label: 'cwm.label.flashcard', hint: 'cwm.hint.flashcard' },
+  quiz: { label: 'cwm.label.quiz', hint: 'cwm.hint.quiz' },
+  cloze: { label: 'cwm.label.cloze', hint: 'cwm.hint.cloze' },
+};
+
+/** 按当前语言出词的方式表（选方式那屏用） */
+export function wizardModeMetaList(): WizardModeMeta[] {
+  return WIZARD_MODES.map((value) => ({
+    value,
+    label: tr(WIZARD_MODE_KEYS[value].label),
+    hint: tr(WIZARD_MODE_KEYS[value].hint),
+  }));
+}
+
 /** 这个方式要不要调模型 */
 export function modeNeedsAI(mode: WizardMode): boolean {
   return mode !== 'plain';
@@ -37,7 +55,7 @@ export function modeNeedsAI(mode: WizardMode): boolean {
 
 /** 方式的中文名（确认页那句「已按设置使用「全文回忆」」要用） */
 export function modeLabelOf(mode: WizardMode): string {
-  return WIZARD_MODE_META.find((m) => m.value === mode)?.label ?? String(mode);
+  return tr(WIZARD_MODE_KEYS[mode].label);
 }
 
 /** 确认题面那屏的草稿（一张卡一份） */
@@ -71,7 +89,7 @@ export interface WizardDraft {
 export function auditText(total: number, seen: number): string {
   const t = Math.max(0, Number(total) || 0);
   const s = Math.min(Math.max(0, Number(seen) || 0), t);
-  return s >= t ? `共 ${t} 张 · 都看过了` : `共 ${t} 张 · 已看过 ${s} 张`;
+  return s >= t ? tr('cwm.countAll', { n: t }) : tr('cwm.countSome', { n: t, seen: s });
 }
 
 /**
@@ -82,9 +100,9 @@ export function auditText(total: number, seen: number): string {
 export function presetModeNote(label: string, total: number): string {
   const n = Math.max(1, Number(total) || 1);
   const head = n > 1
-    ? `这批 ${n} 张都按设置里「新卡默认方式」的「${label}」生成，跳过了选方式这一屏。`
-    : `已按设置里「新卡默认方式」的「${label}」生成，所以跳过了选方式这一屏。`;
-  return `${head}想每次自己选，去设置里把「新卡默认方式」改回「每次问我」。`;
+    ? tr('cwm.batchDefault', { n, label })
+    : tr('cwm.oneDefault', { label });
+  return head + tr('cwm.changeDefault', { head: '' });
 }
 
 /**
