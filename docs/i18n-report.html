@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>bz review · 多语言（英文）测试报告</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --card: #fffdf9;
+    --ink: #2a2622;
+    --muted: #7a7268;
+    --line: #e4ded4;
+    --accent: #a9781f;
+    --ok: #2f7a4d;
+    --wait: #9a6b12;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.7 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+  header { border-bottom: 2px solid var(--line); padding-bottom: 20px; margin-bottom: 28px; }
+  h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: .02em; }
+  .meta { color: var(--muted); font-size: 13px; line-height: 1.9; }
+  .meta b { color: var(--ink); font-weight: 600; }
+  h2 { font-size: 18px; margin: 36px 0 14px; padding-left: 10px; border-left: 4px solid var(--accent); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+  .card .k { color: var(--muted); font-size: 12px; }
+  .card .v { font-size: 22px; font-weight: 650; margin-top: 2px; }
+  .card .v small { font-size: 13px; font-weight: 400; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  th, td { padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; font-size: 14px; }
+  th { background: #f1ece3; text-align: left; font-weight: 600; }
+  tr:last-child td { border-bottom: none; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .pill.ok { background: #e3f1e7; color: var(--ok); }
+  .pill.wait { background: #f6ecd8; color: var(--wait); }
+  .shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+  figure { margin: 0; background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption { padding: 8px 12px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+  .note { background: #fff8e8; border: 1px solid #eadfc4; border-radius: 12px; padding: 14px 16px; font-size: 14px; }
+  .note b { color: var(--accent); }
+  code { background: #efeae1; padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+  ul { margin: 8px 0; padding-left: 22px; }
+  footer { margin-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>bz review · 多语言（英文）实施与真机测试报告</h1>
+  <div class="meta">
+    分支 <b>feat/i18n-en</b>（worktree）· 状态 <b>未合并 master</b> · 日期 <b>2026-11-21</b><br />
+    测试环境 <b>Obsidian 1.10 桌面（1024×800）与 iPhone 视口（390×844 @3x）</b> · 插件构建 <b>worktree 产物</b><br />
+    门禁 <b>typecheck 通过 · 739/739 测试通过 · lint 0 error / 0 warning</b>
+  </div>
+</header>
+
+<h2>一、结论速览</h2>
+<div class="cards">
+  <div class="card"><div class="k">翻译批次</div><div class="v">18 <small>批</small></div></div>
+  <div class="card"><div class="k">语言包条目</div><div class="v">1300+ <small>key</small></div></div>
+  <div class="card"><div class="k">自动化测试</div><div class="v">739 <small>全通过</small></div></div>
+  <div class="card"><div class="k">真机截图</div><div class="v">20 <small>张</small></div></div>
+  <div class="card"><div class="k">未翻译可见文案</div><div class="v">0 <small>（见遗留说明）</small></div></div>
+</div>
+
+<h2>二、做了什么（通俗版）</h2>
+<div class="note">
+  <b>一句话：</b>把界面上写死的中文全部搬进两份「词表」（中文一份、英文一份），界面显示时按当前语言取词；设置页多了一个语言开关，默认跟随 Obsidian，选过就按选的来。<br />
+  中文界面与改动前逐字一致（中文是基准词表），英文界面下主面板、设置页、各类弹窗、通知、统计与成就、做题练习、导入导出、AI 配置提示都是英文；AI 生成的题目与卡片也会跟着界面语言出英文。
+</div>
+
+<h2>三、逐项验证</h2>
+<table>
+  <thead>
+    <tr><th style="width:26%">验证项</th><th>说明（一句话）</th><th style="width:22%">证据</th><th style="width:9%">结论</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>语言包与切换机制</td>
+      <td>中文词表为基准，英文词表缺 key 会编译失败，不会漏词；语言选择支持「跟随系统 / 中文 / English」，读不到宿主语言时退回中文。</td>
+      <td>代码 + 设置页截图</td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>设置页全组英文</td>
+      <td>授权、数据、界面、复习节奏、卡片、做题、排期、算法、自动化、探索、AI 十一组全部英文，长说明自动换行不溢出。</td>
+      <td><a href="i18n-screens/设置页-英文-授权与数据.png">授权与数据</a> · <a href="i18n-screens/设置页-英文-界面.png">界面</a> · <a href="i18n-screens/设置页-英文-复习节奏.png">复习节奏</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>语言开关</td>
+      <td>点选后设置页整页即时重开，主面板下次重绘生效；切换有提示，写明命令名需重启 Obsidian。</td>
+      <td><a href="i18n-screens/设置页-切英文.png">切英文瞬间</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>主面板与空态</td>
+      <td>三列标题、底栏、空态与四颗入口按钮英文；移动端窄屏下按钮按列排布不挤压。</td>
+      <td><a href="i18n-screens/主面板-英文.png">桌面</a> · <a href="i18n-screens/移动端-主面板英文.png">移动端</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>复习卡与评级</td>
+      <td>退出、看答案、四档评级与提示、本轮按方式分布全部英文，评级名与统计/分析页同源。</td>
+      <td><a href="i18n-screens/复习卡-英文.png">复习卡</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>更多菜单与批量操作</td>
+      <td>四组菜单标题与副标、批量条（已选数量、顺延、移出、取消）、二次确认框英文。</td>
+      <td><a href="i18n-screens/更多菜单-英文.png">更多菜单</a> · <a href="i18n-screens/批量选择-英文.png">批量条</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>回收站</td>
+      <td>空态、恢复与彻底删除、确认框英文。</td>
+      <td><a href="i18n-screens/回收站-英文.png">回收站</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>统计页</td>
+      <td>六张统计卡、记忆曲线状态、复习量对比、评级分布、到期负载、时间线、账本（含环比）、节律、连续与活跃、遗忘段、记忆状态、内容构成、排行全英文；星期与日期随语言变化。</td>
+      <td><a href="i18n-screens/统计页-英文.png">统计页</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>成就页</td>
+      <td>13 枚徽章的名称与说明、解锁计数、空态一行英文。</td>
+      <td><a href="i18n-screens/成就页-英文.png">成就页</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>解锁窗（基础版 / 高级版）</td>
+      <td>对照表七组标题与全部条目、合计行、购买与交流群按钮英文；表尾「Group 1130883117」保留群号。</td>
+      <td><a href="i18n-screens/解锁窗-英文.png">解锁窗</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>制卡向导与源选择</td>
+      <td>选方式屏（名称、说明、预计字数）、确认题面、挖空编辑、补题与重生成、从阅读器挑内容全英文。</td>
+      <td><a href="i18n-screens/创建卡牌-英文.png">创建卡牌</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>AI 设置与密钥行</td>
+      <td>18 家服务商下拉名、密钥行标题与描述英文（中文界面仍是「DeepSeek 密钥」）；思考档位（Model default / Off / Low…）随语言。</td>
+      <td><a href="i18n-screens/设置页-英文-AI服务商.png">AI 组</a> · 下拉实测 <code>Zhipu Plan / Ollama (local) / Zhipu GLM</code></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>通知与错误提示</td>
+      <td>未配 AI、未到复习时间、拟合成功、休假、无逾期、暂停/继续、超时、撤销、逾期常驻通知、激活码各类失败、备份与回滚、远程下载与解压错误全英文。</td>
+      <td>代码 + 真机 toast</td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>导出文件</td>
+      <td>CSV 表头与指标名、划线卡 Markdown（标题、导出于、想法、问答、回到原文）、按书报告随语言出词。</td>
+      <td>单测覆盖（739 项内）</td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>AI 生成内容语言</td>
+      <td>英文界面下三条出题提示词（按划线挑、按章节出卡、四选一）与挖空/抽认卡提示词改为英文，生成的题目与解析为英文；JSON 契约不变。</td>
+      <td>代码 + 单测</td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>中文界面无回归</td>
+      <td>中文词表即原文，切回中文后主面板、设置页、通知逐字与改动前一致；测试全绿。</td>
+      <td><a href="i18n-screens/主面板-中文.png">主面板中文</a> · <a href="i18n-screens/设置页-中文.png">设置页中文</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>移动端布局</td>
+      <td>iPhone 视口下空态与设置页长句自动换行，按钮不溢出、不截断。</td>
+      <td><a href="i18n-screens/移动端-主面板英文.png">移动端主面板</a> · <a href="i18n-screens/移动端-设置页英文.png">移动端设置页</a></td>
+      <td><span class="pill ok">通过</span></td>
+    </tr>
+    <tr>
+      <td>忆炉全景（十六幕）</td>
+      <td>幕名、图例、指标与说明句已翻；但本版本没有注册命令或界面按钮，无法从界面进入，只做了构建与单测校验。</td>
+      <td>—</td>
+      <td><span class="pill wait">待确认</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>四、截图墙</h2>
+<div class="shots">
+  <figure><img src="i18n-screens/主面板-英文.png" alt="主面板英文" /><figcaption>主面板 · 三列与底栏英文</figcaption></figure>
+  <figure><img src="i18n-screens/设置页-英文-授权与数据.png" alt="设置页授权与数据" /><figcaption>设置页 · License / Data 组</figcaption></figure>
+  <figure><img src="i18n-screens/设置页-英文-界面.png" alt="设置页界面组" /><figcaption>设置页 · 语言开关与界面组</figcaption></figure>
+  <figure><img src="i18n-screens/统计页-英文.png" alt="统计页英文" /><figcaption>统计页 · 卡片、账本与节律</figcaption></figure>
+  <figure><img src="i18n-screens/成就页-英文.png" alt="成就页英文" /><figcaption>成就页 · 13 枚徽章</figcaption></figure>
+  <figure><img src="i18n-screens/解锁窗-英文.png" alt="解锁窗英文" /><figcaption>解锁窗 · 基础版 / 高级版对照</figcaption></figure>
+  <figure><img src="i18n-screens/设置页-英文-AI服务商.png" alt="AI 组英文" /><figcaption>设置页 · AI 组与服务商名</figcaption></figure>
+  <figure><img src="i18n-screens/移动端-主面板英文.png" alt="移动端主面板" /><figcaption>移动端 · 空态与入口按钮</figcaption></figure>
+  <figure><img src="i18n-screens/移动端-设置页英文.png" alt="移动端设置页" /><figcaption>移动端 · 设置页长句换行</figcaption></figure>
+</div>
+
+<h2>五、已知遗留与说明</h2>
+<ul>
+  <li><b>命令名需重启 Obsidian</b>：Obsidian 的 <code>addCommand</code> 只在插件加载时求值，切换语言后命令面板里的名字仍是旧语言；设置页提示与切换通知都写明了这一点。</li>
+  <li><b>忆炉全景无入口</b>：<code>openReviewAnalysis</code> 只是导出函数，本版本没有命令和按钮，用户点不到，因此未做真机截图。</li>
+  <li><b>未翻译的内部代码</b>：控制台日志保留中文原文（开发者日志，不面向用户）；<code>core/deps-*</code>、<code>setup-screen</code>、<code>rss-catalog</code>、<code>douban-name-index</code>、<code>category-table</code> 在本插件零引用，未翻。</li>
+  <li><b>更新日志</b>：弹窗与正文本就自带中英两版（按语言选 COPY 对象），不属本次新增。</li>
+  <li><b>AI 提示词语言</b>：英文界面下生成的题目/解析为英文；中文界面维持原中文提示词，输出结构不变。这是有意的行为选择，不是遗漏。</li>
+</ul>
+
+<h2>六、提交记录（18 批）</h2>
+<table>
+  <thead><tr><th style="width:12%">批次</th><th>范围</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>语言包骨架、中英词表、设置页语言开关、命令 / 菜单 / 通知 / 支持作者 / 关于条</td></tr>
+    <tr><td>2</td><td>主面板、冲刺与结算、复习卡会话、卡片方式、按书档案、管理器、回收站、做题练习、评级名与日期</td></tr>
+    <tr><td>3</td><td>设置页十一组设置行与分组名</td></tr>
+    <tr><td>4</td><td>面板事件层 113 处 toast / 确认框 / 菜单</td></tr>
+    <tr><td>5</td><td>卡片向导 64 处 + 加入复习流程 27 处</td></tr>
+    <tr><td>6</td><td>从阅读器挑内容 53 处</td></tr>
+    <tr><td>7</td><td>统计页与成就页</td></tr>
+    <tr><td>8</td><td>解锁窗、备份回滚、媒体、模板、手动排期、预测负荷、牌组</td></tr>
+    <tr><td>9</td><td>复习应用通知、卡片编辑、制卡确认、导出、挂起与埋藏</td></tr>
+    <tr><td>10</td><td>AI 错误与档位、Reader 安装器、按钮三态、模型选择</td></tr>
+    <tr><td>11</td><td>数据层：迁移、配额、授权状态、激活码</td></tr>
+    <tr><td>12</td><td>出题提示词、Anki 导入、做题面板</td></tr>
+    <tr><td>13</td><td>忆炉全景十六幕</td></tr>
+    <tr><td>14</td><td>监听文件夹、远程资源、手册、存储、相对时间</td></tr>
+    <tr><td>15</td><td>路径选择、流程弹窗、备份恢复、教程、支持作者、牌组筛选、Anki 卡片、冲刺</td></tr>
+    <tr><td>16</td><td>挖空/抽认卡提示词、制卡方式、命令提示</td></tr>
+    <tr><td>17</td><td>zip / tar 解压错误、JEV 助手提示</td></tr>
+    <tr><td>18</td><td>AI 服务商名与密钥行</td></tr>
+  </tbody>
+</table>
+
+<footer>bz review · i18n 英文 · 报告生成于 2026-11-21 · 未合并 master，等确认</footer>
+</div>
+</body>
+</html>
