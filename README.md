@@ -25,18 +25,10 @@
 <p align="center"><b>复习计划 · 今日到期 · 逾期 · 未来</b></p>
 
 <p align="center">
-  <img src="docs/images/review-card-dark.webp" alt="抽认卡：正面是问题，背面是划线原文，下面四档评级忘了 / 困难 / 一般 / 容易">
+  <img src="docs/images/review-quiz-light.webp" alt="AI 做题：四选一题目，选完即时判分">
 </p>
 
-<p align="center"><b>抽认卡 · AI 出题 · 四档评级（暗色）</b></p>
-
-<p align="center">
-  <img src="docs/images/review-mobile-plan-light.webp" width="288" alt="移动端复习计划：本轮安排与已逾期卡片">
-  &nbsp;&nbsp;
-  <img src="docs/images/review-mobile-card-dark.webp" width="288" alt="移动端抽认卡：问题、答案与四档评级">
-</p>
-
-<p align="center"><b>移动端 · 复习计划 · 抽认卡</b></p>
+<p align="center"><b>AI 做题 · 四选一 · 即时判分</b></p>
 
 
 
@@ -249,24 +241,10 @@
 <p align="center"><b>Review plan · Due today · Overdue · Upcoming</b></p>
 
 <p align="center">
-  <img src="docs/images/review-card-dark.webp" alt="Flashcard: question on the front, source text on the back, four ratings">
+  <img src="docs/images/review-quiz-light.webp" alt="AI quiz: multiple-choice question with instant feedback">
 </p>
 
-<p align="center"><b>Flashcard · AI-generated · Four ratings (dark)</b></p>
-
-<p align="center">
-  <img src="docs/images/review-mobile-plan-light.webp" width="288" alt="Review plan on mobile, light">
-  &nbsp;&nbsp;
-  <img src="docs/images/review-mobile-card-dark.webp" width="288" alt="Flashcard on mobile, dark">
-</p>
-
-<p align="center"><b>Mobile · Review plan · Flashcard</b></p>
-
-<p align="center">
-  <img src="docs/images/review-stats-light.webp" alt="Stats: review ledger, hourly and weekday rhythm, year heatmap, pass rate">
-</p>
-
-<p align="center"><b>Stats · Rhythm · Heatmap · Pass rate</b></p>
+<p align="center"><b>AI quiz · Multiple choice · Instant feedback</b></p>
 
 Let AI make and organize your cards — you just read and review. Built on FSRS spaced repetition, it schedules reviews from memory stability and fits its parameters to your own history — so you remember more with fewer reviews. Desktop and mobile, all data stays local in your vault.
 
