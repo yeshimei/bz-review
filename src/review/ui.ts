@@ -594,13 +594,6 @@ export class UIManager {
         readerBtn.dataset.act = 'empty-reader-add';
         readerBtn.textContent = '从阅读器加入复习';
         acts.appendChild(readerBtn);
-        /* 没装 Reader 的用户也得有一条立刻能走的路：当前这篇笔记。
-           2026-11-21 起它和命令、文件树右键一样走统一制卡流程。 */
-        const currentBtn = createEl('button');
-        currentBtn.className = 'bzrv-btn bzrv-btn--ghost';
-        currentBtn.dataset.act = 'empty-add-current';
-        currentBtn.textContent = '加入复习';
-        acts.appendChild(currentBtn);
         host.appendChild(
           uiEmpty({
             icon: 'inbox',
@@ -1454,10 +1447,6 @@ export class UIManager {
         openSourcePicker(this.app);
       })();
     });
-    // 空态第四个入口：当前笔记（与命令、文件树右键同一条统一流程）
-    container.querySelector('[data-act="empty-add-current"]')?.addEventListener('click', () => {
-      void this.addCurrentNote();
-    });
     // 筛选（批 8：就地展开，不再弹原生弹窗）的图标绑定已并入 bindPanelHead；
     // 下面只管筛选区里的关键字与三个下拉。
     // 筛选区控件：关键字防抖 220ms，三个下拉即时生效（没有「应用」这一步）
@@ -1578,18 +1567,7 @@ export class UIManager {
     });
   }
 
-  // ================= 空态两条路（item 10） =================
-
-  /** 把当前笔记加入复习（空库引导动作；命令同语义，2026-11-21 起走统一流程） */
-  private async addCurrentNote(): Promise<void> {
-    const file = this.app.workspace.getActiveFile();
-    if (!file) {
-      notice('请先打开一个笔记', 'warning');
-      return;
-    }
-    const { openAddToReviewFlow } = await import('./add-flow');
-    await openAddToReviewFlow(this.app, { kind: 'note', path: file.path });
-  }
+  // ================= 空态引导 =================
 
   /** 空库引导（保留给可能的调用点）：先看视频教程了解用法 */
   private async showWatchHelp(): Promise<void> {

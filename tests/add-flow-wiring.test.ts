@@ -45,10 +45,12 @@ describe('加入复习 · 只有一个入口', () => {
     expect(body).not.toContain('openCardWizardForAdd');
   });
 
-  it('面板空态按钮走统一流程', () => {
-    const body = section(ui, 'private async addCurrentNote');
-    expect(body).toContain('openAddToReviewFlow');
-    expect(body).not.toContain('addCurrentToReview');
+  it('面板空态只留三颗按钮，当前笔记入口已移除', () => {
+    /* 2026-11-21 用户要求：空态去掉「加入复习」，只保留看视频 / Anki / 阅读器 */
+    expect(ui).toContain('empty-anki-import');
+    expect(ui).toContain('empty-reader-add');
+    expect(ui).toContain('watch-video');
+    expect(ui).not.toContain('empty-add-current');
   });
 
   it('监听新建笔记也走统一流程，不直接 addItem', () => {
