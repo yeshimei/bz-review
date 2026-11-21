@@ -2,11 +2,16 @@
  * 通用工具函数（Q3.js window.__utils 移植 + 原脚本内联工具）
  * 行为与 Q3.js 逐字一致（spec「Q3 core 层逐行提取」）。
  */
-import { moment } from 'obsidian';
+import { moment as hostMoment } from 'obsidian';
 import { getApp } from './app';
 import { pad2, relTime as baseRelTime, stripMdExt, localDayKey, stripTitleMarks } from './ui/str';
 import { notice } from './notice';
 import { t } from '../i18n/strings';
+
+/* Host 的 moment 在类型层是 `typeof Moment`，但 obsidian.d.ts 用
+   `import * as Moment from 'moment'`，某些 eslint 解析器会把它当 any。
+   这里显式转回 moment 自己的类型，调用点才不会被 no-unsafe-* 扫成 any。 */
+const moment: typeof import('moment') = hostMoment;
 
 /**
  * unknown → 安全文本。primitive 直接 String（与 String(v) 逐字等价）；

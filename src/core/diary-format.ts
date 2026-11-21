@@ -14,8 +14,12 @@
  * 例外（2026-11-05）：day 格式的文件名要按 Obsidian 日记的日期格式生成/反解，需 moment——
  * 走 obsidian 模块取宿主 moment（测试 alias 已替换），不 import 任何域；其余仍是纯函数。
  */
-import { moment } from 'obsidian';
+import { moment as hostMoment } from 'obsidian';
 import { OBSIDIAN_DAILY_NOTES_DEFAULT_FORMAT, obsidianDailyNotesFormat } from './daily-notes';
+
+/* 同 core/utils.ts：obsidian.d.ts 的 moment 类型在部分解析器里会退化成 any，
+   显式转回 moment 自己的类型，避免 no-unsafe-* 警告。 */
+const moment: typeof import('moment') = hostMoment;
 
 /** 条目文件名（题目）：`YYMMDDHHmm` 或同刻第 N 篇 `YYMMDDHHmm-N` */
 export const DIARY_ENTRY_FILE_RE = /^(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(?:-(\d+))?\.md$/;

@@ -18,7 +18,7 @@ describe('嵌入态 · 宿主复习页签回主列表', () => {
     let selector = '';
     const host = {
       parentElement: {
-        querySelector: (s: string): unknown => { selector = s; return tab; },
+        find: (s: string): unknown => { selector = s; return tab; },
       },
     } as unknown as HTMLElement;
     const onHome = vi.fn();
@@ -34,7 +34,7 @@ describe('嵌入态 · 宿主复习页签回主列表', () => {
   });
 
   it('宿主没有复习页签时安全返回空清理函数', () => {
-    const host = { parentElement: { querySelector: () => null } } as unknown as HTMLElement;
+    const host = { parentElement: { find: () => null } } as unknown as HTMLElement;
     expect(() => bindStudyReviewTab(host, () => {})()).not.toThrow();
   });
 });

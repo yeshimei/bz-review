@@ -117,7 +117,7 @@ function setProviderValue(mapKey: OverrideMapKey, raw: string): void {
   if (!s) return;
   const v = raw.trim();
   if (!s[mapKey] || typeof s[mapKey] !== 'object') s[mapKey] = {};
-  const map = s[mapKey] as Record<string, unknown>;
+  const map = s[mapKey];
   if (v === '' || v === '0') delete map[id];
   else map[id] = mapKey === 'aiModelOverrides' ? v : Number(v);
   void saveSettings();

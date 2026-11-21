@@ -1029,7 +1029,6 @@ export function renderSettingsInto(container: HTMLElement, schema: SettingsSchem
         setting.addSlider((sl) => {
           sl.setLimits(row.min, row.max, row.step ?? 1);
           sl.setValue(Number(acc.read()) || 0);
-          sl.setDynamicTooltip();
           sl.onChange(async (v) => {
             acc.write(v);
             // 显隐随值同步切换（同 toggle 口径）
