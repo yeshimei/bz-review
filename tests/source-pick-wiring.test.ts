@@ -36,4 +36,11 @@ describe('从阅读器加入复习 · 接线', () => {
     expect(main).toContain('openReaderFlow');
     expect(main).toContain('version: 6');
   });
+
+  it('Reader 缺席时送到设置插件组，不只是甩一句提示', () => {
+    /* 2026-11-21 用户要求：没装 / 没启用 → 直接跳设置里的「插件」组引导安装或启用 */
+    expect(ui).toContain('readReaderInstall');
+    expect(ui).toContain("openSettings('插件')");
+    expect(ui).toContain('community-plugins');
+  });
 });

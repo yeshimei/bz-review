@@ -306,7 +306,7 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-add-reader',
-      name: t('从阅读器加入复习', 'Add from bz Reader'),
+      name: t('从 bz reader 加入复习', 'Add from bz Reader'),
       callback: withReview((app) => openAddToReviewFlow(app, { kind: 'reader' })),
     });
     /* 选中一段文字就能做成一张卡（2026-11-15）。走 editorCallback：只有在笔记里

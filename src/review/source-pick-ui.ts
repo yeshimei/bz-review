@@ -1,5 +1,5 @@
 /* ============================================================
- * bz · 从阅读器加入复习（review/source-pick-ui.ts）
+ * bz · 从 bz Reader 加入复习（review/source-pick-ui.ts）
  *
  * 2026-11-21 用户拍板：**复习相关的一切都归 Review**。这个窗口从 bz-reader
  * 的侧栏/书右键入口打开（也可以从 Review 自己的命令打开），做三件事：
@@ -15,6 +15,7 @@ import { createAI, type AIService } from '../core/ai';
 import { notice } from '../core/notice';
 import { uiModal } from '../core/ui/modal';
 import { readerJumpUrl } from '../core/reader-link';
+import { isReaderHealthy, readReaderInstall } from '../core/reader-install';
 import { aiReadyOrGuide } from './ai-guide';
 import { openCardWizard, type CardWizardOptions } from './card-wizard';
 import { getReviewPlanApi } from './reader-api';
@@ -76,17 +77,58 @@ function openWizard(app: App, opts: CardWizardOptions): void {
 type Stage = 'loading' | 'books' | 'pick' | 'confirm';
 
 /**
- * 打开「从阅读器加入复习」。
+ * 打开「从 bz Reader 加入复习」。
  *
  * @param opts.bookId 从 bz-reader 的书内入口进来时给当前书 id；不给就先列书。
  */
 export function openSourcePicker(app: App, opts: { bookId?: string } = {}): void {
   const api = findReaderReviewApi(app);
   if (!api) {
-    notice('从书里加入复习要新版 bz Reader：请在插件市场更新后重试。', 'warning');
+    void guideReaderMissing(app);
     return;
   }
   new SourcePicker(app, api, opts.bookId).open();
+}
+
+/**
+ * bz Reader 没装 / 没启用 / 版本太旧：不甩一句提示就完事，直接把用户送到
+ * Review 设置页的「插件」组——那里有安装 / 启用按钮，点完回来再点一次即可
+ * （2026-11-21 用户要求）。
+ */
+async function guideReaderMissing(app: App): Promise<void> {
+  const state = await readReaderInstall(app).catch(() => null);
+  if (!state || !isReaderHealthy(state)) {
+    notice('还没装 bz reader：已打开设置里的「插件」，点「安装」即可', 'info');
+  } else if (!state.enabled) {
+    notice('bz reader 已装好但没启用：已打开设置里的「插件」，点「启用」即可', 'info');
+  } else {
+    /* 装了也启用了却没有内容接口：只可能是旧版 */
+    notice('bz reader 版本太旧，更新后再试一次', 'warning');
+  }
+  await openReviewPluginGroup(app);
+}
+
+/**
+ * 跳 Review 设置页的插件组。
+ *
+ * 设置是面板内置页（不再注册原生设置 tab），所以走 uiManager.openSettings('插件')；
+ * 面板还没初始化时退回宿主的第三方插件页，至少不让按钮点了没反应。
+ */
+async function openReviewPluginGroup(app: App): Promise<void> {
+  try {
+    const { uiManager } = await import('./index');
+    if (uiManager) {
+      await uiManager.openSettings('插件');
+      return;
+    }
+  } catch {
+    /* 面板未就绪：走宿主设置兜底 */
+  }
+  const setting = (app as unknown as {
+    setting?: { open?: () => void; openTabById?: (id: string) => void };
+  }).setting;
+  setting?.open?.();
+  setting?.openTabById?.('community-plugins');
 }
 
 class SourcePicker {
@@ -215,7 +257,7 @@ class SourcePicker {
   }
 
   private titleOf(): string {
-    if (this.stage === 'books') return '从阅读器加入复习';
+    if (this.stage === 'books') return '从 bz reader 加入复习';
     if (this.stage === 'confirm') return '确认要加入的内容';
     if (this.stage === 'pick') return '选要加入的内容';
     return '正在读取';
