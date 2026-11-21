@@ -1431,6 +1431,13 @@
   font-size: var(--bzrv-font-meta); line-height: 1.6;
 }
 .bzrv-wiz-hint { margin: 8px 0 0; color: var(--bzrv-text-3); font-size: var(--bzrv-font-caption); line-height: 1.6; }
+/* AI 没出成、用兜底的那张：不是报错红，是「这版不是模型写的」提醒 */
+.bzrv-wiz-note.is-warn {
+  border-color: color-mix(in srgb, var(--bzrv-warning) 45%, transparent);
+  background: color-mix(in srgb, var(--bzrv-warning) 12%, transparent);
+}
+/* 批量确认：审核进度（真的滚到过才算看过） */
+.bzrv-wiz-audit { margin: 0 0 8px; color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
 
 /* 四张方式卡 */
 .bzrv-wiz-modes { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }

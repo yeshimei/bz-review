@@ -8,12 +8,11 @@ import {
   noteSourceOf,
   noteWholeKey,
   plannedPathsFrom,
-  silentModeOf,
 } from '../src/review/add-flow-model';
 
 /**
  * 「加入复习」统一流程的纯口径（2026-11-21 用户拍板：任何入口都走同一条流程）。
- * 这里只守不依赖宿主的部分：钥匙稳定、正文截断、文件夹候选、静默判定、话术统一。
+ * 这里只守不依赖宿主的部分：钥匙稳定、正文截断、文件夹候选、话术统一。
  */
 describe('整篇笔记的钥匙', () => {
   it('只认路径，带 note: 前缀', () => {
@@ -107,17 +106,6 @@ describe('文件夹里的候选笔记', () => {
 
   it('大小写不敏感', () => {
     expect(folderNotePaths(['notes/a.MD'], 'notes')).toEqual(['notes/a.MD']);
-  });
-});
-
-describe('「不用每次询问」的判据', () => {
-  it('每次问我 → null，必须走界面', () => {
-    expect(silentModeOf(null)).toBeNull();
-  });
-
-  it('设了具体方式 → 直接用那个方式，不再问', () => {
-    expect(silentModeOf('flashcard')).toBe('flashcard');
-    expect(silentModeOf('plain')).toBe('plain');
   });
 });
 

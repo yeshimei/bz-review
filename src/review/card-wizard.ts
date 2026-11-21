@@ -44,10 +44,14 @@ import {
   type ClozeSpan,
 } from './cloze-edit';
 import {
+  auditText,
   clipTitle,
   draftToInput,
   markWizardStates,
+  modeLabelOf,
   modeNeedsAI,
+  plainHeadOf,
+  presetModeNote,
   WIZARD_MODES,
   type WizardDraft,
   type WizardMode,
@@ -144,6 +148,12 @@ class CardWizard {
   private regenIndex = -1;
   private fillIndex = -1;
   private remember = false;
+  /** 这一屏确认页是因为「新卡默认方式」直接进来的（不是用户在方式屏点的） */
+  private presetMode: WizardMode | null = null;
+  /** 批量审核进度：真的滚到过视口的卡（按 key 记，重画不丢） */
+  private auditSeen = new Set<string>();
+  private auditObserver: IntersectionObserver | null = null;
+  private auditEl: HTMLElement | null = null;
   private cancelled = false;
   private closed = false;
   /** 挖空卡的滚动位置（点词会重画这一屏） */
@@ -231,7 +241,9 @@ class CardWizard {
 
     const preset = this.opts.forcePick ? null : defaultCardMethod(getSettings());
     if (preset && (WIZARD_MODES as readonly string[]).includes(preset)) {
+      /* 只跳过「选方式」：题面照样生成、照样停在确认页等用户审 */
       this.mode = preset as WizardMode;
+      this.presetMode = this.mode;
       this.render();
       void this.generateAll();
       return;
@@ -243,6 +255,9 @@ class CardWizard {
   /* ── 渲染骨架 ─────────────────────────────────────────── */
 
   private render(): void {
+    /* 整屏重画：旧的观察者盯着已经拆掉的节点，先收掉 */
+    this.auditObserver?.disconnect();
+    this.auditObserver = null;
     const oldList = this.root.querySelector<HTMLElement>('.bzrv-wiz-list');
     if (oldList) this.listScroll = oldList.scrollTop;
     /* 点词会整屏重画：记住每张挖空卡自己的滚动位置，别让长文跳回顶部 */
@@ -331,6 +346,7 @@ class CardWizard {
     add('返回', false, () => {
       if (this.busy) return;
       this.step = 'pick';
+      this.presetMode = null;
       this.drafts = [];
       this.states = [];
       this.clozeStates.clear();
@@ -386,6 +402,12 @@ class CardWizard {
 
   private renderEdit(body: HTMLElement): void {
     body.createEl('p', { cls: 'bzrv-wiz-lead', text: '题面确认后才进复习计划，之后按它复习。' });
+    if (this.presetMode && this.step === 'edit') {
+      body.createDiv({
+        cls: 'bzrv-wiz-note',
+        text: presetModeNote(modeLabelOf(this.presetMode), this.sources.length),
+      });
+    }
 
     if (this.generating) {
       const bar = body.createDiv({ cls: 'bzrv-wiz-genbar' });
@@ -393,11 +415,31 @@ class CardWizard {
       bar.createSpan({ cls: 'bzrv-wiz-genbar-text', text: this.progressText() });
     }
 
+    /* 一次审好几张时给个进度：只有真的滚到过这张才算看过 */
+    this.auditEl = this.drafts.length > 1
+      ? body.createDiv({ cls: 'bzrv-wiz-audit', text: auditText(this.drafts.length, this.auditSeen.size) })
+      : null;
+
     const list = body.createDiv({ cls: 'bzrv-wiz-list' });
     /* 生成中不画任何旧草稿：换方式时上一轮的内容不许在这里闪一下 */
     if (!this.generating) {
       this.drafts.forEach((d, i) => list.appendChild(this.renderCard(d, i)));
+      this.watchAudit(list);
     }
+  }
+
+  /** 滚到过的卡记进 auditSeen，进度行跟着改（批量审核时才挂） */
+  private watchAudit(list: HTMLElement): void {
+    if (!this.auditEl || typeof IntersectionObserver !== 'function') return;
+    this.auditObserver = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (!e.isIntersecting) continue;
+        const key = (e.target as HTMLElement).dataset.key;
+        if (key) this.auditSeen.add(key);
+      }
+      if (this.auditEl) this.auditEl.textContent = auditText(this.drafts.length, this.auditSeen.size);
+    }, { root: list, threshold: 0.6 });
+    list.querySelectorAll<HTMLElement>('.bzrv-wiz-card').forEach((el) => this.auditObserver?.observe(el));
   }
 
   private progressText(): string {
@@ -408,6 +450,7 @@ class CardWizard {
 
   private renderCard(d: WizardDraft, i: number): HTMLElement {
     const box = createDiv({ cls: 'bzrv-wiz-card' });
+    box.dataset.key = d.key;
     const head = box.createDiv({ cls: 'bzrv-wiz-card-head' });
     head.createSpan({
       cls: 'bzrv-wiz-card-title',
@@ -418,6 +461,13 @@ class CardWizard {
       cls: 'bzrv-wiz-tag is-' + state,
       text: STATE_LABEL[state],
     });
+
+    if (d.aiFailed) {
+      box.createDiv({
+        cls: 'bzrv-wiz-note is-warn',
+        text: '这张 AI 没生成出来，先用本地兜底出了一版。点下面「重新生成」再试一次。',
+      });
+    }
 
     const body = box.createDiv({ cls: 'bzrv-wiz-card-body' });
     if (this.regenIndex === i) {
@@ -831,6 +881,8 @@ class CardWizard {
 
   private async beginGeneration(): Promise<void> {
     if (this.busy) return;
+    /* 用户在方式屏自己选了：这句「已按设置」就不该再出现 */
+    this.presetMode = null;
     /* 勾了「以后都用这个方式」：写进 Review 自己的「新卡默认方式」 */
     if (this.remember) {
       const settings = getSettings();
@@ -923,10 +975,13 @@ class CardWizard {
     }
     if (this.cancelled) return d;
 
+    /* 模型没回来：照旧兜底，但卡上要让用户知道「这版不是 AI 出的」，并给重试 */
+    if (!generated) d.aiFailed = true;
+
     if (mode === 'flashcard') {
       /* 出不来就问原文本身：宁可退化成全文回忆，也不给一张空白卡。
          整篇笔记的原文可能几千字，问句面必须截短——不然复习时那面就是一大段正文。 */
-      d.front = String(generated?.qa?.q ?? '').trim() || clipTitle(src.text, 60);
+      d.front = String(generated?.qa?.q ?? '').trim() || clipTitle(plainHeadOf(src.text), 60);
       return d;
     }
     if (mode === 'quiz') {
@@ -956,6 +1011,8 @@ class CardWizard {
     d.title = fresh.title;
     d.questions = fresh.questions;
     d.cloze = fresh.cloze;
+    if (fresh.aiFailed) d.aiFailed = true;
+    else delete d.aiFailed;
     this.clozeStates.delete(d.key);
     this.render();
   }
@@ -1050,6 +1107,8 @@ class CardWizard {
   }
 
   private close(): void {
+    this.auditObserver?.disconnect();
+    this.auditObserver = null;
     this.cancelled = true;
     this.closeModal?.();
   }

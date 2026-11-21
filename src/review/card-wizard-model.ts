@@ -35,6 +35,11 @@ export function modeNeedsAI(mode: WizardMode): boolean {
   return mode !== 'plain';
 }
 
+/** 方式的中文名（确认页那句「已按设置使用「全文回忆」」要用） */
+export function modeLabelOf(mode: WizardMode): string {
+  return WIZARD_MODE_META.find((m) => m.value === mode)?.label ?? String(mode);
+}
+
 /** 确认题面那屏的草稿（一张卡一份） */
 export interface WizardDraft {
   key: string;
@@ -54,6 +59,54 @@ export interface WizardDraft {
   questions: QuizQuestion[];
   /** 挖空卡：带 {{n}} 的文本 + 各空答案 */
   cloze: { text: string; blanks: string[] } | null;
+  /** AI 没生成出来，这张用的是原文 / 规则兜底（卡上要提示「重试这一张」） */
+  aiFailed?: boolean;
+}
+
+/**
+ * 批量确认页的审核进度一行（2026-11-21 增强）。
+ *
+ * 只有「真的滚到过这张卡」才算看过——按草稿数量算进度是假的，用户可能一眼没看。
+ */
+export function auditText(total: number, seen: number): string {
+  const t = Math.max(0, Number(total) || 0);
+  const s = Math.min(Math.max(0, Number(seen) || 0), t);
+  return s >= t ? `共 ${t} 张 · 都看过了` : `共 ${t} 张 · 已看过 ${s} 张`;
+}
+
+/**
+ * 预设方式下确认页的说明（2026-11-21 增强）。
+ *
+ * 批量时要让人知道「这一批都是设置里那个方式生成的」，不是系统替他挑的。
+ */
+export function presetModeNote(label: string, total: number): string {
+  const n = Math.max(1, Number(total) || 1);
+  const head = n > 1
+    ? `这批 ${n} 张都按设置里「新卡默认方式」的「${label}」生成，跳过了选方式这一屏。`
+    : `已按设置里「新卡默认方式」的「${label}」生成，所以跳过了选方式这一屏。`;
+  return `${head}想每次自己选，去设置里把「新卡默认方式」改回「每次问我」。`;
+}
+
+/**
+ * 兜底问句取哪一行：跳过标题行与列表符号，别让「# 某笔记 ## 划线摘录 >」当问句。
+ *
+ * AI 出不来时抽认卡要拿原文顶正面（2026-11-21 真机发现整篇笔记的标题行全串一起）。
+ */
+export function plainHeadOf(text: string): string {
+  const raw = String(text ?? '');
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    /* Markdown 标题不是正文，跳过 */
+    if (/^#{1,6}\s/.test(trimmed)) continue;
+    const body = trimmed
+      .replace(/^>\s*/, '')
+      .replace(/^[-*+]\s+/, '')
+      .replace(/^\d+[.)、]\s*/, '')
+      .trim();
+    if (body) return body;
+  }
+  return raw.replace(/^#{1,6}\s*/gm, '').trim();
 }
 
 /** 列表短标题：压掉换行与多余空白，超长截断 */

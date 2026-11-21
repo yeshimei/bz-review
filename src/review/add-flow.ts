@@ -7,28 +7,23 @@
  *   · 阅读器书右键 / 工具条 / 划选 → 交给 Review 的「挑内容」窗口。
  * 之后一律是：挑内容（能跳就跳）→ 选方式 → 出题面 → 确认才入库。
  *
- * 唯一允许跳过界面的情况：设置里的「新卡默认方式」不是「每次问我」——
- * 用户自己说过「除非我在设置里设了不用每次询问」。这时按那个方式直接入库，
- * AI 内容由 Review 的后台队列补齐，行为和阅读器批量加卡完全一致。
+ * 唯一允许少一步的情况：设置里的「新卡默认方式」不是「每次问我」——
+ * 用户自己说过「除非我在设置里设了不用每次询问」。这时只跳过「选方式」，
+ * 题面照样生成、照样停在确认页等用户审；AI 出的东西不许绕过人的眼睛直接入库。
  *
  * 以前这里有七套写法（直接写库、勾选直写、只发一条通知……），用户原话是
  * 「它们各自调用各自的面板，非常的奇怪」。现在只剩这一个文件做分流。
  * ========================================================== */
 import type { App } from 'obsidian';
 import { notice, notifyActionError } from '../core/notice';
-import { tryGetSettings } from '../core/settings-provider';
 import { uiModal } from '../core/ui/modal';
-import { defaultCardMethod } from './card-mode';
 import { openCardWizard, type CardWizardSource } from './card-wizard';
-import { getReviewPlanApi, type ReviewCardInput, type ReviewAddSummary } from './reader-api';
+import { getReviewPlanApi } from './reader-api';
 import {
-  addHappened,
-  addSummaryText,
   folderNotePaths,
   noteSourceOf,
   noteWholeKey,
   plannedPathsFrom,
-  silentModeOf,
 } from './add-flow-model';
 import { noteCardKey } from './note-source';
 
@@ -175,7 +170,7 @@ export async function openAddToReviewFlow(app: App, input: AddFlowInput): Promis
         notice('先选中要加入复习的内容', 'info');
         return;
       }
-      deliver(app, [src], '条');
+      deliver(app, [src]);
       return;
     }
     if (input.kind === 'folder') {
@@ -229,13 +224,8 @@ async function addPaths(app: App, paths: readonly string[]): Promise<void> {
   deliver(app, got.sources);
 }
 
-/** 交付给统一制卡流程；设置里「不用每次询问」时走静默入库 */
-function deliver(app: App, sources: CardWizardSource[], unit: '篇' | '条' = '篇'): void {
-  const preset = silentModeOf(defaultCardMethod(tryGetSettings()));
-  if (preset) {
-    void silentAdd(app, sources, preset, unit);
-    return;
-  }
+/** 交付给统一制卡流程。 */
+function deliver(app: App, sources: CardWizardSource[]): void {
   const api = getReviewPlanApi();
   if (!api) {
     notice('复习模块还没准备好，稍后再试一次', 'warning');
@@ -250,38 +240,6 @@ function deliver(app: App, sources: CardWizardSource[], unit: '篇' | '条' = '�
     /* 入库之后才刷新列表与文件树；取消一个字节都没写，不该触发任何刷新 */
     onAdded: () => void afterAdd(app),
   });
-}
-
-/**
- * 静默入库（只有用户设了「新卡默认方式」才走这里）。
- *
- * 不再弹任何界面：按那个方式直接写进计划，AI 内容交给 Review 的后台队列补
- * ——和阅读器一次推几十条划线是同一条路，不会因为来源不同而少生成一次。
- */
-async function silentAdd(app: App, sources: CardWizardSource[], mode: NonNullable<ReturnType<typeof silentModeOf>>, unit: '篇' | '条'): Promise<void> {
-  const api = getReviewPlanApi();
-  if (!api) {
-    notice('复习模块还没准备好，稍后再试一次', 'warning');
-    return;
-  }
-  const cards: ReviewCardInput[] = sources.map((s) => {
-    const card: ReviewCardInput = { key: s.key, bookTitle: s.bookTitle, text: s.text, mode };
-    if (s.aiText) card.aiText = s.aiText;
-    if (s.sourceNote) card.sourceNote = s.sourceNote;
-    if (s.chapterTitle) card.chapterTitle = s.chapterTitle;
-    if (s.comment) card.comment = s.comment;
-    if (s.backlink) card.backlink = s.backlink;
-    return card;
-  });
-  let res: ReviewAddSummary;
-  try {
-    res = await api.addCards(cards);
-  } catch (e) {
-    notifyActionError(e, '加入复习');
-    return;
-  }
-  notice(addSummaryText(res, unit), addHappened(res) ? 'success' : 'warning');
-  await afterAdd(app);
 }
 
 /** 入库后的统一收尾：面板列表 + 文件树染色（两处都失败也不影响卡已经进了计划） */
