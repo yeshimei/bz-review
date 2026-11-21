@@ -30,6 +30,7 @@ import { ensureQuiz, quizUI } from './quiz-core';
 import type { QuizReviewResults } from './quiz-core/session';
 import { quizPracticeSetupHtml, quizPracticeSummaryHtml } from './render';
 import { motionQuizSetup, motionQuizSummary } from './motion';
+import { t } from '../i18n/strings';
 import {
   collectQuestionsForNotes,
   listVaultNotes,
@@ -250,7 +251,7 @@ class QuizPracticePanel {
     });
     this.content.querySelector('[data-act="pick-folders"]')?.addEventListener('click', () => {
       openPathPicker({
-        title: '选择出题文件夹',
+        title: t('qp.pickFolder'),
         mode: 'multi',
         selected: this.state.folders,
         onConfirm: (list) => {
@@ -296,7 +297,7 @@ class QuizPracticePanel {
       if (!paths.length) {
         // 单篇空 = 路径不存在（resolveScopeNotes 已过滤幽灵路径）——给人话，不再笼统「没有笔记」
         notice(
-          this.state.scope === 'note' ? '找不到这篇笔记，可能已被移动或重命名，重新选一篇吧' : '当前范围没有可出题的笔记',
+          this.state.scope === 'note' ? t('qp.noteGone') : t('qp.noNotes'),
           'warning'
         );
         return;
@@ -306,7 +307,7 @@ class QuizPracticePanel {
       // 引擎既有批量出题（进度/失败通知内建；已有题的笔记跳过不重出）。
       // 审查修复：按批循环驱动（每批 ≤10 篇一次 AI 调用），「全部」范围不再整库单次调用
       // 拼全部全文（必超 token/超时降级数百次串行）；批间更新进度框，关面板即中止。
-      const progress = notify(`正在备题（0/${paths.length} 篇）…`, { type: 'progress', dedupeKey: 'quiz-prepare' });
+      const progress = notify(t('qp.preparing0', { n: paths.length }), { type: 'progress', dedupeKey: 'quiz-prepare' });
       try {
         for (let i = 0; i < paths.length; i += ENSURE_BATCH) {
           if (this.cancelled) return;
@@ -314,7 +315,7 @@ class QuizPracticePanel {
           await quizUI.ensureQuestions(paths.slice(i, i + ENSURE_BATCH), {
             onProgress: (m) => progress.setMessage(m),
           });
-          progress.setMessage(`正在备题（${Math.min(i + ENSURE_BATCH, paths.length)}/${paths.length} 篇）…`);
+          progress.setMessage(t('qp.preparing', { done: Math.min(i + ENSURE_BATCH, paths.length), n: paths.length }));
         }
       } finally {
         progress.hide();
@@ -324,7 +325,7 @@ class QuizPracticePanel {
       const collected = await collectQuestionsForNotes(bank, paths);
       const picked = pickRoundQuestions(collected, this.state.batch);
       if (!picked.length) {
-        notice('这个范围还没出成题目：AI 出题失败或笔记内容为空，稍后再试', 'warning');
+        notice(t('qp.failed'), 'warning');
         return;
       }
       if (this.cancelled) return;
@@ -364,7 +365,7 @@ class QuizPracticePanel {
     });
     this.content.querySelector('[data-act="finish"]')?.addEventListener('click', () => this.hide());
     this.present();
-    motionQuizSummary(this.content, results.accuracy >= 90 ? '优' : '完成'); // 朱批大章
+    motionQuizSummary(this.content, results.accuracy >= 90 ? t('qp.quality') : t('qp.done')); // 朱批大章
   }
 }
 
@@ -376,7 +377,7 @@ export async function openQuizPanel(app: App): Promise<void> {
   // 会话在途：题面弹窗拥有前台（ESC 层在其下），不重开设置视图垫底；
   // 审查修复：不再静默 no-op，给人话反馈
   if (quizUI._sessionActive) {
-    notice('做题进行中，先完成或放弃当前这轮再开', 'info');
+    notice(t('qp.busy'), 'info');
     return;
   }
   ensureQuiz(app);

@@ -16,6 +16,7 @@ import type { ReviewCard } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
 import { aiTextOf } from './card-text';
 import { parseLooseJson } from './loose-json';
+import { locale } from '../i18n/strings';
 
 /** 一道题最少要多少字才够问出东西 */
 const CHARS_PER_QUESTION = 40;
@@ -53,9 +54,30 @@ export function quizCountFor(text: string): number {
 export function buildCardQuizPrompt(card: ReviewCard, count: number): string {
   const book = String(card.bookTitle ?? '').trim();
   const chapter = String(card.chapterTitle ?? '').trim();
-  const where = chapter ? `《${book}》${chapter}` : `《${book}》`;
   const idea = String(card.comment ?? '').trim();
   const n = Math.min(QUIZ_MAX, Math.max(QUIZ_MIN, Math.round(Number(count) || QUIZ_MIN)));
+  if (locale() !== 'zh') {
+    const enWhere = chapter ? `"${book}" ${chapter}` : `"${book}"`;
+    return [
+      `Below is a reading highlight from ${enWhere}. Create ${n} multiple-choice questions (four options each).`,
+      '',
+      'Requirements:',
+      `1. Exactly ${n} questions; each has four options and exactly one correct answer.`,
+      '2. Ask what the highlight says and why, not things like "which book is this from" that the title gives away.',
+      '3. Distractors should look real but must be decidable from the highlight itself.',
+      '4. Each question has an explain: one sentence resolving the answer and pointing to the source evidence.',
+      '5. Output JSON only, no explanation, no code block.',
+      '',
+      'Structure:',
+      '{"questions":[{"question":"question","options":["A","B","C","D"],"correctIndices":[0],"explain":"explanation"}]}',
+      '',
+      idea ? `My note at the time: ${idea}` : '',
+      `Highlight: ${aiTextOf(card)}`,
+    ]
+      .filter((line) => line !== '')
+      .join('\n');
+  }
+  const where = chapter ? `《${book}》${chapter}` : `《${book}》`;
   return [
     `下面是一条读书划线（${where}），请据此出 ${n} 道四选一的选择题。`,
     '',
@@ -157,6 +179,24 @@ export async function generateCardQuiz(
 export function buildSingleQuizPrompt(card: ReviewCard): string {
   const book = String(card.bookTitle ?? '').trim();
   const chapter = String(card.chapterTitle ?? '').trim();
+  if (locale() !== 'zh') {
+    const enWhere = chapter ? `"${book}" ${chapter}` : `"${book}"`;
+    return [
+      `Below is a reading highlight from ${enWhere}. Create one more multiple-choice question (four options).`,
+      '',
+      'Requirements:',
+      '1. Exactly one question, four options and exactly one correct answer.',
+      '2. Ask what the highlight says and why, not things like "which book is this from" that the title gives away.',
+      '3. Distractors should look real but must be decidable from the highlight itself.',
+      '4. Include an explain: one sentence resolving the answer and pointing to the source evidence.',
+      '5. Output JSON only, no explanation, no code block.',
+      '',
+      'Structure:',
+      '{"questions":[{"question":"question","options":["A","B","C","D"],"correctIndices":[0],"explain":"explanation"}]}',
+      '',
+      `Highlight: ${aiTextOf(card)}`,
+    ].join('\n');
+  }
   const where = chapter ? `《${book}》${chapter}` : `《${book}》`;
   return [
     `下面是一条读书划线（${where}），请再出一道四选一的选择题。`,
