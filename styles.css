@@ -51,7 +51,6 @@
     padding: 0;
     margin: -1px;
     overflow: hidden;
-    clip-path: inset(50%);
     white-space: nowrap;
     border: 0;
 }
@@ -5058,8 +5057,7 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 @media (hover: hover) {
   .bzrv-help-anchor:is([data-bzrv], [data-bzrv] *):hover,
   .bzrv-help-anchor.is-open:is([data-bzrv], [data-bzrv] *) {
-    text-decoration: underline dotted var(--bzrv-brand);
-    text-underline-offset: 3px;
+    border-bottom: 1px dotted var(--bzrv-brand);
   }
 }
 
@@ -5448,13 +5446,11 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-deps-pill--dim:is([data-bzrv], [data-bzrv] *) { border-color: var(--bzrv-border); color: var(--bzrv-text-3); }
 .bzrv-deps-a:is([data-bzrv], [data-bzrv] *) {
   color: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--bzrv-border-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  border-bottom: 1px solid var(--bzrv-border-strong);
+  padding-bottom: 1px;
 }
 @media (hover: hover) {
-  .bzrv-deps-a:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-brand); text-decoration-color: var(--bzrv-brand); }
+  .bzrv-deps-a:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzrv-brand); border-bottom-color: var(--bzrv-brand); }
 }
 
 /* ── 提示词预览 ── */
@@ -8501,7 +8497,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   .bzrv-settings-content .bzs-keyrow:is([data-bzrv], [data-bzrv] *):hover { color: var(--bzsp-accent); }
 }
 .bzrv-settings-content .bzs-keyrow kbd:is([data-bzrv], [data-bzrv] *) {
-  font: 500 10px ui-monospace, Consolas, monospace;
+  font: 500 10px var(--font-monospace);
   color: var(--bzsp-t2);
   background: linear-gradient(180deg, var(--bzsp-bg-2), var(--bzsp-sunken));
   border: 1px solid var(--bzsp-line-2);
@@ -8736,7 +8732,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   --chg-line-soft: color-mix(in srgb, var(--background-modifier-border, rgba(0, 0, 0, 0.1)) 55%, transparent);
   --chg-mono: "Cascadia Code", Consolas, monospace;
 
-  font-family: -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-interface);
   color: var(--chg-ink);
 }
 
@@ -9714,7 +9710,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
 .bzs-chgn-fbstate.doing:is([data-bzrv], [data-bzrv] *){background:rgba(217,138,31,.16);color:#b16f10}
 .bzs-chgn-fbstate.invalid:is([data-bzrv], [data-bzrv] *){background:color-mix(in srgb,var(--chg-ink-3) 14%,transparent);color:var(--chg-ink-2)}
 /* Git 提交短 id：等宽字 + 强调色，和可点来源徽标同排 */
-.bzs-chgn-fbcommit:is([data-bzrv], [data-bzrv] *){font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-decoration:none;color:var(--chg-accent);font-weight:600}
+.bzs-chgn-fbcommit:is([data-bzrv], [data-bzrv] *){font-family:var(--font-monospace);text-decoration:none;color:var(--chg-accent);font-weight:600}
 .bzs-chgn-fbcommit:is([data-bzrv], [data-bzrv] *):hover{text-decoration:underline}
 .bzs-chgn-fbempty:is([data-bzrv], [data-bzrv] *){grid-column:1/-1;padding:26px 0;text-align:center;font-size:11px;color:var(--chg-ink-3)}
 
@@ -9778,7 +9774,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   --cc-accent:var(--bzrv-accent,#9a7434);
   --cc-accent-soft:color-mix(in srgb,var(--cc-accent) 12%,transparent);
   position:fixed;inset:0;z-index:300;display:grid;place-items:center;
-  background:rgba(0,0,0,.5);font-family:-apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:rgba(0,0,0,.5);font-family:var(--font-interface);
 }
 .bzs-chgn-confirm[hidden]:is([data-bzrv], [data-bzrv] *){display:none}
 .bzs-chgn-confirm-box:is([data-bzrv], [data-bzrv] *){
@@ -9828,7 +9824,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   --sup-line-soft: color-mix(in srgb, var(--background-modifier-border, rgba(0, 0, 0, 0.1)) 55%, transparent);
   --sup-mono: "Cascadia Code", Consolas, monospace;
 
-  font-family: -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-interface);
   color: var(--sup-ink);
 }
 

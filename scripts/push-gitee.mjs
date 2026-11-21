@@ -49,9 +49,18 @@ const log = (m) => console.log(`[gitee] ${m}`);
 
 function readToken() {
   if (process.env.GITEE_TOKEN) return process.env.GITEE_TOKEN.trim();
-  const p = path.join(os.homedir(), '.gitee-token');
-  if (fs.existsSync(p)) return fs.readFileSync(p, 'utf8').trim();
-  console.error('[gitee] 缺令牌：把码云私人令牌写进 ~/.gitee-token（一行），或设 GITEE_TOKEN');
+  /* 本仓有专用的仓库级令牌（~/.gitee-token-bz-review，权限只到本仓）；
+     先找它，找不到再退回全局令牌。 */
+  const candidates = [
+    path.join(os.homedir(), '.gitee-token-bz-review'),
+    path.join(os.homedir(), '.gitee-token'),
+  ];
+  for (const p of candidates) {
+    if (!fs.existsSync(p)) continue;
+    const t = fs.readFileSync(p, 'utf8').trim();
+    if (t) return t;
+  }
+  console.error('[gitee] 缺令牌：把码云私人令牌写进 ~/.gitee-token-bz-review 或 ~/.gitee-token（一行），或设 GITEE_TOKEN');
   process.exit(1);
 }
 

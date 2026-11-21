@@ -28,7 +28,7 @@
   --sup-line-soft: color-mix(in srgb, var(--background-modifier-border, rgba(0, 0, 0, 0.1)) 55%, transparent);
   --sup-mono: "Cascadia Code", Consolas, monospace;
 
-  font-family: -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-interface);
   color: var(--sup-ink);
 }
 
