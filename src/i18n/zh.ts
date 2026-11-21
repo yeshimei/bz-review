@@ -294,7 +294,7 @@ export const ZH = {
   'ui.addFromReader': '从阅读器加入复习',
   'ui.addCurrent': '把当前笔记加入复习',
   'ui.emptyTitle': '复习还是空的',
-  'ui.emptyDesc': 'bz review 把制卡、整卡交给 AI，让你专注阅读与复习。内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。',
+  'ui.emptyDesc': 'bz Review 把制卡、整卡交给 AI，让你专注阅读与复习。内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。',
   'ui.forecastHint': '峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。',
   'ui.helpTitle': '怎么把内容加进复习',
   'ui.helpBody': '先看视频教程，了解制卡、划线与自动收编的用法。',

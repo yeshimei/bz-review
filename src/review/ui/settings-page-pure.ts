@@ -119,7 +119,7 @@ export function aboutBarHtml(version: string, paid: boolean, name: string, group
   const seal = paid ? '<span class="seal">✦</span>' : '';
   const sr = paid ? `<span class="bzs-sr-only">${esc(name ? t('about.patron') : t('about.pro'))}</span>` : '';
   return `<div class="bzs-setgrp wide bzs-about">
-      <span class="bzs-brand-txt"><h3>Review</h3></span>
+      <span class="bzs-brand-txt"><h3>bz Review</h3></span>
       <span class="bzs-about-meta">
         <span class="bzs-about-ver">v${esc(version)}</span>
         <span class="${cls}">${seal}${sr}${label}</span>

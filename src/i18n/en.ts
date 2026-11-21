@@ -290,7 +290,7 @@ export const EN: Record<MsgKey, string> = {
   'ui.addFromReader': 'Add from bz Reader',
   'ui.addCurrent': 'Add current note',
   'ui.emptyTitle': 'Nothing in review yet',
-  'ui.emptyDesc': 'bz review hands card creation to AI so you can focus on reading and reviewing. Built on FSRS spaced repetition, it schedules by memory stability and adapts to your review history, so fewer reviews stick better.',
+  'ui.emptyDesc': 'bz Review hands card creation to AI so you can focus on reading and reviewing. Built on FSRS spaced repetition, it schedules by memory stability and adapts to your review history, so fewer reviews stick better.',
   'ui.forecastHint': 'A tall peak means that day is overloaded: lower "Interval scale" in settings, or use "Vacation until" to push the pace back.',
   'ui.helpTitle': 'How to add content to review',
   'ui.helpBody': 'Watch the video tutorial to learn card creation, highlights and automatic collection.',

@@ -1,4 +1,4 @@
-# Review（复习）—— 干活约定
+# bz Review（复习）—— 干活约定
 
 Obsidian 插件，域 = `src/<域>/`，`core` 是共享层、`data` 是数据与授权层。中文输出。
 
