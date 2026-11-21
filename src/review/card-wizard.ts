@@ -179,7 +179,7 @@ class CardWizard {
     this.root = content;
     const { close } = uiModal({
       content,
-      maxWidth: 780,
+      size: 'lg',
       className: 'bzrv-wiz-popup',
       /* 只认 ✕ 与底部按钮：点遮罩 / ESC 都不关（2026-11-21 用户口径） */
       closable: false,

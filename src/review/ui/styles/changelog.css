@@ -51,15 +51,11 @@
    2026-11-18：720×560 太窄——顶部那条工具条（三颗统计 + 三个入口）会被折成
    两行，正文也挤；放大到 1040×720，工具条一行放得下。 */
 .bzs-chgn-dialog {
-  width: min(1040px, calc(100vw - 32px));
+  /* 宽度走 uiModal 的 size:'full'（--bzrv-modal-w-full），几何只留高度与皮肤 */
   height: min(720px, calc(100vh - 32px));
-  max-width: none;
-  max-height: none;
-  padding: 0;
+  max-height: min(720px, calc(100vh - 32px));
   background: var(--chg-panel);
   border: 1px solid var(--chg-line);
-  border-radius: 14px;
-  overflow: hidden;
   animation: bzs-chgn-pop 0.18s cubic-bezier(0.33, 1, 0.68, 1) both;
 }
 
@@ -686,8 +682,9 @@
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    /* 底距让给右下角浮条：条高 52 + 离地 36 = 88，再留一口气 */
-    padding: 18px 22px 96px;
+    /* 底距让给右下角浮条：条高 54 + 离底(20+max(16,安全区)) + 余量 8。
+       旧值 96 按「条高52+离地36」估的，漏了安全区，iOS 上最后一段被浮条压住。 */
+    padding: 18px 22px calc(82px + max(16px, env(safe-area-inset-bottom, 0px)));
     scrollbar-width: none;
   }
 
@@ -782,9 +779,9 @@
     font-size: 13px;
     line-height: 1.5;
     color: var(--chg-ink-2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* 「Reader 联动」等长标签折成两行，不再截成「Reader 联…」；列宽不动 */
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .bzs-chgn-mtxt {

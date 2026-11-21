@@ -732,7 +732,8 @@
 /* ==================== 动效层注入件（2026-09-22 批，src/review/motion.ts 消费） ====================
    绝对定位 · pointer-events:none · aria-hidden · 演完自毁——终态 UI 与无动效版完全一致。
    朱批=批改语义（逾期卡「急」/结算「优·完成」）；红晕=失利氛围；环/扫=节奏点缀。 */
-.bzrv-rv-seal { position: absolute; top: 4px; right: 6px; width: 34px; height: 34px; border: 2px solid var(--bzrv-danger); border-radius: 50%; color: var(--bzrv-danger); display: flex; align-items: center; justify-content: center; font-family: Georgia, 'KaiTi', 'STKaiti', serif; font-size: 14px; font-weight: 700; line-height: 1; letter-spacing: 1px; pointer-events: none; z-index: 3; background: color-mix(in srgb, var(--bzrv-surface-2, #fff) 55%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bzrv-danger) 32%, transparent); }
+/* top 从 4px 下移到 22px：原位置正压在卡片顶部行的「FSRS Lv.n」上（真机桌面/移动都复现） */
+.bzrv-rv-seal { position: absolute; top: 22px; right: 6px; width: 34px; height: 34px; border: 2px solid var(--bzrv-danger); border-radius: 50%; color: var(--bzrv-danger); display: flex; align-items: center; justify-content: center; font-family: Georgia, 'KaiTi', 'STKaiti', serif; font-size: 14px; font-weight: 700; line-height: 1; letter-spacing: 1px; pointer-events: none; z-index: 3; background: color-mix(in srgb, var(--bzrv-surface-2, #fff) 55%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bzrv-danger) 32%, transparent); }
 .bzrv-rv-seal::before { content: ''; position: absolute; inset: 2.5px; border: 1px dashed color-mix(in srgb, var(--bzrv-danger) 55%, transparent); border-radius: 50%; }
 .bzrv-rv-seal--big { top: -8px; right: 4px; width: 78px; height: 78px; font-size: 30px; border-width: 3px; z-index: 4; }
 .bzrv-rv-ring { position: absolute; border: 2px solid var(--bzrv-accent); border-radius: 50%; pointer-events: none; transform: translate(-50%,-50%); z-index: 4; }
@@ -1145,12 +1146,30 @@
 .bzrv-mgr-kind, .bzrv-mgr-where { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-mgr-state { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
 .bzrv-mgr-state.is-suspended, .bzrv-mgr-state.is-buried, .bzrv-mgr-state.is-hidden { color: var(--bzrv-accent); }
-.bzrv-mgr-ops { flex: none; display: flex; gap: 2px; }
-.bzrv-mgr-ops .bzrv-icon-btn { width: 30px; height: 30px; }
+.bzrv-mgr-ops { flex: none; position: relative; display: flex; gap: 4px; }
+.bzrv-mgr-ops .bzrv-icon-btn { width: 34px; height: 34px; }
+.bzrv-mgr-more { font-size: 18px; line-height: 1; }
+/* 低频操作收进下拉：带可见文字（sr-only 名字在下拉里没用），菜单项 44px 触控档 */
+.bzrv-mgr-more-menu {
+  display: none; position: absolute; right: 0; top: calc(100% + 4px);
+  z-index: 6; min-width: 160px; flex-direction: column; gap: 2px;
+  padding: 6px; border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-3); box-shadow: var(--bzrv-shadow-md);
+}
+.bzrv-mgr-ops.is-open .bzrv-mgr-more-menu { display: flex; }
+.bzrv-mgr-more-item {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-label);
+  text-align: left; padding: 9px 10px; min-height: 44px;
+  border: 0; border-radius: var(--bzrv-radius-xs);
+  background: transparent; color: var(--bzrv-text-1); cursor: pointer;
+}
+.bzrv-mgr-more-item:hover { background: var(--bzrv-surface-2); }
 @media (max-width: 768px) {
   .bzrv-mgr-where { display: none; }
   .bzrv-mgr-row { flex-wrap: wrap; }
   .bzrv-mgr-ops { width: 100%; justify-content: flex-end; }
+  .bzrv-mgr-ops .bzrv-icon-btn { width: 44px; height: 44px; }
 }
 
 /* ==================== 2026-11-19 移动端布局收口 ==================== */
@@ -1257,9 +1276,25 @@
 .bzrv-cs-tpl-back { padding-top: 12px; border-top: 1px solid var(--bzrv-border); display: flex; flex-direction: column; gap: 10px; }
 
 /* 统一弹窗壳里的输入与纯文本：编辑/排期/恢复/负荷四屏共用 */
-.bzrv-flow-dialog .bzrv-edit-field input { width: 100%; box-sizing: border-box; }
+.bzrv-flow-dialog .bzrv-edit-field input {
+  width: 100%; box-sizing: border-box;
+  /* 长备份路径在窄屏省略，不再顶出输入框（真机 390px 复现） */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--bzrv-font-caption);
+}
+/* 说明 div 在 field 外，拿不到 field 的 gap；给一条稳定间距 */
+.bzrv-flow-dialog .bzrv-edit-field + .bzrv-edit-desc { margin-top: 10px; }
 .bzrv-flow-dialog pre { white-space: pre-wrap; font-family: var(--font-monospace); line-height: 1.6; }
 .bzrv-flow-dialog p { color: var(--bzrv-text-2); font-size: var(--bzrv-font-caption); }
+
+/* 未来负荷：▇ 文本字符改为真实条形，颜色走 --bzrv-accent（切档/明暗跟随）。
+   弹窗与数据页共用同一套 DOM，避免一处跟随一处不跟随。 */
+.bzrv-fc-bars { display: flex; flex-direction: column; gap: 6px; }
+.bzrv-fc-row { display: flex; align-items: center; gap: 8px; min-height: 18px; font-size: var(--bzrv-font-body); line-height: 1.5; }
+.bzrv-fc-day { flex: none; width: 92px; text-align: right; font-family: var(--font-monospace); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
+.bzrv-fc-track { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
+.bzrv-fc-bar { display: block; height: 12px; border-radius: var(--bzrv-radius-xs); background: var(--bzrv-accent); }
+.bzrv-fc-num { flex: none; width: 22px; text-align: right; font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
 
 /* ==================== 头行「更多」下拉菜单（2026-11-20） ====================
    头行只留 filter/data/more/settings 四颗工具，arch/trash/books/manager 四个次级入口收进
@@ -1388,10 +1423,9 @@
 .bzrv-overlay-popup.bzrv-wiz-popup {
   padding: 0;
   overflow: hidden;
-  width: min(780px, calc(100vw - 32px));
-  max-width: min(780px, calc(100vw - 32px));
   max-height: min(86vh, 760px);
 }
+/* 宽度走 uiModal 的 size:'lg' → .bzrv-modal--lg token，mode-picker 与 card-wizard 同档 */
 .bzrv-wiz-popup .bzrv-dialog-body { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
 .bzrv-wiz { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 /* 弹窗里全部 border-box：按钮设了 width:100% 又带 padding，不统一下会挤出容器
@@ -1632,10 +1666,9 @@
 .bzrv-overlay-popup.bzrv-pick-popup {
   padding: 0;
   overflow: hidden;
-  width: min(720px, calc(100vw - 32px));
-  max-width: min(720px, calc(100vw - 32px));
   max-height: min(86vh, 760px);
 }
+/* 宽度走 uiModal size:'lg' → .bzrv-modal--lg token */
 .bzrv-pick-popup .bzrv-dialog-body { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
 .bzrv-pick { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 .bzrv-pick, .bzrv-pick * { box-sizing: border-box; }

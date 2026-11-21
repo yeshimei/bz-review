@@ -125,7 +125,7 @@ class SourcePicker {
     this.root = root;
     const { close } = uiModal({
       content: root,
-      maxWidth: 720,
+      size: 'lg',
       className: 'bzrv-pick-popup',
       /* 挑内容是前置步骤，随时可以退；制卡窗口才用「只能 ✕ / 底部按钮关」那套 */
       closable: true,

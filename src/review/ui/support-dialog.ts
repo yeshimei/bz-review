@@ -160,7 +160,8 @@ export function openSupportDialog(): SupportDialogHandle {
 
   const modal = uiModal({
     content: supportDialogHtml(),
-    className: 'bzs-sup-dialog',
+    className: 'bzs-sup-dialog bzrv-modal--flush',
+    size: 'md',
     title: t('support.title'),
     // 不抢焦点：这是「看看怎么支持」的窗，打开就把焦点从用户手上拽走很粗暴
     autofocus: false,

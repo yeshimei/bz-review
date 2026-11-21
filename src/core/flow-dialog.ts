@@ -189,6 +189,14 @@ export function openFlowDialog(opts: FlowDialogOptions): Promise<string | undefi
       if (p) p.replaceWith(opts.body);
     }
 
+    // 统一关闭入口：与 uiModal 头行 ✕ 同款（sr-only 名字，禁悬停气泡属性）
+    const flowX = createEl('button', { cls: 'bzrv-dialog-x bzrv-flow-x' });
+    flowX.type = 'button';
+    flowX.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
+    flowX.createSpan({ text: '✕' });
+    flowX.addEventListener('click', () => settle(undefined));
+    popup.appendChild(flowX);
+
     mask.appendChild(popup);
     markOwned(mask);
     document.body.appendChild(mask);

@@ -707,7 +707,7 @@ export class UIManager {
       await renderReviewSettingsPage(wrap, { app: this.app, dataManager: this.dataManager });
       return;
     }
-    const [{ paintStatsInto }, { forecastLoad }, { forecastToText }] = await Promise.all([
+    const [{ paintStatsInto }, { forecastLoad }, { forecastToText, renderForecastInto }] = await Promise.all([
       import('./stats-ui'),
       import('./queue'),
       import('./report'),
@@ -729,9 +729,9 @@ export class UIManager {
     /* 未来负荷：以前是命令面板里的一个 Modal，这里直接排进数据页 */
     const fc = createDiv();
     fc.className = 'bzrv-page-forecast';
-    const pre = createEl('pre');
-    pre.textContent = forecastToText(forecastLoad(items, 30), 21);
-    fc.appendChild(pre);
+    const bars = createDiv({ cls: 'bzrv-fc-bars' });
+    renderForecastInto(bars, forecastToText(forecastLoad(items, 30), 21));
+    fc.appendChild(bars);
     const tip = createEl('p');
     tip.textContent = '峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。';
     fc.appendChild(tip);
@@ -926,6 +926,11 @@ export class UIManager {
     root.querySelectorAll<HTMLElement>('.bzrv-mgr-row[data-path]').forEach((row) => {
       const it = items.find((x) => x.filePath === row.dataset.path || x.id === row.dataset.id);
       if (!it) return;
+      /* 低频操作收进「更多」：展开只切一个 class，菜单内按钮沿用原 data-act，下面各绑定照常命中 */
+      row.querySelector<HTMLElement>('[data-act="mgr-more"]')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        row.querySelector<HTMLElement>('.bzrv-mgr-ops')?.classList.toggle('is-open');
+      });
       /* 编辑 / 重新生成从复习界面挪到这里（2026-11-19）：复习时只管回忆，
          要改内容或换 AI 文本，来管理器这一行做。 */
       row.querySelector<HTMLElement>('[data-act="mgr-edit"]')?.addEventListener('click', () => {

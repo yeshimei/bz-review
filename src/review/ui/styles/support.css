@@ -35,15 +35,10 @@
 /* ── 弹窗外壳 ──
    盖掉 .bzr-overlay-popup 的默认尺寸（那个是给 400px 窄弹窗定的）。 */
 .bzs-sup-dialog {
-  width: min(460px, calc(100vw - 32px));
-  height: auto;
-  max-width: none;
+  /* 宽度走 uiModal size:'md'（--bzrv-modal-w-md），圆角/padding 走共用壳 */
   max-height: min(720px, calc(100vh - 32px));
-  padding: 0;
   background: var(--sup-panel);
   border: 1px solid var(--sup-line);
-  border-radius: 14px;
-  overflow: hidden;
   animation: bzs-sup-pop 0.18s cubic-bezier(0.33, 1, 0.68, 1) both;
 }
 

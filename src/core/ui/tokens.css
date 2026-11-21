@@ -29,6 +29,12 @@
   --bzrv-radius-lg: 16px;   /* 抽屉、大卡片 */
   --bzrv-radius-full: 999px;/* 胶囊 */
 
+  /* 弹窗宽度档（8 个自绘弹窗统一体量；更新日志独占全屏档） */
+  --bzrv-modal-w-sm: 360px;    /* 确认框（flow-dialog） */
+  --bzrv-modal-w-md: 520px;    /* 中小内容：支持作者、备份与回滚 */
+  --bzrv-modal-w-lg: 720px;    /* 表单/向导：高级版、选方式、阅读器挑内容 */
+  --bzrv-modal-w-full: 1040px; /* 更新日志（版本侧栏 + 长表） */
+
   /* 字号阶梯（caption/meta/body/emphasis/title/display） */
   --bzrv-font-caption: 11px;
   --bzrv-font-meta: 12px;

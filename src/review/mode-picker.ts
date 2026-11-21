@@ -69,8 +69,7 @@ export interface ModePickerModalOptions {
 /**
  * 以弹窗形式问一次方式（「重新生成 AI 内容」用）。
  *
- * 与制卡流程同一个壳：点遮罩 / ESC 都不关，只认 ✕ 与底部按钮——
- * 生成一次要等模型，误触关掉就得重来。
+ * 与制卡流程同一个壳：✕ / 取消 / ESC / 点遮罩都能关，关闭即放弃本次方式选择。
  */
 export function pickModeModal(opts: ModePickerModalOptions): Promise<WizardMode | null> {
   return new Promise((resolve) => {
@@ -108,9 +107,8 @@ export function pickModeModal(opts: ModePickerModalOptions): Promise<WizardMode 
 
     const modal = uiModal({
       content: root,
-      maxWidth: 640,
+      size: 'lg',
       className: 'bzrv-wiz-popup',
-      closable: false,
       head: false,
       onClose: () => {
         if (settled) return;

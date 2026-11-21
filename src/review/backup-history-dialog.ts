@@ -189,7 +189,7 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
     title: '备份与回滚',
     head: true,
     content: body,
-    maxWidth: 520,
+    size: 'md',
     className: 'bzrv-backup-history-modal',
   });
 
@@ -212,6 +212,8 @@ export async function openBackupHistoryDialog(app: App): Promise<void> {
   };
   const closeBtn = actions.createEl('button', { cls: 'bzrv-btn', text: '关闭' });
   closeBtn.onclick = () => modal.close();
+  // 默认焦点别落在列表里的危险「删除」按钮上（打开时按 Enter 会进删除确认）
+  closeBtn.focus();
 }
 
 /** 入口：从设置页「回滚到最近快照」改走这里时，也复用二次确认口径 */
