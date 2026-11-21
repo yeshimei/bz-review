@@ -23,6 +23,7 @@
  */
 import { requestUrl } from 'obsidian';
 import { tryGetSettings } from './settings-provider';
+import { t } from '../i18n/strings';
 
 /* 服务端报文与设置值都是外部输入：先收成 unknown，再用类型守卫逐字段收窄，
    不用 any 直接访问属性（既过不了 lint，也会把 tsc 的类型检查整个关掉）。 */
@@ -144,7 +145,7 @@ export const JEV_PROVIDER_REGISTRY: JevProviderDescriptor[] = [
   },
   {
     id: 'bocha',
-    label: '博查',
+    label: t('jev.provider'),
     endpoint: 'https://jev.bochaai.com/v1/systemone',
     modelsUrl: 'https://jev.bochaai.com/v1/models',
     defaultModel: 'bocha-jev-v1',
@@ -250,7 +251,7 @@ export async function fetchJevModels(deps: JevModelsFetchDeps = {}): Promise<Jev
   const s = tryGetSettings() as Record<string, unknown>;
   const cfg = resolveJevConfig();
   const desc = getJevProviderDescriptor(stringOf(s?.jevProvider) || DEFAULT_JEV_PROVIDER);
-  if (!cfg.apiKey) throw new Error(`未配置 ${desc.label} 密钥（插件设置 → AI → JEV）`);
+  if (!cfg.apiKey) throw new Error(t('jev.err.noKey', { provider: desc.label }));
 
   const requestUrlFn: NonNullable<JevModelsFetchDeps['requestUrlFn']> = deps.requestUrlFn || requestUrl;
   const resp = await requestUrlFn({
@@ -263,16 +264,16 @@ export async function fetchJevModels(deps: JevModelsFetchDeps = {}): Promise<Jev
   const text = String(resp?.text ?? '');
   if (status < 200 || status >= 300) {
     const brief = text.length > 300 ? `${text.slice(0, 300)}…` : text;
-    throw new Error(`${desc.label} 模型列表请求失败（${status}）：${brief || '无响应正文'}`);
+    throw new Error(t('jev.err.modelListFailed', { provider: desc.label, status, body: brief || t('jev.noBody') }));
   }
   let data: unknown;
   try {
     data = JSON.parse(text);
   } catch {
-    throw new Error(`${desc.label} 模型列表响应不是合法 JSON（HTTP ${status}）`);
+    throw new Error(t('jev.err.modelListBadJson', { provider: desc.label, status }));
   }
   const models = parseJevModels(data, desc.label);
-  if (!models.length) throw new Error(`${desc.label} 未返回可用模型`);
+  if (!models.length) throw new Error(t('jev.err.noModels', { provider: desc.label }));
   return models;
 }
 
@@ -280,14 +281,14 @@ export async function fetchJevModels(deps: JevModelsFetchDeps = {}): Promise<Jev
 
 /** 取消异常（AbortError 语义：调用方据 `signal.aborted` 判定取消，不触发回落） */
 function abortError(): Error {
-  const e = new Error('Jev 请求已取消');
+  const e = new Error(t('jev.err.cancelled'));
   e.name = 'AbortError';
   return e;
 }
 
 /** 超时异常（TimeoutError 语义：可识别于网络失败，便于调用方分别提示） */
 function timeoutError(ms: number): Error {
-  const e = new Error(`Jev 请求超时（${Math.round(ms / 1000)} 秒无响应）`);
+  const e = new Error(t('jev.err.timeout', { n: Math.round(ms / 1000) }));
   e.name = 'TimeoutError';
   return e;
 }
@@ -316,13 +317,13 @@ function parseJevResponse(text: string, status: number): JevResult {
   try {
     data = JSON.parse(text) as JevResponsePayload;
   } catch {
-    throw new Error(`Jev 响应不是合法 JSON（HTTP ${status}）`);
+    throw new Error(t('jev.err.badJson', { status }));
   }
   const answers = data?.answers;
   if (!isRecord(answers)) {
     // 不静默当成「零命中」——那会让一次故障伪装成「这批笔记确实没有关联」（issue 392 §决策 9）
     const detail = data?.detail ? `: ${JSON.stringify(data.detail)}` : '';
-    throw new Error(`Jev 响应缺少 answers 字段（HTTP ${status}）${detail}`);
+    throw new Error(t('jev.err.noAnswers', { status, detail }));
   }
   return {
     model: stringOf(data.model),
@@ -349,8 +350,8 @@ export async function askJev(
   const cfg = resolveJevConfig(opts.config);
   const signal = opts.signal;
   if (signal?.aborted) throw abortError();
-  if (!cfg.endpoint) throw new Error('未配置 Jev 端点');
-  if (!cfg.apiKey) throw new Error('未配置 Jev 密钥（插件设置 → AI → JEV）');
+  if (!cfg.endpoint) throw new Error(t('jev.err.noEndpoint'));
+  if (!cfg.apiKey) throw new Error(t('jev.err.noKeyShort'));
 
   const body = buildJevBody(state, questions, cfg.model);
   const headers: Record<string, string> = {
@@ -392,7 +393,7 @@ export async function askJev(
   if (status < 200 || status >= 300) {
     // 错误正文尽量透出（如 422 的字段级校验说明、503 no healthy upstream），便于定位
     const brief = text.length > 300 ? `${text.slice(0, 300)}…` : text;
-    throw new Error(`Jev API ${status}: ${brief || '无响应正文'}`);
+    throw new Error(t('jev.err.api', { status, body: brief || t('jev.noBody') }));
   }
   return parseJevResponse(text, status);
 }
@@ -420,11 +421,11 @@ export async function testJevConnectivity(opts: JevAskOptions = {}): Promise<Jev
   const desc = getJevProviderDescriptor(stringOf(s?.jevProvider) || DEFAULT_JEV_PROVIDER);
   const t0 = Date.now();
   const result = await askJev(
-    '这是一条连通性测试消息。',
-    { ping: { instructions: '这条消息是连通性测试消息吗？', type: 'noul' } },
+    t('jev.testMsg'),
+    { ping: { instructions: t('jev.testQuestion'), type: 'noul' } },
     opts
   );
   const answer = result.answers.ping;
   const noul = answer && answer.type === 'noul' && Number.isFinite(answer.noul) ? answer.noul : NaN;
-  return { provider: desc.label, model: result.model || '未知模型', ms: Date.now() - t0, noul };
+  return { provider: desc.label, model: result.model || t('jev.unknownModel'), ms: Date.now() - t0, noul };
 }
