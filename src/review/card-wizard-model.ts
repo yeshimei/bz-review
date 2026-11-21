@@ -172,7 +172,7 @@ export function markWizardStates(
   remaining: number,
 ): WizardState[] {
   let free = Math.max(0, remaining === Infinity ? Infinity : Math.round(remaining));
-  return (Array.isArray(keys) ? keys : []).map((key) => {
+  return (keys ?? []).map((key) => {
     if (existing.has(key)) return 'exists';
     if (free > 0) {
       free -= 1;

@@ -119,9 +119,11 @@ describe('复习设置页 · 两列骨架与关于条', () => {
   });
 
   it('合计满 50 条弹同一份对照窗，只引导购买，激活码统一在授权组填', () => {
-    const app = read('src/review/app.ts');
-    expect(app).toContain('openQuotaUpgradeDialog()');
-    expect(app).not.toContain("msg.includes('基础版最多')");
+    /* 2026-11-21 统一入口：额度到顶的识别从 app.ts 搬到 add-flow.ts */
+    const flow = read('src/review/add-flow.ts');
+    expect(flow).toContain('QuotaExceededError');
+    expect(flow).toContain('openQuotaUpgradeDialog');
+    expect(flow).not.toContain("msg.includes('基础版最多')");
     const dlg = read('src/review/ui/unlock-dialog.ts');
     expect(dlg).not.toContain('unlockactivate');
     expect(dlg).not.toContain('bzs-unlock-code');

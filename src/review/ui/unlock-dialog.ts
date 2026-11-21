@@ -122,18 +122,15 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
   /* 照 bz-reader 的 modal：头、可滚表格、底部购买/交流群按钮三段。
      按钮不塞进滚动内容里，否则长表一滚就看不见，用户不知道去哪买。 */
   modal.popup.classList.add('bzs-unlock-modal');
-  const foot = document.createElement('div');
-  foot.className = 'bzs-unlock-foot';
+  const foot = createDiv({ cls: 'bzs-unlock-foot' });
   if (!paid) {
-    const buy = document.createElement('button');
-    buy.className = 'bzs-btn pri';
+    const buy = createEl('button', { cls: 'bzs-btn pri' });
     buy.type = 'button';
     buy.dataset.act = 'unlockbuy';
     buy.textContent = '去购买';
     foot.appendChild(buy);
   }
-  const group = document.createElement('button');
-  group.className = 'bzs-btn';
+  const group = createEl('button', { cls: 'bzs-btn' });
   group.type = 'button';
   group.dataset.act = 'unlockgroup';
   group.textContent = `交流群 ${GROUP_ID}`;

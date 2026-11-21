@@ -97,7 +97,7 @@ function pushCode() {
 
 /** 确保 Release 在位，标题/正文与 GitHub 一致 */
 async function ensureRelease(body) {
-  const name = `bz Reader ${tag}`;
+  const name = `Review ${tag}`;
   const list = await api('GET', `/repos/${SLUG}/releases?per_page=100`);
   let rel = (list || []).find((r) => r.tag_name === tag);
   if (!rel) {

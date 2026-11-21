@@ -529,9 +529,12 @@ button.news-close-btn:is([data-bzrv], [data-bzrv] *) {
   text-align: center;
 }
 #bzrv-confirm-popup.bzrv-flow-dialog {
-  width: min(400px, calc(100vw - 32px)); /* 设计手册 §9：确认框窄卡定宽 */
+  /* 宽度走统一小档 token（确认框窄卡），与各内容弹窗同一套宽度体系 */
+  width: min(var(--bzrv-modal-w-sm), calc(100vw - 32px));
   padding: var(--bzrv-space-xl);           /* 设计手册 §4.1：确认框 24px 内边距 */
 }
+/* 确认框统一 ✕：跟随弹窗壳定位，不额外改 popup 的 position（避免破坏居中） */
+.bzrv-flow-x:is([data-bzrv], [data-bzrv] *) { position: absolute; top: 10px; right: 10px; }
 #bzrv-confirm-popup h4 {
   margin: 0 0 var(--bzrv-space-md) 0;
   font-size: 18px;
@@ -1542,6 +1545,12 @@ button.bzrv-rowbtn--fail:is([data-bzrv], [data-bzrv] *) {
   --bzrv-radius-lg: 16px;   /* 抽屉、大卡片 */
   --bzrv-radius-full: 999px;/* 胶囊 */
 
+  /* 弹窗宽度档（8 个自绘弹窗统一体量；更新日志独占全屏档） */
+  --bzrv-modal-w-sm: 360px;    /* 确认框（flow-dialog） */
+  --bzrv-modal-w-md: 520px;    /* 中小内容：支持作者、备份与回滚 */
+  --bzrv-modal-w-lg: 720px;    /* 表单/向导：高级版、选方式、阅读器挑内容 */
+  --bzrv-modal-w-full: 1040px; /* 更新日志（版本侧栏 + 长表） */
+
   /* 字号阶梯（caption/meta/body/emphasis/title/display） */
   --bzrv-font-caption: 11px;
   --bzrv-font-meta: 12px;
@@ -2537,6 +2546,24 @@ textarea.bzrv-input:is([data-bzrv], [data-bzrv] *) { height: auto; min-height: 8
 }
 .bzrv-dialog-title:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-emphasis); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
 .bzrv-dialog-body:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; min-height: 0; }
+
+/* 弹窗宽度档 + 统一头尾（[data-bzrv] 锚点，特异性压过 core/styles.css 的第二版壳） */
+.bzrv-overlay-popup.bzrv-modal--sm:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-sm), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-sm), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--md:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-md), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-md), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--lg:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-lg), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-lg), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--full:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-full), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-full), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--flush:is([data-bzrv], [data-bzrv] *) { padding: 0; overflow: hidden; }
+.bzrv-overlay-popup.bzrv-modal--flush > .bzrv-dialog-body:is([data-bzrv], [data-bzrv] *) { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+/* 头行统一关闭钮：40px 触控档，✕ 视觉 + sr-only 名字（禁悬停气泡属性） */
+.bzrv-dialog-x:is([data-bzrv], [data-bzrv] *) {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: var(--bzrv-radius-sm);
+  background: transparent; color: var(--bzrv-text-3);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.bzrv-dialog-x:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-2); color: var(--bzrv-text-1); }
 
 /* ═══════════ 滑条 .bzrv-range（slider.ts） ═══════════
    自绘外观抗 Obsidian 全局 range 重置：appearance:none 时
@@ -6471,7 +6498,8 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 /* ==================== 动效层注入件（2026-09-22 批，src/review/motion.ts 消费） ====================
    绝对定位 · pointer-events:none · aria-hidden · 演完自毁——终态 UI 与无动效版完全一致。
    朱批=批改语义（逾期卡「急」/结算「优·完成」）；红晕=失利氛围；环/扫=节奏点缀。 */
-.bzrv-rv-seal:is([data-bzrv], [data-bzrv] *) { position: absolute; top: 4px; right: 6px; width: 34px; height: 34px; border: 2px solid var(--bzrv-danger); border-radius: 50%; color: var(--bzrv-danger); display: flex; align-items: center; justify-content: center; font-family: Georgia, 'KaiTi', 'STKaiti', serif; font-size: 14px; font-weight: 700; line-height: 1; letter-spacing: 1px; pointer-events: none; z-index: 3; background: color-mix(in srgb, var(--bzrv-surface-2, #fff) 55%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bzrv-danger) 32%, transparent); }
+/* top 从 4px 下移到 22px：原位置正压在卡片顶部行的「FSRS Lv.n」上（真机桌面/移动都复现） */
+.bzrv-rv-seal:is([data-bzrv], [data-bzrv] *) { position: absolute; top: 22px; right: 6px; width: 34px; height: 34px; border: 2px solid var(--bzrv-danger); border-radius: 50%; color: var(--bzrv-danger); display: flex; align-items: center; justify-content: center; font-family: Georgia, 'KaiTi', 'STKaiti', serif; font-size: 14px; font-weight: 700; line-height: 1; letter-spacing: 1px; pointer-events: none; z-index: 3; background: color-mix(in srgb, var(--bzrv-surface-2, #fff) 55%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--bzrv-danger) 32%, transparent); }
 .bzrv-rv-seal:is([data-bzrv], [data-bzrv] *)::before { content: ''; position: absolute; inset: 2.5px; border: 1px dashed color-mix(in srgb, var(--bzrv-danger) 55%, transparent); border-radius: 50%; }
 .bzrv-rv-seal--big:is([data-bzrv], [data-bzrv] *) { top: -8px; right: 4px; width: 78px; height: 78px; font-size: 30px; border-width: 3px; z-index: 4; }
 .bzrv-rv-ring:is([data-bzrv], [data-bzrv] *) { position: absolute; border: 2px solid var(--bzrv-accent); border-radius: 50%; pointer-events: none; transform: translate(-50%,-50%); z-index: 4; }
@@ -6884,12 +6912,30 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-mgr-kind:is([data-bzrv], [data-bzrv] *), .bzrv-mgr-where:is([data-bzrv], [data-bzrv] *) { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
 .bzrv-mgr-state:is([data-bzrv], [data-bzrv] *) { flex: none; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
 .bzrv-mgr-state.is-suspended:is([data-bzrv], [data-bzrv] *), .bzrv-mgr-state.is-buried:is([data-bzrv], [data-bzrv] *), .bzrv-mgr-state.is-hidden:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-accent); }
-.bzrv-mgr-ops:is([data-bzrv], [data-bzrv] *) { flex: none; display: flex; gap: 2px; }
-.bzrv-mgr-ops .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *) { width: 30px; height: 30px; }
+.bzrv-mgr-ops:is([data-bzrv], [data-bzrv] *) { flex: none; position: relative; display: flex; gap: 4px; }
+.bzrv-mgr-ops .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *) { width: 34px; height: 34px; }
+.bzrv-mgr-more:is([data-bzrv], [data-bzrv] *) { font-size: 18px; line-height: 1; }
+/* 低频操作收进下拉：带可见文字（sr-only 名字在下拉里没用），菜单项 44px 触控档 */
+.bzrv-mgr-more-menu:is([data-bzrv], [data-bzrv] *) {
+  display: none; position: absolute; right: 0; top: calc(100% + 4px);
+  z-index: 6; min-width: 160px; flex-direction: column; gap: 2px;
+  padding: 6px; border: 1px solid var(--bzrv-border);
+  border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-3); box-shadow: var(--bzrv-shadow-md);
+}
+.bzrv-mgr-ops.is-open .bzrv-mgr-more-menu:is([data-bzrv], [data-bzrv] *) { display: flex; }
+.bzrv-mgr-more-item:is([data-bzrv], [data-bzrv] *) {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-label);
+  text-align: left; padding: 9px 10px; min-height: 44px;
+  border: 0; border-radius: var(--bzrv-radius-xs);
+  background: transparent; color: var(--bzrv-text-1); cursor: pointer;
+}
+.bzrv-mgr-more-item:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-2); }
 @media (max-width: 768px) {
   .bzrv-mgr-where:is([data-bzrv], [data-bzrv] *) { display: none; }
   .bzrv-mgr-row:is([data-bzrv], [data-bzrv] *) { flex-wrap: wrap; }
   .bzrv-mgr-ops:is([data-bzrv], [data-bzrv] *) { width: 100%; justify-content: flex-end; }
+  .bzrv-mgr-ops .bzrv-icon-btn:is([data-bzrv], [data-bzrv] *) { width: 44px; height: 44px; }
 }
 
 /* ==================== 2026-11-19 移动端布局收口 ==================== */
@@ -6988,6 +7034,32 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-folder-add-actions .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 100%; min-height: 44px; }
 }
 
+/* 创建卡牌输入面板（2026-11-21）：手输文字 → 统一制卡流程 */
+.bzrv-create-card:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 10px; }
+.bzrv-create-card-desc:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); line-height: var(--bzrv-leading-normal); }
+.bzrv-create-card-input:is([data-bzrv], [data-bzrv] *) {
+  width: 100%; min-height: 160px; resize: vertical;
+  padding: 10px 12px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-2); color: var(--bzrv-text-1);
+  font: inherit; font-size: var(--bzrv-font-label); line-height: var(--bzrv-leading-normal);
+}
+.bzrv-create-card-count:is([data-bzrv], [data-bzrv] *) { text-align: right; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-create-card-count.is-over:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-danger); }
+.bzrv-create-card-actions:is([data-bzrv], [data-bzrv] *) { justify-content: flex-end; }
+/* 宿主 reset 会把按钮底色 unset：弹窗里这颗主按钮自己把品牌底接回来 */
+[data-bzrv] .bzrv-create-card-actions button.bzrv-btn--primary {
+  background: var(--bzrv-brand);
+  color: var(--bzrv-on-brand);
+  border-color: transparent;
+}
+@media (hover: hover) {
+  [data-bzrv] .bzrv-create-card-actions button.bzrv-btn--primary:hover { background: var(--bzrv-brand-hover); }
+}
+@media (max-width: 768px) {
+  .bzrv-create-card-actions:is([data-bzrv], [data-bzrv] *) { flex-direction: column; }
+  .bzrv-create-card-actions .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 100%; min-height: 44px; }
+}
+
 /* 自定义卡片模板：编辑弹窗的字段勾选项 + 复习时的正反面字段 */
 .bzrv-tpl-opt:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); cursor: pointer; }
 .bzrv-tpl-opt input:is([data-bzrv], [data-bzrv] *) { margin: 0; }
@@ -6996,9 +7068,25 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-cs-tpl-back:is([data-bzrv], [data-bzrv] *) { padding-top: 12px; border-top: 1px solid var(--bzrv-border); display: flex; flex-direction: column; gap: 10px; }
 
 /* 统一弹窗壳里的输入与纯文本：编辑/排期/恢复/负荷四屏共用 */
-.bzrv-flow-dialog .bzrv-edit-field input:is([data-bzrv], [data-bzrv] *) { width: 100%; box-sizing: border-box; }
+.bzrv-flow-dialog .bzrv-edit-field input:is([data-bzrv], [data-bzrv] *) {
+  width: 100%; box-sizing: border-box;
+  /* 长备份路径在窄屏省略，不再顶出输入框（真机 390px 复现） */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--bzrv-font-caption);
+}
+/* 说明 div 在 field 外，拿不到 field 的 gap；给一条稳定间距 */
+.bzrv-flow-dialog .bzrv-edit-field + .bzrv-edit-desc:is([data-bzrv], [data-bzrv] *) { margin-top: 10px; }
 .bzrv-flow-dialog pre:is([data-bzrv], [data-bzrv] *) { white-space: pre-wrap; font-family: var(--font-monospace); line-height: 1.6; }
 .bzrv-flow-dialog p:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-2); font-size: var(--bzrv-font-caption); }
+
+/* 未来负荷：▇ 文本字符改为真实条形，颜色走 --bzrv-accent（切档/明暗跟随）。
+   弹窗与数据页共用同一套 DOM，避免一处跟随一处不跟随。 */
+.bzrv-fc-bars:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 6px; }
+.bzrv-fc-row:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 8px; min-height: 18px; font-size: var(--bzrv-font-body); line-height: 1.5; }
+.bzrv-fc-day:is([data-bzrv], [data-bzrv] *) { flex: none; width: 92px; text-align: right; font-family: var(--font-monospace); font-size: var(--bzrv-font-caption); color: var(--bzrv-text-2); }
+.bzrv-fc-track:is([data-bzrv], [data-bzrv] *) { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; }
+.bzrv-fc-bar:is([data-bzrv], [data-bzrv] *) { display: block; height: 12px; border-radius: var(--bzrv-radius-xs); background: var(--bzrv-accent); }
+.bzrv-fc-num:is([data-bzrv], [data-bzrv] *) { flex: none; width: 22px; text-align: right; font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
 
 /* ==================== 头行「更多」下拉菜单（2026-11-20） ====================
    头行只留 filter/data/more/settings 四颗工具，arch/trash/books/manager 四个次级入口收进
@@ -7127,10 +7215,9 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
 .bzrv-overlay-popup.bzrv-wiz-popup:is([data-bzrv], [data-bzrv] *) {
   padding: 0;
   overflow: hidden;
-  width: min(780px, calc(100vw - 32px));
-  max-width: min(780px, calc(100vw - 32px));
   max-height: min(86vh, 760px);
 }
+/* 宽度走 uiModal 的 size:'lg' → .bzrv-modal--lg token，mode-picker 与 card-wizard 同档 */
 .bzrv-wiz-popup .bzrv-dialog-body:is([data-bzrv], [data-bzrv] *) { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
 .bzrv-wiz:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
 /* 弹窗里全部 border-box：按钮设了 width:100% 又带 padding，不统一下会挤出容器
@@ -7177,6 +7264,13 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   font-size: var(--bzrv-font-meta); line-height: 1.6;
 }
 .bzrv-wiz-hint:is([data-bzrv], [data-bzrv] *) { margin: 8px 0 0; color: var(--bzrv-text-3); font-size: var(--bzrv-font-caption); line-height: 1.6; }
+/* AI 没出成、用兜底的那张：不是报错红，是「这版不是模型写的」提醒 */
+.bzrv-wiz-note.is-warn:is([data-bzrv], [data-bzrv] *) {
+  border-color: color-mix(in srgb, var(--bzrv-warning) 45%, transparent);
+  background: color-mix(in srgb, var(--bzrv-warning) 12%, transparent);
+}
+/* 批量确认：审核进度（真的滚到过才算看过） */
+.bzrv-wiz-audit:is([data-bzrv], [data-bzrv] *) { margin: 0 0 8px; color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
 
 /* 四张方式卡 */
 .bzrv-wiz-modes:is([data-bzrv], [data-bzrv] *) { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
@@ -7355,6 +7449,136 @@ a.bzrv-crumb:is([data-bzrv], [data-bzrv] *):hover, button.bzrv-crumb:is([data-bz
   .bzrv-wiz-modes:is([data-bzrv], [data-bzrv] *) { grid-template-columns: 1fr 1fr; }
   .bzrv-wiz-list:is([data-bzrv], [data-bzrv] *) { max-height: 46vh; }
   .bzrv-wiz-cloze-src:is([data-bzrv], [data-bzrv] *) { max-height: 30vh; }
+}
+
+/* ==================== 从阅读器加入复习（source-pick-ui.ts，2026-11-21） ====================
+ * 选书 → 挑范围（按划线 / 按章节）→ 确认（字数 / 每章上限）→ 统一制卡。
+ * 与 card-wizard 同一套骨架：头尾固定、只有中段滚；配色只消费 --bzrv-* token。
+ */
+.bzrv-overlay-popup.bzrv-pick-popup:is([data-bzrv], [data-bzrv] *) {
+  padding: 0;
+  overflow: hidden;
+  max-height: min(86vh, 760px);
+}
+/* 宽度走 uiModal size:'lg' → .bzrv-modal--lg token */
+.bzrv-pick-popup .bzrv-dialog-body:is([data-bzrv], [data-bzrv] *) { flex: 1 1 auto; min-height: 0; padding: 0; overflow: hidden; }
+.bzrv-pick:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.bzrv-pick:is([data-bzrv], [data-bzrv] *), .bzrv-pick *:is([data-bzrv], [data-bzrv] *) { box-sizing: border-box; }
+
+.bzrv-pick-head:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 18px 20px 8px;
+}
+.bzrv-pick-title:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-title); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
+.bzrv-pick-x:is([data-bzrv], [data-bzrv] *) {
+  flex: none; width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: var(--bzrv-radius-sm);
+  background: transparent; color: var(--bzrv-text-3);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.bzrv-pick-x:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-2); color: var(--bzrv-text-1); }
+
+.bzrv-pick-body:is([data-bzrv], [data-bzrv] *) { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 20px 10px; }
+.bzrv-pick-foot:is([data-bzrv], [data-bzrv] *) {
+  flex: none;
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--bzrv-border);
+}
+.bzrv-pick-btn:is([data-bzrv], [data-bzrv] *) {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-label);
+  padding: 7px 16px; border-radius: var(--bzrv-radius-sm);
+  border: 1px solid var(--bzrv-border); background: transparent; color: var(--bzrv-text-1);
+  cursor: pointer;
+}
+.bzrv-pick-btn:is([data-bzrv], [data-bzrv] *):hover:not(:disabled) { background: var(--bzrv-surface-2); }
+.bzrv-pick-btn.is-cta:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); border-color: var(--bzrv-accent); color: #fff; }
+.bzrv-pick-btn.is-cta:is([data-bzrv], [data-bzrv] *):hover:not(:disabled) { filter: brightness(1.06); }
+.bzrv-pick-btn:is([data-bzrv], [data-bzrv] *):disabled { opacity: 0.45; cursor: default; }
+
+.bzrv-pick-lead:is([data-bzrv], [data-bzrv] *) { margin: 0 0 12px; color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); line-height: 1.65; }
+.bzrv-pick-empty:is([data-bzrv], [data-bzrv] *) {
+  margin: 0 0 12px; padding: 10px 12px;
+  border: 1px dashed var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); line-height: 1.7;
+}
+.bzrv-pick-loading:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-2); font-size: var(--bzrv-font-body); padding: 28px 0; text-align: center; }
+.bzrv-pick-error:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-2); font-size: var(--bzrv-font-meta); margin-top: 10px; }
+
+.bzrv-pick-books:is([data-bzrv], [data-bzrv] *) { display: flex; flex-direction: column; gap: 6px; }
+.bzrv-pick-book:is([data-bzrv], [data-bzrv] *) {
+  appearance: none; width: 100%; font: inherit; text-align: left; color: inherit;
+  padding: 10px 12px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  background: transparent; cursor: pointer;
+}
+.bzrv-pick-book:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-2); }
+.bzrv-pick-book-name:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-emphasis); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
+.bzrv-pick-book-sub:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 3px; }
+
+.bzrv-pick-bookmeta:is([data-bzrv], [data-bzrv] *) { margin: 0 0 10px; }
+.bzrv-pick-bookmeta-name:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-emphasis); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
+.bzrv-pick-bookmeta-sub:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 2px; }
+
+.bzrv-pick-tabs:is([data-bzrv], [data-bzrv] *) { display: flex; gap: 6px; margin: 0 0 10px; }
+.bzrv-pick-tab:is([data-bzrv], [data-bzrv] *) {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-label);
+  padding: 6px 14px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-full);
+  background: transparent; color: var(--bzrv-text-2); cursor: pointer;
+}
+.bzrv-pick-tab.is-on:is([data-bzrv], [data-bzrv] *) { background: var(--bzrv-accent); border-color: var(--bzrv-accent); color: #fff; }
+
+.bzrv-pick-list:is([data-bzrv], [data-bzrv] *) {
+  max-height: 44vh; overflow-y: auto;
+  border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  margin: 0 0 10px;
+}
+.bzrv-pick-row:is([data-bzrv], [data-bzrv] *) {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-bottom: 1px solid var(--bzrv-border);
+  cursor: pointer;
+}
+.bzrv-pick-row:is([data-bzrv], [data-bzrv] *):last-child { border-bottom: 0; }
+.bzrv-pick-row:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-2); }
+.bzrv-pick-check:is([data-bzrv], [data-bzrv] *) { flex: none; width: 16px; height: 16px; accent-color: var(--bzrv-accent); }
+.bzrv-pick-row-main:is([data-bzrv], [data-bzrv] *) { min-width: 0; }
+.bzrv-pick-row-title:is([data-bzrv], [data-bzrv] *) {
+  font-size: var(--bzrv-font-body); color: var(--bzrv-text-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bzrv-pick-row-sub:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 2px; }
+
+.bzrv-pick-bar:is([data-bzrv], [data-bzrv] *) { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.bzrv-pick-link:is([data-bzrv], [data-bzrv] *) {
+  appearance: none; font: inherit; font-size: var(--bzrv-font-meta);
+  color: var(--bzrv-accent); background: none; border: 0; padding: 2px 0; cursor: pointer;
+}
+.bzrv-pick-sum:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-2); margin: 0 0 6px; }
+
+.bzrv-pick-confirm:is([data-bzrv], [data-bzrv] *) { margin: 0 0 10px; }
+.bzrv-pick-confirm-line:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-body); color: var(--bzrv-text-2); line-height: 1.9; }
+.bzrv-pick-confirm-line.is-warn:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-1); }
+.bzrv-pick-confirm-line.is-error:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-1); font-weight: 600; }
+.bzrv-pick-confirm-line.is-note:is([data-bzrv], [data-bzrv] *) { color: var(--bzrv-text-3); font-size: var(--bzrv-font-meta); }
+.bzrv-pick-limit:is([data-bzrv], [data-bzrv] *) {
+  display: flex; align-items: flex-start; gap: 12px;
+  margin: 12px 0; padding: 12px;
+  border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+}
+.bzrv-pick-limit-main:is([data-bzrv], [data-bzrv] *) { flex: 1 1 auto; min-width: 0; }
+.bzrv-pick-limit-name:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-body); color: var(--bzrv-text-1); font-weight: var(--bzrv-weight-semibold); }
+.bzrv-pick-limit-hint:is([data-bzrv], [data-bzrv] *) { font-size: var(--bzrv-font-meta); color: var(--bzrv-text-3); margin-top: 3px; line-height: 1.6; }
+.bzrv-pick-limit-input:is([data-bzrv], [data-bzrv] *) {
+  flex: none; width: 72px; padding: 5px 8px;
+  font: inherit; font-size: var(--bzrv-font-label); color: var(--bzrv-text-1);
+  background: var(--bzrv-surface-1); border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+}
+
+@media (max-width: 680px) {
+  .bzrv-pick-body:is([data-bzrv], [data-bzrv] *) { padding: 0 16px 8px; }
+  .bzrv-pick-list:is([data-bzrv], [data-bzrv] *) { max-height: 38vh; }
+  .bzrv-pick-head:is([data-bzrv], [data-bzrv] *) { padding: 16px 16px 8px; }
+  .bzrv-pick-foot:is([data-bzrv], [data-bzrv] *) { padding: 12px 16px 16px; }
 }
 
 /* ==================== 记忆分析特刊（analysis/ 全屏逐幕层） ====================
@@ -8458,6 +8682,8 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
 @media (max-width: 768px) {
   .bzrv-settings-content .bzrv-license-state:is([data-bzrv], [data-bzrv] *) { max-width: 100%; }
   .bzrv-settings-content .bzrv-license-code:is([data-bzrv], [data-bzrv] *) { width: 100%; flex-direction: column; align-items: stretch; }
+  /* 窄屏竖排后，横排时用来吃掉剩余宽度的 width:0 会把输入框压成一小块；这里让输入框铺满整行 */
+  .bzrv-settings-content .bzrv-license-code .bzrv-license-input:is([data-bzrv], [data-bzrv] *) { flex: none; width: 100%; }
   .bzrv-settings-content .bzrv-license-code .bzrv-btn:is([data-bzrv], [data-bzrv] *) { width: 100%; min-height: 44px; }
 }
 
@@ -8517,15 +8743,11 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
    2026-11-18：720×560 太窄——顶部那条工具条（三颗统计 + 三个入口）会被折成
    两行，正文也挤；放大到 1040×720，工具条一行放得下。 */
 .bzs-chgn-dialog:is([data-bzrv], [data-bzrv] *) {
-  width: min(1040px, calc(100vw - 32px));
+  /* 宽度走 uiModal 的 size:'full'（--bzrv-modal-w-full），几何只留高度与皮肤 */
   height: min(720px, calc(100vh - 32px));
-  max-width: none;
-  max-height: none;
-  padding: 0;
+  max-height: min(720px, calc(100vh - 32px));
   background: var(--chg-panel);
   border: 1px solid var(--chg-line);
-  border-radius: 14px;
-  overflow: hidden;
   animation: bzs-chgn-pop 0.18s cubic-bezier(0.33, 1, 0.68, 1) both;
 }
 
@@ -9152,8 +9374,9 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    /* 底距让给右下角浮条：条高 52 + 离地 36 = 88，再留一口气 */
-    padding: 18px 22px 96px;
+    /* 底距让给右下角浮条：条高 54 + 离底(20+max(16,安全区)) + 余量 8。
+       旧值 96 按「条高52+离地36」估的，漏了安全区，iOS 上最后一段被浮条压住。 */
+    padding: 18px 22px calc(82px + max(16px, env(safe-area-inset-bottom, 0px)));
     scrollbar-width: none;
   }
 
@@ -9248,9 +9471,9 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
     font-size: 13px;
     line-height: 1.5;
     color: var(--chg-ink-2);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    /* 「Reader 联动」等长标签折成两行，不再截成「Reader 联…」；列宽不动 */
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .bzs-chgn-mtxt:is([data-bzrv], [data-bzrv] *) {
@@ -9610,15 +9833,10 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
 /* ── 弹窗外壳 ──
    盖掉 .bzr-overlay-popup 的默认尺寸（那个是给 400px 窄弹窗定的）。 */
 .bzs-sup-dialog:is([data-bzrv], [data-bzrv] *) {
-  width: min(460px, calc(100vw - 32px));
-  height: auto;
-  max-width: none;
+  /* 宽度走 uiModal size:'md'（--bzrv-modal-w-md），圆角/padding 走共用壳 */
   max-height: min(720px, calc(100vh - 32px));
-  padding: 0;
   background: var(--sup-panel);
   border: 1px solid var(--sup-line);
-  border-radius: 14px;
-  overflow: hidden;
   animation: bzs-sup-pop 0.18s cubic-bezier(0.33, 1, 0.68, 1) both;
 }
 
