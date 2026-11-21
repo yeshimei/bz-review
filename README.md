@@ -1,7 +1,7 @@
 <div align="center">
-  <p><img src="logo.png" width="120" alt="Review 图标"></p>
-  <h1>Review（复习）</h1>
-  <p><b>bz review 把制卡、整卡交给 AI，让你专注阅读与复习。</b><br>
+  <p><img src="logo.png" width="120" alt="bz Review 图标"></p>
+  <h1>bz Review（复习）</h1>
+  <p><b>bz Review 把制卡、整卡交给 AI，让你专注阅读与复习。</b><br>
   <sub>内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。</sub></p>
 
   <p>
@@ -18,12 +18,50 @@
   <p><sub><b>简体中文</b> · <a href="#english">English</a></sub></p>
 </div>
 
+<p align="center">
+  <img src="docs/images/review-plan-light.webp" alt="复习计划：今日到期、逾期、未来三栏，右上角是「开始本轮」">
+</p>
+
+<p align="center"><b>复习计划 · 今日到期 · 逾期 · 未来</b></p>
+
+<p align="center">
+  <img src="docs/images/review-card-dark.webp" alt="抽认卡：正面是问题，背面是划线原文，下面四档评级忘了 / 困难 / 一般 / 容易">
+</p>
+
+<p align="center"><b>抽认卡 · AI 出题 · 四档评级（暗色）</b></p>
+
+<p align="center">
+  <img src="docs/images/review-mobile-plan-light.webp" width="288" alt="移动端复习计划：本轮安排与已逾期卡片">
+  &nbsp;&nbsp;
+  <img src="docs/images/review-mobile-card-dark.webp" width="288" alt="移动端抽认卡：问题、答案与四档评级">
+</p>
+
+<p align="center"><b>移动端 · 复习计划 · 抽认卡</b></p>
+
+<p align="center">
+  <img src="docs/images/review-manager-light.webp" alt="卡片管理器：搜索、类型筛选、挂起 / 埋藏 / 手动排期">
+</p>
+
+<p align="center"><b>卡片管理器 · 搜索 · 挂起 · 排期</b></p>
+
+<p align="center">
+  <img src="docs/images/review-stats-light.webp" alt="统计：复习量账本、24 小时与星期节律、年度热力、一次通过率">
+</p>
+
+<p align="center"><b>统计 · 复习节律 · 热力 · 一次通过率</b></p>
+
+<p align="center">
+  <img src="docs/images/review-achievements-light.webp" alt="成就：连续天数、复习量、稳定度、记忆常青">
+</p>
+
+<p align="center"><b>成就 · 连续 / 复习量 / 稳定度 / 记忆常青</b></p>
+
 ## 安装
 
 在社区市场安装（首次上架审核通过后可见）：
 
 1. 打开 **设置 → 第三方插件**，关闭安全模式。
-2. 点 **浏览**，搜索 **Review**，安装。
+2. 点 **浏览**，搜索 **bz Review**，安装。
 3. 启用后左侧出现日历勾图标，点开就是复习计划。
 
 审核期间或搜不到时，用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 添加本仓库安装，或手动下载 Release 里的 `main.js`、`manifest.json`、`styles.css`，放进 `<你的库>/.obsidian/plugins/bz-review/` 后启用。
@@ -34,37 +72,42 @@
 
 ## 功能
 
-基础版免费、不限时，笔记与划线卡合计限 50 条；高级版不限量。两版功能完全一样，以后新增的功能也一样。
+基础版免费、不限时，制卡 50 张；高级版不限量。两版功能完全一样，以后新增的功能也一样。
 
 | 类别 | 功能 | 基础版 | 高级版 |
 |---|---|:---:|:---:|
-| **数量上限 · 唯一差异** | 复习笔记 + 划线卡合计 | 50 条 | 不限 |
-| **加入与复习方式** | 选中文字加入复习 | ✓ | ✓ |
-|  | 划线一键复习 | ✓ | ✓ |
-|  | 整本书批量加入：按划线 / 重点 / 章节选范围 | ✓ | ✓ |
-|  | 全文回忆 | ✓ | ✓ |
-|  | 抽认卡 | ✓ | ✓ |
-|  | 做题 | ✓ | ✓ |
-| **卡片制作** | 卡片正面可改 | ✓ | ✓ |
+| **数量** | 制卡数量 | 50 张 | 不限 |
+| **制卡** | 选中文字加一张 | ✓ | ✓ |
+|  | 划线一键加入 | ✓ | ✓ |
+|  | 整本书批量挑：按划线 / 重点 / 章节 | ✓ | ✓ |
+|  | 手动写一张 | ✓ | ✓ |
+|  | Markdown 笔记导入 | ✓ | ✓ |
+|  | Anki 牌组导入 | ✓ | ✓ |
+|  | 模板与图片 / 音频 | ✓ | ✓ |
+| **复习** | 抽认卡 | ✓ | ✓ |
+|  | 做题（四选一） | ✓ | ✓ |
+|  | 挖空 | ✓ | ✓ |
+|  | 上下文 | ✓ | ✓ |
+|  | 展开全文 | ✓ | ✓ |
+| **排期** | FSRS-7 排期 | ✓ | ✓ |
+|  | 参数自动拟合 | ✓ | ✓ |
+|  | 学习步骤 | ✓ | ✓ |
+|  | 负荷预测与假期 | ✓ | ✓ |
+| **管理** | 卡片管理器：挂起 / 埋藏 / 手动排期 | ✓ | ✓ |
+|  | 牌组与标签 | ✓ | ✓ |
 |  | AI 重新生成卡片 | ✓ | ✓ |
-|  | 做题删题补题 | ✓ | ✓ |
-| **复习与排期** | 抽认卡复习 | ✓ | ✓ |
-|  | 做题原样考 | ✓ | ✓ |
-|  | FSRS 科学排期 | ✓ | ✓ |
-|  | FSRS 参数自动拟合 | ✓ | ✓ |
-|  | 按书档案 | ✓ | ✓ |
-|  | 卡片管理器 | ✓ | ✓ |
-| **出题玩法** | 题量与难度自定义 | ✓ | ✓ |
-|  | 多选题 | ✓ | ✓ |
-|  | 乱序出题 | ✓ | ✓ |
-| **数据与备份** | 数据统计 | ✓ | ✓ |
+| **数据与备份** | 记忆分析 | ✓ | ✓ |
+|  | 统计与成就 | ✓ | ✓ |
+|  | 按书报告 | ✓ | ✓ |
+|  | 导出 Markdown / CSV | ✓ | ✓ |
 |  | 快照备份 | ✓ | ✓ |
 |  | 一键回滚 | ✓ | ✓ |
-| **AI 与自动化** | 18 家 AI 服务商与模型选择 | ✓ | ✓ |
-|  | 本地 TTS 听卡片 | ✓ | ✓ |
-|  | 文件夹监听与自动加入 | ✓ | ✓ |
+| **联动** | 听卡片（本地 TTS） | ✓ | ✓ |
+|  | 跳回原文 | ✓ | ✓ |
+|  | 书架复习页签 | ✓ | ✓ |
+|  | 文件夹监听自动加入 | ✓ | ✓ |
 
-合计 24 项功能，两版完全一致，仅上面 2 项数量不同；以后新增的功能也一律两边都有。已有数据超过免费上限不会被删，只是不能再加新的。
+合计 29 项功能，两版完全一致，仅「制卡数量」一项不同；以后新增的功能也一律两边都有。已有数据超过免费上限不会被删，只是不能再加新的。
 
 完整的同款对照长图见 [`assets/plan-compare/shots/pro-compare.png`](assets/plan-compare/shots/pro-compare.png)（店铺详情也只放这一张）。
 
@@ -180,7 +223,7 @@
 
 - **会和其他插件打架吗？** 不会。界面是自己的标签页，生成的 DOM 与 CSS 都限定在插件自己的作用域内（统一挂 `data-bzrv`），不污染别人的样式；数据也和 bz 分开存。
 - **和 bz 里的复习计划是什么关系？** 从 bz 独立出来的插件，bz 里那份原样保留。两边各存各的，可以同时装、互不覆盖，也能一键把 bz 的计划导进来。
-- **超过免费上限会删我的卡吗？** 不会。已有的笔记和卡继续照常复习，只是合计满 50 条后不能再加新的；升级后立即放开。批量导入时如果这次会越过 50 条，仍会让你整批加进去，只提醒一句下次要先升级。
+- **超过免费上限会删我的卡吗？** 不会。已有的笔记和卡继续照常复习，只是制卡满 50 张后不能再加新的；升级后立即放开。批量导入时如果这次会越过 50 张，仍会让你整批加进去，只提醒一句下次要先升级。
 - **换电脑怎么办？** 库同步过去，排期和复习历史跟着走；高级版在新设备上重新填一次激活码。
 - **手机上要单独买吗？** 不用，同一个包，桌面与移动都包含在内。
 - **没装 bz Reader 能用吗？** 能。笔记照样能排进计划，抽认卡和做题两种方式都能用。
@@ -214,6 +257,32 @@
 
 ## English
 
+<p align="center">
+  <img src="docs/images/review-plan-light.webp" alt="Review plan: due today, overdue and upcoming columns with a Start button">
+</p>
+
+<p align="center"><b>Review plan · Due today · Overdue · Upcoming</b></p>
+
+<p align="center">
+  <img src="docs/images/review-card-dark.webp" alt="Flashcard: question on the front, source text on the back, four ratings">
+</p>
+
+<p align="center"><b>Flashcard · AI-generated · Four ratings (dark)</b></p>
+
+<p align="center">
+  <img src="docs/images/review-mobile-plan-light.webp" width="288" alt="Review plan on mobile, light">
+  &nbsp;&nbsp;
+  <img src="docs/images/review-mobile-card-dark.webp" width="288" alt="Flashcard on mobile, dark">
+</p>
+
+<p align="center"><b>Mobile · Review plan · Flashcard</b></p>
+
+<p align="center">
+  <img src="docs/images/review-stats-light.webp" alt="Stats: review ledger, hourly and weekday rhythm, year heatmap, pass rate">
+</p>
+
+<p align="center"><b>Stats · Rhythm · Heatmap · Pass rate</b></p>
+
 Let AI make and organize your cards — you just read and review. Built on FSRS spaced repetition, it schedules reviews from memory stability and fits its parameters to your own history — so you remember more with fewer reviews. Desktop and mobile, all data stays local in your vault.
 
 It was split out of [bz](https://github.com/yeshimei/bz) — the original copy there stays untouched. It pairs with [bz Reader](https://github.com/yeshimei/bz-reader), which pushes highlights into the queue, but Reader is not required.
@@ -223,7 +292,7 @@ It was split out of [bz](https://github.com/yeshimei/bz) — the original copy t
 Install from the community directory (visible once the initial review passes):
 
 1. Open **Settings → Community plugins** and turn off Restricted mode.
-2. Click **Browse**, search for **Review**, and install.
+2. Click **Browse**, search for **bz Review**, and install.
 3. Enable it — a calendar-check icon appears in the left ribbon.
 
 While the review is pending, or if search doesn't find it, install with [BRAT](https://github.com/TfTHacker/obsidian42-brat), or download `main.js`, `manifest.json`, and `styles.css` from the Release and place them in `<your vault>/.obsidian/plugins/bz-review/`, then enable the plugin.
