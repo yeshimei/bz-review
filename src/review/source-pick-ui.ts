@@ -15,6 +15,7 @@ import { createAI, type AIService } from '../core/ai';
 import { notice } from '../core/notice';
 import { uiModal } from '../core/ui/modal';
 import { readerJumpUrl } from '../core/reader-link';
+import { t } from '../i18n';
 import { aiReadyOrGuide } from './ai-guide';
 import { openCardWizard, type CardWizardOptions } from './card-wizard';
 import { getReviewPlanApi } from './reader-api';
@@ -63,7 +64,7 @@ function withBacklink(bookId: string, sources: CardWizardSource[]): CardWizardSo
 function openWizard(app: App, opts: CardWizardOptions): void {
   const api = getReviewPlanApi();
   if (!api) {
-    notice('复习模块还没准备好，稍后再试一次', 'warning');
+    notice(t('add.moduleNotReady'), 'warning');
     return;
   }
   openCardWizard(app, {
@@ -83,7 +84,7 @@ type Stage = 'loading' | 'books' | 'pick' | 'confirm';
 export function openSourcePicker(app: App, opts: { bookId?: string } = {}): void {
   const api = findReaderReviewApi(app);
   if (!api) {
-    notice('从书里加入复习要新版 bz Reader：请在插件市场更新后重试。', 'warning');
+    notice(t('pick.readerRequired'), 'warning');
     return;
   }
   new SourcePicker(app, api, opts.bookId).open();
@@ -99,7 +100,7 @@ class SourcePicker {
   private closed = false;
 
   private stage: Stage = 'loading';
-  private loadingText = '正在读 Reader 的书架…';
+  private loadingText = t('pick.readingShelf');
   private errorText = '';
 
   private books: ReaderCatalogBook[] = [];
@@ -143,7 +144,7 @@ class SourcePicker {
 
   private async loadBooks(): Promise<void> {
     this.stage = 'loading';
-    this.loadingText = '正在读 Reader 的书架…';
+    this.loadingText = t('pick.readingShelf');
     this.errorText = '';
     this.render();
     try {
@@ -159,7 +160,7 @@ class SourcePicker {
 
   private async loadBook(bookId: string): Promise<void> {
     this.stage = 'loading';
-    this.loadingText = '正在读这本书的划线…';
+    this.loadingText = t('pick.readingMarks');
     this.errorText = '';
     this.render();
     let book: ReaderCatalogBookDetail | null = null;
@@ -171,7 +172,7 @@ class SourcePicker {
     }
     if (this.closed) return;
     if (!book) {
-      this.errorText = '这本书的内容读不出来，稍后再试一次';
+      this.errorText = t('pick.readFailed');
       this.stage = 'books';
       this.render();
       return;
@@ -215,10 +216,10 @@ class SourcePicker {
   }
 
   private titleOf(): string {
-    if (this.stage === 'books') return '从阅读器加入复习';
-    if (this.stage === 'confirm') return '确认要加入的内容';
-    if (this.stage === 'pick') return '选要加入的内容';
-    return '正在读取';
+    if (this.stage === 'books') return t('ui.addFromReader');
+    if (this.stage === 'confirm') return t('pick.confirmTitle');
+    if (this.stage === 'pick') return t('pick.chooseTitle');
+    return t('pick.reading');
   }
 
   private renderHead(): HTMLElement {
@@ -226,7 +227,7 @@ class SourcePicker {
     head.createDiv({ cls: 'bzrv-pick-title', text: this.titleOf() });
     const x = head.createEl('button', { cls: 'bzrv-pick-x' });
     x.type = 'button';
-    x.appendChild(createSpan({ cls: 'bzrv-sr-only', text: '关闭' }));
+    x.appendChild(createSpan({ cls: 'bzrv-sr-only', text: t('common.close') }));
     x.createSpan({ text: '✕' });
     x.addEventListener('click', () => this.close());
     return head;
@@ -243,25 +244,25 @@ class SourcePicker {
     };
 
     if (this.stage === 'loading') {
-      add('取消', false, () => this.close());
+      add(t('common.cancel'), false, () => this.close());
       return foot;
     }
     if (this.stage === 'books') {
-      add('取消', false, () => this.close());
+      add(t('common.cancel'), false, () => this.close());
       return foot;
     }
     if (this.stage === 'pick') {
-      add('取消', false, () => this.close());
-      add('下一步', true, () => void this.toConfirm(), this.busy);
+      add(t('common.cancel'), false, () => this.close());
+      add(t('wiz.next'), true, () => void this.toConfirm(), this.busy);
       return foot;
     }
-    add('返回', false, () => {
+    add(t('wiz.back'), false, () => {
       this.stage = 'pick';
       this.confirmInfo = null;
       this.render();
     });
     const chars = this.confirmInfo?.chars ?? 0;
-    add('开始', true, () => void this.start(), this.busy || chars > PICK_BLOCK_CHARS);
+    add(t('pick.start'), true, () => void this.start(), this.busy || chars > PICK_BLOCK_CHARS);
     return foot;
   }
 
@@ -278,16 +279,16 @@ class SourcePicker {
     }
     if (!this.books.length) {
       const wrap = body.createDiv({ cls: 'bzrv-pick-empty' });
-      wrap.createDiv({ text: 'Reader 书架里还没有书。先在 bz Reader 导入一本书，再回来加入复习。' });
+      wrap.createDiv({ text: t('pick.noBooks') });
       return;
     }
-    body.createDiv({ cls: 'bzrv-pick-lead', text: '选一本书，再挑要加入复习的划线或章节。' });
+    body.createDiv({ cls: 'bzrv-pick-lead', text: t('pick.bookHint') });
     const list = body.createDiv({ cls: 'bzrv-pick-books' });
     for (const b of this.books) {
       const row = list.createEl('button', { cls: 'bzrv-pick-book' });
       row.type = 'button';
-      row.createDiv({ cls: 'bzrv-pick-book-name', text: b.title || '未命名' });
-      row.createDiv({ cls: 'bzrv-pick-book-sub', text: `${b.author || '佚名'} · ${fmt(b.markCount)} 条划线` });
+      row.createDiv({ cls: 'bzrv-pick-book-name', text: b.title || t('common.untitled') });
+      row.createDiv({ cls: 'bzrv-pick-book-sub', text: `${b.author || t('pick.anonymous')} · ${t('pick.marksCount', { n: fmt(b.markCount) })}` });
       row.addEventListener('click', () => void this.loadBook(b.id));
     }
   }
@@ -296,8 +297,8 @@ class SourcePicker {
     const book = this.book;
     if (!book) return;
     const meta = body.createDiv({ cls: 'bzrv-pick-bookmeta' });
-    meta.createDiv({ cls: 'bzrv-pick-bookmeta-name', text: book.title || '未命名' });
-    meta.createDiv({ cls: 'bzrv-pick-bookmeta-sub', text: book.author || '佚名' });
+    meta.createDiv({ cls: 'bzrv-pick-bookmeta-name', text: book.title || t('common.untitled') });
+    meta.createDiv({ cls: 'bzrv-pick-bookmeta-sub', text: book.author || t('pick.anonymous') });
 
     const tabs = body.createDiv({ cls: 'bzrv-pick-tabs' });
     const mkTab = (key: 'marks' | 'chapters', label: string): void => {
@@ -309,8 +310,8 @@ class SourcePicker {
         this.render();
       });
     };
-    mkTab('marks', '按划线');
-    mkTab('chapters', '按章节');
+    mkTab('marks', t('pick.byMarks'));
+    mkTab('chapters', t('pick.byChapters'));
 
     if (this.tab === 'marks') this.renderMarkPick(body, book);
     else this.renderChapterPick(body, book);
@@ -318,9 +319,9 @@ class SourcePicker {
 
   private renderMarkPick(body: HTMLElement, book: ReaderCatalogBookDetail): void {
     const groups = markChapterGroups(book.marks);
-    body.createDiv({ cls: 'bzrv-pick-lead', text: '勾选章节：这一章里的划线会交给 AI 挑重点，值得记的才做成卡。' });
+    body.createDiv({ cls: 'bzrv-pick-lead', text: t('pick.chapterMarksHint') });
     if (!groups.length) {
-      body.createDiv({ cls: 'bzrv-pick-empty', text: '这本书还没有划线。可以切到「按章节」，让 AI 从正文里挑。' });
+      body.createDiv({ cls: 'bzrv-pick-empty', text: t('pick.noMarks') });
       return;
     }
     const list = body.createDiv({ cls: 'bzrv-pick-list' });
@@ -336,8 +337,8 @@ class SourcePicker {
         this.syncBar();
       });
       const main = row.createDiv({ cls: 'bzrv-pick-row-main' });
-      main.createDiv({ cls: 'bzrv-pick-row-title', text: g.title || '未命名章节' });
-      main.createDiv({ cls: 'bzrv-pick-row-sub', text: `${fmt(g.count)} 条 · ${fmt(g.chars)} 字` });
+      main.createDiv({ cls: 'bzrv-pick-row-title', text: g.title || t('pick.untitledChapter') });
+      main.createDiv({ cls: 'bzrv-pick-row-sub', text: t('pick.chapterStats', { count: fmt(g.count), chars: fmt(g.chars) }) });
     }
     this.renderSelectBar(body, groups.length, () => {
       const every = groups.every((g) => this.markPicked.has(groupKey(g)));
@@ -347,14 +348,18 @@ class SourcePicker {
     const stats = pickedMarkStats(book.marks, Array.from(this.markPicked));
     body.createDiv({
       cls: 'bzrv-pick-sum',
-      text: `已选 ${fmt(this.markPicked.size)} 章 · ${fmt(stats.count)} 条划线 · ${fmt(stats.chars)} 字`,
+      text: t('pick.selectedMarks', {
+        chapters: fmt(this.markPicked.size),
+        count: fmt(stats.count),
+        chars: fmt(stats.chars),
+      }),
     });
   }
 
   private renderChapterPick(body: HTMLElement, book: ReaderCatalogBookDetail): void {
-    body.createDiv({ cls: 'bzrv-pick-lead', text: '勾选章节：AI 会读这些章节的正文，从中挑值得记住的句子做成卡。' });
+    body.createDiv({ cls: 'bzrv-pick-lead', text: t('pick.chapterTextHint') });
     if (!book.chapters.length) {
-      body.createDiv({ cls: 'bzrv-pick-empty', text: '这本书的章节目录读不出来。可以切回「按划线」，从已有划线里挑。' });
+      body.createDiv({ cls: 'bzrv-pick-empty', text: t('pick.tocFailed') });
       return;
     }
     const list = body.createDiv({ cls: 'bzrv-pick-list' });
@@ -369,14 +374,14 @@ class SourcePicker {
         this.syncBar();
       });
       const main = row.createDiv({ cls: 'bzrv-pick-row-main' });
-      main.createDiv({ cls: 'bzrv-pick-row-title', text: c.title || `第 ${c.index + 1} 章` });
+      main.createDiv({ cls: 'bzrv-pick-row-title', text: c.title || t('pick.chapterN', { n: c.index + 1 }) });
     }
     this.renderSelectBar(body, book.chapters.length, () => {
       const every = book.chapters.every((c) => this.chapPicked.has(c.index));
       this.chapPicked = new Set(every ? [] : book.chapters.map((c) => c.index));
       this.render();
     });
-    body.createDiv({ cls: 'bzrv-pick-sum', text: `已选 ${fmt(this.chapPicked.size)} 章` });
+    body.createDiv({ cls: 'bzrv-pick-sum', text: t('pick.selectedChapters', { n: fmt(this.chapPicked.size) }) });
   }
 
   private renderSelectBar(body: HTMLElement, total: number, toggle: () => void): void {
@@ -384,7 +389,7 @@ class SourcePicker {
     const every = total > 0 && (this.tab === 'marks'
       ? this.markPicked.size === total
       : this.chapPicked.size === total);
-    const b = bar.createEl('button', { cls: 'bzrv-pick-link', text: every ? '全不选' : '全选' });
+    const b = bar.createEl('button', { cls: 'bzrv-pick-link', text: every ? t('pick.selectNone') : t('add.selectAll') });
     b.type = 'button';
     b.addEventListener('click', toggle);
   }
@@ -396,15 +401,19 @@ class SourcePicker {
     if (!stats || !this.book) return;
     if (this.tab === 'marks') {
       const s = pickedMarkStats(this.book.marks, Array.from(this.markPicked));
-      stats.textContent = `已选 ${fmt(this.markPicked.size)} 章 · ${fmt(s.count)} 条划线 · ${fmt(s.chars)} 字`;
+      stats.textContent = t('pick.selectedMarks', {
+        chapters: fmt(this.markPicked.size),
+        count: fmt(s.count),
+        chars: fmt(s.chars),
+      });
     } else {
-      stats.textContent = `已选 ${fmt(this.chapPicked.size)} 章`;
+      stats.textContent = t('pick.selectedChapters', { n: fmt(this.chapPicked.size) });
     }
     const all = this.root.querySelector<HTMLElement>('.bzrv-pick-link');
     if (all) {
       const total = this.tab === 'marks' ? markChapterGroups(this.book.marks).length : this.book.chapters.length;
       const every = total > 0 && (this.tab === 'marks' ? this.markPicked.size === total : this.chapPicked.size === total);
-      all.textContent = every ? '全不选' : '全选';
+      all.textContent = every ? t('pick.selectNone') : t('add.selectAll');
     }
   }
 
@@ -415,7 +424,7 @@ class SourcePicker {
     if (this.tab === 'marks') {
       const stats = pickedMarkStats(this.book.marks, Array.from(this.markPicked));
       if (!stats.count) {
-        notice('先勾选至少一个章节', 'info');
+        notice(t('pick.pickChapterFirst'), 'info');
         return;
       }
       this.confirmInfo = { chapters: this.markPicked.size, marks: stats.count, chars: stats.chars };
@@ -425,13 +434,13 @@ class SourcePicker {
     }
 
     if (!this.chapPicked.size) {
-      notice('先勾选至少一个章节', 'info');
+      notice(t('pick.pickChapterFirst'), 'info');
       return;
     }
     const picked = Array.from(this.chapPicked).sort((a, b) => a - b);
     this.busy = true;
     this.stage = 'loading';
-    this.loadingText = '正在统计字数…';
+    this.loadingText = t('pick.countingChars');
     this.render();
     let chars = 0;
     for (const i of picked) chars += Array.from(await this.body(i)).length;
@@ -450,19 +459,19 @@ class SourcePicker {
       const p = box.createDiv({ cls: 'bzrv-pick-confirm-line' + (cls ? ` ${cls}` : ''), text });
       p.title = '';
     };
-    line(`方式：${this.tab === 'marks' ? '按划线挑重点' : '按章节挑句子'}`);
+    line(t('pick.scopeLine', { mode: this.tab === 'marks' ? t('pick.modeMarks') : t('pick.modeChapters') }));
     line(
       this.tab === 'marks'
-        ? `范围：${fmt(info.chapters)} 章 · ${fmt(info.marks)} 条划线`
-        : `范围：${fmt(info.chapters)} 章`,
+        ? t('pick.rangeChaptersMarks', { chapters: fmt(info.chapters), marks: fmt(info.marks) })
+        : t('pick.rangeChapters', { chapters: fmt(info.chapters) }),
     );
-    line(`字数：${fmt(info.chars)} 字`);
+    line(t('pick.charsLine', { chars: fmt(info.chars) }));
 
     if (this.tab === 'chapters') {
       const row = box.createDiv({ cls: 'bzrv-pick-limit' });
       const main = row.createDiv({ cls: 'bzrv-pick-limit-main' });
-      main.createDiv({ cls: 'bzrv-pick-limit-name', text: '每章最多几张' });
-      main.createDiv({ cls: 'bzrv-pick-limit-hint', text: '留 0 让 AI 按这一章的长度自己定；填了数字就是上限，不够不凑。' });
+      main.createDiv({ cls: 'bzrv-pick-limit-name', text: t('pick.perChapter') });
+      main.createDiv({ cls: 'bzrv-pick-limit-hint', text: t('pick.perChapterHint') });
       const input = row.createEl('input', { cls: 'bzrv-pick-limit-input' });
       input.type = 'number';
       input.min = '0';
@@ -473,11 +482,11 @@ class SourcePicker {
     }
 
     if (info.chars > PICK_BLOCK_CHARS) {
-      line(`内容太多了（${fmt(info.chars)} 字，上限 ${fmt(PICK_BLOCK_CHARS)} 字）：先少选几章再试。`, 'is-error');
+      line(t('pick.tooMuch', { chars: fmt(info.chars), limit: fmt(PICK_BLOCK_CHARS) }), 'is-error');
     } else if (info.chars > PICK_WARN_CHARS) {
-      line(`内容偏多（${fmt(info.chars)} 字）：会分几批发给模型，耗时和费用都会上去。`, 'is-warn');
+      line(t('pick.large', { chars: fmt(info.chars) }), 'is-warn');
     } else {
-      line('确认后会先让 AI 挑内容，再进入选复习方式——不确认不会写入任何卡片。', 'is-note');
+      line(t('pick.confirmHint'), 'is-note');
     }
   }
 
@@ -492,7 +501,7 @@ class SourcePicker {
 
     this.busy = true;
     this.render();
-    const ok = await aiReadyOrGuide('挑要加入的内容要用 AI');
+    const ok = await aiReadyOrGuide(t('pick.needAi'));
     if (!ok) {
       this.busy = false;
       this.render();
@@ -505,7 +514,7 @@ class SourcePicker {
       ai = null;
     }
     if (!ai) {
-      notice('AI 服务没准备好，稍后再试一次', 'warning');
+      notice(t('pick.aiNotReady'), 'warning');
       this.busy = false;
       this.render();
       return;
@@ -534,7 +543,7 @@ class SourcePicker {
         const capped = tab === 'chapters' ? capSourcesPerChapter(sources, limit) : sources;
         return withBacklink(bookId, capped);
       },
-      loadingText: tab === 'marks' ? '正在读划线，挑要加入的重点…' : '正在读这本书，挑要加入的内容…',
+      loadingText: tab === 'marks' ? t('pick.readingMarksBusy') : t('pick.readingBookBusy'),
     });
   }
 
