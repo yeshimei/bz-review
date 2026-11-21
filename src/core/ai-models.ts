@@ -7,7 +7,7 @@
  * 「获取模型」按钮消费，端点取第二大脑的 Ollama 服务地址（移动端优先远程地址）。
  */
 import { requestUrl } from 'obsidian';
-import { getProviderDescriptor } from './ai';
+import { getProviderDescriptor, providerKeyLabelOf, providerLabelOf } from './ai';
 import type { AIProviderDescriptor } from './ai';
 import { resolveProviderId } from './ai-provider-id';
 import { isMobileEnv } from './mobile';
@@ -201,7 +201,7 @@ export async function fetchProviderModels(
   const key = keyFor(id);
   // 除 Ollama / LM Studio 本地服务外，缺 key 即拦截（对齐 getAIProvider 的拦截文案）
   if (!key && desc.id !== 'ollama' && desc.id !== 'lmstudio') {
-    throw new Error(t('ai.error.missingKey', { provider: desc.label, label: desc.apiKeyLabel }));
+    throw new Error(t('ai.error.missingKey', { provider: providerLabelOf(desc), label: providerKeyLabelOf(desc) }));
   }
 
   const url = desc.id === 'ollama' ? `${endpoint}/api/tags` : `${endpoint}/models`;
@@ -209,12 +209,12 @@ export async function fetchProviderModels(
   if (key) headers['Authorization'] = `Bearer ${key}`;
   const timeoutMs = desc.id === 'ollama' ? OLLAMA_TIMEOUT_MS : MODELS_TIMEOUT_MS;
 
-  const data = await fetchModelsJson(url, headers, timeoutMs, desc.label, deps);
+  const data = await fetchModelsJson(url, headers, timeoutMs, providerLabelOf(desc), deps);
   const ids = parseModelList(desc, data);
   const seen = new Set<string>();
   return ids
     .filter((m) => (seen.has(m) ? false : (seen.add(m), true)))
-    .map((m) => ({ id: m, detail: desc.label }));
+    .map((m) => ({ id: m, detail: providerLabelOf(desc) }));
 }
 
 /* ==================== 向量化模型（Embedding；issue 422/ADR-0182） ==================== */
