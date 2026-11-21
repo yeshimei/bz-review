@@ -599,7 +599,7 @@ export class UIManager {
         const currentBtn = createEl('button');
         currentBtn.className = 'bzrv-btn bzrv-btn--ghost';
         currentBtn.dataset.act = 'empty-add-current';
-        currentBtn.textContent = '把当前笔记加入复习';
+        currentBtn.textContent = '加入复习';
         acts.appendChild(currentBtn);
         host.appendChild(
           uiEmpty({
