@@ -17,10 +17,11 @@ import { setHtml } from './ui/set-html';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
 import { DEFAULT_ACCENT, applyAccent } from '../settings';
+import { LOCALES, LOCALE_NAMES, hostLanguageCode, isLocale, resolveLocale, setLocale, t, type LanguagePref } from '../i18n';
 
 import { openFlowDialog } from '../core/flow-dialog';
 import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
-import { getSettings, saveSettings } from '../core/settings-provider';
+import { getSettings, requestSettingsPanel, saveSettings } from '../core/settings-provider';
 import type { SettingsSchema, SettingsRow } from '../core/settings-schema';
 import {
   AI_PROVIDER_REGISTRY,
@@ -546,6 +547,65 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         icon: 'layout-panel-left',
         name: '界面',
         rows: [
+          {
+            /* 界面语言（2026-11-21）：放最前——它是「其他设置长什么样」的前提。
+               照 bz Reader 的口径：语言名用**自称**（中文 / English），这三条不走
+               t()，必须与当前界面语言无关；auto = 跟随 Obsidian。切换后整页重开，
+               否则只有这一行跟着变、别行还是旧语言。命令名要重启才更新，提示写清楚。 */
+            type: 'custom',
+            name: t('settings.language'),
+            desc: t('settings.language.desc'),
+            help: t('settings.language.hint'),
+            render: (body: HTMLElement) => {
+              const setting = new Setting(body).setName(t('settings.language')).setDesc(t('settings.language.desc'));
+              setting.settingEl.classList.add('bzrv-accent-row');
+              const nameEl = (setting as unknown as { nameEl?: HTMLElement }).nameEl;
+              if (nameEl) attachHelpTip(nameEl, { text: t('settings.language.hint') });
+              const prefs: Array<{ value: string; label: string }> = [
+                { value: 'auto', label: t('settings.language.auto') },
+                ...LOCALES.map((l) => ({ value: l, label: LOCALE_NAMES[l] })),
+              ];
+              const seg = createDiv();
+              seg.className = 'bzrv-segmented bzrv-accent-seg';
+              seg.setAttribute('role', 'radiogroup');
+              withSrText(seg, t('settings.language'));
+              const btns: HTMLButtonElement[] = [];
+              const current = (): string => {
+                const v = String(getSettings().language || 'auto');
+                return v === 'auto' || isLocale(v) ? v : 'auto';
+              };
+              const paint = (): void => {
+                const cur = current();
+                for (const b of btns) {
+                  const on = b.dataset.value === cur;
+                  b.classList.toggle('is-on', on);
+                  b.setAttribute('aria-checked', String(on));
+                }
+              };
+              for (const m of prefs) {
+                const btn = createEl('button');
+                btn.type = 'button';
+                btn.className = 'bzrv-segmented-btn';
+                btn.dataset.value = m.value;
+                btn.setAttribute('role', 'radio');
+                btn.setAttribute('aria-checked', 'false');
+                btn.appendChild(document.createTextNode(m.label));
+                btn.addEventListener('click', () => {
+                  const next: LanguagePref = isLocale(m.value) ? m.value : 'auto';
+                  getSettings().language = next;
+                  void saveSettings();
+                  const changed = setLocale(resolveLocale(next, hostLanguageCode()));
+                  /* 整页重开：设置页每行文案都是渲染时取的，只重画这一行不够。 */
+                  requestSettingsPanel(undefined, '界面');
+                  if (changed) notice(t('notice.language.changed'));
+                });
+                btns.push(btn);
+                seg.appendChild(btn);
+              }
+              setting.controlEl.appendChild(seg);
+              paint();
+            },
+          },
           {
             /* 强调色：4 档分段 + 彩色圆点，自绘插槽（core 渲染器对 custom 行只建包装容器，
                名称/说明需自己用 Setting 渲出来）。切换即写内存 + 落盘 + 改 body 属性实时生效。 */

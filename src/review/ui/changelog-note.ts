@@ -21,7 +21,7 @@ import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
 import { openVideoTutorial, openExternalUrl, REVIEW_REPO_URL, BZ_REPO_URL, GROUP_ID } from './links-bridge';
-import { changelogLang } from './i18n-bridge';
+import { changelogLang } from '../../i18n';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
 import { currentPatrons, onPatronsChange, refreshPatrons } from './patrons';

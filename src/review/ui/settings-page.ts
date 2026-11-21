@@ -17,6 +17,7 @@ import { installReaderPlugin, openReaderShelf, readReaderInstall, type ReaderIns
 import { copyReviewGroupId } from './group-bridge';
 import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml, type ReaderPluginState } from './settings-page-pure';
 import { setHtml } from './set-html';
+import { locale, t } from '../../i18n';
 import type { ReviewDataManager } from '../data';
 
 /** 同一个容器可能被多次渲染；事件只绑一次，避免点一次激活处理两遍 */
@@ -26,24 +27,27 @@ const licenseBound = new WeakSet<HTMLElement>();
  * 快捷键行（2026-11-21 照 bz Reader 重做）：
  * 显示每条命令**当前真实绑定**（用户在宿主里改过的也认），没绑就写「未设置」；
  * 点击打开 Obsidian 快捷键页并自动搜索这条命令。不再显示裸命令 ID。
+ * 标签在渲染时取 t()，切语言后整页重绘即跟着变。
  */
-const HOTKEYS: Array<{ label: string; id: string }> = [
-  { label: '打开复习面板', id: 'bz-review:review-open' },
-  { label: '开始复习', id: 'bz-review:review-start' },
-  { label: '把当前笔记加入复习', id: 'bz-review:review-add' },
-  { label: '标记复习（评级）', id: 'bz-review:review-rate' },
+const HOTKEYS: Array<{ label: () => string; id: string }> = [
+  { label: () => t('shortcuts.open'), id: 'bz-review:review-open' },
+  { label: () => t('shortcuts.start'), id: 'bz-review:review-start' },
+  { label: () => t('shortcuts.add'), id: 'bz-review:review-add' },
+  { label: () => t('shortcuts.rate'), id: 'bz-review:review-rate' },
 ];
 
 function shortcutsHtml(app: App): string {
-  const rows = readHotkeys(app, HOTKEYS)
+  const rows = readHotkeys(app, HOTKEYS.map((h) => ({ id: h.id, label: h.label() })))
     .map((r) => {
+      const label = r.label;
       const keys = r.keys.length
         ? `<span class="bzs-keylist">${r.keys.map((k) => `<kbd>${k}</kbd>`).join('')}</span>`
-        : '<kbd class="is-empty">未设置</kbd>';
-      return `<button class="bzs-keyrow" type="button" data-hotkey="${r.id}" data-hotkey-query="${r.label}"><span>${r.label}</span>${keys}<span class="bzs-sr-only">到 Obsidian 快捷键设置里改这条命令</span></button>`;
+        : `<kbd class="is-empty">${t('shortcuts.unset')}</kbd>`;
+      return `<button class="bzs-keyrow" type="button" data-hotkey="${r.id}" data-hotkey-query="${label}"><span>${label}</span>${keys}<span class="bzs-sr-only">${t('shortcuts.hint')}</span></button>`;
     })
     .join('');
-  return `<div class="bzs-setgrp wide"><h3 data-en="Shortcuts">快捷键</h3><div class="bzs-keys">${rows}</div></div>`;
+  const sub = locale() === 'zh' ? ' data-en="Shortcuts"' : '';
+  return `<div class="bzs-setgrp wide"><h3${sub}>${t('shortcuts.title')}</h3><div class="bzs-keys">${rows}</div></div>`;
 }
 
 /** 打开更新日志：弹窗与数据都按需加载，入口点击才付这 100KB 的代价 */
@@ -147,6 +151,8 @@ export async function renderReviewSettingsPage(
       head.replaceChildren();
       const h3 = createEl('h3');
       h3.textContent = name;
+      /* 英文副标只在中文界面挂：英文界面里组名仍是中文（本批未翻设置页组名），
+         副标照常给英文；等组名按语言出词时这里再按语言决定。 */
       h3.setAttribute('data-en', GROUP_SUBTITLES[name] ?? '');
       head.appendChild(h3);
     }
@@ -188,7 +194,7 @@ export async function renderReviewSettingsPage(
   const runReaderInstall = (btn: HTMLButtonElement): void => {
     if (btn.dataset.busy === '1') return;
     if (isMobileEnv()) {
-      notice('插件安装要在桌面端完成；手机上请到社区插件市场安装', 'info');
+      notice(t('notice.reader.mobile'), 'info');
       return;
     }
     btn.dataset.busy = '1';
@@ -197,15 +203,15 @@ export async function renderReviewSettingsPage(
     const setStage = (text: string): void => {
       if (label) label.textContent = text;
     };
-    setStage('准备…');
+    setStage(t('reader.stage.prepare'));
     void (async () => {
       try {
         const res = await installReaderPlugin(deps.app, { onStage: setStage });
         await refreshPluginGroup();
         notice(
           res.enabled
-            ? `bz Reader v${res.version} 已安装并启用`
-            : `bz Reader v${res.version} 已安装，请在第三方插件里手动启用`,
+            ? t('notice.reader.installed', { version: res.version })
+            : t('notice.reader.installedManual', { version: res.version }),
           res.enabled ? 'success' : 'warning'
         );
         if (!res.enabled) return;
@@ -217,14 +223,14 @@ export async function renderReviewSettingsPage(
           }
           if (++tries >= 8) {
             window.clearInterval(timer);
-            notice('已装好，到命令面板运行「bz Reader: 打开书架」', 'info');
+            notice(t('notice.reader.notReady'), 'info');
           }
         }, 350);
       } catch (e) {
         btn.dataset.busy = '';
         btn.disabled = false;
-        setStage('重试');
-        notice(`安装失败：${e instanceof Error ? e.message : String(e)}`, 'warning');
+        setStage(t('reader.stage.retry'));
+        notice(t('notice.reader.failed', { reason: e instanceof Error ? e.message : String(e) }), 'warning');
       }
     })();
   };
@@ -254,7 +260,7 @@ export async function renderReviewSettingsPage(
           return;
         case 'readeropen':
           if (!openReaderShelf(deps.app)) {
-            notice('bz Reader 还没加载好，稍后到命令面板运行「打开书架」', 'info');
+            notice(t('notice.reader.shelfNotReady'), 'info');
           }
           return;
       }

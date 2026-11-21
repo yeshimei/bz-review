@@ -5,7 +5,9 @@
  * 原型 prototypes/settings-page.html 的关于条按 1:1 搬运：
  *   R 品牌 / Review / 版本 / 身份徽章 / 五个出口（GitHub、视频、群、支持作者、更新日志）。
  * 读屏名字一律走 bzs-sr-only，不挂 title / aria-label（仓库禁令）。
+ * 文案走 `../../i18n/strings`（纯核心，不拉 obsidian）。
  * ============================================================ */
+import { locale, t } from '../../i18n/strings';
 
 /** 分组英文副标：原型 h3::after 的 data-en，桌面两列都要有 */
 export const GROUP_SUBTITLES: Record<string, string> = {
@@ -112,10 +114,10 @@ const esc = (s: string | number | null | undefined): string =>
  * 身份徽章三种：赞助人（带昵称则用昵称）/ 高级版 / 基础版，与 reader 同一口径。
  */
 export function aboutBarHtml(version: string, paid: boolean, name: string, groupId = '1130883117'): string {
-  const label = paid ? (name ? esc(name) : '高级版') : '基础版';
+  const label = paid ? (name ? esc(name) : t('about.pro')) : t('about.base');
   const cls = `bzs-about-badge${paid ? '' : ' is-base'}`;
   const seal = paid ? '<span class="seal">✦</span>' : '';
-  const sr = paid ? `<span class="bzs-sr-only">${esc(name ? '赞助人' : '高级版')}</span>` : '';
+  const sr = paid ? `<span class="bzs-sr-only">${esc(name ? t('about.patron') : t('about.pro'))}</span>` : '';
   return `<div class="bzs-setgrp wide bzs-about">
       <span class="bzs-brand-txt"><h3>Review</h3></span>
       <span class="bzs-about-meta">
@@ -123,15 +125,15 @@ export function aboutBarHtml(version: string, paid: boolean, name: string, group
         <span class="${cls}">${seal}${sr}${label}</span>
       </span>
       <span class="sp"></span>
-      <button class="bzs-about-link" type="button" data-act="aboutgithub">${GITHUB_SVG}<b>GitHub</b><span class="bzs-sr-only">打开 GitHub 仓库</span></button>
+      <button class="bzs-about-link" type="button" data-act="aboutgithub">${GITHUB_SVG}<b>GitHub</b><span class="bzs-sr-only">${esc(t('about.githubSr'))}</span></button>
       <span class="dot"></span>
-      <button class="bzs-about-link" type="button" data-act="aboutvideo">${VIDEO_SVG}<b>视频教程</b><span class="bzs-sr-only">打开视频教程</span></button>
+      <button class="bzs-about-link" type="button" data-act="aboutvideo">${VIDEO_SVG}<b>${esc(t('about.video'))}</b><span class="bzs-sr-only">${esc(t('about.videoSr'))}</span></button>
       <span class="dot"></span>
-      <button class="bzs-about-link" type="button" data-act="copygroup">${GROUP_SVG}<b>QQ 交流群</b><i>${esc(groupId)}</i><span class="bzs-sr-only">复制群号</span></button>
+      <button class="bzs-about-link" type="button" data-act="copygroup">${GROUP_SVG}<b>${esc(t('about.group'))}</b><i>${esc(groupId)}</i><span class="bzs-sr-only">${esc(t('about.copyGroupSr'))}</span></button>
       <span class="dot"></span>
-      <button class="bzs-about-link" type="button" data-act="support">${HEART_SVG}<b>支持作者</b><span class="bzs-sr-only">看看支持作者的方式</span></button>
+      <button class="bzs-about-link" type="button" data-act="support">${HEART_SVG}<b>${esc(t('settings.about.support'))}</b><span class="bzs-sr-only">${esc(t('settings.about.supportTip'))}</span></button>
       <span class="dot"></span>
-      <button class="bzs-about-link" type="button" data-act="changelog">${HISTORY_SVG}<b>更新日志</b><span class="bzs-sr-only">看看每一版改了什么</span></button>
+      <button class="bzs-about-link" type="button" data-act="changelog">${HISTORY_SVG}<b>${esc(t('settings.about.changelog'))}</b><span class="bzs-sr-only">${esc(t('settings.about.changelogTip'))}</span></button>
     </div>`;
 }
 
@@ -158,18 +160,23 @@ export function pluginGroupHtml(reader?: ReaderPluginState): string {
   const installed = !!reader?.installed && !reader?.broken;
   const version = String(reader?.version || '').replace(/[^\w.+-]/g, '');
   const desc = installed
-    ? `已安装${version ? ` v${version}` : ''}${reader?.enabled ? '' : '（未启用）'}。桌面 + 手机、多种格式、AI 追问与全文问答、离线朗读、阅读统计，数据全留本地。`
-    : '把库变成阅读器：桌面 + 手机、多种格式、AI 追问与全文问答、离线朗读、阅读统计，数据全留本地。';
+    ? t('plugin.readerInstalled', {
+        version: version ? ` v${version}` : '',
+        disabled: reader?.enabled ? '' : t('plugin.disabledNote'),
+      }) + t('plugin.readerDesc')
+    : t('plugin.readerDesc');
+  /* 组名英文副标只在中文界面挂：英文界面里 h3 本身就是英文，再挂一遍会显示两次。 */
+  const sub = locale() === 'zh' ? ' data-en="Plugins"' : '';
   return `<div class="bzs-setgrp wide bzs-plugin-grp">
-      <h3 data-en="Plugins">插件</h3>
+      <h3${sub}>${esc(t('plugin.title'))}</h3>
       <div class="bzs-cap is-on">
         <span class="bzs-capico">${READER_ICON_SVG}</span>
         <div class="bzs-capmain">
-          <div class="bzs-cap-t"><b>bz Reader</b><span class="bzs-capchip">配套阅读器</span></div>
-          <p>${desc}</p>
-          <div class="bzs-captags"><span class="bzs-tag">多格式</span><span class="bzs-tag">AI 问答</span><span class="bzs-tag">离线朗读</span></div>
+          <div class="bzs-cap-t"><b>bz Reader</b><span class="bzs-capchip">${esc(t('plugin.readerChip'))}</span></div>
+          <p>${esc(desc)}</p>
+          <div class="bzs-captags"><span class="bzs-tag">${esc(t('plugin.tag.formats'))}</span><span class="bzs-tag">${esc(t('plugin.tag.qa'))}</span><span class="bzs-tag">${esc(t('plugin.tag.tts'))}</span></div>
           <div class="bzs-capfoot">
-            <button class="bzs-btn sm pri" type="button" data-act="${installed ? 'readeropen' : 'readerinstall'}">${DOWNLOAD_SVG}<span class="bzs-btn-label">${installed ? '打开' : '安装'}</span></button>
+            <button class="bzs-btn sm pri" type="button" data-act="${installed ? 'readeropen' : 'readerinstall'}">${DOWNLOAD_SVG}<span class="bzs-btn-label">${installed ? esc(t('plugin.open')) : esc(t('plugin.install'))}</span></button>
           </div>
         </div>
       </div>
