@@ -56,6 +56,16 @@ export function releaseEntryCount(release: ChangelogRelease): number {
  */
 export const CHANGELOG_RELEASES: readonly ChangelogRelease[] = [
   {
+    version: '1.0.1',
+    date: '2026-11-21',
+    fixed: [
+      { domain: '上架兼容', text: '清掉社区市场扫描报的 CSS 与依赖问题。' },
+      { domain: '界面字体', text: '改用 Obsidian 自带的界面与等宽字体，跟主题一致。' },
+      { domain: '复制群号', text: '改用系统剪贴板，桌面和手机都能复制。' },
+      { domain: '滑动条', text: '去掉已废弃的接口调用，数值仍在旁边内联显示。' },
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-11-21',
     added: [
