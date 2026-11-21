@@ -180,16 +180,16 @@ export class SprintSession {
     // 确认框按钮的原生 click 失效，同时按键穿透题面（多选直接交卷/翻题/结算）
     this.confirming = true;
     void openFlowDialog({
-      title: '放弃本次做题？',
-      message: '未完成的题目将丢弃，本轮复习按已完成篇目结算',
+      title: t('sprint.abandonTitle'),
+      message: t('sprint.abandonBody'),
       /* 标准双动作的右侧恒是主按钮（#bzrv-confirm-ok 吃品牌色）。原来「放弃」在右、
          顶着橙色高亮，最该点的「继续做题」反而是一枚灰字——主次整个反过来。
          这里把语义页对调：左「放弃」次要，右「继续做题」主按钮并默认聚焦。
          刻意不标 danger（issue 291 评审）：丢弃的是**本轮会话里未答的临时状态**（已答篇目
          照常结算、题库与复习数据不删），与 core confirmDiscard「放弃未保存草稿」同口径。 */
       actions: [
-        { label: '放弃', value: 'quit' },
-        { label: '继续做题', value: 'cancel' },
+        { label: t('sprint.abandon'), value: 'quit' },
+        { label: t('qs.continue'), value: 'cancel' },
       ],
     }).then((v) => {
       this.confirming = false; // settle 复位：取消/确认/ESC 关闭都恢复键盘
@@ -335,7 +335,7 @@ export class SprintSession {
     if (this.finished || seq !== this.runSeq) return;
     if (!questions || !questions.length) {
       // 无题：跳过该篇（不写评级；保持逾期等下次）
-      notice(`「${entry.item.name}」暂无题目，已跳过`, 'warning');
+      notice(t('sprint.noQuestions', { name: entry.item.name }), 'warning');
       entry.state = 'pending';
       // 从本轮剔除继续（不计数）
       this.entries.splice(nextIdx, 1);

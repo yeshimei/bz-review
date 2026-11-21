@@ -14,6 +14,7 @@ import { notice } from '../notice';
 import { openExternalUrl } from '../utils';
 import { uiBtn } from './button';
 import { uiModal } from './modal';
+import { t } from '../../i18n/strings';
 
 export interface TutorialModalOpts {
   /** 域皮肤类（在域 styles.css 里定义 `.bzrv-overlay-popup.<类>` 的材质） */
@@ -46,7 +47,7 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   /** 去 B 站；未发布只提示不关窗——用户还能点「先自己转转」 */
   const watch = (): void => {
     if (!url) {
-      notice('教程视频还没发');
+      notice(t('tut.notYet'));
       return;
     }
     openExternalUrl(getApp(), url);
@@ -57,7 +58,7 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   const cover = createEl('button');
   cover.type = 'button';
   cover.className = 'bzrv-tut-cover';
-  cover.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: url ? `去 B 站看${opts.title}` : '教程视频还没发布' }));
+  cover.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: url ? t('tut.goBili', { title: opts.title }) : t('tut.notPublished') }));
   cover.addEventListener('click', watch);
 
   const play = createSpan();
@@ -68,7 +69,7 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   text.className = 'bzrv-tut-cover-text';
   const kicker = createSpan();
   kicker.className = 'bzrv-tut-kicker';
-  kicker.textContent = url ? 'B 站 · 视频教程' : 'B 站 · 即将上线';
+  kicker.textContent = url ? t('tut.biliVideo') : t('tut.biliSoon');
   const name = createSpan();
   name.className = 'bzrv-tut-name';
   name.textContent = opts.title;
@@ -82,12 +83,12 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
   const foot = createDiv();
   foot.className = 'bzrv-tut-foot';
   const dismiss = uiBtn({
-    label: opts.dismiss || '先自己转转',
+    label: opts.dismiss || t('tut.lookAround'),
     className: 'bzrv-tut-dismiss',
     onClick: () => ui.close(),
   });
   const go = uiBtn({
-    label: opts.cta || '看视频教程',
+    label: opts.cta || t('tut.watch'),
     tone: 'primary',
     className: 'bzrv-tut-go',
     onClick: watch,
@@ -100,7 +101,7 @@ export function showTutorialModal(opts: TutorialModalOpts): TutorialModalHandle 
     content,
     maxWidth: 360,
     // 无标题头（字少）：title 落成视觉隐藏文本 .bzrv-sr-only，读屏仍知道这个框是什么（不用 aria-label）
-    title: '视频教程',
+    title: t('tut.title'),
     className: opts.className,
     onClose: () => opts.onClose?.(),
   });
