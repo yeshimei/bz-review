@@ -27,7 +27,7 @@ import { escManager } from '../core/esc-manager';
 import type { ReviewItem } from './data';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { QuizMasterUI } from './quiz-core/session';
-import { RATING_NAMES } from './stats'; // A6：评级中文名单源（「简单」，与评级条/统计一致），本地「轻松」映射已删
+import { ratingName, t } from '../i18n'; // 评级名与文案单一来源（「简单」与评级条/统计一致）
 import {
   sprintHeadHtml, sprintLoadingHtml, sprintQuestionHtml, sprintBodyHtml,
   sprintResultHtml, sprintSummaryHtml, futureInLabel,
@@ -580,17 +580,17 @@ export class SprintSession {
     const name = stripTitleMarks(entry.item.name);
     const nextLabel =
       this.mode === 'single'
-        ? '完成 · 回面板'
+        ? t('sprint.donePanel')
         : remain > 0
-          ? `下一篇 · ${this.nextPendingName()}`
-          : '完成本轮 · 结算';
+          ? t('sprint.nextItem', { name: this.nextPendingName() })
+          : t('sprint.finishRound');
 
     // P3：redo 通过只清待重做标记（ADR-0044 不写 FSRS）——展示解除文案，
     // 不回退快照旧排期（entry.item.nextReviewDate 为会话前快照，展示会误导）
     const ratingLine =
       this.mode === 'redo'
-        ? `${RATING_NAMES[rating]} · 已解除待重做`
-        : `${RATING_NAMES[rating]} · 下次 ${entry.passNote || '已排期'}`;
+        ? `${ratingName(rating)} · ${t('sprint.clearedRedo')}`
+        : `${ratingName(rating)} · ${t('sprint.nextDue', { note: entry.passNote || t('sprint.arranged') })}`;
     this.view = 'result';
     // U7：结果卡仅通过态可达（未通过走 finish('fail') 中断，不出卡），markup 随死分支删除
     setHostMarkup(this.opts.host, `${sprintHeadHtml(this.mode)}${sprintBodyHtml(
