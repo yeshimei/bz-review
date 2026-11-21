@@ -10,7 +10,12 @@
     <a href="https://github.com/yeshimei/bz-review/releases"><img src="https://img.shields.io/github/downloads/yeshimei/bz-review/total?style=flat-square&label=DOWNLOADS&labelColor=1f1f1e&color=6d8795" alt="下载量"></a>
     <img src="https://img.shields.io/badge/PLATFORM-DESKTOP%20%2B%20MOBILE-5f7f57?style=flat-square&labelColor=1f1f1e" alt="桌面 + 移动">
     <a href="LICENSE"><img src="https://img.shields.io/github/license/yeshimei/bz-review?style=flat-square&label=LICENSE&labelColor=1f1f1e&color=5f7f57" alt="MIT"></a>
-    <a href="https://github.com/yeshimei/bz-reader"><img src="https://img.shields.io/badge/BZ%20READER-%E5%A4%8D%E4%B9%A0%E9%85%8D%E5%A5%97-7c3aed?style=flat-square&labelColor=1f1f1e" alt="配套插件 bz Reader"></a>
+  </p>
+
+  <p>
+    <a href="https://github.com/yeshimei/bz"><img src="https://img.shields.io/badge/BZ-%E9%A2%9C%E5%80%BC%20%2B%20%E9%9B%86%E5%A4%A7%E6%88%90-7c3aed?style=flat-square&labelColor=1f1f1e" alt="BZ：颜值 + 集大成"></a>
+    <a href="https://github.com/yeshimei/bz-reader"><img src="https://img.shields.io/badge/BZ%20READER-%E5%A4%9A%E6%A0%BC%E5%BC%8F%E9%98%85%E8%AF%BB%E5%99%A8-8a6a3a?style=flat-square&labelColor=1f1f1e" alt="BZ Reader：多格式阅读器"></a>
+    <a href="https://github.com/yeshimei/bz-review"><img src="https://img.shields.io/badge/BZ%20REVIEW-%E5%A4%8D%E4%B9%A0-5f7f57?style=flat-square&labelColor=1f1f1e" alt="BZ Review：复习"></a>
   </p>
 
   <p><sub>QQ 群 1130883117 · <a href="#support">支持作者</a></sub></p>
@@ -35,17 +40,17 @@
 
 ## 安装
 
-在社区市场安装（首次上架审核通过后可见）：
+在社区市场安装：
 
 1. 打开 **设置 → 第三方插件**，关闭安全模式。
 2. 点 **浏览**，搜索 **bz Review**，安装。
 3. 启用后左侧出现日历勾图标，点开就是复习计划。
 
-审核期间或搜不到时，用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 添加本仓库安装，或手动下载 Release 里的 `main.js`、`manifest.json`、`styles.css`，放进 `<你的库>/.obsidian/plugins/bz-review/` 后启用。
+搜不到时，用 [BRAT](https://github.com/TfTHacker/obsidian42-brat) 添加本仓库安装，或手动下载 Release 里的 `main.js`、`manifest.json`、`styles.css`，放进 `<你的库>/.obsidian/plugins/bz-review/` 后启用。
 
 ## 视频教程
 
-视频还在制作中，做好后会在这里补上链接；插件里的「看视频教程」按钮也会同步指向它。
+视频制作中，做好后在这里和插件里的「看视频教程」按钮同步更新。
 
 ## 功能
 
@@ -120,51 +125,13 @@
 
 ### 排期算法的长期仿真验证
 
-排期不是拍脑袋定的。我们直接拿插件里**真实在用的排期代码**（`src/review/fsrs.ts` 的 `FSRS` 与 `scheduleNext`）跑了一场蒙特卡洛仿真：造一个虚拟学生，每天随机新增 0～5 张卡片，到期时按模型算出的真实留存概率决定答对还是答错，再按结果重新排期。为让数字稳健，用 5 个固定随机种子各跑一遍取平均。脚本见 [`scripts/fsrs7-sim-real.ts`](scripts/fsrs7-sim-real.ts)（每天加卡数、种子、最长间隔都可改）。目标留存率 90%、最长间隔不限（插件默认值）：
+排期直接用插件在跑的代码（`src/review/fsrs.ts`）做蒙特卡洛仿真：虚拟学生每天新增 0~5 张卡，按模型算出的真实留存概率答题。十年实际留存率稳定在 87%~88%，日均复习量由每天加卡量决定。脚本见 [`scripts/fsrs7-sim-real.ts`](scripts/fsrs7-sim-real.ts)。
 
-| 时间 | 累计新增 | 日增卡 | 累计复习 | 每卡复习次数 | 实际留存率 | again率 | 日均复习 | 单日峰值 | 平均间隔 | 最大间隔 | S_long中位 | 平均难度 | 成熟卡占比 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 1 个月 | 74 | 2.5 | 209 | 2.8 | 86.89% | 13.1% | 7.0 | 13 | 9天 | 26天 | 11天 | 4.13 | 12.7% |
-| 半年 | 459 | 2.6 | 2,665 | 5.8 | 87.52% | 12.5% | 19.2 | 27 | 45天 | 294天 | 31天 | 4.70 | 85.1% |
-| 1 年 | 911 | 2.4 | 6,658 | 7.3 | 87.85% | 12.1% | 22.7 | 32 | 45天 | 294天 | 86天 | 4.83 | 92.6% |
-| 2 年 | 1,794 | 2.1 | 16,922 | 9.4 | 87.73% | 12.3% | 30.3 | 41 | 92天 | 884天 | 87天 | 5.10 | 96.9% |
-| 3 年 | 2,689 | 2.0 | 28,734 | 10.7 | 87.63% | 12.4% | 32.6 | 42 | 99天 | 915天 | 242天 | 5.20 | 98.0% |
-| 5 年 | 4,525 | 2.5 | 56,893 | 12.6 | 87.65% | 12.4% | 43.9 | 58 | 173天 | 2593天 | 242天 | 5.34 | 98.6% |
-| 7 年 | 6,370 | 2.4 | 88,382 | 13.9 | 87.73% | 12.3% | 44.3 | 58 | 208天 | 2593天 | 319天 | 5.42 | 99.0% |
-| 10 年 | 9,080 | 2.5 | 139,572 | 15.4 | 87.81% | 12.2% | 50.1 | 63 | 217天 | 3601天 | 682天 | 5.50 | 99.3% |
-
-**怎么看这张表：**
-
-- **留存率长期稳定**：实际留存全程在 86.9%～87.9% 之间，围绕设定的 90% 目标小幅波动，十年不恶化——排期是自我稳定的，不会越用越不准。略低于 90% 是因为仿真按整天排期（间隔取整会带来误差），以及"到期那一刻"的 R 本就略低于目标值。
-- **遗忘率是输入不是输出**：`again 率` 稳定在 12% 左右，这是虚拟学生"按真实遗忘概率答题"的直接结果，正好落在 FSRS 90% 目标留存所对应的约 10% 遗忘区间附近。
-- **复习负担由加卡速度决定**：每天平均加 2.5 张，日均复习从第一个月 7 次涨到十年后 50 次，单日峰值始终在几十条量级——不是算法失控，而是近万张卡要定期复习的自然结果。**你每天加多少新卡，决定了你未来的复习量。**
-- **间隔随成熟度拉开**：平均间隔从第一个月 9 天长到十年后 217 天，中期稳定性（S_long 中位数）从 11 天涨到 682 天，说明记得越牢的卡排得越疏。成熟卡（复习≥3 次）半年就占到 85%，十年后 99%。
-- **难度稳定**：平均难度稳定在 4.1～5.5（区间 1～10），没有随使用年限漂移。
-
-> 说明：这是**直接用插件排期代码**做的仿真推演，不是真实用户数据；数字用于验证算法在长期尺度上的稳定性，不代表每个账号的实际数值。虚拟学生的答题概率取自同一套 FSRS 遗忘模型，这与 [Anki 官方 FSRS FAQ](https://docs.ankiweb.net/faqs/frequently-asked-questions-about-fsrs) 对首间隔与留存率的描述一致。
-
-### 多场景长期仿真（年龄段 / 职业 / 使用场景）
-
-上面的表是"一个虚拟学生"的基线。为了做视频、也为了检验算法在不同人群下是否都站得住，又跑了一套**九类人群 × 3 随机种子 × 1 个月到 10 年**的多维仿真：小学生、初中生、高中生、大学生、考研党、考证上班族、医生、程序员、中老年爱好者；作息区分每天 / 工作日 / 断续 / 寒暑假，非活跃日的到期卡会顺延并计入积压。脚本 [`scripts/fsrs-sim-personas.ts`](scripts/fsrs-sim-personas.ts) 直接调用插件的 `scheduleNext()`（含学习步骤、重学、fuzz）。
-
-几个 headline：目标留存率 85% / 90% / 95% / 97% 对应五年日均复习 132 / 186 / 330 / 543 条（85→97 是 4.1 倍）；同样每天 5 张新卡，"每天都学"的单日峰值 95 条，"只在工作日学"却是 152 条并积压 40 条；九类人群十个时间点的实际留存率全程稳定在 90.1%～91.4%。完整数据表（含年龄段汇总、留存率敏感性、作息节奏对照）在 [多场景长期仿真报告](docs/多场景长期仿真报告.md)。给视频用的大白话讲解稿在 [视频讲解素材-算法与Anki大白话.md](docs/视频讲解素材-算法与Anki大白话.md)。
-
-算法是怎么审出来的、Anki 到底抄了什么、哪些坑被修掉了，见 [FSRS-7 对抗审查报告](docs/FSRS-7-对抗审查报告.md)、[Anki 调度规则对照与差距](docs/Anki调度规则对照与差距.md) 和 [对抗审查与真机验证报告](docs/FSRS-7-对抗审查与真机验证.md)。
+另跑过一套九类人群 × 3 随机种子 × 1 个月到 10 年的多场景仿真（学生、考研、上班族、医生、程序员、中老年爱好者等），实际留存率全程 90.1%~91.4%，见 [多场景长期仿真报告](docs/多场景长期仿真报告.md) 与 [FSRS-7 对抗审查与真机验证](docs/FSRS-7-对抗审查与真机验证.md)。
 
 ## 记忆分析
 
-一个独立的分析面板，用「守着一炉记忆的火」作主题，把整库状态画成图：
-
-- **忘坡**：FSRS 遗忘曲线族，横轴是龄期与稳定性之比，纵轴是当前留存率，每篇笔记都在往坡下滑，添一次柴坡就缓一截；
-- **水位**：全库平均留存率；
-- **欠账**：逾期专页，按逾期天数挂绳，拖得越久挂得越低；
-- **阶石**：按复习次数分的 5 档成熟度分布（新卡 0-1 次 / 2-3 次 / 4-7 次 / 8-15 次 / 16+ 次）；
-- **墨晶**：稳定性按 <7 / 7–30 / 30–90 / ≥90 天分层的结晶，越久不忘晶格越大；
-- **矿层**：难度按 <2 / 2–4 / 4–6 / ≥6 分层，越常「忘了」矿层越沉；
-- **批改环与批痕**：评级分布与末次评级分布；
-- **四驻**：逾期 / 今天 / 未来 / 已完成四区队列的灯塔快照。
-
-数据页另给复习量账本、24 小时与星期节律、近一年热力、按阶段遗忘率、记忆状态、未来 30 天到期与逾期分档、复习排行，都能导成 CSV；徽章单列在「成就」页，不混在统计里。
+独立面板「守着一炉记忆的火」，把整库状态画成图：忘坡、水位、欠账、阶石、墨晶、矿层、批改环、四驻。数据页另给复习量账本、24 小时与星期节律、近一年热力、按阶段遗忘率、未来 30 天到期与逾期分档，可导 CSV；徽章单列在「成就」页。
 
 ## 进阶功能（两版都有）
 
@@ -189,12 +156,7 @@
 
 ## 网络访问
 
-插件本体不联网、不含任何账号体系。只有两种主动发起的外连：
-
-1. 你配置了 AI 服务商并生成问句或题目时，那条划线会发给你自己填的服务商；没配 AI 时抽认卡退回内置规则，做题需要先配置 AI 服务商。
-2. 你点了「听卡片」并配置了本地 TTS 服务时，卡片文字会发给你自己填的本地服务（如 `http://127.0.0.1:5000`），合成结果缓存在插件目录；没配地址时按钮会提示去设置，不发任何请求。
-
-激活码验签、统计、排期、备份全部离线完成，不上传任何内容。
+插件本体不联网、不含账号体系。只有两种主动外连：生成问句或题目时，划线会发给你自己配置的 AI 服务商；点「听卡片」时，卡片文字会发给你自己的本地 TTS 服务。激活码验签、统计、排期、备份全部离线完成。
 
 ## 常见问题
 
@@ -207,8 +169,8 @@
 
 ## 插件推荐
 
-- [bz](https://github.com/yeshimei/bz) —— 日记、备忘、读书观影、游戏、剪藏、番茄钟、复习、安全加密、AI 知识库、工具坞，还有一只桌宠猫。
-- [bz Reader](https://github.com/yeshimei/bz-reader) —— 把 Obsidian 变成一个能读书的地方；在书里划词，就能把句子推进这里的复习计划。
+- [bz](https://github.com/yeshimei/bz) —— 日记、备忘，收藏，归物、读书观影、游戏、剪藏、番茄钟，复习、安全加密（密码本+保险库），ai知识库（知识盒+第二大脑），工具坞，还有一只桌宠猫
+- [bz Reader](https://github.com/yeshimei/bz-reader) —— 把 Obsidian 变成一个能读书的地方。桌面端 + 移动端、多格式（包括 PDF，漫画），多语言、AI 锚定追问 / 全书问答 / 语义搜索 / 知识库、离线听书、双链，统计，数据全部本地。
 
 <a name="support" id="support"></a>
 
@@ -252,17 +214,17 @@ It was split out of [bz](https://github.com/yeshimei/bz) — the original copy t
 
 ### Installation
 
-Install from the community directory (visible once the initial review passes):
+Install from the community directory:
 
 1. Open **Settings → Community plugins** and turn off Restricted mode.
 2. Click **Browse**, search for **bz Review**, and install.
 3. Enable it — a calendar-check icon appears in the left ribbon.
 
-While the review is pending, or if search doesn't find it, install with [BRAT](https://github.com/TfTHacker/obsidian42-brat), or download `main.js`, `manifest.json`, and `styles.css` from the Release and place them in `<your vault>/.obsidian/plugins/bz-review/`, then enable the plugin.
+If search doesn't find it, install with [BRAT](https://github.com/TfTHacker/obsidian42-brat), or download `main.js`, `manifest.json`, and `styles.css` from the Release and place them in `<your vault>/.obsidian/plugins/bz-review/`, then enable the plugin.
 
 ### Video tutorial
 
-Still in production — the link will be added here and in the plugin's "video tutorial" button once it's ready.
+Still in production — the link will be added here and to the plugin's "video tutorial" button once ready.
 
 ### Features and pricing
 
@@ -276,11 +238,11 @@ Flashcards and AI-generated multiple-choice quizzes. Each card keeps its own mod
 
 ### Scheduling
 
-Uses the full FSRS-7 algorithm from the first review — no fixed ladder. Memory is tracked with long- and short-term stability plus difficulty, and the next interval is solved from a target retention you can set (90% by default, the official recommendation). Ratings are Again / Hard / Good / Easy. The 34 weights are fitted from your own review history, with manual override, an interval multiplier and a maximum interval. Overdue cards get a daily cap and a reminder; a vacation date stops reminders and shifts the whole plan on the end date. A 30-day workload forecast shows what's coming.
+Uses FSRS-7 from the first review — no fixed ladder. Long- and short-term stability plus difficulty drive each interval from a target retention you set (90% by default, the official recommendation). Ratings are Again / Hard / Good / Easy; the 34 weights fit your own review history. Overdue cards get a daily cap and a reminder, a vacation date shifts the whole plan, and a 30-day workload forecast shows what's coming.
 
 ### Data and network
 
-Review data lives in `CONFIG/REVIEW/review.json`, separate from bz's. Backup/restore is JSON or CSV; CSS and generated DOM are scoped to the plugin so other plugins are unaffected. There is no account system and no telemetry. Two things can go online, only when you ask: AI generation sends the selected text to the endpoint you configured in settings, and "speak card" sends card text to your own local TTS service. Everything else runs offline.
+Review data lives in `CONFIG/REVIEW/review.json`, separate from bz's. Backup/restore is JSON or CSV; CSS and generated DOM are scoped to the plugin. No account, no telemetry. Two opt-in connections only: AI generation sends the selected text to the endpoint you configured, and "speak card" sends card text to your local TTS service. Everything else runs offline.
 
 ### FAQ
 
