@@ -763,6 +763,8 @@ body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
 @media (max-width: 768px) {
   .bzrv-settings-content .bzrv-license-state { max-width: 100%; }
   .bzrv-settings-content .bzrv-license-code { width: 100%; flex-direction: column; align-items: stretch; }
+  /* 窄屏竖排后，横排时用来吃掉剩余宽度的 width:0 会把输入框压成一小块；这里让输入框铺满整行 */
+  .bzrv-settings-content .bzrv-license-code .bzrv-license-input { flex: none; width: 100%; }
   .bzrv-settings-content .bzrv-license-code .bzrv-btn { width: 100%; min-height: 44px; }
 }
 
