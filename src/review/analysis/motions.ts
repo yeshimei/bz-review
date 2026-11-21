@@ -44,7 +44,7 @@
  * 无逐帧随机（build 期 rng）；画布 DPR + clearRect；DOM 只动 transform/opacity/filter。
  */
 import type { RaData } from './data';
-import { RA_RATING_NAMES, RA_RATING_ORDER } from './data';
+import { RA_RATING_ORDER } from './data';
 import { ratingName, t as tr } from '../../i18n/strings';
 import {
   at, clamp01, easeOut, easeInOut, easeBack, spring, stagger, rng,
