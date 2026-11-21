@@ -23,7 +23,7 @@
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
 import { openExternalUrl, REVIEW_REPO_URL } from './links-bridge';
-import { t } from './i18n-bridge';
+import { t } from '../../i18n';
 import { SPONSOR_URL, formatRewardDate, type RewardName } from './reward';
 import {
   currentPatrons,

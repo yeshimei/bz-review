@@ -48,7 +48,7 @@ import { defaultCardMethod } from './review/card-mode';
 import { REVIEW_VIEW_TYPE } from './review/panel-mode';
 import { importFromBzWithConfirm } from './data/migrate';
 import { isBzPluginEnabled } from './core/plugin-path';
-import { t } from './i18n';
+import { hostLanguageCode, initLocale, isLocale, t } from './i18n';
 import { installScopeGuard, markOwned } from './core/scope';
 import { setNoticeEmbedded } from './core/notice';
 import { devAutoOpen } from './core/dev-auto-open';
@@ -213,6 +213,9 @@ export default class ReviewPlugin extends Plugin {
        一旦有代码走它（如 bootstrapStorageDir）就会把路径算到 bz 那边去。 */
     setPluginRelDir(this.manifest.dir);
     await this.loadSettings();
+    /* 界面语言：设置里的偏好优先（auto = 跟随 Obsidian），读不到宿主语言退回中文。
+       必须在注册命令 / ribbon / 菜单之前定下来——这三类只在插件加载时求值一次。 */
+    initLocale(isLocale(this.settings.language) ? this.settings.language : 'auto', hostLanguageCode());
     // 强调色：把落盘档位挂到 body，CSS 按 body[data-bzaccent] 选色；之后设置页切换会就地同步。
     applyAccent(this.settings.accent);
 
@@ -237,7 +240,7 @@ export default class ReviewPlugin extends Plugin {
     // 启动时静默验一次码（离线，不发网络请求）
     await refreshLicense(this.settings.licenseKey);
 
-    this.addRibbonIcon('calendar-check', t('复习', 'Review'), () => {
+    this.addRibbonIcon('calendar-check', t('ribbon.review'), () => {
       ensureReview(this.app);
       void openReviewPanel(this.app);
     });
@@ -252,7 +255,7 @@ export default class ReviewPlugin extends Plugin {
       this.app.workspace.on('editor-menu', (menu, editor) => {
         menu.addItem((item) => {
           item
-            .setTitle(t('加入复习', 'Add to review'))
+            .setTitle(t('menu.addToReview'))
             .setIcon('plus-with-circle')
             .onClick(() => {
               void reviewAddSelection(this.app, editor);
@@ -272,8 +275,8 @@ export default class ReviewPlugin extends Plugin {
         menu.addItem((item) => {
           item
             .setTitle(isFolder
-              ? t('加入复习（文件夹）', 'Add folder to review')
-              : t('加入复习', 'Add to review'))
+              ? t('menu.addFolderToReview')
+              : t('menu.addToReview'))
             .setIcon('plus-with-circle')
             .onClick(() => {
               void reviewAddPath(this.app, file.path, isFolder);
@@ -291,51 +294,51 @@ export default class ReviewPlugin extends Plugin {
 
     this.addCommand({
       id: 'review-open',
-      name: t('打开复习', 'Open review plan'),
+      name: t('cmd.open'),
       callback: withReview((app) => openReviewPanel(app)),
     });
     this.addCommand({
       id: 'review-start',
-      name: t('开始复习', 'Start review'),
+      name: t('cmd.start'),
       callback: withReview((app) => reviewStart(app)),
     });
     this.addCommand({
       id: 'review-add',
-      name: t('把当前笔记加入复习', 'Add current note to review plan'),
+      name: t('cmd.addCurrent'),
       callback: withReview((app) => reviewAddCurrent(app)),
     });
     this.addCommand({
       id: 'review-add-reader',
-      name: t('从阅读器加入复习', 'Add from bz Reader'),
+      name: t('cmd.addFromReader'),
       callback: withReview((app) => openAddToReviewFlow(app, { kind: 'reader' })),
     });
     /* 选中一段文字就能做成一张卡（2026-11-15）。走 editorCallback：只有在笔记里
        有光标时才可用，菜单里不会出现一颗点了没反应的命令。 */
     this.addCommand({
       id: 'review-add-selection',
-      name: t('把选中内容加入复习', 'Add selection to review plan'),
+      name: t('cmd.addSelection'),
       editorCallback: () => {
         void reviewAddSelection(this.app);
       },
     });
     this.addCommand({
       id: 'review-remove',
-      name: t('把当前笔记移出复习', 'Remove current note from review plan'),
+      name: t('cmd.removeCurrent'),
       callback: withReview((app) => reviewRemoveCurrent(app)),
     });
     this.addCommand({
       id: 'review-overdue',
-      name: t('跳到逾期复习', 'Jump to overdue review'),
+      name: t('cmd.jumpOverdue'),
       callback: withReview((app) => reviewJumpOverdue(app)),
     });
     this.addCommand({
       id: 'review-rate',
-      name: t('选择复习难度', 'Pick review difficulty'),
+      name: t('cmd.rate'),
       callback: withReview((app) => reviewMarkDialog(app)),
     });
     this.addCommand({
       id: 'review-undo',
-      name: t('撤销上一次评级', 'Undo last rating'),
+      name: t('cmd.undo'),
       callback: withReview(async () => {
         const { reviewApp } = await import('./review/app');
         await reviewApp.undoLastRating();
@@ -343,7 +346,7 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-force',
-      name: t('不限到期，全部过一遍', 'Review everything now'),
+      name: t('cmd.reviewAll'),
       callback: withReview(async () => {
         const { reviewApp } = await import('./review/app');
         await reviewApp.startRoundSprint({ force: true });
@@ -351,7 +354,7 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-set-date',
-      name: t('设置当前笔记的下次复习日期', 'Set next review date'),
+      name: t('cmd.setNextDate'),
       callback: withReview(async (app) => {
         const { openNextDateDialog } = await import('./review/next-date');
         await openNextDateDialog(app, app.workspace.getActiveFile());
@@ -359,7 +362,7 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-import-md',
-      name: t('从当前笔记导入卡片', 'Import cards from current note'),
+      name: t('cmd.importMd'),
       callback: withReview(async (app) => {
         const file = app.workspace.getActiveFile();
         if (!file) {
@@ -372,25 +375,27 @@ export default class ReviewPlugin extends Plugin {
         reviewApp.ensure(app);
         const cards = parseMarkdownCards(await app.vault.cachedRead(file), file.path, file.basename);
         if (!cards.length) {
-          notice('这篇里没有认出卡片（写法：`问题 :: 答案` 或 `{{挖空}}`）', 'warning');
+          notice(t('notice.importMd.empty'), 'warning');
           return;
         }
         const res = await importCardsFromMarkdown(reviewApp.dataManager!, cards);
+        /* 配额提示来自数据层（中文），英文界面下暂时仍会显示中文——错误码化在后续批次。 */
         const detail = res.overLimitMessage
           ? `。${res.overLimitMessage}`
           : res.rejected
-            ? '。合计已达基础版上限，这批未加入；升级高级版后可继续'
+            ? t('notice.importMd.atLimit')
             : '';
-        notice(
-          `导入 ${res.added} 张${res.skipped ? `，跳过 ${res.skipped} 张（已存在）` : ''}${detail}`,
-          res.overLimitMessage || res.rejected ? 'warning' : res.added ? 'success' : 'warning'
-        );
+        const summary =
+          t('notice.importMd.done', { added: res.added }) +
+          (res.skipped ? t('notice.importMd.skipped', { skipped: res.skipped }) : '') +
+          detail;
+        notice(summary, res.overLimitMessage || res.rejected ? 'warning' : res.added ? 'success' : 'warning');
         void reviewApp.refreshPanel();
       }),
     });
     this.addCommand({
       id: 'review-import-anki',
-      name: t('从 Anki 文件导入卡片', 'Import cards from Anki file'),
+      name: t('cmd.importAnki'),
       callback: withReview(async (app) => {
         const { importAnkiFromPicker } = await import('./review/anki-import');
         const { reviewApp } = await import('./review/app');
@@ -399,8 +404,8 @@ export default class ReviewPlugin extends Plugin {
       }),
     });
     for (const [id, label, kind] of [
-      ['review-export', t('导出备份（JSON）', 'Export backup (JSON)'), 'json'],
-      ['review-export-csv', t('导出表格（CSV）', 'Export spreadsheet (CSV)'), 'csv'],
+      ['review-export', t('cmd.exportBackup'), 'json'],
+      ['review-export-csv', t('cmd.exportCsv'), 'csv'],
     ] as const) {
       this.addCommand({
         id,
@@ -412,13 +417,13 @@ export default class ReviewPlugin extends Plugin {
           reviewApp.ensure(app);
           const items = await reviewApp.dataManager!.loadItems();
           const path = await exportBackupFile(app, items, kind);
-          notice(`已导出 ${items.length} 条：${path}`, 'success');
+          notice(t('notice.exportBackup.done', { n: items.length, path }), 'success');
         }),
       });
     }
     this.addCommand({
       id: 'review-restore',
-      name: t('从备份恢复', 'Restore from backup'),
+      name: t('cmd.restoreBackup'),
       callback: withReview(async (app) => {
         const { openRestoreDialog } = await import('./review/backup-dialog');
         await openRestoreDialog(app);
@@ -426,7 +431,7 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-backup',
-      name: t('备份与回滚', 'Backup & restore'),
+      name: t('cmd.backupHistory'),
       callback: withReview(async (app) => {
         const { openBackupHistoryDialog } = await import('./review/backup-history-dialog');
         await openBackupHistoryDialog(app);
@@ -434,7 +439,7 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-forecast',
-      name: t('未来复习负荷', 'Upcoming workload'),
+      name: t('cmd.forecast'),
       callback: withReview(async (app) => {
         const { reviewApp } = await import('./review/app');
         const { forecastLoad } = await import('./review/queue');
@@ -446,7 +451,7 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-achievements',
-      name: t('成就', 'Achievements'),
+      name: t('cmd.achievements'),
       callback: () => {
         void (async () => {
           /* 这条命令是唯一没走 withReview 的：enableAutoNotify=false 且面板从未打开时
@@ -459,19 +464,19 @@ export default class ReviewPlugin extends Plugin {
     });
     this.addCommand({
       id: 'review-export-stats',
-      name: t('导出统计（CSV）', 'Export stats (CSV)'),
+      name: t('cmd.exportStats'),
       callback: withReview(async (app) => {
         const { reviewApp } = await import('./review/app');
         const { exportStatsCsv } = await import('./review/export-actions');
         const { notice } = await import('./core/notice');
         reviewApp.ensure(app);
         const items = await reviewApp.dataManager!.loadItems();
-        notice(`统计已导出：${await exportStatsCsv(app, items)}`, 'success');
+        notice(t('notice.exportStats.done', { path: await exportStatsCsv(app, items) }), 'success');
       }),
     });
     this.addCommand({
       id: 'review-export-cards',
-      name: t('划线卡导出为笔记', 'Export highlights to note'),
+      name: t('cmd.exportCards'),
       callback: withReview(async (app) => {
         const { reviewApp } = await import('./review/app');
         const { exportCardsMarkdown } = await import('./review/export-actions');
@@ -479,27 +484,27 @@ export default class ReviewPlugin extends Plugin {
         reviewApp.ensure(app);
         const items = await reviewApp.dataManager!.loadItems();
         const path = await exportCardsMarkdown(app, items);
-        notice(`已导出划线卡：${path}`, 'success');
+        notice(t('notice.exportCards.done', { path }), 'success');
       }),
     });
     this.addCommand({
       id: 'review-report',
-      name: t('复习分析报告', 'Review report'),
+      name: t('cmd.report'),
       callback: withReview((app) => openReviewReport(app)),
     });
     this.addCommand({
       id: 'review-book-report',
-      name: t('按书档案', 'Book report'),
+      name: t('cmd.bookReport'),
       callback: withReview((app) => openReviewBooks(app)),
     });
     this.addCommand({
       id: 'review-card-manager',
-      name: t('卡片管理器', 'Card manager'),
+      name: t('cmd.cardManager'),
       callback: withReview((app) => openReviewCardManager(app)),
     });
     this.addCommand({
       id: 'review-export-book-report',
-      name: t('导出按书报告（Markdown）', 'Export book report (Markdown)'),
+      name: t('cmd.exportBookReport'),
       callback: withReview(async (app) => {
         const { canUseCapability, capabilityBlock } = await import('./data/entitlement');
         const { notice } = await import('./core/notice');
@@ -513,24 +518,27 @@ export default class ReviewPlugin extends Plugin {
           reviewApp.ensure(app);
           const items = await reviewApp.dataManager!.loadItems();
           const path = await exportBookReportMarkdown(app, items);
-          notice(path ? `按书报告已导出：${path}` : '还没有复习数据，先加入条目并完成一次复习。', path ? 'success' : 'warning');
+          notice(
+            path ? t('notice.exportBookReport.done', { path }) : t('notice.exportBookReport.empty'),
+            path ? 'success' : 'warning'
+          );
         } catch (e) {
           const { notifyActionError } = await import('./core/notice');
-          notifyActionError(e, '导出按书报告');
+          notifyActionError(e, t('notice.exportBookReport.action'));
         }
       }),
     });
     this.addCommand({
       id: 'review-quiz',
-      name: t('做题练习', 'Quiz practice'),
+      name: t('cmd.quiz'),
       callback: withReview((app) => openQuizPractice(app)),
     });
 
     for (const [id, name, rating] of [
-      ['review-again', t('复习评级：忘了', 'Rate: again'), 'again'],
-      ['review-hard', t('复习评级：困难', 'Rate: hard'), 'hard'],
-      ['review-good', t('复习评级：一般', 'Rate: good'), 'good'],
-      ['review-easy', t('复习评级：简单', 'Rate: easy'), 'easy'],
+      ['review-again', t('cmd.rateAgain'), 'again'],
+      ['review-hard', t('cmd.rateHard'), 'hard'],
+      ['review-good', t('cmd.rateGood'), 'good'],
+      ['review-easy', t('cmd.rateEasy'), 'easy'],
     ] as const) {
       this.addCommand({
         id,
@@ -543,7 +551,7 @@ export default class ReviewPlugin extends Plugin {
     if (isBzPluginEnabled(this.app)) {
       this.addCommand({
         id: 'review-migrate-bz',
-        name: t('从 bz 导入复习', 'Import review plan from bz'),
+        name: t('cmd.migrateBz'),
         callback: () => importFromBzWithConfirm(this.app, this.settings),
       });
     }
@@ -592,13 +600,15 @@ export default class ReviewPlugin extends Plugin {
   async activateLicense(code: string): Promise<{ ok: boolean; message: string }> {
     const state = await refreshLicense(code, false);
     if (!state.paid) {
-      return { ok: false, message: '激活码无效或已过期，原来的激活码已保留。' };
+      return { ok: false, message: t('notice.license.invalid') };
     }
     this.settings.licenseKey = code.trim();
     await this.saveSettings();
     return {
       ok: true,
-      message: `已激活高级版${state.name ? `（${state.name}）` : ''}，数量不限。`,
+      message:
+        (state.name ? t('notice.license.activatedName', { name: state.name }) : t('notice.license.activated')) +
+        t('notice.license.unlimitedNote'),
     };
   }
 
