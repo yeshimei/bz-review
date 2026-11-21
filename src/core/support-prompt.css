@@ -21,7 +21,7 @@
   --sup-gold: #bd9440;
   --sup-gold-deep: #9c7a30;
   --sup-serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "STSong", SimSun, serif;
-  --sup-sans: "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --sup-sans: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
 
   position: fixed;
   top: 50%;

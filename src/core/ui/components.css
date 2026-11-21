@@ -3225,8 +3225,7 @@ a.bzrv-crumb:hover, button.bzrv-crumb:hover { color: var(--bzrv-text-1); }
 @media (hover: hover) {
   .bzrv-help-anchor:hover,
   .bzrv-help-anchor.is-open {
-    text-decoration: underline dotted var(--bzrv-brand);
-    text-underline-offset: 3px;
+    border-bottom: 1px dotted var(--bzrv-brand);
   }
 }
 
@@ -3615,13 +3614,11 @@ a.bzrv-crumb:hover, button.bzrv-crumb:hover { color: var(--bzrv-text-1); }
 .bzrv-deps-pill--dim { border-color: var(--bzrv-border); color: var(--bzrv-text-3); }
 .bzrv-deps-a {
   color: inherit;
-  text-decoration: underline;
-  text-decoration-color: var(--bzrv-border-strong);
-  text-decoration-thickness: 1px;
-  text-underline-offset: 2px;
+  border-bottom: 1px solid var(--bzrv-border-strong);
+  padding-bottom: 1px;
 }
 @media (hover: hover) {
-  .bzrv-deps-a:hover { color: var(--bzrv-brand); text-decoration-color: var(--bzrv-brand); }
+  .bzrv-deps-a:hover { color: var(--bzrv-brand); border-bottom-color: var(--bzrv-brand); }
 }
 
 /* ── 提示词预览 ── */

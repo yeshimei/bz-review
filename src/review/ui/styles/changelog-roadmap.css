@@ -160,7 +160,7 @@
 .bzs-chgn-fbstate.doing{background:rgba(217,138,31,.16);color:#b16f10}
 .bzs-chgn-fbstate.invalid{background:color-mix(in srgb,var(--chg-ink-3) 14%,transparent);color:var(--chg-ink-2)}
 /* Git 提交短 id：等宽字 + 强调色，和可点来源徽标同排 */
-.bzs-chgn-fbcommit{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;text-decoration:none;color:var(--chg-accent);font-weight:600}
+.bzs-chgn-fbcommit{font-family:var(--font-monospace);text-decoration:none;color:var(--chg-accent);font-weight:600}
 .bzs-chgn-fbcommit:hover{text-decoration:underline}
 .bzs-chgn-fbempty{grid-column:1/-1;padding:26px 0;text-align:center;font-size:11px;color:var(--chg-ink-3)}
 
@@ -224,7 +224,7 @@
   --cc-accent:var(--bzrv-accent,#9a7434);
   --cc-accent-soft:color-mix(in srgb,var(--cc-accent) 12%,transparent);
   position:fixed;inset:0;z-index:300;display:grid;place-items:center;
-  background:rgba(0,0,0,.5);font-family:-apple-system,"Segoe UI",system-ui,"PingFang SC","Microsoft YaHei",sans-serif;
+  background:rgba(0,0,0,.5);font-family:var(--font-interface);
 }
 .bzs-chgn-confirm[hidden]{display:none}
 .bzs-chgn-confirm-box{

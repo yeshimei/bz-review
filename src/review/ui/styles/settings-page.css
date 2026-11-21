@@ -580,7 +580,7 @@ body.theme-dark .bzrv-settings-content .bzs-brand { color: #1a1408; }
   .bzrv-settings-content .bzs-keyrow:hover { color: var(--bzsp-accent); }
 }
 .bzrv-settings-content .bzs-keyrow kbd {
-  font: 500 10px ui-monospace, Consolas, monospace;
+  font: 500 10px var(--font-monospace);
   color: var(--bzsp-t2);
   background: linear-gradient(180deg, var(--bzsp-bg-2), var(--bzsp-sunken));
   border: 1px solid var(--bzsp-line-2);
