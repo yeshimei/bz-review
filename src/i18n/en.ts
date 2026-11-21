@@ -1222,6 +1222,30 @@ export const EN: Record<MsgKey, string> = {
   'sprint.abandon': 'Abandon',
   'sprint.noQuestions': '"{name}" has no questions yet; skipped',
 
+  'wiz.estimatedChars': 'About {n} characters will be sent',
+  'cwm.label.plain': 'Full recall',
+  'cwm.label.flashcard': 'Flashcard',
+  'cwm.label.quiz': 'Quiz',
+  'cwm.label.cloze': 'Cloze',
+  'cwm.hint.plain': 'No AI; just unfold the text and recall it yourself',
+  'cwm.hint.flashcard': 'AI writes a front prompt; the back is the full text',
+  'cwm.hint.quiz': 'AI writes several multiple-choice questions; delete, add or regenerate',
+  'cwm.hint.cloze': 'Blank out key phrases and fill them back in',
+  'cwm.countAll': '{n} cards · all reviewed',
+  'cwm.countSome': '{n} cards · {seen} reviewed',
+  'cwm.batchDefault': 'All {n} cards follow the "default new-card method" in settings ("{label}"), so the method screen was skipped.',
+  'cwm.oneDefault': 'Created with the "default new-card method" ("{label}"), so the method screen was skipped.',
+  'cwm.changeDefault': '{head}To choose each time, set "default new-card method" back to "ask every time" in settings.',
+  'idx.openNoteFirst': 'Open a note first',
+  'idx.onlyNotes': 'Only notes can join the review plan',
+  'idx.notReady': 'The review module is not ready yet; try again shortly',
+  'idx.selectFirst': 'Select the content to add first',
+  'idx.notInReview': 'This note is not in review',
+  'idx.removed': 'Removed "{name}"',
+  'idx.restoreEntry': 'Restore review entry',
+  'idx.removeEntry': 'Remove review entry',
+
+
 
 
   /* ── Settings: about bar ────────────────────────────────── */

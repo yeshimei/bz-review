@@ -84,7 +84,9 @@ describe('加入复习 · 任何设置都不许绕过确认页', () => {
     expect(wizard).toContain('this.presetMode = this.mode');
     expect(wizard).toContain('void this.generateAll()');
     expect(wizard).toContain('presetModeNote(');
-    expect(read('review/card-wizard-model.ts')).toContain('已按设置里「新卡默认方式」');
+    /* 文案住语言包：源码断言 key，中文原文在 zh.ts。 */
+    expect(read('review/card-wizard-model.ts')).toContain("tr('cwm.oneDefault'");
+    expect(read('i18n/zh.ts')).toContain('已按设置里「新卡默认方式」');
   });
 
   it('纯逻辑层不再提供「静默判定」这种绕过口子', () => {

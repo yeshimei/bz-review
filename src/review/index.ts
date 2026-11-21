@@ -41,6 +41,7 @@ import { openAddToReviewFlow } from './add-flow';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { cardQuota, quizOf, withoutPrepared } from './reader-input';
 import { planCounts } from './data';
+import { t } from '../i18n';
 import {
   addNote as planAddNote,
   addNotes as planAddNotes,
@@ -434,11 +435,11 @@ export async function reviewAddCurrent(app: App): Promise<void> {
   ensureReview(app);
   const file = app.workspace.getActiveFile();
   if (!file) {
-    notice('请先打开一个笔记');
+    notice(t('idx.openNoteFirst'));
     return;
   }
   if (file.extension !== 'md') {
-    notice('只有笔记能加入复习');
+    notice(t('idx.onlyNotes'));
     return;
   }
   await openAddToReviewFlow(app, { kind: 'note', path: file.path });
@@ -455,7 +456,7 @@ export function openCardWizardForAdd(app: App, opts: CardWizardOptions): void {
   ensureReview(app);
   const api = getReviewPlanApi();
   if (!api) {
-    notice('复习模块还没准备好，稍后再试一次');
+    notice(t('idx.notReady'));
     return;
   }
   openCardWizard(app, {
@@ -476,7 +477,7 @@ export async function reviewAddSelection(app: App, editorFromMenu?: unknown): Pr
   ensureReview(app);
   const file = app.workspace.getActiveFile();
   if (!file) {
-    notice('请先打开一个笔记');
+    notice(t('idx.openNoteFirst'));
     return;
   }
   const editor: { getSelection?: () => string } | null | undefined =
@@ -485,7 +486,7 @@ export async function reviewAddSelection(app: App, editorFromMenu?: unknown): Pr
     (app as unknown as { editor?: { getSelection(): string } }).editor;
   const text = String(editor?.getSelection?.() ?? '').trim();
   if (!text) {
-    notice('先选中要加入复习的内容');
+    notice(t('idx.selectFirst'));
     return;
   }
   /* 记下路径 + 字符范围：复习时据此跳回这篇笔记并把那段重新选中 */
@@ -516,7 +517,7 @@ export async function reviewAddSelection(app: App, editorFromMenu?: unknown): Pr
 export async function reviewAddPath(app: App, path: string, isFolder: boolean): Promise<void> {
   ensureReview(app);
   if (!isFolder && !path.toLowerCase().endsWith('.md')) {
-    notice('只有笔记能加入复习');
+    notice(t('idx.onlyNotes'));
     return;
   }
   await openAddToReviewFlow(app, isFolder ? { kind: 'folder', path } : { kind: 'note', path });
@@ -529,13 +530,13 @@ export async function reviewRemoveCurrent(app: App): Promise<void> {
   ensureReview(app);
   const file = app.workspace.getActiveFile();
   if (!file) {
-    notice('请先打开一个笔记');
+    notice(t('idx.openNoteFirst'));
     return;
   }
   const items = await dataManager!.loadItems();
   const target = items.find((i) => i.filePath === file.path);
   if (!target) {
-    notice('该笔记不在复习中');
+    notice(t('idx.notInReview'));
     return;
   }
   if (!(await confirmRemovePlan({ name: file.basename }))) return;
@@ -543,20 +544,20 @@ export async function reviewRemoveCurrent(app: App): Promise<void> {
     await dataManager!.removeItem(file.path);
     // 行为流（issue 261）：移出复习入小橘行为流（review:removed）
     emitDomainEvent('review', { kind: 'removed', title: file.basename });
-    notifyUndo(`已移出「${file.basename}」`, () => {
+    notifyUndo(t('idx.removed', { name: file.basename }), () => {
       void (async () => {
         try {
           await dataManager!.restoreItem(target);
           await uiManager!.refreshPanel();
         } catch (e) {
-          notifySaveError(e, '恢复复习条目');
+          notifySaveError(e, t('idx.restoreEntry'));
         }
       })();
     });
     await uiManager!.refreshPanel();
     await reviewApp.applyReviewStyles(app);
   } catch (e) {
-    notifySaveError(e, '移出复习条目');
+    notifySaveError(e, t('idx.removeEntry'));
   }
 }
 
@@ -577,17 +578,17 @@ export async function reviewMarkDialog(app: App): Promise<void> {
   ensureReview(app);
   const file = app.workspace.getActiveFile();
   if (!file) {
-    notice('请先打开一个笔记');
+    notice(t('idx.openNoteFirst'));
     return;
   }
   const items = await dataManager!.loadItems();
   const item = items.find((i) => i.filePath === file.path);
   if (!item) {
-    notice('该笔记不在复习中');
+    notice(t('idx.notInReview'));
     return;
   }
   if (item.completed) {
-    notice('该笔记已完成全部复习');
+    notice(t('app.allDone'));
     return;
   }
   uiManager?.showDifficultyDialog(item, (diff) => {
@@ -603,17 +604,17 @@ export async function reviewMarkRating(app: App, rating: Rating): Promise<void> 
   ensureReview(app);
   const file = app.workspace.getActiveFile();
   if (!file) {
-    notice('请先打开一个笔记');
+    notice(t('idx.openNoteFirst'));
     return;
   }
   const items = await dataManager!.loadItems();
   const item = items.find((i) => i.filePath === file.path);
   if (!item) {
-    notice('该笔记不在复习中');
+    notice(t('idx.notInReview'));
     return;
   }
   if (item.completed) {
-    notice('该笔记已完成全部复习');
+    notice(t('app.allDone'));
     return;
   }
   await reviewApp.markReview(file.path, rating);
