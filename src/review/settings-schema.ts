@@ -17,7 +17,7 @@ import { setHtml } from './ui/set-html';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
 import { DEFAULT_ACCENT, applyAccent } from '../settings';
-import { LOCALES, LOCALE_NAMES, hostLanguageCode, isLocale, resolveLocale, setLocale, t, type LanguagePref } from '../i18n';
+import { LOCALES, LOCALE_NAMES, hostLanguageCode, isLocale, resolveLocale, setLocale, t, type LanguagePref, type MsgKey } from '../i18n';
 
 import { openFlowDialog } from '../core/flow-dialog';
 import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
@@ -203,7 +203,8 @@ function providerThinkingRow(): SettingsRow {
     options: (snap) =>
       thinkingLevelsOf(String((snap as { aiProvider?: string }).aiProvider || DEFAULT_AI_PROVIDER)).map((l) => ({
         value: l.value,
-        label: l.label,
+        /* 档位名按当前语言出词：注册表里的 label 是中文基准，labelKey 才是界面真源 */
+        label: l.labelKey ? t(l.labelKey as MsgKey) : l.label,
       })),
     visibleWhen: (snap) =>
       thinkingLevelsOf(String((snap as { aiProvider?: string }).aiProvider || DEFAULT_AI_PROVIDER)).length > 0,

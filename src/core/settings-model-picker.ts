@@ -9,6 +9,7 @@ import { escManager } from './esc-manager';
 import type { ModelOption } from './ai-models';
 
 import { markOwned } from './scope';
+import { t } from '../i18n/strings';
 
 /** 显示态 display 值（运行时赋值，非主题静态样式；同 core/dom.ts 的 DISPLAY_NONE 口径） */
 const DISPLAY_BLOCK = 'block';
@@ -54,7 +55,7 @@ export function openModelPicker(opts: ModelPickerOptions): void {
   header.className = 'bzrv-settings-header';
   const title = createEl('h3');
   title.className = 'bzrv-settings-title';
-  title.textContent = `选择模型（${opts.providerLabel}）`;
+  title.textContent = t('modelPick.title', { provider: opts.providerLabel });
   header.appendChild(title);
 
   const content = createDiv();
@@ -65,10 +66,10 @@ export function openModelPicker(opts: ModelPickerOptions): void {
   currentInfo.className = 'setting-item';
   const curName = createDiv();
   curName.className = 'setting-item-name';
-  curName.textContent = '当前模型';
+  curName.textContent = t('modelPick.current');
   const curDesc = createDiv();
   curDesc.className = 'setting-item-description';
-  curDesc.textContent = opts.current || '未设置（使用服务商默认）';
+  curDesc.textContent = opts.current || t('modelPick.unset');
   currentInfo.append(curName, curDesc);
   content.appendChild(currentInfo);
 
@@ -79,7 +80,7 @@ export function openModelPicker(opts: ModelPickerOptions): void {
   if (opts.models.length === 0) {
     const empty = createDiv();
     empty.className = 'bzrv-settings-empty';
-    empty.textContent = '该服务商未返回可用模型';
+    empty.textContent = t('ai.error.noModels');
     listWrap.appendChild(empty);
   } else {
     // 当前生效值置顶展示，其余按服务商返回顺序

@@ -27,6 +27,7 @@ import { resolveModelLimits } from './model-limits';
 import { toBase64 } from './crypto';
 import { DEFAULT_AI_PROVIDER, resolveProviderId } from './ai-provider-id';
 import { ensureReaderAi, ownAiConfigured } from './ai-share';
+import { t } from '../i18n';
 
 export { DEFAULT_AI_PROVIDER };
 
@@ -98,7 +99,7 @@ interface QuickAddConfig {
 /** 从未知 rejection 原因安全取文案（throw 原因未必是 Error） */
 function errorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
-  return typeof e === 'string' ? e : '未知错误';
+  return typeof e === 'string' ? e : t('ai.error.unknown');
 }
 
 /** Promise rejection reason 归一为 Error（满足 prefer-promise-reject-errors，保留原 Error） */
@@ -112,8 +113,10 @@ function asError(e: unknown): Error {
 export interface AIThinkingLevel {
   /** 档位值（存设置 aiThinkingOverrides；跨 provider 复用同一词表 auto/off/low/medium/high/max） */
   value: string;
-  /** 设置面板展示名 */
+  /** 设置面板展示名（中文基准；界面渲染请优先取 labelKey） */
   label: string;
+  /** 展示名的文案 key（按当前语言出词） */
+  labelKey?: string;
   /** 该档位注入的请求体键值；null = 不注入 */
   body: Record<string, unknown> | null;
 }
@@ -135,12 +138,12 @@ export interface AIThinkingSpec {
 }
 
 /** 存档/注入共用的档位动词表（逐家档位表由此取项，避免各写一份字面量） */
-const THINK_AUTO: AIThinkingLevel = { value: 'auto', label: '跟随模型默认', body: null };
-const THINK_OFF: AIThinkingLevel = { value: 'off', label: '关闭（省 token）', body: null };
-const THINK_LOW: AIThinkingLevel = { value: 'low', label: '低', body: null };
-const THINK_MEDIUM: AIThinkingLevel = { value: 'medium', label: '中', body: null };
-const THINK_HIGH: AIThinkingLevel = { value: 'high', label: '高', body: null };
-const THINK_MAX: AIThinkingLevel = { value: 'max', label: '最高', body: null };
+const THINK_AUTO: AIThinkingLevel = { value: 'auto', label: '跟随模型默认', labelKey: 'ai.thinking.auto', body: null };
+const THINK_OFF: AIThinkingLevel = { value: 'off', label: '关闭（省 token）', labelKey: 'ai.thinking.off', body: null };
+const THINK_LOW: AIThinkingLevel = { value: 'low', label: '低', labelKey: 'ai.thinking.low', body: null };
+const THINK_MEDIUM: AIThinkingLevel = { value: 'medium', label: '中', labelKey: 'ai.thinking.mid', body: null };
+const THINK_HIGH: AIThinkingLevel = { value: 'high', label: '高', labelKey: 'ai.thinking.high', body: null };
+const THINK_MAX: AIThinkingLevel = { value: 'max', label: '最高', labelKey: 'ai.thinking.max', body: null };
 
 export interface AIProviderDescriptor {
   /** 注册表键（settings.aiProvider 取值） */
@@ -519,7 +522,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     /* 对象形态的 override 缺 apiKey 时，旧代码会让整段 if 落空、悄悄退回当前设置的
        服务商——用户填的 endpoint/model 全失效且毫无提示。这里显式报错，别静默切换。 */
     if (!override.apiKey) {
-      throw new Error('自定义 AI 配置缺少 apiKey：请提供密钥，或改用服务商 ID 走设置里的密钥');
+      throw new Error(t('ai.error.customNoKey'));
     }
     return {
       endpoint: String(override.endpoint || 'https://api.deepseek.com').replace(/\/+$/, ''),
@@ -534,7 +537,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
      真机事故：设置页写「不启用」，复习时模型照样被调用——界面说关了，实际每张卡都在烧钱。
      只有字段真的缺失（undefined / null，例如旧数据里没这一项）才回落到缺省服务商。 */
   if (!name) {
-    throw new Error('未启用 AI：请在插件设置 → AI 里选一个服务商并填密钥');
+    throw new Error(t('ai.error.notEnabled'));
   }
   const desc = getProviderDescriptor(name);
   /* 自定义（OpenAI 兼容）：端点/密钥/模型全来自设置，注册表描述只给密钥键与兜底档。
@@ -544,7 +547,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     const customKey = String(s.aiCustomApiKey || '').trim();
     if (!endpoint || !customKey) {
       throw new Error(
-        '未配置自定义 AI 服务：请在 AI 配置的 LLM 组填写「自定义 API 地址」与「自定义 API 密钥」'
+        t('ai.error.customNotConfigured')
       );
     }
     const overrideModel = s.aiModelOverrides?.['custom'];
@@ -583,7 +586,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
   }
   // ollama 本地服务无鉴权：空密钥放行（其余提供商缺 key 即拦截）
   if (!key && name !== 'ollama') {
-    throw new Error(`未配置 ${desc.label} API Key：插件设置 → AI 配置 → ${desc.apiKeyLabel}`);
+    throw new Error(t('ai.error.missingKey', { provider: desc.label, label: desc.apiKeyLabel }));
   }
   // ticket 172 per-provider 覆盖：用户设置的模型/上下文/max token 优先于注册表默认；
   // issue 342/ADR-0151 起，中间插入「按当前模型名查官方档位」（model-limits 单一事实源）——
@@ -619,7 +622,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
 
 /** 取消异常（AbortError 语义；调用方以 signal.aborted 判定取消路径，ticket 141 对话可取消） */
 function abortError(): Error {
-  const e = new Error('请求已取消');
+  const e = new Error(t('ai.error.cancelled'));
   e.name = 'AbortError';
   return e;
 }
@@ -636,7 +639,7 @@ export const AI_IMAGE_IDLE_TIMEOUT_MS = 180000;
 
 /** 超时异常（TimeoutError 语义，区别于用户取消的 AbortError——超时允许走 requestUrl 兜底重试） */
 function timeoutError(idleMs: number = AI_IDLE_TIMEOUT_MS): Error {
-  const e = new Error(`AI 请求超时（${Math.round(idleMs / 1000)} 秒无响应）`);
+  const e = new Error(t('ai.error.timeout', { n: Math.round(idleMs / 1000) }));
   e.name = 'TimeoutError';
   return e;
 }
@@ -776,7 +779,7 @@ async function chatCompletionsNonStream(provider: AIProvider, body: ChatBody, si
   const errMsg = (data.error && (data.error.message || data.error.type)) || (data.message && data.message);
   if (errMsg) throw new Error(`API ${resp.status}: ${errMsg}`);
   const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-  if (content === undefined || content === null) throw new Error(`API ${resp.status}: 响应缺少 content`);
+  if (content === undefined || content === null) throw new Error(t('ai.error.noContent', { status: resp.status }));
   return content;
 }
 
@@ -837,9 +840,9 @@ export function imageExtOfMime(mime: string): string | null {
  */
 export function imageDataUrl(bytes: ArrayBuffer | Uint8Array, mime: string): string {
   const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-  if (u8.byteLength === 0) throw new Error('图片内容为空');
+  if (u8.byteLength === 0) throw new Error(t('ai.error.emptyImage'));
   if (u8.byteLength > AI_IMAGE_MAX_BYTES) {
-    throw new Error(`图片过大（${Math.round(u8.byteLength / 1024 / 1024)} MiB），上限 ${AI_IMAGE_MAX_BYTES / 1024 / 1024} MiB`);
+    throw new Error(t('ai.error.imageTooLarge', { size: Math.round(u8.byteLength / 1024 / 1024), max: AI_IMAGE_MAX_BYTES / 1024 / 1024 }));
   }
   return `data:${mime};base64,${toBase64(u8)}`;
 }
@@ -936,7 +939,7 @@ export class AIService {
         const content = await chatCompletionsNonStream(provider, body, signal);
         return content;
       } catch (e: unknown) {
-        throw new Error(`AI 请求失败: ${errorMessage(streamError)}（fallback: ${errorMessage(e)}）`);
+        throw new Error(t('ai.error.requestFailed', { error: errorMessage(streamError), fallback: errorMessage(e) }));
       }
     }
   }
@@ -1011,7 +1014,7 @@ export interface AITestResult {
 }
 
 /** 测试题面：诱导极短输出，控制真实调用的费用（deepseek/智谱按 token 计费，ollama 本地零成本） */
-const AI_TEST_PROMPT = '这是一次连通性测试。请只回复两个字母：OK';
+const AI_TEST_PROMPT = t('ai.testPrompt');
 
 /**
  * 连通性测试：对指定服务商发一次**真实**的极小对话请求，走完整链路（鉴权 / 端点 / 流式 /
@@ -1029,6 +1032,6 @@ export async function testAIConnectivity(providerId?: string): Promise<AITestRes
   const t0 = Date.now();
   const svc = createAI();
   const reply = (await svc.prompt(AI_TEST_PROMPT, model, { provider: effective })).trim();
-  if (!reply) throw new Error(`${desc.label} 连通异常：请求成功但回复为空`);
-  return { label: desc.label, model: model || '默认模型', ms: Date.now() - t0, reply };
+  if (!reply) throw new Error(t('ai.error.emptyReply', { provider: desc.label }));
+  return { label: desc.label, model: model || t('ai.defaultModel'), ms: Date.now() - t0, reply };
 }

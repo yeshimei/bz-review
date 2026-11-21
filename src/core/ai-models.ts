@@ -12,6 +12,7 @@ import type { AIProviderDescriptor } from './ai';
 import { resolveProviderId } from './ai-provider-id';
 import { isMobileEnv } from './mobile';
 import { tryGetSettings } from './settings-provider';
+import { t } from '../i18n/strings';
 
 /** OpenAI 兼容 /models 拉取超时（s）：设置页交互场景，8s 未应答即放弃走回退/报错 */
 export const MODELS_TIMEOUT_MS = 8000;
@@ -82,18 +83,18 @@ function keyFor(id: string): string {
 
 /** Ollama /api/tags 响应 → 模型 id 列表（Ollama 原生格式，非 OpenAI 兼容面） */
 function ollamaModelIds(data: unknown): string[] {
-  if (!isRecord(data)) throw new Error('该服务商未返回可用模型');
+  if (!isRecord(data)) throw new Error(t('ai.error.noModels'));
   const list = data.models;
   if (isUnknownArray(list)) {
     const ids = list.map((m) => (isRecord(m) && typeof m.name === 'string' ? m.name : '')).filter(Boolean);
     if (ids.length) return ids;
   }
-  throw new Error('该服务商未返回可用模型');
+  throw new Error(t('ai.error.noModels'));
 }
 
 /** OpenAI 兼容 /models 响应 → 模型 id 列表（兼容 data[].id 主格式与 data.models[].name 少数格式） */
 function openaiModelIds(data: unknown): string[] {
-  if (!isRecord(data)) throw new Error('该服务商未返回可用模型');
+  if (!isRecord(data)) throw new Error(t('ai.error.noModels'));
   if (isUnknownArray(data.data)) {
     const ids = data.data
       .map((m) => (isRecord(m) && typeof m.id === 'string' ? m.id : ''))
@@ -106,7 +107,7 @@ function openaiModelIds(data: unknown): string[] {
       .filter(Boolean);
     if (ids.length) return ids;
   }
-  throw new Error('该服务商未返回可用模型');
+  throw new Error(t('ai.error.noModels'));
 }
 
 /** 响应 → 模型 id 列表；空列表统一抛「未返回可用模型」（由调用方 toast） */
@@ -152,7 +153,7 @@ async function fetchModelsJson(
         attempt = await requestUrlAttempt();
       } catch {
         if (controller.signal.aborted) {
-          throw new Error(`${label} 无响应（超过 ${timeoutMs / 1000}s 未应答）`);
+          throw new Error(t('ai.error.noResponse', { label, n: timeoutMs / 1000 }));
         }
         throw fetchError ?? e;
       }
@@ -164,10 +165,10 @@ async function fetchModelsJson(
   const { resp } = attempt;
   if (!resp.ok) {
     if (resp.status === 401 || resp.status === 403) {
-      throw new Error(`${label} 拒绝访问（${resp.status}）：请检查 API Key 是否有效`);
+      throw new Error(t('ai.error.forbidden', { label, status: resp.status }));
     }
     if (resp.status === 404) {
-      throw new Error(`${label} 不支持模型列表接口（404）`);
+      throw new Error(t('ai.error.listUnsupported', { label }));
     }
     let msg = `API ${resp.status}`;
     try {
@@ -194,13 +195,13 @@ export async function fetchProviderModels(
   const endpoint = desc.id === 'ollama' ? OLLAMA_BASE_URL : endpointFor(id);
   /* 自定义没填地址：先让人去填，别拿空端点拼出 `/models` 这种相对路径去请求 */
   if (!endpoint) {
-    throw new Error('未配置 API 地址：插件设置 → AI 配置 → LLM → 自定义 API 地址');
+    throw new Error(t('ai.error.noEndpoint'));
   }
 
   const key = keyFor(id);
   // 除 Ollama / LM Studio 本地服务外，缺 key 即拦截（对齐 getAIProvider 的拦截文案）
   if (!key && desc.id !== 'ollama' && desc.id !== 'lmstudio') {
-    throw new Error(`未配置 ${desc.label} API Key：插件设置 → AI 配置 → ${desc.apiKeyLabel}`);
+    throw new Error(t('ai.error.missingKey', { provider: desc.label, label: desc.apiKeyLabel }));
   }
 
   const url = desc.id === 'ollama' ? `${endpoint}/api/tags` : `${endpoint}/models`;
@@ -239,7 +240,7 @@ export function parseOllamaTags(data: unknown): OllamaTag[] {
     const det = isRecord(m.details) ? m.details : {};
     const bits: string[] = [];
     if (typeof det.parameter_size === 'string' && det.parameter_size) bits.push(det.parameter_size);
-    if (typeof det.embedding_length === 'number' && det.embedding_length > 0) bits.push(`${det.embedding_length} 维`);
+    if (typeof det.embedding_length === 'number' && det.embedding_length > 0) bits.push(t('ai.dims', { n: det.embedding_length }));
     out.push({ id: m.name, capabilities, detail: bits.join('，') || 'Ollama' });
   }
   return out;
