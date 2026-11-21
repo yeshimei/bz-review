@@ -17,8 +17,29 @@ import { installReaderPlugin, openReaderShelf, readReaderInstall, type ReaderIns
 import { copyReviewGroupId } from './group-bridge';
 import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml, type ReaderPluginState } from './settings-page-pure';
 import { setHtml } from './set-html';
-import { locale, t } from '../../i18n';
+import { locale, t, type MsgKey } from '../../i18n';
 import type { ReviewDataManager } from '../data';
+
+/** 分组名：schema 里的 name 是内部标识（GROUP_ORDER / 权重 / 锚点都按它走），
+ *  只在渲染组头时翻成当前语言。 */
+const GROUP_TITLE_KEYS: Record<string, MsgKey> = {
+  授权: 'group.license',
+  数据: 'group.data',
+  界面: 'group.ui',
+  检查提醒: 'group.remind',
+  划线卡: 'group.cards',
+  做题家: 'group.quiz',
+  复习节奏: 'group.schedule',
+  记忆算法: 'group.algo',
+  自动化: 'group.auto',
+  AI: 'group.ai',
+  探索: 'group.explore',
+};
+
+function groupTitleOf(name: string): string {
+  const key = GROUP_TITLE_KEYS[name];
+  return key ? t(key) : name;
+}
 
 /** 同一个容器可能被多次渲染；事件只绑一次，避免点一次激活处理两遍 */
 const licenseBound = new WeakSet<HTMLElement>();
@@ -150,10 +171,9 @@ export async function renderReviewSettingsPage(
     if (head) {
       head.replaceChildren();
       const h3 = createEl('h3');
-      h3.textContent = name;
-      /* 英文副标只在中文界面挂：英文界面里组名仍是中文（本批未翻设置页组名），
-         副标照常给英文；等组名按语言出词时这里再按语言决定。 */
-      h3.setAttribute('data-en', GROUP_SUBTITLES[name] ?? '');
+      h3.textContent = groupTitleOf(name);
+      /* 英文副标只在中文界面挂：英文界面里组名本身就是英文，再挂一遍会显示两次。 */
+      h3.setAttribute('data-en', locale() === 'zh' ? GROUP_SUBTITLES[name] ?? '' : '');
       head.appendChild(h3);
     }
     const target = cols.find((c) => c.names.includes(name))?.col ?? cols[0].col;
