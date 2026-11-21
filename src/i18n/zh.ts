@@ -847,6 +847,7 @@ export const ZH = {
   'mgr.suspendedNotice': '已挂起：这条不再进本轮复习，排期没有变，随时可以恢复。',
   'mgr.buriedNotice': '已埋藏：明天自动回到队列，排期没有变。',
 
+
   /* ── 设置页：关于条 ──────────────────────────────────────── */
   'settings.about.support': '支持作者',
   'settings.about.supportTip': '看看支持作者的方式',
