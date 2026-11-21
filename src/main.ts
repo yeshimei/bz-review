@@ -36,6 +36,7 @@ import {
 } from './review';
 import type { CardWizardOptions } from './review/card-wizard';
 import { openAddToReviewFlow } from './review/add-flow';
+import { bindStudyReviewTab } from './review/embedded-home';
 import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
 import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
@@ -182,11 +183,15 @@ export default class ReviewPlugin extends Plugin {
       ui.embeddedOnClose = onClose;
       ui.mountEmbedActions(actionsHost);
       void ui.showMain();
+      /* 嵌入态宿主画的「复习」页签也承担回主列表：与独立页顶部页签同一语义。
+         收场时一并解绑，离开复习页后点别处的同名元素不会再触发。 */
+      const unbindStudyTab = bindStudyReviewTab(actionsHost, () => ui.goHome());
       let cleaned = false;
       const cleanup = () => {
         // 宿主离开页签与关开关可能都调一次：必须幂等，单例 UIManager 禁二次收场。
         if (cleaned) return;
         cleaned = true;
+        unbindStudyTab();
         if (ui.embeddedCleanup === cleanup) ui.embeddedCleanup = null;
         ui.embeddedOnClose = null;
         ui.clearEmbed();

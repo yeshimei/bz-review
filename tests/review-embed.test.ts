@@ -36,11 +36,11 @@ describe('嵌入动作栏 · 头行图标 HTML', () => {
   it('头行按钮 + 菜单项合起来覆盖全部入口，顺序固定', () => {
     expect(actsOf(panelHeadBtnsHtml())).toEqual([
       'filter', 'data', 'more',
-      'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
+      'create', 'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
       'settings',
     ]);
     expect([...MORE_MENU_ACTS]).toEqual([
-      'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
+      'create', 'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
     ]);
   });
 
@@ -68,7 +68,7 @@ describe('嵌入动作栏 · 头行图标 HTML', () => {
   it('菜单默认隐藏，四项各有标题与说明', () => {
     const menu = panelMoreMenuHtml();
     expect(menu).toContain('class="bzrv-more-menu" hidden');
-    for (const text of ['已完成', '已移出', '按书档案', '卡片管理器', '复习记录', '数据洞察']) {
+    for (const text of ['创建卡牌', '手动输入文字做成复习卡', '已完成', '已移出', '按书档案', '卡片管理器', '复习记录', '数据洞察']) {
       expect(menu).toContain(text);
     }
   });
