@@ -15,7 +15,6 @@
   <p>
     <a href="https://github.com/yeshimei/bz"><img src="https://img.shields.io/badge/BZ-%E9%A2%9C%E5%80%BC%20%2B%20%E9%9B%86%E5%A4%A7%E6%88%90-7c3aed?style=flat-square&labelColor=1f1f1e" alt="BZ：颜值 + 集大成"></a>
     <a href="https://github.com/yeshimei/bz-reader"><img src="https://img.shields.io/badge/BZ%20READER-%E5%A4%9A%E6%A0%BC%E5%BC%8F%E9%98%85%E8%AF%BB%E5%99%A8-8a6a3a?style=flat-square&labelColor=1f1f1e" alt="BZ Reader：多格式阅读器"></a>
-    <a href="https://github.com/yeshimei/bz-review"><img src="https://img.shields.io/badge/BZ%20REVIEW-%E5%A4%8D%E4%B9%A0-5f7f57?style=flat-square&labelColor=1f1f1e" alt="BZ Review：复习"></a>
   </p>
 
   <p><sub>QQ 群 1130883117 · <a href="#support">支持作者</a></sub></p>
@@ -54,11 +53,11 @@
 
 ## 功能
 
-基础版免费、不限时，制卡 50 张；高级版不限量。两版功能完全一样，以后新增的功能也一样。
+基础版免费、不限时，复习笔记 + 划线卡合计 50 条；高级版不限量。两版功能完全一样，以后新增的功能也一样。
 
 | 类别 | 功能 | 基础版 | 高级版 |
 |---|---|:---:|:---:|
-| **数量** | 制卡数量 | 50 张 | 不限 |
+| **数量** | 复习条目（笔记 + 划线卡） | 合计 50 条 | 不限 |
 | **制卡** | 选中文字加一张 | ✓ | ✓ |
 |  | 划线一键加入 | ✓ | ✓ |
 |  | 整本书批量挑：按划线 / 重点 / 章节 | ✓ | ✓ |
@@ -71,6 +70,8 @@
 |  | 挖空 | ✓ | ✓ |
 |  | 上下文 | ✓ | ✓ |
 |  | 展开全文 | ✓ | ✓ |
+|  | 媒体卡（图片 / 音频） | ✓ | ✓ |
+|  | 图片遮挡 | ✓ | ✓ |
 | **排期** | FSRS-7 排期 | ✓ | ✓ |
 |  | 参数自动拟合 | ✓ | ✓ |
 |  | 学习步骤 | ✓ | ✓ |
@@ -89,7 +90,7 @@
 |  | 书架复习页签 | ✓ | ✓ |
 |  | 文件夹监听自动加入 | ✓ | ✓ |
 
-合计 29 项功能，两版完全一致，仅「制卡数量」一项不同；以后新增的功能也一律两边都有。已有数据超过免费上限不会被删，只是不能再加新的。
+合计 31 项功能，两版完全一致，仅「制卡数量」一项不同；以后新增的功能也一律两边都有。已有数据超过免费上限不会被删，只是不能再加新的。
 
 完整的同款对照长图见 [`assets/plan-compare/shots/pro-compare.png`](assets/plan-compare/shots/pro-compare.png)（店铺详情也只放这一张）。
 
@@ -102,7 +103,7 @@
 - 桌面端与移动端是同一个包，买一次两边都能用。
 - 激活码范围：**赞助人与专属定制码**（码里带 `patron` 标记）在 bz Reader 和 bz-review 都能激活；两款插件的普通高级版码各自独立，只在对应插件激活。
 
-## 两种复习方式
+## 复习方式
 
 每张卡在制卡时就定好自己的方式，一轮里可以混排，切到哪张就实时换成哪种题面：
 
@@ -110,6 +111,11 @@
 |---|---|---|
 | **抽认卡** | 正面一句问句，背面划线原文 | 有 AI 更准，没有就用内置提示 |
 | **做题** | AI 从划线 / 笔记出选择题，按正确率自动定难度 | 要 AI |
+| **挖空** | 把关键的一两处挖掉，凭上下文补回 | 有 AI 更准，没有就按规则挖 |
+| **上下文** | 藏起划线，用前后各一段回忆 | 不要 |
+| **全文回忆** | 整段划线直接回忆 | 不要 |
+| **媒体卡** | 图片直接显示、音频直接播放 | 不要 |
+| **图片遮挡** | 一张图盖住几处，点开看标签 | 不要 |
 
 ## 排期是怎么算的
 
@@ -142,7 +148,7 @@
 
 ## 数据
 
-- 复习数据：`CONFIG/REVIEW/review.json`（可在设置里改目录）；
+- 复习数据：`bz-review/storage/review.json`（默认在库根，跟 bz Reader 的 `bz-reader/storage` 同形制，设置里可改目录）；
 - 与 bz 的 `CONFIG/STORAGE/review.json` 分开存，两个插件同时装不会互相覆盖；
 - 设置里有一键「从 bz 导入」，只导一次、不覆盖、不动 bz 的数据；
 - 挂起、埋藏状态一并写进排期表，不依赖运行时内存；
@@ -152,7 +158,7 @@
 
 划线卡由 [bz Reader](https://github.com/yeshimei/bz-reader) 推送：在书里划一句，选「加入复习」，就会出现在排期表里。Reader 一并给出划线前后各一段与一条跳回原文的链接，复习时可以点「回到原文」。
 
-不装 Reader 也能用：笔记可以直接做成抽认卡或做题，从 Markdown 也能批量导入，写法是 `问题 :: 答案` 或 `{{挖空}}`。
+不装 Reader 也能用：笔记可以直接做成抽认卡 / 做题 / 挖空，从 Markdown 也能批量导入，写法是 `问题 :: 答案` 或 `{{挖空}}`。
 
 ## 网络访问
 
@@ -162,10 +168,10 @@
 
 - **会和其他插件打架吗？** 不会。界面是自己的标签页，生成的 DOM 与 CSS 都限定在插件自己的作用域内（统一挂 `data-bzrv`），不污染别人的样式；数据也和 bz 分开存。
 - **和 bz 里的复习计划是什么关系？** 从 bz 独立出来的插件，bz 里那份原样保留。两边各存各的，可以同时装、互不覆盖，也能一键把 bz 的计划导进来。
-- **超过免费上限会删我的卡吗？** 不会。已有的笔记和卡继续照常复习，只是制卡满 50 张后不能再加新的；升级后立即放开。批量导入时如果这次会越过 50 张，仍会让你整批加进去，只提醒一句下次要先升级。
+- **超过免费上限会删我的卡吗？** 不会。已有的笔记和卡继续照常复习，只是合计满 50 条后不能再加新的；升级后立即放开。批量导入时如果这次会越过 50 条，仍会让你整批加进去，只提醒一句下次要先升级。
 - **换电脑怎么办？** 库同步过去，排期和复习历史跟着走；高级版在新设备上重新填一次激活码。
 - **手机上要单独买吗？** 不用，同一个包，桌面与移动都包含在内。
-- **没装 bz Reader 能用吗？** 能。笔记照样能排进计划，抽认卡和做题两种方式都能用。
+- **没装 bz Reader 能用吗？** 能。笔记照样能排进计划，抽认卡、做题、挖空都能用。
 
 ## 插件推荐
 
@@ -230,26 +236,31 @@ Still in production — the link will be added here and to the plugin's "video t
 
 The free edition is complete and unlimited in time: 50 review notes and highlight cards combined. The purchased edition only removes the count — both editions are identical in features, and every future feature will be too. Existing data above the free limit is never deleted.
 
-A single build covers desktop and mobile. License keys are verified locally, offline, and are not tied to a device count — re-enter yours on a new machine. Purchase at the [store page](https://wzyp.cn/shop/IFCEI5I3). bz-review does not accept bz Reader license keys.
+A single build covers desktop and mobile. License keys are verified locally, offline, and are not tied to a device count — re-enter yours on a new machine. Purchase at the [store page](https://wzyp.cn/shop/IFCEI5I3). bz-review accepts its own keys plus patron keys issued for bz Reader; regular bz Reader licenses do not work here.
 
-### Two ways to review
+### Review modes
 
-Flashcards and AI-generated multiple-choice quizzes. Each card keeps its own mode, and a round can mix both.
+Flashcards, AI-generated multiple-choice quizzes, cloze, context, full-text recall, media cards and image occlusion. Each card keeps its own mode, and a round can mix them.
 
 ### Scheduling
 
-Uses FSRS-7 from the first review — no fixed ladder. Long- and short-term stability plus difficulty drive each interval from a target retention you set (90% by default, the official recommendation). Ratings are Again / Hard / Good / Easy; the 34 weights fit your own review history. Overdue cards get a daily cap and a reminder, a vacation date shifts the whole plan, and a 30-day workload forecast shows what's coming.
+Anki-style learning steps first: new cards repeat at 1m / 10m on the day they are added (configurable), then graduate to FSRS-7. Long- and short-term stability plus difficulty drive each interval from a target retention you set (90% by default, the official recommendation). Ratings are Again / Hard / Good / Easy; the 34 weights fit your own review history. Overdue cards get a daily cap and a reminder, a vacation date shifts the whole plan, and a 30-day workload forecast shows what's coming.
 
 ### Data and network
 
-Review data lives in `CONFIG/REVIEW/review.json`, separate from bz's. Backup/restore is JSON or CSV; CSS and generated DOM are scoped to the plugin. No account, no telemetry. Two opt-in connections only: AI generation sends the selected text to the endpoint you configured, and "speak card" sends card text to your local TTS service. Everything else runs offline.
+Review data lives in `bz-review/storage/review.json`, separate from bz's. Backup/restore is JSON or CSV; CSS and generated DOM are scoped to the plugin. No account, no telemetry. Two opt-in connections only: AI generation sends the selected text to the endpoint you configured, and "speak card" sends card text to your local TTS service. Everything else runs offline.
 
 ### FAQ
 
 - **Does it conflict with other plugins?** No. Its view is a separate tab, styles are scoped, and data is stored separately.
 - **Do I lose cards when I hit the free limit?** No. They keep reviewing; you just can't add more until you upgrade.
-- **Do I need bz Reader?** No. Notes work on their own; both review modes are available without it.
+- **Do I need bz Reader?** No. Notes work on their own; every review mode is available without it.
 - **Do I pay again on mobile?** No. One build covers both.
+
+### Recommended plugins
+
+- [bz](https://github.com/yeshimei/bz) — Diary, memos, collections, belongings, books and films, games, web clippings, pomodoro, review, secure encryption (password book + vault), AI knowledge base (knowledge boxes + second brain), tool dock, and a desktop pet cat.
+- [bz Reader](https://github.com/yeshimei/bz-reader) — Turn your vault into a reading app: desktop and mobile, multiple formats (including PDF and comics), multilingual, AI follow-ups / whole-book Q&A / semantic search / knowledge base, offline audiobooks, backlinks, reading stats — all kept locally.
 
 ### License
 
