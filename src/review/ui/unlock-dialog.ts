@@ -8,13 +8,6 @@ import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, getLicenseState } from '../../
 import { openExternalUrl } from './links-bridge';
 import { t, type MsgKey } from '../../i18n';
 
-interface PlanRow {
-  label: string;
-  free: string;
-  pro: string;
-  note?: string;
-}
-
 const YES = '✓';
 
 /** 对照表行：label 存 key，渲染时按当前语言出词；free/pro 只存四种标记。
