@@ -113,6 +113,18 @@ export function resolveLocale(pref: LanguagePref, hostCode?: string | null): Loc
   return code ? normalizeLocale(code) : 'zh';
 }
 
+/** 评级短名（忘了 / 困难 / 一般 / 简单）——评级条、结果卡、统计共用这一个口径 */
+const RATING_KEYS = {
+  again: 'rating.again',
+  hard: 'rating.hard',
+  good: 'rating.good',
+  easy: 'rating.easy',
+} as const;
+
+export function ratingName(r: string): string {
+  return t(RATING_KEYS[r as keyof typeof RATING_KEYS] ?? 'rating.good');
+}
+
 /** 当前语言的 BCP-47 标签（日期、数字格式化用） */
 export function localeTag(): string {
   return current === 'zh' ? 'zh-CN' : 'en';
