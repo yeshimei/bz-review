@@ -17,6 +17,8 @@ vi.mock('obsidian', () => ({
   Platform: {},
   ItemView: class {},
   Plugin: class {},
+  /* core/utils 会从宿主取 moment；这里只要给个可调用的壳，测试不碰日期逻辑 */
+  moment: () => ({ isValid: () => false }),
 }));
 
 import {

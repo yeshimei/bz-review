@@ -265,7 +265,9 @@ export function validateRssCatalog(raw: unknown): RssCatalog | null {
     for (const c of ff.cats) {
       if (typeof c !== 'string' || !cats.has(c)) return null; // cats ⊆ categories
     }
-    const feed: RssCatalogFeed = { url, title: ff.title, site: ff.site, tags: ff.tags as string[], cats: ff.cats as string[] };
+    const tags = (ff.tags as unknown[]).filter((t): t is string => typeof t === 'string');
+    const feedCats = (ff.cats as unknown[]).filter((c): c is string => typeof c === 'string');
+    const feed: RssCatalogFeed = { url, title: ff.title, site: ff.site, tags, cats: feedCats };
     if (typeof ff.via === 'string' && ff.via) {
       // via 形状门（ADR-0209）：必须是以 / 开头的路由模板且无空白——它是订阅重拼/填参的素材，
       // 坏形状会让表单产出垃圾地址直插 rssFeeds

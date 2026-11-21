@@ -18,8 +18,8 @@ export const REVIEW_STUDY_TAB_SELECTOR = '[data-act="study"][data-p="review"]';
  */
 export function bindStudyReviewTab(actionsHost: HTMLElement, onHome: () => void): () => void {
   const head = actionsHost.parentElement;
-  if (!head || typeof head.querySelector !== 'function') return () => {};
-  const tab = head.querySelector<HTMLElement>(REVIEW_STUDY_TAB_SELECTOR);
+  if (!head) return () => {};
+  const tab = head.find(REVIEW_STUDY_TAB_SELECTOR);
   if (!tab) return () => {};
   const handler = (): void => onHome();
   tab.addEventListener('click', handler);
