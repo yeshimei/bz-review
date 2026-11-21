@@ -56,6 +56,13 @@ export function releaseEntryCount(release: ChangelogRelease): number {
  */
 export const CHANGELOG_RELEASES: readonly ChangelogRelease[] = [
   {
+    version: '1.0.2',
+    date: '2026-11-21',
+    fixed: [
+      { domain: '上架检查', text: '修正依赖版本声明与锁文件，社区市场扫描不再报错。' },
+    ],
+  },
+  {
     version: '1.0.1',
     date: '2026-11-21',
     fixed: [
