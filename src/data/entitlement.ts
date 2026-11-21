@@ -16,6 +16,7 @@
  * 供界面文案、用量口径与测试引用；门控本身恒放行，架构上不再有功能差异。
  */
 import { parseLicense, verifyLicense } from './license';
+import { t } from '../i18n/strings';
 
 /** 购买页（与 bz Reader / 归物本同一个店铺） */
 export const PURCHASE_URL = 'https://wzyp.cn/shop/IFCEI5I3';
@@ -158,7 +159,7 @@ export function quotaBlock(counts: PlanCounts): { ok: boolean; message: string }
   if (!info.full) return { ok: true, message: '' };
   return {
     ok: false,
-    message: `已用 ${info.used}/${info.limit} 条（笔记 + 划线合计，基础版上限）。激活高级版解锁不限数量，已有数据不会被删。`,
+    message: t('ent.used', { used: info.used, limit: info.limit }),
   };
 }
 
@@ -167,7 +168,7 @@ export function quotaBlock(counts: PlanCounts): { ok: boolean; message: string }
  * 明说这次全进去了、下次要先升级，不含 emoji、不说「已拒绝」。
  */
 export function overLimitMessage(counts: PlanCounts, incoming: number): string {
-  return `这次 ${incoming} 条已全部加入，合计 ${totalOf(counts) + incoming} 条，超过基础版 ${FREE_ITEM_LIMIT} 条上限；下次再加入需要先升级高级版。已有数据不会被删。`;
+  return t('ent.overOnce', { incoming, total: totalOf(counts) + incoming, limit: FREE_ITEM_LIMIT });
 }
 
 /**
@@ -185,10 +186,10 @@ export const PRO_CAPABILITIES: readonly ProCapability[] = [
 ] as const;
 
 export const CAPABILITY_LABELS: Record<ProCapability, string> = {
-  speech: '听卡片',
-  sourceLink: '跳回原文',
-  bookReport: '按书报告',
-  cardManager: '卡片管理器',
+  speech: t('ent.capTts'),
+  sourceLink: t('ent.capJump'),
+  bookReport: t('ent.capBookReport'),
+  cardManager: t('ent.capManager'),
 };
 
 /**
@@ -209,13 +210,13 @@ export function licenseSummary(): string {
   if (!state.paid) {
     const parsed = cachedCode ? parseLicense(cachedCode) : null;
     if (parsed?.payload?.exp && Date.now() > parsed.payload.exp) {
-      return `基础版：笔记 + 划线合计 ${FREE_ITEM_LIMIT} 条，所有功能可用。当前激活码已过期。`;
+      return t('ent.baseExpired', { limit: FREE_ITEM_LIMIT });
     }
-    return `基础版：笔记 + 划线合计 ${FREE_ITEM_LIMIT} 条，所有功能可用；填激活码解锁不限数量。`;
+    return t('ent.baseFree', { limit: FREE_ITEM_LIMIT });
   }
   const who = state.name ? `（${state.name}）` : '';
-  const until = state.exp ? `有效期到 ${new Date(state.exp).toLocaleDateString()}` : '永久有效';
-  return `高级版已激活${who}：${until}，数量不限、所有功能可用。`;
+  const until = state.exp ? t('ent.until', { date: new Date(state.exp).toLocaleDateString() }) : t('ent.forever');
+  return t('ent.proActive', { who, until });
 }
 
 /** 当前真正生效的码（上次验签通过的那枚）。激活失败时用它恢复输入框与落盘值。 */

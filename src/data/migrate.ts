@@ -93,6 +93,7 @@ export async function copyReviewData(
   return { copied, kept };
 }
 import type BzSettings from '../settings';
+import { t } from '../i18n/strings';
 
 export type { ParsedBzReview } from './migrate-parse';
 export { parseBzReviewJson } from './migrate-parse';
@@ -162,7 +163,7 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
   };
 
   if (!(await exists(BZ_REVIEW_PATH))) {
-    return { ok: false, message: '没找到 bz 的复习数据（CONFIG/STORAGE/review.json），不用导入。' };
+    return { ok: false, message: t('mig.noBzData') };
   }
   if (await exists(dstPath)) {
     /* 只看「文件在不在」会误伤：插件启动读一次 review.json 就顺手把它建成了
@@ -184,7 +185,7 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
       hasData = existing.trim().length > 0;
     }
     if (hasData) {
-      return { ok: false, message: `本插件已经有复习数据（${dstPath}），不覆盖。` };
+      return { ok: false, message: t('mig.alreadyHas', { path: dstPath }) };
     }
   }
 
@@ -192,7 +193,7 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
   try {
     raw = await app.vault.adapter.read(BZ_REVIEW_PATH);
   } catch {
-    return { ok: false, message: '读不了 bz 的复习数据，导入中止。' };
+    return { ok: false, message: t('mig.readFailed') };
   }
 
   const parsed = parseBzReviewJson(raw);
@@ -202,7 +203,7 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
   try {
     await jsonFileStore<unknown[]>(dstPath).write(items);
   } catch (e) {
-    return { ok: false, message: `写入失败：${(e as Error)?.message || '未知错误'}` };
+    return { ok: false, message: t('mig.writeFailed', { reason: (e as Error)?.message || t('ai.error.unknown') }) };
   }
   /* 导入不按配额截断——老用户攒的数据不该因为换了插件就少一半。但**得说一声**：
      85 条原样搬进来，而免费版上限是合计 50 条，用户完全不知道自己在超限状态，
@@ -211,8 +212,8 @@ export async function migrateFromBz(app: App, settings: BzSettings): Promise<Mig
   return {
     ok: true,
     message:
-      `已从 bz 导入 ${items.length} 条复习记录。bz 那边的数据没动。` +
-      (over > 0 ? ` 合计超出免费版上限 ${over} 条——已有数据不会删，但免费版不能再加新的。` : ''),
+      t('mig.done', { n: items.length }) +
+      (over > 0 ? t('mig.overLimit', { over }) : ''),
     imported: items.length,
   };
 }
@@ -225,22 +226,20 @@ export async function importFromBzWithConfirm(app: App, settings: BzSettings): P
   const { notice } = await import('../core/notice');
   const stats = await peekBzImport(app);
   if (!stats) {
-    notice('没找到可导入的 bz 复习数据（CONFIG/STORAGE/review.json）', 'warning');
+    notice(t('mig.noImportable'), 'warning');
     return;
   }
   const { openFlowDialog } = await import('../core/flow-dialog');
   const choice = await openFlowDialog({
-    title: '从 bz 导入复习？',
-    message:
-      `检测到 bz 里有 ${stats.notes} 条复习笔记，其中 ${stats.due} 条已到期，累计复习 ${stats.reviews} 次。\n` +
-      '导入只复制，不改变 bz 的数据；目标已有复习数据时不覆盖。',
+    title: t('mig.confirmTitle'),
+    message: t('mig.confirmBody', { notes: stats.notes, due: stats.due, reviews: stats.reviews }),
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '确认导入', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('mig.confirmImport'), value: 'ok', cta: true },
     ],
   });
   if (choice !== 'ok') {
-    notice('已取消导入', 'info');
+    notice(t('mig.cancelled'), 'info');
     return;
   }
   const res = await migrateFromBz(app, settings);
