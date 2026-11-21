@@ -16,6 +16,7 @@
  * ========================================================== */
 import type { App } from 'obsidian';
 import { notice, notifyActionError } from '../core/notice';
+import { QuotaExceededError } from '../data/entitlement';
 import { uiModal } from '../core/ui/modal';
 import { openCardWizard, type CardWizardSource } from './card-wizard';
 import { getReviewPlanApi } from './reader-api';
@@ -64,7 +65,7 @@ interface VaultLike {
 }
 
 function vaultOf(app: App): VaultLike {
-  return app.vault as unknown as VaultLike;
+  return app.vault;
 }
 
 /** 单个来源收集的结果：收进来的 + 三种没进来的原因 */
@@ -187,6 +188,12 @@ export async function openAddToReviewFlow(app: App, input: AddFlowInput): Promis
     const paths = input.kind === 'note' ? [input.path] : input.paths;
     await addPaths(app, paths);
   } catch (e) {
+    /* 额度到顶不是失败：弹同一份对照窗引导升级，别让用户看到「失败，请重试」。 */
+    if (e instanceof QuotaExceededError) {
+      const { openQuotaUpgradeDialog } = await import('./ui/unlock-dialog');
+      openQuotaUpgradeDialog();
+      return;
+    }
     notifyActionError(e, '加入复习', {
       onRetry: () => void openAddToReviewFlow(app, input),
     });

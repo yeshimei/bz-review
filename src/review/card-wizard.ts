@@ -28,7 +28,6 @@ import {
   type CardContentDraft,
   type CardPrepareContext,
 } from './card-ai';
-import type { CardMode } from './card-mode';
 import { defaultCardMethod } from './card-mode';
 import { generateOneQuizQuestion } from './card-quiz';
 import { ruleCloze } from './cloze';
@@ -279,7 +278,7 @@ class CardWizard {
     this.root.appendChild(this.renderFoot());
 
     if (this.step === 'edit') {
-      requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
         const list = this.root.querySelector<HTMLElement>('.bzrv-wiz-list');
         if (list) list.scrollTop = this.listScroll;
         this.root.querySelectorAll<HTMLElement>('.bzrv-wiz-cloze-src').forEach((el) => {
@@ -923,7 +922,7 @@ class CardWizard {
 
   private prepareCtx(mode: WizardMode, card: ReviewCard): CardPrepareContext {
     return {
-      mode: mode as CardMode,
+      mode,
       loadCard: async () => card,
       updateCard: async () => undefined,
       loadQuiz: async () => null,
@@ -937,7 +936,7 @@ class CardWizard {
       key: d.key,
       bookTitle: d.bookTitle,
       text: d.text,
-      mode: d.mode as CardMode,
+      mode: d.mode,
     };
     if (d.chapterTitle) card.chapterTitle = d.chapterTitle;
     if (d.aiText) card.aiText = d.aiText;

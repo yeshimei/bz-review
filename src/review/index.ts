@@ -36,7 +36,7 @@ import {
   type CardMode,
   type CardPrepareContext,
 } from './card-ai';
-import { openCardWizard, type CardWizardOptions, type CardWizardSource } from './card-wizard';
+import { openCardWizard, type CardWizardOptions } from './card-wizard';
 import { openAddToReviewFlow } from './add-flow';
 import { getCardQuiz, saveCardQuiz } from './card-quiz-store';
 import { cardQuota, quizOf, withoutPrepared } from './reader-input';
