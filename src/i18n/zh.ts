@@ -86,6 +86,7 @@ export const ZH = {
   'common.choose': '选择',
   'common.confirm': '确认',
   'common.save': '保存',
+  'common.add': '加入',
 
   /* ── 设置页：授权 ────────────────────────────────────────── */
   'settings.license.state': '当前状态',
@@ -1097,6 +1098,46 @@ export const ZH = {
   'an.age.1': '7-30 天',
   'an.age.2': '30-90 天',
   'an.age.3': '≥90 天',
+
+  /* ── 监听文件夹 ──────────────────────────────────────────── */
+  'watch.deleteTitleN': '删除 {n} 篇笔记',
+  'watch.deleteTitle': '笔记已删除',
+  'watch.deleteBodyN': '有 {n} 篇笔记已从 vault 删除，是否同步移除复习里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。',
+  'watch.deleteBodyOne': '「{name}」已从 vault 删除，是否同步移除复习里的记录？不移除则保留（文件恢复后继续复习，列表现删除线）。',
+  'watch.keep': '保留',
+  'watch.remove': '移除',
+  'watch.removed': '已移除 {n} 条复习记录',
+  'watch.restored': '恢复复习记录',
+  'watch.pathExists': '新路径已存在复习条目，未能自动更新路径，请手动处理',
+  'watch.andMore': '，等 {n} 篇',
+  'watch.pathsUpdated': '已更新 {n} 篇笔记的复习路径：{shown}{tail}',
+  'watch.pathsUpdatedShort': '已更新复习路径',
+  'watch.batchAddTitle': '批量加入复习',
+  'watch.batchAddBody': '监听文件夹「{folder}」下有 {n} 篇笔记未加入复习，是否一并加入？',
+  'watch.noneChosen': '已加入监听，但没有勾选要加入的笔记',
+
+  /* ── 远程资源 / 存储 / 相对时间 ─────────────────────────── */
+  'ra.timeout': '超时（{ms} ms 内没有响应）',
+  'ra.badContent': '返回内容不是{label}{unit}',
+  'ra.badContentHost': '{host} 返回内容不是{label}{unit}',
+  'ra.downloadFailed': '{label}下载失败：{errors}',
+  'ra.pageUnit': '页',
+  'ra.shaOffline': 'bz-offline 里的副本 sha256 对不上（与清单不是同一版）',
+  'ra.shaHost': '{host} 内容 sha256 不匹配（可能被篡改或版本错位）',
+  'ra.readFailed': '{label}下载后读取失败：插件目录写入异常',
+  'mb.name': '包仔',
+  'mb.manual': '手册',
+  'store.shapeError': 'storage: 段级合并写要求对象形态 JSON（读到 {type}），请先归一文件形态',
+  'store.backupFailed': ' 留档失败（{reason}），继续原流程',
+  'store.parseFailed': '解析失败',
+  'store.writeFailed': '写入失败',
+  'store.parseRecovered': '数据文件 {name} 解析失败，原内容已留档到 {path}，数据不会丢，已重建默认文件继续使用',
+  'store.writeRecovered': '数据文件 {name} 写入失败，原内容已留档到 {path}，数据不会丢，请稍后重试',
+  'store.raceFailed': 'storage: create 竞态降级失败（{reason}）',
+  'util.badDate': '无效日期',
+  'util.justNow': '刚刚',
+  'util.yesterday': '昨天',
+  'util.beforeYesterday': '前天',
 
 
   /* ── 设置页：关于条 ──────────────────────────────────────── */
