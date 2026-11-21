@@ -18,6 +18,7 @@ import type { AIService } from '../core/ai';
 import type { ReviewCard } from './data';
 import { aiTextOf } from './card-text';
 import { parseLooseJson } from './loose-json';
+import { locale } from '../i18n/strings';
 
 /** 问句至少这么长：太短的（「这句话讲了什么」）没有回忆价值 */
 const MIN_Q = 8;
@@ -33,6 +34,25 @@ const MAX_Q = 80;
 export function buildFlashcardPrompt(card: ReviewCard): string {
   const book = String(card.bookTitle ?? '').trim();
   const chapter = String(card.chapterTitle ?? '').trim();
+  if (locale() !== 'zh') {
+    const enWhere = chapter ? `"${book}" ${chapter}` : `"${book}"`;
+    return [
+      'You are a memory-card designer. Below is a reading highlight; turn it into one flashcard.',
+      '',
+      'Requirements:',
+      '1. The question (q) must be a question that **cannot copy the source**, prompting recall of what this passage says.',
+      '2. The question must **never contain words or sentences from the highlight** (any overlap is a failure).',
+      '3. The question must stand on its own, without seeing the source first.',
+      `4. Question length: ${MIN_Q}-${MAX_Q} words;`,
+      '5. The answer (a) is the highlight itself, returned verbatim.',
+      '',
+      'Output only one JSON object, no explanation, no code block:',
+      '{"q": "question", "a": "source text"}',
+      '',
+      `Source: ${enWhere}`,
+      `Highlight: ${aiTextOf(card)}`,
+    ].join('\n');
+  }
   const where = chapter ? `《${book}》${chapter}` : `《${book}》`;
   return [
     '你是记忆卡片设计助手。下面是一条读书划线，请把它做成一张抽认卡。',

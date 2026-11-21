@@ -1226,6 +1226,30 @@ export const ZH = {
   'sprint.abandon': '放弃',
   'sprint.noQuestions': '「{name}」暂无题目，已跳过',
 
+  'wiz.estimatedChars': '预计发送 {n} 字',
+  'cwm.label.plain': '全文回忆',
+  'cwm.label.flashcard': '抽认卡',
+  'cwm.label.quiz': '做题',
+  'cwm.label.cloze': '挖空',
+  'cwm.hint.plain': '不调 AI，直接展开原文自己回忆',
+  'cwm.hint.flashcard': 'AI 出一句正面提醒，背面是完整原文',
+  'cwm.hint.quiz': 'AI 出几道选择题，可删、可补、可重出',
+  'cwm.hint.cloze': '把关键短语挖掉，自己填回去',
+  'cwm.countAll': '共 {n} 张 · 都看过了',
+  'cwm.countSome': '共 {n} 张 · 已看过 {seen} 张',
+  'cwm.batchDefault': '这批 {n} 张都按设置里「新卡默认方式」的「{label}」生成，跳过了选方式这一屏。',
+  'cwm.oneDefault': '已按设置里「新卡默认方式」的「{label}」生成，所以跳过了选方式这一屏。',
+  'cwm.changeDefault': '{head}想每次自己选，去设置里把「新卡默认方式」改回「每次问我」。',
+  'idx.openNoteFirst': '请先打开一个笔记',
+  'idx.onlyNotes': '只有笔记能加入复习',
+  'idx.notReady': '复习模块还没准备好，稍后再试一次',
+  'idx.selectFirst': '先选中要加入复习的内容',
+  'idx.notInReview': '该笔记不在复习中',
+  'idx.removed': '已移出「{name}」',
+  'idx.restoreEntry': '恢复复习条目',
+  'idx.removeEntry': '移出复习条目',
+
+
 
 
   /* ── 设置页：关于条 ──────────────────────────────────────── */
