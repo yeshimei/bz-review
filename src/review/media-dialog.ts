@@ -9,6 +9,7 @@ import type { App, TFile } from 'obsidian';
 import type { ReviewCard } from './data';
 import { openFlowDialog } from '../core/flow-dialog';
 import { notice } from '../core/notice';
+import { t } from '../i18n';
 
 const IMAGE_EXT = /\.(png|jpe?g|gif|webp|bmp|svg)$/i;
 const AUDIO_EXT = /\.(mp3|wav|ogg|m4a|aac|flac|webm)$/i;
@@ -63,11 +64,11 @@ export function openMediaEditor(
   const audios = files.filter((p) => AUDIO_EXT.test(p));
 
   const modeField = root.createDiv({ cls: 'bzrv-edit-field' });
-  modeField.createDiv({ cls: 'bzrv-edit-head', text: '卡片方式' });
+  modeField.createDiv({ cls: 'bzrv-edit-head', text: t('media.mode') });
   const modeSel = modeField.createEl('select');
   modeSel.className = 'bzrv-input';
-  const mMedia = modeSel.createEl('option', { value: 'media', text: '媒体卡（图片 / 音频）' });
-  const mOccl = modeSel.createEl('option', { value: 'occlusion', text: '图片遮挡' });
+  const mMedia = modeSel.createEl('option', { value: 'media', text: t('media.modeMedia') });
+  const mOccl = modeSel.createEl('option', { value: 'occlusion', text: t('mode.occlusion') });
   const isOccl = card.mode === 'occlusion';
   modeSel.value = isOccl ? 'occlusion' : 'media';
   void mMedia;
@@ -75,17 +76,17 @@ export function openMediaEditor(
 
   /* 媒体卡输入 */
   const mediaWrap = root.createDiv();
-  const imgInput = pickerInput(mediaWrap, '图片（库内路径，逗号分隔可多张）', (card.media?.images ?? []).join(', '), images, 'bzrv-media-img');
-  const audioInput = pickerInput(mediaWrap, '音频（库内路径）', card.media?.audio ?? '', audios, 'bzrv-media-audio');
+  const imgInput = pickerInput(mediaWrap, t('media.images'), (card.media?.images ?? []).join(', '), images, 'bzrv-media-img');
+  const audioInput = pickerInput(mediaWrap, t('media.audio'), card.media?.audio ?? '', audios, 'bzrv-media-audio');
 
   /* 图片遮挡输入 */
   const occlWrap = root.createDiv();
-  const occlImg = pickerInput(occlWrap, '要遮挡的图片（库内路径）', card.occlusion?.image ?? '', images, 'bzrv-occl-img');
+  const occlImg = pickerInput(occlWrap, t('media.occlusionImage'), card.occlusion?.image ?? '', images, 'bzrv-occl-img');
   const regionField = occlWrap.createDiv({ cls: 'bzrv-edit-field' });
-  regionField.createDiv({ cls: 'bzrv-edit-head', text: '遮挡区域' });
+  regionField.createDiv({ cls: 'bzrv-edit-head', text: t('media.occlusionRegions') });
   regionField.createDiv({
     cls: 'bzrv-edit-desc',
-    text: '每行一块：左%,上%,宽%,高%,答案文字。例如 10,20,30,15,长江。坐标是图片上的百分比，手机也能用。',
+    text: t('media.occlusionHint'),
   });
   const regionArea = regionField.createEl('textarea', { cls: 'bzrv-edit-area' });
   regionArea.rows = 4;
@@ -102,12 +103,12 @@ export function openMediaEditor(
   modeSel.onchange = syncMode;
 
   void openFlowDialog({
-    title: '配置媒体卡',
-    message: '只改这张卡的媒体与方式，复习排期不动。填库内已有文件的路径（下拉可选）。',
+    title: t('media.title'),
+    message: t('media.desc'),
     body: root,
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '保存', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('common.save'), value: 'ok', cta: true },
     ],
   }).then((v) => {
     if (v !== 'ok') return;
@@ -118,14 +119,14 @@ export function openMediaEditor(
         .filter(Boolean);
       const audio = audioInput.value.trim();
       if (!imgs.length && !audio) {
-        notice('至少填一张图片或一个音频', 'warning');
+        notice(t('media.errNoMedia'), 'warning');
         return;
       }
       void Promise.resolve(onSave({ mode: 'media', media: { images: imgs, audio: audio || undefined } }));
     } else {
       const image = occlImg.value.trim();
       if (!image) {
-        notice('要遮挡的图片不能为空', 'warning');
+        notice(t('media.errNoImage'), 'warning');
         return;
       }
       const regions = regionArea.value
@@ -138,7 +139,7 @@ export function openMediaEditor(
         })
         .filter((r) => Number.isFinite(r.x) && Number.isFinite(r.y) && Number.isFinite(r.w) && Number.isFinite(r.h) && r.w > 0 && r.h > 0 && r.label);
       if (!regions.length) {
-        notice('至少要有一块遮挡区域（左,上,宽,高,答案）', 'warning');
+        notice(t('media.errNoRegion'), 'warning');
         return;
       }
       void Promise.resolve(onSave({ mode: 'occlusion', occlusion: { image, regions } }));

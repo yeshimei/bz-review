@@ -6,6 +6,7 @@
 import { uiModal } from '../../core/ui/modal';
 import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, getLicenseState } from '../../data/entitlement';
 import { openExternalUrl } from './links-bridge';
+import { t, type MsgKey } from '../../i18n';
 
 interface PlanRow {
   label: string;
@@ -16,65 +17,73 @@ interface PlanRow {
 
 const YES = '✓';
 
-const GROUPS: Array<{ title: string; rows: PlanRow[] }> = [
+/** 对照表行：label 存 key，渲染时按当前语言出词；free/pro 只存四种标记。
+ *  （模块级常量不能直接存 t() 结果，否则语言会冻在首次加载那一刻。） */
+type CellMark = 'yes' | 'limit' | 'unlimited';
+interface PlanRowSpec {
+  label: MsgKey;
+  note?: string;
+  free: CellMark;
+  pro: CellMark;
+}
+
+const GROUPS: Array<{ title: MsgKey; rows: PlanRowSpec[] }> = [
   {
-    title: '数量上限 · 唯一差异',
+    title: 'unlock.g.count',
+    rows: [{ label: 'unlock.r.limit', free: 'limit', pro: 'unlimited' }],
+  },
+  {
+    title: 'unlock.g.add',
     rows: [
-      { label: '复习笔记 + 划线卡合计', free: '50 条', pro: '不限' },
+      { label: 'unlock.r.selText', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.oneTap', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.batch', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.fullRecall', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.flash', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.quiz', free: 'yes', pro: 'yes' },
     ],
   },
   {
-    title: '加入与复习方式',
+    title: 'unlock.g.make',
     rows: [
-      { label: '选中文字加入复习', free: YES, pro: YES },
-      { label: '划线一键复习', free: YES, pro: YES },
-      { label: '整本书批量加入：按划线 / 重点 / 章节选范围', free: YES, pro: YES },
-      { label: '全文回忆', free: YES, pro: YES },
-      { label: '抽认卡', free: YES, pro: YES },
-      { label: '做题', free: YES, pro: YES },
+      { label: 'unlock.r.editFront', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.regen', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.addDel', free: 'yes', pro: 'yes' },
     ],
   },
   {
-    title: '卡片制作',
+    title: 'unlock.g.schedule',
     rows: [
-      { label: '卡片正面可改', free: YES, pro: YES },
-      { label: 'AI 重新生成卡片', free: YES, pro: YES },
-      { label: '做题删题补题', free: YES, pro: YES },
+      { label: 'unlock.r.flashReview', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.quizAsIs', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.fsrs', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.fit', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.books', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.manager', free: 'yes', pro: 'yes' },
     ],
   },
   {
-    title: '复习与排期',
+    title: 'unlock.g.quiz',
     rows: [
-      { label: '抽认卡复习', free: YES, pro: YES },
-      { label: '做题原样考', free: YES, pro: YES },
-      { label: 'FSRS 科学排期', free: YES, pro: YES },
-      { label: 'FSRS 参数自动拟合', free: YES, pro: YES },
-      { label: '按书档案', free: YES, pro: YES },
-      { label: '卡片管理器', free: YES, pro: YES },
+      { label: 'unlock.r.countDiff', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.multi', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.shuffle', free: 'yes', pro: 'yes' },
     ],
   },
   {
-    title: '出题玩法',
+    title: 'unlock.g.data',
     rows: [
-      { label: '题量与难度自定义', free: YES, pro: YES },
-      { label: '多选题', free: YES, pro: YES },
-      { label: '乱序出题', free: YES, pro: YES },
+      { label: 'unlock.r.stats', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.snapshot', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.rollback', free: 'yes', pro: 'yes' },
     ],
   },
   {
-    title: '数据与备份',
+    title: 'unlock.g.ai',
     rows: [
-      { label: '数据统计', free: YES, pro: YES },
-      { label: '快照备份', free: YES, pro: YES },
-      { label: '一键回滚', free: YES, pro: YES },
-    ],
-  },
-  {
-    title: 'AI 与自动化',
-    rows: [
-      { label: '18 家 AI 服务商与模型选择', free: YES, pro: YES },
-      { label: '本地 TTS 听卡片', free: YES, pro: YES },
-      { label: '文件夹监听与自动加入', free: YES, pro: YES },
+      { label: 'unlock.r.providers', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.tts', free: 'yes', pro: 'yes' },
+      { label: 'unlock.r.watch', free: 'yes', pro: 'yes' },
     ],
   },
 ];
@@ -86,14 +95,20 @@ function cell(v: string, pro: boolean): string {
   return `<i class="c${pro ? ' pro' : ''}${v === YES ? ' y' : ''}">${esc(v)}</i>`;
 }
 
+function cellMark(mark: CellMark): string {
+  if (mark === 'limit') return t('unlock.items50');
+  if (mark === 'unlimited') return t('unlock.unlimited');
+  return YES;
+}
+
 export function unlockDialogHtml(paid: boolean, reason = ''): string {
   const body = GROUPS.map(
     (g) =>
-      `<div class="bzs-plan-row is-group"><span>${esc(g.title)}</span>${cell('', false)}${cell('', true)}</div>` +
+      `<div class="bzs-plan-row is-group"><span>${esc(t(g.title))}</span>${cell('', false)}${cell('', true)}</div>` +
       g.rows
         .map(
           (r) =>
-            `<div class="bzs-plan-row"><span>${esc(r.label)}${r.note ? `<em>${esc(r.note)}</em>` : ''}</span>${cell(r.free, false)}${cell(r.pro, true)}</div>`,
+            `<div class="bzs-plan-row"><span>${esc(t(r.label))}${r.note ? `<em>${esc(r.note)}</em>` : ''}</span>${cell(cellMark(r.free), false)}${cell(cellMark(r.pro), true)}</div>`,
         )
         .join(''),
   ).join('');
@@ -101,10 +116,10 @@ export function unlockDialogHtml(paid: boolean, reason = ''): string {
   const total = GROUPS.reduce((n, g) => n + g.rows.length, 0);
   return (
     '<div class="bzs-unlock">' +
-    `<p class="bzs-unlock-sub">${esc(reason || '两版功能完全一样，只差数量上限。')}</p>` +
-    '<div class="bzs-plan-head"><span>功能</span><i class="c">基础版<small>免费不限时</small></i><i class="c pro">高级版<small>一次买断</small></i></div>' +
+    `<p class="bzs-unlock-sub">${esc(reason || t('unlock.subtitle'))}</p>` +
+    `<div class="bzs-plan-head"><span>${t('unlock.headFeature')}</span><i class="c">${t('unlock.headBase')}<small>${t('unlock.headBaseSmall')}</small></i><i class="c pro">${t('unlock.headPro')}<small>${t('unlock.headProSmall')}</small></i></div>` +
     `<div class="bzs-plan">${body}</div>` +
-    `<div class="bzs-plan-row is-total"><span>合计 ${total - different} 项功能 · 功能完全一致，仅 ${different} 项数量不同</span>${cell('', false)}${cell('', true)}</div>` +
+    `<div class="bzs-plan-row is-total"><span>${t('unlock.total', { total: total - different, diff: different })}</span>${cell('', false)}${cell('', true)}</div>` +
     '</div>'
   );
 }
@@ -115,7 +130,7 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
   const modal = uiModal({
     content: unlockDialogHtml(paid, opts.reason),
     className: 'bzs-unlock-dialog',
-    title: '高级版功能',
+    title: t('unlock.title'),
     head: true,
     size: 'lg',
   });
@@ -127,13 +142,13 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
     const buy = createEl('button', { cls: 'bzs-btn pri' });
     buy.type = 'button';
     buy.dataset.act = 'unlockbuy';
-    buy.textContent = '去购买';
+    buy.textContent = t('unlock.buy');
     foot.appendChild(buy);
   }
   const group = createEl('button', { cls: 'bzs-btn' });
   group.type = 'button';
   group.dataset.act = 'unlockgroup';
-  group.textContent = `交流群 ${GROUP_ID}`;
+  group.textContent = t('unlock.group', { id: GROUP_ID });
   foot.appendChild(group);
   modal.popup.appendChild(foot);
   modal.popup.scrollTop = 0;
@@ -150,6 +165,6 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
  */
 export function openQuotaUpgradeDialog(): void {
   openReviewUnlockDialog({
-    reason: `基础版的 ${FREE_ITEM_LIMIT} 条额度（笔记 + 划线合计）已用完，已有数据不会被删。激活高级版即可继续添加。`,
+    reason: t('unlock.quota', { limit: FREE_ITEM_LIMIT }),
   });
 }
