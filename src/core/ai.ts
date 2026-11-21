@@ -23,6 +23,7 @@
  */
 import { requestUrl } from 'obsidian';
 import { getApp } from './app';
+import { parseExtraHeaders } from './ai-headers';
 import { resolveModelLimits } from './model-limits';
 import { toBase64 } from './crypto';
 import { DEFAULT_AI_PROVIDER, resolveProviderId } from './ai-provider-id';
@@ -37,6 +38,9 @@ export interface AISettingsLike {
   aiApiKeys?: Record<string, string>;
   /** 自定义服务商报文协议（openai / anthropic） */
   aiCustomProtocol?: string;
+  /** 自定义通道的附加请求头（一行一个 `Header: value`；2026-11-22 加，
+   *  给 OpenCode Go 这类要会话头的网关用） */
+  aiCustomHeaders?: string;
   /** 🔑 DeepSeek 密钥（留空则回退读外部配置） */
   deepseekApiKey?: string;
   /** 🔑 智谱 Plan（Coding 套餐）密钥 */
@@ -705,6 +709,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
       model: effModel || undefined,
       defaultMaxTokens,
       protocol: String(s.aiCustomProtocol || '').toLowerCase() === 'anthropic' ? 'anthropic' : 'openai',
+      extraHeaders: parseExtraHeaders(String(s.aiCustomHeaders || '')),
     });
   }
   const legacyKey = desc.apiKeyKey ? s[desc.apiKeyKey] : undefined;

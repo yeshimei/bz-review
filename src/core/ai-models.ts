@@ -11,6 +11,7 @@ import { getProviderDescriptor, providerKeyLabelOf, providerLabelOf } from './ai
 import type { AIProviderDescriptor } from './ai';
 import { resolveProviderId } from './ai-provider-id';
 import { isMobileEnv } from './mobile';
+import { parseExtraHeaders } from './ai-headers';
 import { tryGetSettings } from './settings-provider';
 import { t } from '../i18n/strings';
 
@@ -217,6 +218,8 @@ export async function fetchProviderModels(
   } else if (key) {
     headers['Authorization'] = `Bearer ${key}`;
   }
+  /* 2026-11-22：自定义通道的附加请求头，拉模型也带上（有的网关连 /models 都查它） */
+  if (desc.id === 'custom') Object.assign(headers, parseExtraHeaders(String(tryGetSettings().aiCustomHeaders || '')));
   const timeoutMs = desc.id === 'ollama' ? OLLAMA_TIMEOUT_MS : MODELS_TIMEOUT_MS;
 
   const data = await fetchModelsJson(url, headers, timeoutMs, providerLabelOf(desc), deps);

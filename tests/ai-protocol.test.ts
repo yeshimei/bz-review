@@ -115,4 +115,36 @@ describe('AI 协议适配（anthropic / openai 两家同源）', () => {
     expect(opts.url).toBe('https://api.anthropic.com/v1/messages');
     expect(opts.headers['x-api-key']).toBe('sk-ant-test');
   });
+
+  /* 2026-11-22：OpenCode Go 这类网关要 x-opencode-session 才放行对话 */
+  it('自定义通道的附加请求头进请求（对话与代发两条通道）', async () => {
+    useProvider('custom', {
+      aiCustomEndpoint: 'https://gateway.example/v1',
+      aiCustomApiKey: 'sk-gw',
+      aiCustomHeaders: 'x-opencode-session: sess-1',
+      aiModelOverrides: { custom: 'gw-model' },
+    });
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      body: null,
+      json: async () => ({ choices: [{ message: { content: '好' } }] }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await createAI().prompt('x');
+    const init = fetchMock.mock.calls[0][1] as { headers: Record<string, string> };
+    expect(init.headers['x-opencode-session']).toBe('sess-1');
+    expect(init.headers.Authorization).toBe('Bearer sk-gw');
+
+    /* 代发通道同样要带 */
+    resetAIProviderCache();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+    requestUrlMock.mockResolvedValue({
+      status: 200,
+      text: JSON.stringify({ choices: [{ message: { content: '代发' } }] }),
+    });
+    await expect(createAI().prompt('x')).resolves.toBe('代发');
+    const opts = requestUrlMock.mock.calls[0][0] as { headers: Record<string, string> };
+    expect(opts.headers['x-opencode-session']).toBe('sess-1');
+  });
 });

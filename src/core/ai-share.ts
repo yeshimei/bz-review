@@ -93,6 +93,8 @@ export function borrowAiFromReader(raw: unknown): Partial<AISettingsLike> | null
     aiCustomEndpoint: endpoint,
     aiCustomApiKey: apiKey,
     aiCustomProtocol: str(a.customProtocol) === 'anthropic' ? 'anthropic' : 'openai',
+    /* 2026-11-22：Reader 的自定义附加头也一并借过来（它存的是 customHeaders） */
+    aiCustomHeaders: str(a.customHeaders),
     aiModelOverrides: model ? { ...modelOverrides, custom: model } : modelOverrides,
     aiMaxTokensOverrides: numMap(a.maxTokensOverrides),
     aiThinkingOverrides: strMap(a.thinkingOverrides),

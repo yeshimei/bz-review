@@ -163,6 +163,8 @@ export default interface BzSettings {
   aiApiKeys: Record<string, string>;
   /** 自定义服务商的报文协议：openai / anthropic */
   aiCustomProtocol: string;
+  /** 自定义通道的附加请求头（一行一个 `Header: value`；2026-11-22 加） */
+  aiCustomHeaders: string;
   deepseekApiKey: string;
   zhipuPlanApiKey: string;
   ollamaApiKey: string;
@@ -250,6 +252,7 @@ export const DEFAULT_SETTINGS: BzSettings = {
   aiProvider: '',
   aiApiKeys: {},
   aiCustomProtocol: 'openai',
+  aiCustomHeaders: '',
   deepseekApiKey: '',
   zhipuPlanApiKey: '',
   ollamaApiKey: '',

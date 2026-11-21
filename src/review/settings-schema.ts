@@ -250,6 +250,16 @@ export function reviewLlmRows(): SettingsRow[] {
       ],
       visibleWhen: (snapshot) => snapshot.aiProvider === 'custom',
     },
+    /* 2026-11-22：OpenCode Go 这类网关要一个自定义请求头才放行对话；
+       与 bz Reader 同名同格式，两边借用配置时能一起带过去 */
+    {
+      type: 'textarea',
+      name: t('settings.ai.customHeaders'),
+      desc: t('settings.ai.customHeadersDesc'),
+      binding: { key: 'aiCustomHeaders' },
+      placeholder: t('settings.ai.customHeadersPh'),
+      visibleWhen: (snapshot) => snapshot.aiProvider === 'custom',
+    },
   ];
   for (const p of AI_PROVIDER_REGISTRY) {
     rows.push({
