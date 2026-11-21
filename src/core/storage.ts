@@ -37,6 +37,7 @@ import { notify } from './notice';
 import { pluginRelDirOf } from './plugin-path';
 import { DEFAULT_STORAGE_DIR, initialStorageDir, normalizeStorageDir } from './storage-path';
 import type { TAbstractFile } from 'obsidian';
+import { t } from '../i18n/strings';
 
 /**
  * storage 层所需的最小 app/vault 形状（只列本模块真正用到的成员）。
@@ -327,8 +328,8 @@ function notifyBackup(filePath: string, backupPath: string, cause: '解析失败
   try {
     const name = baseNameOf(filePath);
     const msg = cause === '解析失败'
-      ? `数据文件 ${name} 解析失败，原内容已留档到 ${backupPath}，数据不会丢，已重建默认文件继续使用`
-      : `数据文件 ${name} 写入失败，原内容已留档到 ${backupPath}，数据不会丢，请稍后重试`;
+      ? t('store.parseRecovered', { name, path: backupPath })
+      : t('store.writeRecovered', { name, path: backupPath });
     notify(msg, { type: 'warning' });
   } catch { /* 无 DOM 环境（纯数据层 node 测试等）静默 */ }
 }

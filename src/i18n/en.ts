@@ -82,6 +82,7 @@ export const EN: Record<MsgKey, string> = {
   'common.choose': 'Choose',
   'common.confirm': 'Confirm',
   'common.save': 'Save',
+  'common.add': 'Add',
 
   /* ── Settings: license ──────────────────────────────────── */
   'settings.license.state': 'Current status',
@@ -1093,6 +1094,46 @@ export const EN: Record<MsgKey, string> = {
   'an.age.1': '7-30 days',
   'an.age.2': '30-90 days',
   'an.age.3': '\u226590 days',
+
+  /* ── Watched folders ────────────────────────────────────── */
+  'watch.deleteTitleN': 'Delete {n} notes',
+  'watch.deleteTitle': 'Notes deleted',
+  'watch.deleteBodyN': '{n} notes were deleted from the vault. Remove their review records too? Keeping them keeps the plan (they stay reviewable if the files come back, shown struck through).',
+  'watch.deleteBodyOne': '"{name}" was deleted from the vault. Remove its review record too? Keeping it keeps the plan (it stays reviewable if the file comes back, shown struck through).',
+  'watch.keep': 'Keep',
+  'watch.remove': 'Remove',
+  'watch.removed': 'Removed {n} review records',
+  'watch.restored': 'Restore review records',
+  'watch.pathExists': 'The new path already has a review entry, so the path was not updated automatically; handle it manually',
+  'watch.andMore': ', and {n} more',
+  'watch.pathsUpdated': 'Updated the review paths of {n} notes: {shown}{tail}',
+  'watch.pathsUpdatedShort': 'Review paths updated',
+  'watch.batchAddTitle': 'Add to review in bulk',
+  'watch.batchAddBody': 'The watched folder "{folder}" has {n} notes not yet in review. Add them all?',
+  'watch.noneChosen': 'Watching was added, but no notes were ticked to join',
+
+  /* ── Remote assets / storage / relative time ───────────── */
+  'ra.timeout': 'Timed out (no response within {ms} ms)',
+  'ra.badContent': 'The response is not a valid {label}{unit}',
+  'ra.badContentHost': '{host} returned something that is not a valid {label}{unit}',
+  'ra.downloadFailed': '{label} download failed: {errors}',
+  'ra.pageUnit': 'page',
+  'ra.shaOffline': 'The copy under bz-offline has a mismatched sha256 (not the same version as the manifest)',
+  'ra.shaHost': 'The sha256 from {host} does not match (tampered or version mismatch)',
+  'ra.readFailed': '{label} could not be read after download: plugin directory write error',
+  'mb.name': 'Baozi',
+  'mb.manual': 'Manual',
+  'store.shapeError': 'storage: section-merge writes need object-shaped JSON (read {type}); normalise the file shape first',
+  'store.backupFailed': ' backup failed ({reason}); continuing the original flow',
+  'store.parseFailed': 'parse failed',
+  'store.writeFailed': 'write failed',
+  'store.parseRecovered': 'Data file {name} failed to parse; the original content was archived to {path}, nothing is lost, and a default file was rebuilt',
+  'store.writeRecovered': 'Data file {name} failed to write; the original content was archived to {path}, nothing is lost, please retry later',
+  'store.raceFailed': 'storage: create race fallback failed ({reason})',
+  'util.badDate': 'Invalid date',
+  'util.justNow': 'just now',
+  'util.yesterday': 'yesterday',
+  'util.beforeYesterday': 'the day before yesterday',
 
 
   /* ── Settings: about bar ────────────────────────────────── */

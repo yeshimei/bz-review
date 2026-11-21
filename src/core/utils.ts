@@ -6,6 +6,7 @@ import { moment } from 'obsidian';
 import { getApp } from './app';
 import { pad2, relTime as baseRelTime, stripMdExt, localDayKey, stripTitleMarks } from './ui/str';
 import { notice } from './notice';
+import { t } from '../i18n/strings';
 
 /**
  * unknown → 安全文本。primitive 直接 String（与 String(v) 逐字等价）；
@@ -140,7 +141,7 @@ export function formatFileSize(bytes: number | null | undefined): string | null 
  */
 export function formatRelativeTime(date: Date | string | number, now: Date = new Date()): string {
   const target = moment(date);
-  if (!target.isValid()) return '无效日期';
+  if (!target.isValid()) return t('util.badDate');
 
   // 判断原始输入是否包含时间部分（仅当传入字符串时）
   let hasExplicitTime = true; // 默认有时间
@@ -163,7 +164,7 @@ export function formatRelativeTime(date: Date | string | number, now: Date = new
   }
 
   // 1分钟内
-  if (diffSeconds < 60) return '刚刚';
+  if (diffSeconds < 60) return t('util.justNow');
 
   // 今天内（N 分钟前 / N 小时前）：转发 core/ui/str relTime 基础档（跨域单源说法）；
   // 传 now 时刻保证测试/回放注入的时钟不旁路
@@ -175,10 +176,10 @@ export function formatRelativeTime(date: Date | string | number, now: Date = new
   const yesterdayStart = moment(now).subtract(1, 'days').startOf('day');
   const beforeYesterdayStart = moment(now).subtract(2, 'days').startOf('day');
   if (target.isSame(yesterdayStart, 'day')) {
-    return shouldShowTime() ? `昨天 ${target.format('HH:mm')}` : '昨天';
+    return shouldShowTime() ? `昨天 ${target.format('HH:mm')}` : t('util.yesterday');
   }
   if (target.isSame(beforeYesterdayStart, 'day')) {
-    return shouldShowTime() ? `前天 ${target.format('HH:mm')}` : '前天';
+    return shouldShowTime() ? `前天 ${target.format('HH:mm')}` : t('util.beforeYesterday');
   }
 
   // 本周内

@@ -33,6 +33,7 @@ import { emitDomainEvent } from './domain-bus';
 import { downloadRemotesFor, giteeReleaseUrl, isValidTag, releaseDownloadUrl } from './remote-base';
 import { pluginVaultPath } from './plugin-path';
 import { readOfflineText } from './offline-source';
+import { t } from '../i18n/strings';
 
 /** 下载资源落盘事件（issue 492）：派发收口在 writeAssetText（所有下载资产唯一落盘口），
  *  消费 = 设置面板在线资源组把已渲染行态同步成磁盘事实（导航入口更新文档后组内按钮翻「已下载」）。 */
@@ -204,7 +205,7 @@ async function requestText(url: string, timeoutMs: number = CHANNEL_TIMEOUT_MS):
   try {
     const req = requestUrl({ url, method: 'GET', throw: false });
     const timeout = new Promise<never>((_, reject) => {
-      timer = window.setTimeout(() => reject(new Error(`超时（${timeoutMs} ms 内没有响应）`)), timeoutMs);
+      timer = window.setTimeout(() => reject(new Error(t('ra.timeout', { ms: timeoutMs }))), timeoutMs);
     });
     const res = await Promise.race([req, timeout]);
     const text = String(res?.text || '');
@@ -230,7 +231,7 @@ function errorText(e: unknown): string {
   }
   if (typeof e === 'string') return e;
   if (typeof e === 'number' || typeof e === 'boolean' || typeof e === 'bigint') return String(e);
-  return '未知错误';
+  return t('ai.error.unknown');
 }
 
 /** 一条通道的失败说明（主机 + 原因；原因里已经带了 HTTP 码的不重复糊 URL） */
@@ -258,7 +259,7 @@ function fetchConcurrently(
     for (const url of urls) {
       requestText(url)
         .then((text) => {
-          if (!validate(text)) throw new Error(`返回内容不是${label}${unit}`);
+          if (!validate(text)) throw new Error(t('ra.badContent', { label, unit }));
           if (!settled) {
             settled = true;
             resolve(text);
@@ -266,7 +267,7 @@ function fetchConcurrently(
         })
         .catch((e: unknown) => {
           errors.push(describeChannelError(url, e));
-          if (--left === 0 && !settled) reject(new Error(`${label}下载失败：${errors.join('；')}`));
+          if (--left === 0 && !settled) reject(new Error(t('ra.downloadFailed', { label, errors: errors.join('; ') })));
         });
     }
   });
@@ -350,7 +351,7 @@ export async function fetchAssetText(
   fileName: string,
   validate: (text: string) => boolean,
   label: string,
-  unit = '页',
+  unit = t('ra.pageUnit'),
   app?: unknown,
   opts?: FetchAssetOpts,
 ): Promise<string> {
@@ -375,7 +376,7 @@ export async function fetchAssetText(
     try {
       const text = await requestText(url);
       if (!validate(text)) {
-        lastErr = `${hostOf(url)} 返回内容不是${label}${unit}`;
+        lastErr = t('ra.badContentHost', { host: hostOf(url), label, unit });
         continue;
       }
       return text;
@@ -383,7 +384,7 @@ export async function fetchAssetText(
       lastErr = describeChannelError(url, e);
     }
   }
-  throw new Error(`${label}下载失败：${lastErr}`);
+  throw new Error(t('ra.downloadFailed', { label, errors: lastErr }));
 }
 
 /** 写资产文本（自动建目录；覆盖旧版）；成功落盘后广播事件（消费方自行兜底，fire-and-forget） */
@@ -423,7 +424,7 @@ export async function ensureAssetWithHash(
         await writeAssetText(app, fileName, offline);
         return offline;
       }
-      lastErr = 'bz-offline 里的副本 sha256 对不上（与清单不是同一版）';
+      lastErr = t('ra.shaOffline');
     }
   } catch {
     /* 没有离线包：走网络 */
@@ -434,7 +435,7 @@ export async function ensureAssetWithHash(
     try {
       const text = await requestText(url, timeoutMs);
       if (want && textSha256(text) !== want) {
-        lastErr = `${hostOf(url)} 内容 sha256 不匹配（可能被篡改或版本错位）`;
+        lastErr = t('ra.shaHost', { host: hostOf(url) });
         continue;
       }
       await writeAssetText(app, fileName, text);
@@ -443,7 +444,7 @@ export async function ensureAssetWithHash(
       lastErr = describeChannelError(url, e);
     }
   }
-  throw new Error(`${label}下载失败：${lastErr}`);
+  throw new Error(t('ra.downloadFailed', { label, errors: lastErr }));
 }
 
 /** 资产是否已经下载到插件目录 */
@@ -468,7 +469,7 @@ export async function downloadAsset(
   validate: (text: string) => boolean,
   label: string,
 ): Promise<void> {
-  const text = await fetchAssetText(fileName, validate, label, '页', app);
+  const text = await fetchAssetText(fileName, validate, label, t('ra.pageUnit'), app);
   await writeAssetText(app, fileName, text);
 }
 
@@ -499,7 +500,7 @@ export async function ensureAssetReady(
     await downloadAsset(app, fileName, validate, label);
     text = await readAsset(app, fileName);
   }
-  if (!text) throw new Error(`${label}下载后读取失败：插件目录写入异常`);
+  if (!text) throw new Error(t('ra.readFailed', { label }));
   return text;
 }
 
@@ -536,7 +537,7 @@ export async function refreshAsset(
       const local = await readAsset(app, fileName);
       if (local !== null && textSha256(local) === want) return null;
     }
-    const text = await fetchAssetText(fileName, validate, label, '页', app);
+    const text = await fetchAssetText(fileName, validate, label, t('ra.pageUnit'), app);
     const local = await readAsset(app, fileName);
     if (local !== null && textSha256(text) === textSha256(local)) return null;
     await writeAssetText(app, fileName, text);
