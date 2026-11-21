@@ -843,6 +843,7 @@ export const EN: Record<MsgKey, string> = {
   'mgr.suspendedNotice': 'Suspended: this item skips the current round; scheduling is unchanged and it can be restored anytime.',
   'mgr.buriedNotice': 'Buried: it returns to the queue tomorrow; scheduling is unchanged.',
 
+
   /* ── Settings: about bar ────────────────────────────────── */
   'settings.about.support': 'Support the author',
   'settings.about.supportTip': 'See ways to support the author',
