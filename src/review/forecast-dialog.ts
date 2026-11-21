@@ -8,6 +8,7 @@ import type { App } from 'obsidian';
 import type { LoadPoint } from './queue';
 import { forecastToText, renderForecastInto } from './report';
 import { openFlowDialog } from '../core/flow-dialog';
+import { t } from '../i18n';
 
 export function openForecastDialog(app: App, points: readonly LoadPoint[]): void {
   void app;
@@ -15,11 +16,11 @@ export function openForecastDialog(app: App, points: readonly LoadPoint[]): void
   const bars = body.createDiv({ cls: 'bzrv-fc-bars' });
   renderForecastInto(bars, forecastToText(points, 21));
   const tip = body.createEl('p');
-  tip.setText('峰值太高说明那天排太满：可以在设置里调「复习间隔缩放」，或用「休假到」把节奏压后。');
+  tip.setText(t('forecast.hint'));
   void openFlowDialog({
-    title: '未来复习负荷',
+    title: t('forecast.title'),
     message: '',
     body,
-    actions: [{ label: '知道了', value: 'ok', cta: true }],
+    actions: [{ label: t('common.gotIt'), value: 'ok', cta: true }],
   });
 }

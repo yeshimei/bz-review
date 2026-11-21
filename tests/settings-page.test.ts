@@ -129,8 +129,11 @@ describe('复习设置页 · 两列骨架与关于条', () => {
     expect(dlg).not.toContain('unlockactivate');
     expect(dlg).not.toContain('bzs-unlock-code');
     expect(dlg).toContain("buy.dataset.act = 'unlockbuy'");
-    expect(dlg).toContain('条额度（笔记 + 划线合计）已用完');
+    /* 文案住语言包：源码断言 key，中文原文在 zh.ts。 */
+    expect(dlg).toContain("t('unlock.quota'");
+    const zh = read('src/i18n/zh.ts');
+    expect(zh).toContain('条额度（笔记 + 划线合计）已用完');
+    expect(zh).toContain('已有数据不会被删');
     expect(dlg).not.toContain('篇复习笔记已用完');
-    expect(dlg).toContain('已有数据不会被删');
   });
 });

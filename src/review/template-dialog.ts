@@ -9,6 +9,7 @@ import type { ReviewCard } from './data';
 import { openFlowDialog } from '../core/flow-dialog';
 import { notice } from '../core/notice';
 import { TEMPLATE_FIELDS, fieldValue, normalizeTemplate, type CardTemplate, type TemplateField } from './card-template';
+import { t } from '../i18n';
 
 /** 打开模板编辑弹窗；onSave 由调用方落盘（dataManager.updateCardTemplate） */
 export function openTemplateEditor(
@@ -40,19 +41,19 @@ export function openTemplateEditor(
     return boxes;
   };
 
-  const frontBoxes = makeSide('正面显示（复习时先看）', tpl?.front ?? ['question']);
-  const backBoxes = makeSide('背面显示（点「看答案」后）', tpl?.back ?? ['text', 'comment']);
+  const frontBoxes = makeSide(t('template.front'), tpl?.front ?? ['question']);
+  const backBoxes = makeSide(t('template.back'), tpl?.back ?? ['text', 'comment']);
 
   const hint = root.createDiv({ cls: 'bzrv-edit-desc' });
-  hint.textContent = '只勾这张卡确实有内容的字段；留空的字段不会显示。清空两边即恢复默认抽认卡。';
+  hint.textContent = t('template.hint');
 
   void openFlowDialog({
-    title: '自定义卡片模板',
-    message: '只改这张卡的正反面字段，复习排期不动。',
+    title: t('template.title'),
+    message: t('template.desc'),
     body: root,
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '保存', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('common.save'), value: 'ok', cta: true },
     ],
   }).then((v) => {
     if (v !== 'ok') return;
@@ -65,7 +66,7 @@ export function openTemplateEditor(
     }
     /* 两面都得有内容，否则复习时一面空白没法用 */
     if (!front.some((k) => fieldValue(card, k)) || !back.some((k) => fieldValue(card, k))) {
-      notice('正面和背面都要至少勾一个这张卡有内容的字段（比如原文、问句、想法）', 'warning');
+      notice(t('template.errBoth'), 'warning');
       return;
     }
     void Promise.resolve(onSave(next));
