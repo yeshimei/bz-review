@@ -17,7 +17,29 @@ import { enableReaderPlugin, installReaderPlugin, openReaderShelf, readReaderIns
 import { copyReviewGroupId } from './group-bridge';
 import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml, type ReaderPluginState } from './settings-page-pure';
 import { setHtml } from './set-html';
+import { locale, t, type MsgKey } from '../../i18n';
 import type { ReviewDataManager } from '../data';
+
+/** 分组名：schema 里的 name 是内部标识（GROUP_ORDER / 权重 / 锚点都按它走），
+ *  只在渲染组头时翻成当前语言。 */
+const GROUP_TITLE_KEYS: Record<string, MsgKey> = {
+  授权: 'group.license',
+  数据: 'group.data',
+  界面: 'group.ui',
+  检查提醒: 'group.remind',
+  划线卡: 'group.cards',
+  做题家: 'group.quiz',
+  复习节奏: 'group.schedule',
+  记忆算法: 'group.algo',
+  自动化: 'group.auto',
+  AI: 'group.ai',
+  探索: 'group.explore',
+};
+
+function groupTitleOf(name: string): string {
+  const key = GROUP_TITLE_KEYS[name];
+  return key ? t(key) : name;
+}
 
 /** 同一个容器可能被多次渲染；事件只绑一次，避免点一次激活处理两遍 */
 const licenseBound = new WeakSet<HTMLElement>();
@@ -26,24 +48,27 @@ const licenseBound = new WeakSet<HTMLElement>();
  * 快捷键行（2026-11-21 照 bz Reader 重做）：
  * 显示每条命令**当前真实绑定**（用户在宿主里改过的也认），没绑就写「未设置」；
  * 点击打开 Obsidian 快捷键页并自动搜索这条命令。不再显示裸命令 ID。
+ * 标签在渲染时取 t()，切语言后整页重绘即跟着变。
  */
-const HOTKEYS: Array<{ label: string; id: string }> = [
-  { label: '打开复习面板', id: 'bz-review:review-open' },
-  { label: '开始复习', id: 'bz-review:review-start' },
-  { label: '把当前笔记加入复习', id: 'bz-review:review-add' },
-  { label: '标记复习（评级）', id: 'bz-review:review-rate' },
+const HOTKEYS: Array<{ label: () => string; id: string }> = [
+  { label: () => t('shortcuts.open'), id: 'bz-review:review-open' },
+  { label: () => t('shortcuts.start'), id: 'bz-review:review-start' },
+  { label: () => t('shortcuts.add'), id: 'bz-review:review-add' },
+  { label: () => t('shortcuts.rate'), id: 'bz-review:review-rate' },
 ];
 
 function shortcutsHtml(app: App): string {
-  const rows = readHotkeys(app, HOTKEYS)
+  const rows = readHotkeys(app, HOTKEYS.map((h) => ({ id: h.id, label: h.label() })))
     .map((r) => {
+      const label = r.label;
       const keys = r.keys.length
         ? `<span class="bzs-keylist">${r.keys.map((k) => `<kbd>${k}</kbd>`).join('')}</span>`
-        : '<kbd class="is-empty">未设置</kbd>';
-      return `<button class="bzs-keyrow" type="button" data-hotkey="${r.id}" data-hotkey-query="${r.label}"><span>${r.label}</span>${keys}<span class="bzs-sr-only">到 Obsidian 快捷键设置里改这条命令</span></button>`;
+        : `<kbd class="is-empty">${t('shortcuts.unset')}</kbd>`;
+      return `<button class="bzs-keyrow" type="button" data-hotkey="${r.id}" data-hotkey-query="${label}"><span>${label}</span>${keys}<span class="bzs-sr-only">${t('shortcuts.hint')}</span></button>`;
     })
     .join('');
-  return `<div class="bzs-setgrp wide"><h3 data-en="Shortcuts">快捷键</h3><div class="bzs-keys">${rows}</div></div>`;
+  const sub = locale() === 'zh' ? ' data-en="Shortcuts"' : '';
+  return `<div class="bzs-setgrp wide"><h3${sub}>${t('shortcuts.title')}</h3><div class="bzs-keys">${rows}</div></div>`;
 }
 
 /** 打开更新日志：弹窗与数据都按需加载，入口点击才付这 100KB 的代价 */
@@ -146,8 +171,9 @@ export async function renderReviewSettingsPage(
     if (head) {
       head.replaceChildren();
       const h3 = createEl('h3');
-      h3.textContent = name;
-      h3.setAttribute('data-en', GROUP_SUBTITLES[name] ?? '');
+      h3.textContent = groupTitleOf(name);
+      /* 英文副标只在中文界面挂：英文界面里组名本身就是英文，再挂一遍会显示两次。 */
+      h3.setAttribute('data-en', locale() === 'zh' ? GROUP_SUBTITLES[name] ?? '' : '');
       head.appendChild(h3);
     }
     const target = cols.find((c) => c.names.includes(name))?.col ?? cols[0].col;
@@ -188,7 +214,7 @@ export async function renderReviewSettingsPage(
   const runReaderInstall = (btn: HTMLButtonElement): void => {
     if (btn.dataset.busy === '1') return;
     if (isMobileEnv()) {
-      notice('插件安装要在桌面端完成；手机上请到社区插件市场安装', 'info');
+      notice(t('notice.reader.mobile'), 'info');
       return;
     }
     btn.dataset.busy = '1';
@@ -197,15 +223,15 @@ export async function renderReviewSettingsPage(
     const setStage = (text: string): void => {
       if (label) label.textContent = text;
     };
-    setStage('准备…');
+    setStage(t('reader.stage.prepare'));
     void (async () => {
       try {
         const res = await installReaderPlugin(deps.app, { onStage: setStage });
         await refreshPluginGroup();
         notice(
           res.enabled
-            ? `bz Reader v${res.version} 已安装并启用`
-            : `bz Reader v${res.version} 已安装，请在第三方插件里手动启用`,
+            ? t('notice.reader.installed', { version: res.version })
+            : t('notice.reader.installedManual', { version: res.version }),
           res.enabled ? 'success' : 'warning'
         );
         if (!res.enabled) return;
@@ -217,14 +243,14 @@ export async function renderReviewSettingsPage(
           }
           if (++tries >= 8) {
             window.clearInterval(timer);
-            notice('已装好，到命令面板运行「bz Reader: 打开书架」', 'info');
+            notice(t('notice.reader.notReady'), 'info');
           }
         }, 350);
       } catch (e) {
         btn.dataset.busy = '';
         btn.disabled = false;
-        setStage('重试');
-        notice(`安装失败：${e instanceof Error ? e.message : String(e)}`, 'warning');
+        setStage(t('reader.stage.retry'));
+        notice(t('notice.reader.failed', { reason: e instanceof Error ? e.message : String(e) }), 'warning');
       }
     })();
   };
@@ -254,7 +280,7 @@ export async function renderReviewSettingsPage(
           return;
         case 'readeropen':
           if (!openReaderShelf(deps.app)) {
-            notice('bz Reader 还没加载好，稍后到命令面板运行「打开书架」', 'info');
+            notice(t('notice.reader.shelfNotReady'), 'info');
           }
           return;
         /* 已装未启用（2026-11-21）：空态引导过来的落点，点一下直接启用，不用再翻三方插件页 */

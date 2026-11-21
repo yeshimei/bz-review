@@ -3,6 +3,7 @@
  */
 import type { AIService } from '../../core/ai';
 import type { QuizQuestion } from './manager';
+import { locale, t } from '../../i18n/strings';
 
 /** 把 unknown 收窄成普通对象（非 null、非数组）——访问其属性前必须过这道守卫 */
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -31,6 +32,35 @@ export class QuestionGenerator {
   /** 构建提示词（源码 L92-128 逐字；item 3 增 explain 字段：一句话解析+原文依据） */
   buildPrompt(content: string, enableMultipleChoice: boolean, questionsPerNote: number, difficulty: string): string {
     const truncated = content.slice(0, 3000);
+    if (locale() !== 'zh') {
+      let typeHint = 'single choice (four options)';
+      let structure = `{ "question": "question text", "options": ["A","B","C","D"], "correctIndices": [0], "explain": "one-sentence explanation + source evidence" }`;
+      if (enableMultipleChoice) {
+        typeHint = 'single or multiple choice (any number of correct options)';
+        structure = `{ "question": "question text", "options": ["A","B","C","D"], "correctIndices": [0, 2], "explain": "one-sentence explanation + source evidence" } (the array holds the correct option indices)`;
+      }
+      const countHint = questionsPerNote > 0
+        ? `Generate exactly ${questionsPerNote} questions.`
+        : 'Generate a moderate number of questions (3-6 recommended).';
+      let difficultyHint = '';
+      if (difficulty === 'easy') difficultyHint = 'Generate basic concept questions with clearly distinct options, no traps, low difficulty.';
+      else if (difficulty === 'medium') difficultyHint = 'Generate medium-difficulty questions that may test fine distinctions; options should be somewhat tempting.';
+      else if (difficulty === 'hard') difficultyHint = 'Generate hard questions that may require reasoning and cross-topic connections; options should be strongly tempting.';
+      const answerHint = enableMultipleChoice ? 'one or more correct answers are fine' : 'exactly one correct answer per question';
+      return `Based on the note below, generate several four-option multiple-choice questions (${answerHint}) in a moderate number for review. Return only one valid JSON object with this structure:
+{
+  "questions": [
+    ${structure}
+  ]
+}
+Note: the question type is ${typeHint}, ${countHint}
+${difficultyHint}
+Every question must carry an explain field: one sentence resolving the correct answer, with the source evidence (a short quote or reference).
+Requirements: test only the content and ideas of the note. Do not ask about the title, filename, author, tags or dates,
+and never make "which note is this from" a question \u2014 it can be answered without knowing anything.
+Note content:
+${truncated}`;
+    }
     let typeHint = '单选题（四选一）';
     let structure = `{ "question": "题目文本", "options": ["A选项","B选项","C选项","D选项"], "correctIndices": [0], "explain": "一句话解析+原文依据" }`;
     if (enableMultipleChoice) {
@@ -99,7 +129,7 @@ ${truncated}`;
         /* 继续尝试 */
       }
     }
-    throw new Error('无法从 AI 响应中提取有效的 JSON');
+    throw new Error(t('quiz.error.noJson'));
   }
 
   /** 生成题目（单篇，源码 L139-159 逐字） */
@@ -107,24 +137,24 @@ ${truncated}`;
     const prompt = this.buildPrompt(noteContent, enableMultipleChoice, questionsPerNote, difficulty);
     const result = await aiService.json(prompt);
     const parsed: unknown = this.extractJSON(result);
-    if (!isRecord(parsed)) throw new Error('AI 未返回有效题目数组。');
+    if (!isRecord(parsed)) throw new Error(t('quiz.error.noQuestions'));
     const questions = parsed.questions;
-    if (!isUnknownArray(questions) || questions.length === 0) throw new Error('AI 未返回有效题目数组。');
+    if (!isUnknownArray(questions) || questions.length === 0) throw new Error(t('quiz.error.noQuestions'));
     for (const raw of questions) {
-      if (!isRecord(raw)) throw new Error('题目格式不正确：缺少 question 或 options 不是长度为4的数组');
+      if (!isRecord(raw)) throw new Error(t('quiz.error.badShape'));
       if (!raw.question || !Array.isArray(raw.options) || raw.options.length !== 4) {
-        throw new Error('题目格式不正确：缺少 question 或 options 不是长度为4的数组');
+        throw new Error(t('quiz.error.badShape'));
       }
       if (!raw.options.every((o: unknown) => typeof o === 'string')) {
-        throw new Error('题目格式不正确：选项必须是字符串');
+        throw new Error(t('quiz.error.badOptions'));
       }
       const indices = raw.correctIndices;
       if (!Array.isArray(indices) || indices.length === 0) {
-        throw new Error('题目格式不正确：correctIndices 必须是非空数组');
+        throw new Error(t('quiz.error.emptyIndices'));
       }
       for (const idx of indices) {
         if (typeof idx !== 'number' || !Number.isInteger(idx) || idx < 0 || idx > 3) {
-          throw new Error('correctIndices 元素必须是 0~3 的整数');
+          throw new Error(t('quiz.error.badIndex'));
         }
       }
     }
@@ -133,6 +163,32 @@ ${truncated}`;
 
   /** 批量提示词（源码 L162-191 逐字；item 3 增 explain 规则） */
   buildBatchPrompt(notes: { id: string; content: string }[], enableMultipleChoice: boolean, questionsPerNote: number, difficulty: string): string {
+    if (locale() !== 'zh') {
+      let enTypeHint = 'single choice (four options)';
+      if (enableMultipleChoice) enTypeHint = 'single or multiple choice';
+      const enCountHint = questionsPerNote > 0 ? `Exactly ${questionsPerNote} per note.` : '3-6 per note.';
+      let enDifficulty = '';
+      if (difficulty === 'easy') enDifficulty = 'Generate basic concept questions, low difficulty.';
+      else if (difficulty === 'medium') enDifficulty = 'Generate medium-difficulty questions.';
+      else if (difficulty === 'hard') enDifficulty = 'Generate hard questions requiring reasoning and cross-topic connections.';
+      let enNotesBlock = '';
+      for (const n of notes) {
+        enNotesBlock += `\n===== Note ID: ${n.id} =====\n${n.content.slice(0, 2000)}\n`;
+      }
+      return `For each note below, generate multiple-choice questions. Return only one valid JSON object:
+{
+  "<note ID>": [ { "question": "...", "options": ["A","B","C","D"], "correctIndices": [0], "explain": "..." }, ... ],
+  ...
+}
+Rules:
+- Type: ${enTypeHint}, ${enCountHint}
+- ${enDifficulty}
+- Every question must carry an explain field: one sentence resolving the answer plus the source evidence
+- Test only the content and ideas of the note; do not ask about the title, filename, author, tags or dates (that can be answered without knowing anything)
+- Each JSON key must be the xxx from "===== Note ID: xxx =====" below (the full note path, copied verbatim; do not invent ids like noteId1), one key per note, with the question array as its value
+- Every question has 4 options; correctIndices is the array of correct option indices
+Note content: ${enNotesBlock}`;
+    }
     let typeHint = '单选题（四选一）';
     if (enableMultipleChoice) {
       typeHint = '可以是单选题或多选题';

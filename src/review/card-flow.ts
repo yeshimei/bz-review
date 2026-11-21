@@ -13,6 +13,7 @@ import { openFlowDialog } from '../core/flow-dialog';
 import type { CardMode } from './card-ai';
 import type { QuizQuestion } from './quiz-core/manager';
 import type { ReviewItem } from './data';
+import { t } from '../i18n/strings';
 
 /* ── 两块可复用的确认面板（重新生成后用） ── */
 
@@ -33,19 +34,19 @@ function buildFlashcardParts(init: {
   const qLabel = createEl('label');
   qLabel.className = 'bzrv-card-confirm-field';
   const qCap = createSpan();
-  qCap.textContent = '提示面（问句）';
+  qCap.textContent = t('cardflow.front');
   const qInput = createEl('input');
   qInput.className = 'bzrv-input';
   qInput.type = 'text';
   qInput.value = String(init.question ?? '');
-  qInput.placeholder = '留空则开始前现场生成一句';
+  qInput.placeholder = t('cardflow.frontHint');
   qLabel.appendChild(qCap);
   qLabel.appendChild(qInput);
 
   const tLabel = createEl('label');
   tLabel.className = 'bzrv-card-confirm-field';
   const tCap = createSpan();
-  tCap.textContent = '原文（背面）';
+  tCap.textContent = t('cardflow.back');
   const tArea = createEl('textarea');
   tArea.className = 'bzrv-input';
   tArea.rows = 4;
@@ -61,12 +62,12 @@ function buildFlashcardParts(init: {
   const regenBtn = createEl('button');
   regenBtn.type = 'button';
   regenBtn.className = 'bzrv-btn bzrv-btn--ghost';
-  regenBtn.textContent = '重新生成问句';
+  regenBtn.textContent = t('cardflow.regenQuestion');
   body.appendChild(regenBtn);
   regenBtn.addEventListener('click', () => {
     if (!init.regenerateAsk) return;
     regenBtn.disabled = true;
-    regenBtn.textContent = '正在生成…';
+    regenBtn.textContent = t('cardflow.generating');
     void init
       .regenerateAsk()
       .then((res) => {
@@ -75,7 +76,7 @@ function buildFlashcardParts(init: {
       })
       .finally(() => {
         regenBtn.disabled = false;
-        regenBtn.textContent = '重新生成问句';
+        regenBtn.textContent = t('cardflow.regenQuestion');
       });
   });
 
@@ -101,7 +102,7 @@ function buildQuizParts(
 
   const tip = createEl('p');
   tip.className = 'bzrv-card-confirm-tip';
-  tip.textContent = '删掉不想要的题；删掉的会收到下面一行，点一下就能放回去。';
+  tip.textContent = t('cardflow.deleteHint');
   body.appendChild(tip);
 
   const listWrap = createDiv();
@@ -115,7 +116,7 @@ function buildQuizParts(
   const regenBtn = createEl('button');
   regenBtn.type = 'button';
   regenBtn.className = 'bzrv-btn bzrv-btn--ghost';
-  regenBtn.textContent = '重新生成整份题库';
+  regenBtn.textContent = t('cardflow.regenAll');
   body.appendChild(regenBtn);
 
   const repaint = (): void => {
@@ -133,7 +134,7 @@ function buildQuizParts(
       del.type = 'button';
       del.className = 'bzrv-icon-btn';
       del.textContent = '✕';
-      del.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '删掉这道题' }));
+      del.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: t('cardflow.deleteQuestion') }));
       del.addEventListener('click', () => {
         removed.push({ q, at: Date.now() });
         list = list.filter((x) => x !== q);
@@ -147,19 +148,19 @@ function buildQuizParts(
     if (!list.length) {
       const empty = createEl('p');
       empty.className = 'bzrv-card-confirm-tip';
-      empty.textContent = '题库空了：要么点下面的「重新生成」，要么把删掉的放回去。';
+      empty.textContent = t('cardflow.emptyBank');
       listWrap.appendChild(empty);
     }
     removedWrap.innerHTML = '';
     if (!removed.length) return;
     const cap = createSpan();
-    cap.textContent = '已删：';
+    cap.textContent = t('cardflow.deletedPrefix');
     removedWrap.appendChild(cap);
     removed.forEach((r, i) => {
       const chip = createEl('button');
       chip.type = 'button';
       chip.className = 'bzrv-btn bzrv-btn--ghost bzrv-card-confirm-chip';
-      chip.textContent = '补回这题';
+      chip.textContent = t('cardflow.restoreQuestion');
       chip.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: r.q.question }));
       chip.addEventListener('click', () => {
         list.splice(Math.min(i, list.length), 0, r.q);
@@ -174,7 +175,7 @@ function buildQuizParts(
   regenBtn.addEventListener('click', () => {
     if (!regenerateQuiz) return;
     regenBtn.disabled = true;
-    regenBtn.textContent = '正在生成…';
+    regenBtn.textContent = t('cardflow.generating');
     void regenerateQuiz()
       .then((fresh) => {
         if (fresh?.length) {
@@ -184,7 +185,7 @@ function buildQuizParts(
       })
       .finally(() => {
         regenBtn.disabled = false;
-        regenBtn.textContent = '重新生成整份题库';
+        regenBtn.textContent = t('cardflow.regenAll');
         repaint();
       });
   });
@@ -239,12 +240,12 @@ export async function confirmRegenerated(opts: {
         : undefined,
     });
     const v = await openFlowDialog({
-      title: '确认修改题面',
-      message: '这是按你选的方式新生成的一版；点「确认修改」才会覆盖卡上原来的题面。',
+      title: t('cardflow.confirmFront'),
+      message: t('cardflow.confirmFrontDesc'),
       body: parts.body,
       actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '确认修改', value: 'ok', cta: true },
+        { label: t('common.cancel'), value: 'cancel' },
+        { label: t('cardflow.confirm'), value: 'ok', cta: true },
       ],
     });
     if (v !== 'ok') return { ok: false };
@@ -261,12 +262,12 @@ export async function confirmRegenerated(opts: {
         }
       : undefined);
     const v = await openFlowDialog({
-      title: '确认修改题库',
-      message: '这是按你选的方式新生成的一版；点「确认修改」才会覆盖卡上原来的题库。',
+      title: t('cardflow.confirmBank'),
+      message: t('cardflow.confirmBankDesc'),
       body: parts.body,
       actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '确认修改', value: 'ok', cta: true },
+        { label: t('common.cancel'), value: 'cancel' },
+        { label: t('cardflow.confirm'), value: 'ok', cta: true },
       ],
     });
     if (v !== 'ok') return { ok: false };
@@ -280,19 +281,19 @@ export async function confirmRegenerated(opts: {
     body.className = 'bzrv-card-confirm';
     const tip = createEl('p');
     tip.className = 'bzrv-card-confirm-tip';
-    tip.textContent = '新生成的一版（空位会在复习时挖出来）：';
+    tip.textContent = t('cardflow.newCloze');
     body.appendChild(tip);
     const preview = createEl('p');
     preview.className = 'bzrv-card-confirm-q';
     preview.textContent = String(opts.draft.cloze?.text ?? '').replace(/\{\{\d+\}\}/g, '（　）');
     body.appendChild(preview);
     const v = await openFlowDialog({
-      title: '确认修改题面',
-      message: '点「确认修改」才会覆盖卡上原来的挖空。',
+      title: t('cardflow.confirmFront'),
+      message: t('cardflow.confirmClozeDesc'),
       body,
       actions: [
-        { label: '取消', value: 'cancel' },
-        { label: '确认修改', value: 'ok', cta: true },
+        { label: t('common.cancel'), value: 'cancel' },
+        { label: t('cardflow.confirm'), value: 'ok', cta: true },
       ],
     });
     if (v !== 'ok' || !opts.draft.cloze?.blanks?.length) return { ok: false };

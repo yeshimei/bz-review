@@ -40,6 +40,7 @@ import { jumpToSourceNote } from './note-jump';
 import { readerJumpUrl } from '../core/reader-link';
 import { openExternalUrl } from '../core/utils';
 import { canUseCapability, capabilityBlock } from '../data/entitlement';
+import { ratingName, t } from '../i18n';
 
 /* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
    能直接断言「问过之后必须有字」。此处转出，保持既有引用面不变。 */
@@ -59,7 +60,7 @@ export type SpeakState = 'idle' | 'loading' | 'playing';
 
 /** 朗读按钮三态文案：准备中 / 停止 / 听这张 */
 export function speakLabelOf(state: SpeakState): string {
-  return state === 'loading' ? '准备中…' : state === 'playing' ? '停止' : '听这张';
+  return state === 'loading' ? t('cs.preparing') : state === 'playing' ? t('cs.stop') : t('cs.speak');
 }
 
 /** 朗读文本：优先 AI 问答，其次划线原文；超过上限截断并标记，由调用方给一句人话 */
@@ -77,7 +78,7 @@ export function speakTextOf(
 /** 喇叭按钮：未解锁只给一个点了会弹拦截文案的按钮，不给真播放入口 */
 export function speakButtonHtml(allowed: boolean, state: SpeakState = 'idle'): string {
   if (!allowed) {
-    return '<button type="button" class="bzrv-cs-speak is-locked" data-act="speak-locked">听这张</button>';
+    return `<button type="button" class="bzrv-cs-speak is-locked" data-act="speak-locked">${t('cs.speak')}</button>`;
   }
   return `<button type="button" class="bzrv-cs-speak" data-act="speak">${speakLabelOf(state)}</button>`;
 }
@@ -86,8 +87,8 @@ export function speakButtonHtml(allowed: boolean, state: SpeakState = 'idle'): s
 export function backButtonHtml(hasLink: boolean, allowed: boolean): string {
   if (!hasLink) return '';
   return allowed
-    ? '<button type="button" class="bzrv-cs-back" data-act="back">回到原文</button>'
-    : '<button type="button" class="bzrv-cs-back is-locked" data-act="back-locked">回到原文</button>';
+    ? `<button type="button" class="bzrv-cs-back" data-act="back">${t('cs.back')}</button>`
+    : `<button type="button" class="bzrv-cs-back is-locked" data-act="back-locked">${t('cs.back')}</button>`;
 }
 
 /** 出处那行：书名 · 章节 */
@@ -98,20 +99,21 @@ export function sourceOf(item: ReviewItem): string {
   return book || chapter || item.name || '';
 }
 
-/* 标签固定、键位来自设置（批 2）：以前 1-4 写死三处，换键位只改得动一处就等于没改。 */
-const RATING_LABELS: Array<{ value: Rating; label: string }> = [
-  { value: 'again', label: '忘了' },
-  { value: 'hard', label: '困难' },
-  { value: 'good', label: '一般' },
-  { value: 'easy', label: '容易' },
-];
+/* 标签固定、键位来自设置（批 2）：以前 1-4 写死三处，换键位只改得动一处就等于没改。
+   标签每次现取 ratingName()：切语言后不必重建会话对象。 */
+function ratingLabelsOf(): Array<{ value: Rating; label: string }> {
+  return [
+    { value: 'again', label: ratingName('again') },
+    { value: 'hard', label: ratingName('hard') },
+    { value: 'good', label: ratingName('good') },
+    { value: 'easy', label: ratingName('easy') },
+  ];
+}
 
 function ratingsWith(rawKeys: unknown): Array<{ value: Rating; label: string; key: string }> {
   const keys = ratingKeys(rawKeys);
-  return RATING_LABELS.map((r) => ({ ...r, key: keys[r.value] }));
+  return ratingLabelsOf().map((r) => ({ ...r, key: keys[r.value] }));
 }
-
-const RATING_NAMES: Record<string, string> = { again: '忘了', hard: '困难', good: '一般', easy: '容易' };
 
 export interface CardSessionOpts {
   app: App;
@@ -351,7 +353,7 @@ export class CardSession {
    * 提示面用哪句话。
    *
    * 优先用卡上已经存好的 AI 问句（`card.qa`），其次用本会话刚拿到的；
-   * 都没有且配了 `ask`，就去问一次——问的这段时间显示「正在生成提示…」，
+   * 都没有且配了 `ask`，就去问一次——问的这段时间显示「${t('cs.preparingHint')}」，
    * 而不是先露出内置提示再换掉（那一瞬间用户已经把答案看完了）。
    */
   private promptFor(item: ReviewItem): string {
@@ -372,7 +374,7 @@ export class CardSession {
         .finally(() => {
           /* 拿到没拿到都要重画一次：问过之后 asked 已置位，重画时
              promptViewFor 会退回内置提示。原来这里是「拿不到就 return」，
-             于是没配模型 / 模型调用失败时界面永远停在「正在生成提示…」，
+             于是没配模型 / 模型调用失败时界面永远停在「${t('cs.preparingHint')}」，
              整张卡复习不了，控制台还一句错都不报。 */
           if (this.current()?.filePath === key) this.render();
         });
@@ -408,7 +410,7 @@ export class CardSession {
     void (async () => {
       let list = await this.readQuiz(item);
       const key = item.filePath;
-      // 没题 + 能补 + 这一轮还没试过 → pending（显示「正在准备题目…」并发一次请求）
+      // 没题 + 能补 + 这一轮还没试过 → pending（显示「${t('cs.preparingQuestions')}」并发一次请求）
       if (quizViewOf(list?.length ?? 0, !this.canEnsure(key)) === 'pending') {
         await this.ensureContentOnce(item);
         if (this.current()?.filePath !== key) return;
@@ -454,7 +456,7 @@ export class CardSession {
 
   /**
    * 填空：卡上没有挖空内容时现场补一次（改复习方式的存量卡全靠这条），
-   * 补不到才降级看原文。在途期间显示「正在准备填空…」，不能停在空白上。
+   * 补不到才降级看原文。在途期间显示「${t('cs.preparingCloze')}」，不能停在空白上。
    */
   private ensureClozeContent(item: ReviewItem): void {
     if (!this.isClozeMode()) return;
@@ -655,7 +657,7 @@ export class CardSession {
     const rows = queueRowsOf(this.opts.queue, item.filePath);
 
     /* 换卡判定：首次进入不提示；跨卡才提示，同一张重画（揭示/交卷）不提示。
-       这样「看答案」不会把「已切换到…」又弹一遍。 */
+       这样「${t('cs.showAnswer')}」不会把「已切换到…」又弹一遍。 */
     const isNew = this.lastIndex !== this.index;
     if (isNew) this.player.stop();
     let notice = this.notice;
@@ -694,12 +696,12 @@ export class CardSession {
       .join('');
 
     const markup = `
-      <div class="bzrv-cs" role="group" data-tone="${meta.tone}"><span class="bzrv-sr-only">划线卡复习</span>
+      <div class="bzrv-cs" role="group" data-tone="${meta.tone}"><span class="bzrv-sr-only">${t('cs.highlightReviewSr')}</span>
         <div class="bzrv-cs-top">
-          <span class="bzrv-cs-brand">复习</span>
+          <span class="bzrv-cs-brand">${t('cs.review')}</span>
           <span class="bzrv-cs-src">${esc(sourceOf(item))}</span>
           <span class="bzrv-cs-stage-label">${esc(stageNum(item))}</span>
-          <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit"><span class="bzrv-sr-only">退出本轮</span>退出</button>
+          <button type="button" class="bzrv-btn bzrv-cs-exit" data-act="exit"><span class="bzrv-sr-only">${t('cs.exitSr')}</span>${t('cs.exit')}</button>
         </div>
         <div class="bzrv-cs-tabs">${tabs}</div>
         <div class="bzrv-cs-grid">
@@ -717,14 +719,14 @@ export class CardSession {
             <div class="bzrv-cs-foot">${
               this.showRating(item)
                 ? this.ratingHtml()
-                : '<span class="bzrv-cs-hint">看完答案再评，别凭第一印象</span>'
+                : `<span class="bzrv-cs-hint">${t('cs.hintRate')}</span>`
             }</div>
           </div>
           <aside class="bzrv-cs-side">
-            <div class="bzrv-cs-sec-t">本轮类型分布</div>
+            <div class="bzrv-cs-sec-t">${t('cs.typeDist')}</div>
             <div class="bzrv-cs-dist">${bars}</div>
             <div class="bzrv-cs-legend">${legend}</div>
-            <div class="bzrv-cs-sec-t">本轮队列</div>
+            <div class="bzrv-cs-sec-t">${t('cs.roundQueue')}</div>
             <div class="bzrv-cs-qlist">${queueRows}</div>
             <div class="bzrv-cs-meta">
               <div><span>当前方式</span><b>${esc(meta.label)}</b></div>
@@ -754,7 +756,7 @@ export class CardSession {
     this.ensureClozeContent(item);
   }
 
-  /** 正文：看答案那一段（全文 + 想法），三种方式共用。跳原文挪到底部一行。 */
+  /** 正文：${t('cs.showAnswer')}那一段（全文 + 想法），三种方式共用。跳原文挪到底部一行。 */
   private answerHtml(card: ReviewCard): string {
     const idea = String(card.comment ?? '').trim();
     return `<blockquote class="bzrv-cs-text">${esc(card.text)}</blockquote>
@@ -773,7 +775,7 @@ export class CardSession {
               return (card.media.images ?? [])
                 .map((p) => this.vaultUrl(p))
                 .filter((u): u is string => !!u)
-                .map((u) => `<img class="bzrv-cs-media-img" src="${esc(u)}" alt="复习图片">`)
+                .map((u) => `<img class="bzrv-cs-media-img" src="${esc(u)}" alt="${t('cs.imgAlt')}">`)
                 .join('');
             }
             const u = card.media.audio ? this.vaultUrl(card.media.audio) : null;
@@ -785,7 +787,7 @@ export class CardSession {
         .join('');
     const front = renderFields(tpl.front);
     const back = renderFields(tpl.back);
-    return `<div class="bzrv-cs-tpl">${front || '<p class="bzrv-cs-prompt">这张模板卡还没填正面内容</p>'}${
+    return `<div class="bzrv-cs-tpl">${front || `<p class="bzrv-cs-prompt">${t('cs.tplEmpty')}</p>`}${
       this.revealed ? `<div class="bzrv-cs-tpl-back">${back || this.answerHtml(card)}</div>` : ''
     }</div>`;
   }
@@ -809,13 +811,13 @@ export class CardSession {
     const images = (media?.images ?? [])
       .map((p) => this.vaultUrl(p))
       .filter((u): u is string => !!u)
-      .map((u) => `<img class="bzrv-cs-media-img" src="${esc(u)}" alt="复习图片">`)
+      .map((u) => `<img class="bzrv-cs-media-img" src="${esc(u)}" alt="${t('cs.imgAlt')}">`)
       .join('');
     const audioUrl = media?.audio ? this.vaultUrl(media.audio) : null;
     const audio = audioUrl ? `<audio class="bzrv-cs-media-audio" controls src="${esc(audioUrl)}"></audio>` : '';
     const mediaHtml = images || audio;
     if (!mediaHtml) {
-      return `<p class="bzrv-cs-prompt">这张卡还没配图片或音频，先看原文</p>${this.answerHtml(card)}`;
+      return `<p class="bzrv-cs-prompt">${t('cs.noMedia')}</p>${this.answerHtml(card)}`;
     }
     return `<div class="bzrv-cs-media">${mediaHtml}${this.revealed ? this.answerHtml(card) : ''}</div>`;
   }
@@ -825,7 +827,7 @@ export class CardSession {
     const occl = card.occlusion;
     const url = occl?.image ? this.vaultUrl(occl.image) : null;
     if (!url || !occl?.regions?.length) {
-      return `<p class="bzrv-cs-prompt">这张遮挡卡还没配好图片，先看原文</p>${this.answerHtml(card)}`;
+      return `<p class="bzrv-cs-prompt">${t('cs.noOcclusion')}</p>${this.answerHtml(card)}`;
     }
     const regions = occl.regions
       .map((r, i) => {
@@ -836,7 +838,7 @@ export class CardSession {
       .join('');
     return `<div class="bzrv-cs-occl">
       <div class="bzrv-cs-occl-stage">
-        <img class="bzrv-cs-occl-img" src="${esc(url)}" alt="遮挡练习图片">
+        <img class="bzrv-cs-occl-img" src="${esc(url)}" alt="${t('cs.occlusionAlt')}">
         <div class="bzrv-cs-occl-layer">${regions}</div>
       </div>
       <p class="bzrv-cs-occl-hint">先回忆被遮住的内容，点方块揭晓</p>
@@ -851,7 +853,7 @@ export class CardSession {
       const round = this.quiz;
       if (!round) {
         return `<p class="bzrv-cs-prompt is-loading">${
-          this.quizFallback ? '这张卡没有题库，直接看原文' : '正在准备题目…'
+          this.quizFallback ? t('cs.noBank') : t('cs.preparingQuestions')
         }</p>`;
       }
       if (round.idx >= round.list.length) return this.quizSummaryHtml(round);
@@ -892,13 +894,13 @@ export class CardSession {
 
     const prompt = this.promptFor(item);
     return `
-      <p class="bzrv-cs-prompt${prompt ? '' : ' is-loading'}">${prompt ? esc(prompt) : '正在生成提示…'}</p>
+      <p class="bzrv-cs-prompt${prompt ? '' : ' is-loading'}">${prompt ? esc(prompt) : t('cs.preparingHint')}</p>
       ${this.revealed ? this.answerHtml(card) : ''}`;
   }
 
   /**
    * 填空：提示面只给挖空后的句子；交卷后逐空标对错、补上正确答案，再揭示原文。
-   * 没有挖空内容时先显示「正在准备填空…」（同时后台补一次），补不到才摊开原文——
+   * 没有挖空内容时先显示「${t('cs.preparingCloze')}」（同时后台补一次），补不到才摊开原文——
    * 复习不能停在一张空白卡片上。
    */
   private clozeBodyHtml(item: ReviewItem): string {
@@ -906,10 +908,10 @@ export class CardSession {
     const attempted = this.ensured.has(item.filePath) || !this.opts.ensureContent;
     const view = clozeViewOf(this.clozeReady(card), attempted);
     if (view === 'pending') {
-      return '<p class="bzrv-cs-prompt is-loading">正在准备填空…</p>';
+      return `<p class="bzrv-cs-prompt is-loading">${t('cs.preparingCloze')}</p>`;
     }
     if (view === 'fallback') {
-      return `<p class="bzrv-cs-prompt">这张卡还没准备好填空，先看原文</p>${this.answerHtml(card)}`;
+      return `<p class="bzrv-cs-prompt">${t('cs.noCloze')}</p>${this.answerHtml(card)}`;
     }
     const text = String(card.cloze!.text);
     const blanks = card.cloze!.blanks;
@@ -935,7 +937,7 @@ export class CardSession {
     }
     const wrong = blanks
       .map((want, i) =>
-        results[i] ? '' : `<p class="bzrv-cs-slot-ans">第 ${i + 1} 空：正确答案「${esc(want)}」</p>`,
+        results[i] ? '' : `<p class="bzrv-cs-slot-ans">${t('cs.blankAnswer', { n: i + 1, answer: esc(want) })}</p>`,
       )
       .join('');
     const right = results.filter(Boolean).length;
@@ -944,7 +946,7 @@ export class CardSession {
       <p class="bzrv-cs-cloze">${pieces}</p>
       ${wrong}
       <p class="bzrv-cs-cloze-result${allOk ? ' is-ok' : ''}">${
-        allOk ? '全对' : `对了 ${right} / ${blanks.length}`
+        allOk ? t('cs.allRight') : `${t('cs.partRight', { right, total: blanks.length })}`
       }</p>
       ${this.answerHtml(card)}`;
   }
@@ -980,47 +982,47 @@ export class CardSession {
     const rating = accuracyToRating(acc);
     return `
       <div class="bzrv-cs-quiz-done">
-        <p class="bzrv-cs-quiz-acc">答对 ${round.correct} / ${total}</p>
-        <p class="bzrv-cs-quiz-rating">本次按「${RATING_NAMES[rating] ?? rating}」记</p>
+        <p class="bzrv-cs-quiz-acc">${t('cs.quizRight', { right: round.correct, total })}</p>
+        <p class="bzrv-cs-quiz-rating">${t('cs.quizRatedAs', { rating: ratingName(rating) })}</p>
       </div>`;
   }
 
   /** 卡片内部的动作按钮（揭示 / 下一题 / 对答案）；评级单独摆在卡片下方 */
   private actionHtml(item: ReviewItem): string {
     if (this.isPlainMode()) return '';
-    /* 图片遮挡没有统一的「看答案」：每块自己点开，点完直接评级 */
+    /* 图片遮挡没有统一的「${t('cs.showAnswer')}」：每块自己点开，点完直接评级 */
     if (this.isOcclusionMode()) return '';
     if (this.isQuizMode()) {
       const round = this.quiz;
       if (!round) return '';
       if (round.idx >= round.list.length) {
-        return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="finish">记下这次结果（Enter）</button>`;
+        return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="finish">${t('cs.recordResult')}</button>`;
       }
-      if (round.picked === null) return `<span class="bzrv-cs-hint">按 1-4 或点选项作答</span>`;
+      if (round.picked === null) return `<span class="bzrv-cs-hint">${t('cs.pressKeys')}</span>`;
       return `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="next">${
-        round.idx + 1 >= round.list.length ? '看结果' : '下一题'
-      }（Enter）</button>`;
+        round.idx + 1 >= round.list.length ? t('cs.seeResult') : t('cs.nextQuestion')
+      }${t('cs.enterHint')}</button>`;
     }
     if (this.isClozeMode()) {
       if (!this.clozeReady(item.card!)) return '';
       return this.clozeState
         ? ''
-        : '<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="check">对答案</button>';
+        : `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="check">${t('cs.check')}</button>`;
     }
     if (this.isContextMode()) {
       return this.revealed
         ? ''
-        : '<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">想起来了，看答案</button>';
+        : `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">${t('cs.reveal')}</button>`;
     }
     return this.revealed
       ? ''
-      : '<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">看答案</button>';
+      : `<button type="button" class="bzrv-btn bzrv-btn--primary" data-act="reveal">${t('cs.showAnswer')}</button>`;
   }
 
   /** 看完答案才给评级：全文卡没有揭示动作，直接可评；降级看原文也一样 */
   private showRating(item: ReviewItem): boolean {
     if (this.isPlainMode()) return true;
-    /* 图片遮挡：点遮罩块就是「揭示」，用户自己对照完直接评级，没有统一的「看答案」步骤 */
+    /* 图片遮挡：点遮罩块就是「揭示」，用户自己对照完直接评级，没有统一的「${t('cs.showAnswer')}」步骤 */
     if (this.isOcclusionMode()) return true;
     if (this.isQuizMode()) {
       const round = this.quiz;
@@ -1132,18 +1134,18 @@ export class CardSession {
     if (!card) return;
     const { text, truncated } = speakTextOf(card);
     if (!text) {
-      this.notice = '这张卡没有可朗读的文字';
+      this.notice = t('cs.ttsEmpty');
       this.render();
       return;
     }
     const host = this.opts.host;
     const key = card.key || item.filePath;
-    if (truncated) this.notice = '这段文字比较长，只念了前 200 字';
+    if (truncated) this.notice = t('cs.ttsTruncated', { n: SPEAK_CHAR_LIMIT });
     void this.player.toggle(key, text, this.ttsConfig()).then(
       () => this.paintSpeak(host),
       (e: unknown) => {
         this.paintSpeak(host);
-        this.notice = `朗读失败：${e instanceof Error ? e.message : String(e)}`;
+        this.notice = t('cs.ttsFailed', { reason: e instanceof Error ? e.message : String(e) });
         this.render();
       },
     );
@@ -1158,7 +1160,7 @@ export class CardSession {
     if (note) {
       void jumpToSourceNote(this.opts.app, note).then((ok) => {
         if (!ok) {
-          this.notice = '这篇笔记已经不在库里了';
+          this.notice = t('cs.noteGone');
           this.render();
         }
       });
@@ -1168,7 +1170,7 @@ export class CardSession {
     if (!url) return;
     const plugins = (this.opts.app as PluginRegistryHost | null)?.plugins?.plugins;
     if (!plugins?.['bz-reader']) {
-      this.notice = '还没装 bz Reader';
+      this.notice = t('cs.noReader');
       this.render();
       return;
     }

@@ -7,11 +7,13 @@
  * ============================================================ */
 import type { CardMode } from './card-mode';
 import type { ReviewItem } from './data';
-import { CARD_MODE_META, modeMetaOf } from './card-mode-meta';
+import { CARD_MODE_META, cardModeMetaList, modeMetaOf } from './card-mode-meta';
+import { t } from '../i18n/strings';
 
 export type { CardMode };
 export { modeMetaOf };
 
+/** 合法的方式值固定（与语言无关）：脏值兜底用 */
 const MODES: readonly string[] = CARD_MODE_META.map((m) => m.value);
 
 /** 卡上 mode 可能是老数据里的脏值；只认合法五种，其余按抽认卡 */
@@ -35,13 +37,15 @@ export function typeBucketsOf(items: readonly ReviewItem[]): TypeBucket[] {
     const m = modeOfItem(it);
     counts.set(m, (counts.get(m) ?? 0) + 1);
   }
-  return CARD_MODE_META.filter((m) => (counts.get(m.value) ?? 0) > 0).map((m) => ({
-    mode: m.value,
-    label: m.label,
-    icon: m.icon,
-    tone: m.tone,
-    count: counts.get(m.value) ?? 0,
-  }));
+  return cardModeMetaList()
+    .filter((m) => (counts.get(m.value) ?? 0) > 0)
+    .map((m) => ({
+      mode: m.value,
+      label: m.label,
+      icon: m.icon,
+      tone: m.tone,
+      count: counts.get(m.value) ?? 0,
+    }));
 }
 
 export type QueueRowState = 'done' | 'current' | 'todo';
@@ -78,5 +82,5 @@ export function queueRowsOf(items: readonly ReviewItem[], currentPath: string): 
 
 /** 切卡提示：同类型连做不打扰，换类型才说一句 */
 export function switchNoticeOf(from: CardMode, to: CardMode): string {
-  return from === to ? '' : `已按卡片类型切换到「${modeMetaOf(to).label}」`;
+  return from === to ? '' : t('flow.switched', { mode: modeMetaOf(to).label });
 }

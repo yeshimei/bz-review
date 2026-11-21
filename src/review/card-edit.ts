@@ -13,6 +13,7 @@ import type { App } from 'obsidian';
 import type { ReviewItem } from './data';
 import { openFlowDialog } from '../core/flow-dialog';
 import { notice } from '../core/notice';
+import { t } from '../i18n/strings';
 
 export interface CardEditValues {
   text: string;
@@ -27,26 +28,26 @@ export function openCardEditor(app: App, item: ReviewItem, onSave: (v: CardEditV
   root.className = 'bzrv-edit-modal';
 
   const textField = root.createDiv({ cls: 'bzrv-edit-field' });
-  textField.createDiv({ cls: 'bzrv-edit-head', text: '原文' });
-  textField.createDiv({ cls: 'bzrv-edit-desc', text: '复习时看到的就是这段；改完不会再被 AI 自动改写' });
+  textField.createDiv({ cls: 'bzrv-edit-head', text: t('caredit.source') });
+  textField.createDiv({ cls: 'bzrv-edit-desc', text: t('caredit.sourceDesc') });
   const textArea = textField.createEl('textarea', { cls: 'bzrv-edit-area' });
   textArea.rows = 6;
   textArea.value = String(card.text ?? '');
 
   const ideaField = root.createDiv({ cls: 'bzrv-edit-field' });
-  ideaField.createDiv({ cls: 'bzrv-edit-head', text: '我的想法' });
-  ideaField.createDiv({ cls: 'bzrv-edit-desc', text: '当时为什么划这句，可选' });
+  ideaField.createDiv({ cls: 'bzrv-edit-head', text: t('caredit.thought') });
+  ideaField.createDiv({ cls: 'bzrv-edit-desc', text: t('caredit.thoughtDesc') });
   const ideaArea = ideaField.createEl('textarea', { cls: 'bzrv-edit-area' });
   ideaArea.rows = 3;
   ideaArea.value = String(card.comment ?? '');
 
   void openFlowDialog({
-    title: '编辑这张卡',
-    message: '改完点「保存」才会写回卡片；取消则一个字节不动。',
+    title: t('caredit.title'),
+    message: t('caredit.desc'),
     body: root,
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '保存', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('common.save'), value: 'ok', cta: true },
     ],
   }).then((v) => {
     if (v !== 'ok') return;
@@ -54,7 +55,7 @@ export function openCardEditor(app: App, item: ReviewItem, onSave: (v: CardEditV
     /* 原文清空等于把卡变成空白，复习时无从回忆——挡在保存前，并明说原因，
        不能点了「保存」静默无反应让用户以为已经写回。 */
     if (!text) {
-      notice('原文不能为空，这张卡没保存。', 'warning');
+      notice(t('caredit.empty'), 'warning');
       return;
     }
     void Promise.resolve(onSave({ text, comment: ideaArea.value.trim() }));

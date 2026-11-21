@@ -10,37 +10,38 @@ import { notice } from '../core/notice';
 import { reviewApp } from './app';
 import { exportDir, listBackupFiles, restoreBackupFile } from './backup-io';
 import { openFlowDialog } from '../core/flow-dialog';
+import { t } from '../i18n/strings';
 
 export async function openRestoreDialog(app: App): Promise<void> {
   const files = await listBackupFiles(app);
   const latest = files.find((f) => f.toLowerCase().endsWith('.json'));
   if (!files.length) {
-    notice(`还没有备份文件（默认在 ${exportDir()}）`, 'warning');
+    notice(t('bk.noFiles', { dir: exportDir() }), 'warning');
     return;
   }
   const body = createDiv();
   const field = body.createDiv({ cls: 'bzrv-edit-field' });
-  field.createDiv({ cls: 'bzrv-edit-head', text: '备份文件' });
+  field.createDiv({ cls: 'bzrv-edit-head', text: t('bk.file') });
   const picks = files.slice(0, 5).map((f) => f.slice(f.lastIndexOf('/') + 1));
   field.createDiv({
     cls: 'bzrv-edit-desc',
-    text: `最近的备份：${picks.join('、')}${files.length > picks.length ? ' …' : ''}`,
+    text: t('bk.recent', { list: picks.join(', '), more: files.length > picks.length ? ' …' : '' }),
   });
   const input = field.createEl('input');
   input.type = 'text';
   input.value = latest || files[0];
   body.createDiv({
     cls: 'bzrv-edit-desc',
-    text: '恢复会用备份里的数据整体覆盖当前计划；覆盖前会自动留一份快照，反悔可从设置的回滚拿回来。',
+    text: t('bk.restoreDesc'),
   });
 
   const v = await openFlowDialog({
-    title: '从备份恢复',
+    title: t('bk.restoreTitle'),
     message: '',
     body,
     actions: [
-      { label: '取消', value: 'cancel' },
-      { label: '恢复', value: 'ok', cta: true },
+      { label: t('common.cancel'), value: 'cancel' },
+      { label: t('bk.restore'), value: 'ok', cta: true },
     ],
   });
   if (v !== 'ok') return;

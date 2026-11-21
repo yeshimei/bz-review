@@ -4,6 +4,7 @@
  * 这两个状态只影响「进不进本轮队列」，不改 FSRS 的任何排期字段。
  * 统一由 queue.ts 的 active() 一处拦，三区列、本轮队列、负荷预测自动同口径。
  */
+import { t } from '../i18n/strings';
 
 export interface QueueHidden {
   suspended?: boolean;
@@ -70,6 +71,6 @@ export function tagsToInput(tags: readonly string[] | undefined): string {
 /** 给 UI 用的一句话说明，明确「不删数据、不改排期」 */
 export function hiddenNotice(hidden: 'suspended' | 'buried'): string {
   return hidden === 'suspended'
-    ? '已挂起：这条不再进本轮复习，排期没有变，随时可以恢复。'
-    : '已埋藏：明天自动回到队列，排期没有变。';
+    ? t('mgr.suspendedNotice')
+    : t('mgr.buriedNotice');
 }

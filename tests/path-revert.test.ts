@@ -59,14 +59,15 @@ describe('path 行 · 异步否决回退落盘', () => {
 
   it('数据目录取消分支：返回旧目录且不落盘（自绘按钮自己负责迁移落盘）', () => {
     const reviewSchema = read('src/review/settings-schema.ts');
-    expect(reviewSchema).toContain('已取消，数据目录没变');
+    /* 文案住语言包（settings.data.cancelled），源码里只留 key 与调用形制。 */
+    expect(reviewSchema).toContain("t('settings.data.cancelled')");
     // 新设计：数据目录改成自绘按钮，migrateStorageDir 返回最终生效路径字符串；
     // 取消分支 return prev 且绝不写盘（写盘只在确认迁移成功后发生），回来不会读空目录。
     const cancelBlock = reviewSchema.slice(
-      reviewSchema.indexOf("已取消，数据目录没变") - 120,
-      reviewSchema.indexOf("已取消，数据目录没变") + 120
+      reviewSchema.indexOf("t('settings.data.cancelled')") - 120,
+      reviewSchema.indexOf("t('settings.data.cancelled')") + 120
     );
-    expect(cancelBlock).toContain("notice('已取消，数据目录没变'");
+    expect(cancelBlock).toContain("notice(t('settings.data.cancelled'), 'info')");
     expect(cancelBlock).toContain('return prev');
     // 落盘只发生在确认迁移成功之后，取消分支不碰 getSettings().storagePath
     expect(cancelBlock).not.toContain('getSettings().storagePath');

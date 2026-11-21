@@ -15,6 +15,7 @@ import type { AIService } from '../core/ai';
 import type { ReviewCard } from './data';
 import { aiTextOf } from './card-text';
 import { parseLooseJson } from './loose-json';
+import { locale } from '../i18n/strings';
 
 /** 挖空占位：`{{1}}`、`{{2}}`…。用双花括号是因为正文里几乎不会出现 */
 export const CLOZE_SLOT_RE = /\{\{(\d+)\}\}/g;
@@ -169,6 +170,25 @@ export function parseCloze(reply: string, source: string): ClozeCard | null {
 export function buildClozePrompt(card: ReviewCard): string {
   const book = String(card.bookTitle ?? '').trim();
   const chapter = String(card.chapterTitle ?? '').trim();
+  if (locale() !== 'zh') {
+    const enWhere = chapter ? `"${book}" ${chapter}` : `"${book}"`;
+    return [
+      'You are a memory-card designer. Below is a reading highlight; turn it into a fill-in-the-blank exercise.',
+      '',
+      'Requirements:',
+      '1. Blank out 1-3 key spots; each blank holds a word or short phrase (2-12 characters), never a whole sentence.',
+      '2. The remaining text must read on its own while **still pointing to this sentence** \u2014 it must not become a guessing game.',
+      '3. Mark blanks as {{1}} {{2}} {{3}}, numbered consecutively from 1.',
+      '4. The answers array follows blank order, copied verbatim from the source; no rewriting or added punctuation.',
+      '5. Prefer numbers, proper nouns and key verbs; do not blank function words like "the" or "of".',
+      '',
+      'Output only one JSON object, no explanation, no code block:',
+      '{"text": "the sentence with blanks written as {{1}}", "blanks": ["answer1", "answer2"]}',
+      '',
+      `Source: ${enWhere}`,
+      `Highlight: ${aiTextOf(card)}`,
+    ].join('\n');
+  }
   const where = chapter ? `《${book}》${chapter}` : `《${book}》`;
   return [
     '你是记忆卡片设计助手。下面是一条读书划线，请把它做成填空题。',

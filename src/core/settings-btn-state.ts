@@ -4,11 +4,11 @@
  * 失败原因的简短描述；不弹窗、不显详情——状态长在按钮本体上，两个渲染器（core 原生
  * Setting 钮 / settings-panel 的 bz-sp-btn）同调本助手，原型壳同源生效。
  */
+import { t } from '../i18n/strings';
+
 export const ROW_BTN_RESET_MS = 2000;
 
 export type RowBtnState = 'busy' | 'ok' | 'fail' | 'idle';
-
-export const ROW_BTN_OK_TEXT = '已连通';
 
 /** 失败原因 → 按钮上的简短文案（几个字；按最明确的语义优先匹配） */
 /** unknown → 安全字符串（typeof 守卫，避免对象默认 stringification） */
@@ -19,14 +19,14 @@ function textOf(v: unknown): string {
 
 export function shortFailReason(e: unknown): string {
   const msg = e instanceof Error ? e.message : textOf(e);
-  if (/超时|Timeout/.test(msg)) return '超时';
-  if (/取消|Abort/.test(msg)) return '已取消';
-  if (/未配置.*密钥|密钥.*为空/.test(msg)) return '无密钥';
-  if (/401|403|密钥|鉴权|invalid.*key|unauthorized/i.test(msg)) return '密钥无效';
-  if (/5\d\d|服务|no healthy|upstream/i.test(msg)) return '服务异常';
-  if (/网络|fetch|network|Failed to fetch/i.test(msg)) return '网络不通';
-  if (/JSON|解析|answers|畸形|回复为空/.test(msg)) return '响应异常';
-  return '请求失败';
+  if (/超时|Timeout/.test(msg)) return t('btn.timeout');
+  if (/取消|Abort/.test(msg)) return t('btn.cancelled');
+  if (/未配置.*密钥|密钥.*为空/.test(msg)) return t('btn.noKey');
+  if (/401|403|密钥|鉴权|invalid.*key|unauthorized/i.test(msg)) return t('btn.badKey');
+  if (/5\d\d|服务|no healthy|upstream/i.test(msg)) return t('btn.server');
+  if (/网络|fetch|network|Failed to fetch/i.test(msg)) return t('btn.network');
+  if (/JSON|解析|answers|畸形|回复为空/.test(msg)) return t('btn.badResponse');
+  return t('btn.failed');
 }
 
 /** 复原定时器按元素分账（issue 434 review）：结果态 2 秒窗口内再点一轮，先清上一轮的复原柄，
@@ -61,10 +61,10 @@ export function setRowBtnState(
     clearResetTimer(el);
   } else if (state === 'ok') {
     el.classList.add('bzrv-rowbtn--ok');
-    el.textContent = okText || ROW_BTN_OK_TEXT;
+    el.textContent = okText || t('btn.ok');
   } else if (state === 'fail') {
     el.classList.add('bzrv-rowbtn--fail');
-    el.textContent = (failText || '失败').slice(0, 6);
+    el.textContent = (failText || t('btn.fail')).slice(0, 6);
   } else {
     el.textContent = label;
   }

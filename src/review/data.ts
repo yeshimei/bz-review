@@ -27,6 +27,7 @@ import { tombstonesOf } from './trash';
 import { clearTrash as clearTrashStore, loadTrash, pushTrash, removeTrashKeys } from './trash-store';
 import { writeDailySnapshot } from './snapshot-store';
 import { notice } from '../core/notice';
+import { t } from '../i18n/strings';
 
 /** 复习数据文件路径（ADR-0009 共享数据路径；trim 收敛至 storageFile） */
 export function getReviewFilePath(): string {
@@ -359,8 +360,8 @@ export class ReviewDataManager {
     if (merged.conflicts.length || merged.revived.length) {
       const saved = await backupOriginal(this.app, path, raw ?? undefined);
       notice(
-        `这份复习数据在别的设备上也被改过（${merged.conflicts.length + merged.revived.length} 条）。` +
-          `已按更新时间合并，改动前的内容留在 ${saved || 'CONFIG/.CORRUPT'}。`,
+        t('data.mergeNotice', { n: merged.conflicts.length + merged.revived.length }) +
+          t('data.mergeDetail', { path: saved || 'CONFIG/.CORRUPT' }),
         'warning'
       );
     }
@@ -493,14 +494,14 @@ export class ReviewDataManager {
   createReverseCard(key: string): Promise<{ ok: boolean; message: string }> {
     return this.mutate((items) => {
       const idx = items.findIndex((i) => i.filePath === key && isCardItem(i));
-      if (idx < 0) return { ok: false, message: '没找到这张卡' };
+      if (idx < 0) return { ok: false, message: t('data.cardMissing') };
       const orig = items[idx];
       const card = orig.card!;
       const q = String(card.qa?.q ?? '').trim();
       const a = String(card.qa?.a ?? '').trim();
-      if (!q || !a) return { ok: false, message: '这张卡还没有问句和答案，先生成内容再反向' };
+      if (!q || !a) return { ok: false, message: t('data.cardNoQa') };
       const revKey = `${key}#rev`;
-      if (items.some((i) => i.filePath === revKey)) return { ok: false, message: '反向卡已经存在了' };
+      if (items.some((i) => i.filePath === revKey)) return { ok: false, message: t('data.reverseExists') };
       /* 与 addItem 同口径：基础版笔记+划线合计满 50 时拒绝新增（这里用结果返回而非抛错） */
       const block = quotaBlock(planCounts(items));
       if (!block.ok) return { ok: false, message: block.message };
@@ -522,7 +523,7 @@ export class ReviewDataManager {
         }),
       };
       items.push(rev);
-      return { ok: true, message: '已生成反向卡，两张卡同轮只会出现一张' };
+      return { ok: true, message: t('data.reverseCreated') };
     });
   }
 
@@ -586,7 +587,7 @@ export class ReviewDataManager {
   /** 新增条目 */
   addItem(filePath: string, fileName: string): Promise<ReviewItem> {
     return this.mutate((items) => {
-      if (items.some((i) => i.filePath === filePath)) throw new Error('该笔记已在复习中');
+      if (items.some((i) => i.filePath === filePath)) throw new Error(t('data.alreadyInReview'));
       const block = quotaBlock(planCounts(items));
       if (!block.ok) throw new QuotaExceededError(block.message);
       const newItem = this.newReviewItem(filePath, fileName);
@@ -635,7 +636,7 @@ export class ReviewDataManager {
   updateItem(filePath: string, updateFn: (item: ReviewItem) => void): Promise<void> {
     return this.mutate((items) => {
       const idx = items.findIndex((i) => i.filePath === filePath);
-      if (idx === -1) throw new Error('条目不存在');
+      if (idx === -1) throw new Error(t('app.itemGone'));
       updateFn(items[idx]);
     }).then(() => undefined);
   }
