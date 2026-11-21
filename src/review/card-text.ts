@@ -11,5 +11,5 @@
 export function aiTextOf(card: { text?: unknown; aiText?: unknown } | null | undefined): string {
   const brief = typeof card?.aiText === 'string' ? card.aiText.trim() : '';
   if (brief) return brief;
-  return typeof card?.text === 'string' ? card.text : String(card?.text ?? '');
+  return typeof card?.text === 'string' ? card.text : '';
 }
