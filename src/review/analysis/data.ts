@@ -16,7 +16,7 @@ import { DEFAULT_W, currentR } from '../fsrs';
 import { partitionQueue } from '../queue';
 import { dateKey } from '../stats';
 import { maturityLevel } from '../render';
-import { ratingName, t } from '../../i18n/strings';
+import { t } from '../../i18n/strings';
 
 /** 评级四档键序（忘了→简单；ratingDist/lastDiffDist 统一按此序出幕） */
 export const RA_RATING_ORDER = ['again', 'hard', 'good', 'easy'] as const;
