@@ -71,8 +71,10 @@ export const CHANGELOG_RELEASES: readonly ChangelogRelease[] = [
       { domain: '按书档案', text: '按书或文件夹汇总留存与逾期，一键导出 Markdown 报告。' },
       { domain: '管理器', text: '挂起、埋藏、恢复、手动排期，挂起和埋藏不改 FSRS 排期。' },
       { domain: '更多菜单', text: '筛选、数据、设置、成就和批量选择收进更多菜单。' },
+      { domain: '英文界面', text: '界面、命令、通知与设置支持英文，语言跟随 Obsidian。' },
     ],
     improved: [
+      { domain: '空态引导', text: '没装 bz Reader 时点一下直达设置里的插件组。' },
       { domain: '听卡片', text: '本地 TTS 朗读，离线可用、不按次收费，合成结果缓存。' },
       { domain: '回到原文', text: '揭示答案后跳回书里那一句，老版本推来的卡也能兜底。' },
       { domain: '学习步骤', text: '新卡与重学对齐 Anki 的 1 分钟加 10 分钟，两类分开限额。' },
