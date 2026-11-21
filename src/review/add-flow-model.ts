@@ -7,9 +7,8 @@
  * 确认入库」，没有哪一条路可以绕过去直接写库。
  *
  * 这个文件只放纯逻辑：整篇笔记的稳定钥匙、来源构造、给模型看的正文截断、
- * 文件夹候选、静默判定、入库结果统一话术。零 DOM、零 IO、零模型调用。
+ * 文件夹候选、入库结果统一话术。零 DOM、零 IO、零模型调用。
  * ========================================================== */
-import type { CardMode } from './card-mode';
 import type { ReviewAddSummary } from './reader-api';
 
 /**
@@ -106,14 +105,11 @@ export function folderNotePaths(paths: readonly string[], folder: string): strin
 }
 
 /**
- * 「不用每次询问」的唯一判据：设置里的「新卡默认方式」不是「每次问我」。
+ * 「不用每次询问」只跳过选方式这一屏，题面照旧要人审（2026-11-21 用户纠正）。
  *
- * 用户 2026-11-21 原话：除非在设置界面设了不用每次询问，否则任何地方都要走流程。
- * 这里不新增开关——设置里已经有「新卡默认方式」，它就是那个开关。
+ * 这条判定原先写成「直接后台入库」，等于让 AI 替用户做决定；现在判定归
+ * card-wizard 自己读「新卡默认方式」，这个文件不再插手，也不再有第二条写库路径。
  */
-export function silentModeOf(defaultMethod: CardMode | null | undefined): CardMode | null {
-  return defaultMethod ?? null;
-}
 
 /** 回一句「这批笔记里哪些已经在计划里」——两种钥匙都要认（2026-11-22 真机踩到的） */
 export function plannedPathsFrom(

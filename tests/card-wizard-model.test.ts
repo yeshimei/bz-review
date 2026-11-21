@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  auditText,
   clipTitle,
   draftToInput,
   markWizardStates,
   modeNeedsAI,
+  plainHeadOf,
+  presetModeNote,
   WIZARD_MODES,
 } from '../src/review/card-wizard-model';
 import type { WizardDraft } from '../src/review/card-wizard-model';
@@ -104,5 +107,46 @@ describe('clipTitle：列表短标题', () => {
 
   it('超长截断并加省略号', () => {
     expect(clipTitle('啊'.repeat(50), 10)).toBe('啊'.repeat(10) + '…');
+  });
+});
+
+describe('批量审核进度（2026-11-21 增强）', () => {
+  it('没看完时给「共 N 张 · 已看过 M 张」', () => {
+    expect(auditText(5, 2)).toBe('共 5 张 · 已看过 2 张');
+  });
+
+  it('全看过时说「都看过了」，越界按边界夹住', () => {
+    expect(auditText(3, 3)).toBe('共 3 张 · 都看过了');
+    expect(auditText(3, 9)).toBe('共 3 张 · 都看过了');
+    expect(auditText(0, 0)).toBe('共 0 张 · 都看过了');
+  });
+});
+
+describe('预设方式的说明（2026-11-21 增强）', () => {
+  it('单张：说清为什么没出现「选方式」那一屏', () => {
+    const s = presetModeNote('抽认卡', 1);
+    expect(s).toContain('所以跳过了选方式这一屏');
+    expect(s).toContain('改回「每次问我」');
+  });
+
+  it('批量：说清这一批都是设置里那个方式生成的', () => {
+    const s = presetModeNote('抽认卡', 4);
+    expect(s).toContain('这批 4 张都按设置里「新卡默认方式」的「抽认卡」生成');
+  });
+});
+
+describe('plainHeadOf：兜底问句取哪一行（2026-11-21 真机发现）', () => {
+  it('跳过 Markdown 标题行，取第一段正文', () => {
+    const text = '# 围城 · 读书笔记\n\n## 划线摘录\n\n> 婚姻是一座围城，城外的人想进去，城里的人想出来。';
+    expect(plainHeadOf(text)).toBe('婚姻是一座围城，城外的人想进去，城里的人想出来。');
+  });
+
+  it('去掉引用符与列表符号', () => {
+    expect(plainHeadOf('- 第一条要点\n- 第二条')).toBe('第一条要点');
+    expect(plainHeadOf('1. 下雨了')).toBe('下雨了');
+  });
+
+  it('整篇只有标题行时回退成去掉井号的原文', () => {
+    expect(plainHeadOf('# 甲')).toBe('甲');
   });
 });

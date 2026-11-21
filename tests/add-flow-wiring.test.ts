@@ -68,18 +68,28 @@ describe('加入复习 · 只有一个入口', () => {
   });
 });
 
-describe('加入复习 · 跳过界面只有一个理由', () => {
-  it('静默分支只认设置里的「新卡默认方式」', () => {
-    expect(flow).toContain('silentModeOf(defaultCardMethod(');
-    expect(flow).toContain('silentAdd');
+describe('加入复习 · 任何设置都不许绕过确认页', () => {
+  it('「新卡默认方式」只跳过选方式，不许自己写库（2026-11-21 用户纠正）', () => {
+    /* 曾经的错法：预设方式 → silentAdd 直接 addCards，AI 内容不给人看 */
+    expect(flow).not.toContain('silentAdd');
+    expect(flow).not.toContain('silentModeOf');
+    /* 静默分支会自己构造卡片输入（ReviewCardInput）；交给制卡窗的只有回调 */
+    expect(flow).not.toContain('ReviewCardInput');
+    expect(flow).toContain('openCardWizard(');
   });
 
-  it('静默入库也走卡片入库与同一句结果话术，不是另一种通知', () => {
-    expect(flow).toContain('api.addCards(cards)');
-    expect(flow).toContain('addSummaryText(res');
+  it('预设方式在制卡窗里只跳过「选方式」，照样生成题面停在确认页', () => {
+    expect(wizard).toContain('this.presetMode = this.mode');
+    expect(wizard).toContain('void this.generateAll()');
+    expect(wizard).toContain('presetModeNote(');
+    expect(read('review/card-wizard-model.ts')).toContain('已按设置里「新卡默认方式」');
   });
 
-  it('旧的「新笔记加入提醒」开关已移除（自动加入也走流程，弹不弹由默认方式决定）', () => {
+  it('纯逻辑层不再提供「静默判定」这种绕过口子', () => {
+    expect(read('review/add-flow-model.ts')).not.toContain('silentModeOf');
+  });
+
+  it('旧的「新笔记加入提醒」开关已移除（自动加入也走流程，跳不跳方式由默认方式决定）', () => {
     expect(schema).not.toContain('reviewAutoAddNotice');
     expect(watch).not.toContain('reviewAutoAddNotice');
   });
