@@ -78,3 +78,24 @@ export function forecastToText(points: readonly LoadPoint[], limit = 14): string
     ...head.map((p) => `${p.day}  ${'▇'.repeat(Math.min(20, p.count))} ${p.count}`),
   ].join('\n');
 }
+
+/**
+ * 把 forecastToText 的文本渲染成 DOM：日期/数字保持正文色，▇ 条改为真实条形走强调色 token。
+ * 纯文本版仍供导出与测试使用；展示层两处（forecast 弹窗、数据页）共用这一份，避免一个跟随一个不跟随。
+ */
+export function renderForecastInto(host: HTMLElement, text: string): void {
+  host.empty();
+  for (const line of text.split('\n')) {
+    const row = host.createDiv({ cls: 'bzrv-fc-row' });
+    const m = /^(\S+)\s+(▇+)\s+(\d+)$/.exec(line);
+    if (!m) {
+      row.setText(line);
+      continue;
+    }
+    row.createSpan({ cls: 'bzrv-fc-day', text: m[1] });
+    const track = row.createSpan({ cls: 'bzrv-fc-track' });
+    const bar = track.createSpan({ cls: 'bzrv-fc-bar' });
+    bar.style.width = `${Math.round((m[2].length / 20) * 100)}%`;
+    row.createSpan({ cls: 'bzrv-fc-num', text: m[3] });
+  }
+}

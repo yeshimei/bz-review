@@ -494,9 +494,12 @@ button.news-close-btn {
   text-align: center;
 }
 #bzrv-confirm-popup.bzrv-flow-dialog {
-  width: min(400px, calc(100vw - 32px)); /* 设计手册 §9：确认框窄卡定宽 */
+  /* 宽度走统一小档 token（确认框窄卡），与各内容弹窗同一套宽度体系 */
+  width: min(var(--bzrv-modal-w-sm), calc(100vw - 32px));
   padding: var(--bzrv-space-xl);           /* 设计手册 §4.1：确认框 24px 内边距 */
 }
+/* 确认框统一 ✕：跟随弹窗壳定位，不额外改 popup 的 position（避免破坏居中） */
+.bzrv-flow-x { position: absolute; top: 10px; right: 10px; }
 #bzrv-confirm-popup h4 {
   margin: 0 0 var(--bzrv-space-md) 0;
   font-size: 18px;

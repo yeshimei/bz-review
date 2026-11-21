@@ -117,7 +117,7 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
     className: 'bzs-unlock-dialog',
     title: '高级版功能',
     head: true,
-    maxWidth: 720,
+    size: 'lg',
   });
   /* 照 bz-reader 的 modal：头、可滚表格、底部购买/交流群按钮三段。
      按钮不塞进滚动内容里，否则长表一滚就看不见，用户不知道去哪买。 */

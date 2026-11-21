@@ -406,7 +406,7 @@ export function queueViewHtml(items: ReviewItem[], ctx: QueueViewCtx = {}): stri
       </div>`
         : `<div class="bzrv-q-strip">
         <span class="bzrv-q-strip-dot"></span>
-        <strong>开始本轮</strong>
+        <strong>本轮安排</strong>
         <span class="bzrv-q-strip-txt">今日 ${col.today.length} 条到期 · 逾期 ${col.overdue.length} 条顺延</span>
         <button class="bzrv-btn bzrv-btn--primary" data-act="begin">开始本轮</button>
       </div>`;
@@ -608,17 +608,20 @@ export function managerViewHtml(items: readonly ReviewItem[], ctx: ManagerViewCt
           <span class="bzrv-mgr-state ${stateCls}">${state}</span>
         </div>
         <div class="bzrv-mgr-ops">
-          ${it.card ? `<button class="bzrv-icon-btn" data-act="mgr-edit"><span class="bzrv-sr-only">编辑这张卡</span>${iconSpan('pencil', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="mgr-regen"><span class="bzrv-sr-only">重新生成 AI 内容</span>${iconSpan('refresh-cw', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="mgr-media"><span class="bzrv-sr-only">配置媒体与图片遮挡</span>${iconSpan('image', 'bzrv-q-ic')}</button>
-          ${it.card.mode !== 'media' && it.card.mode !== 'occlusion' && it.card.mode !== 'quiz' ? `<button class="bzrv-icon-btn" data-act="mgr-template"><span class="bzrv-sr-only">自定义卡片模板</span>${iconSpan('layout-template', 'bzrv-q-ic')}</button>` : ''}
-          ${it.card.mode === 'flashcard' && !it.card.reverseOf && !String(it.card.key ?? '').endsWith('#rev') ? `<button class="bzrv-icon-btn" data-act="mgr-reverse"><span class="bzrv-sr-only">生成反向卡</span>${iconSpan('repeat', 'bzrv-q-ic')}</button>` : ''}` : ''}
-          <button class="bzrv-icon-btn" data-act="mgr-deck"><span class="bzrv-sr-only">设置牌组与标签</span>${iconSpan('folder', 'bzrv-q-ic')}</button>
+          ${it.card ? `<button class="bzrv-icon-btn" data-act="mgr-edit"><span class="bzrv-sr-only">编辑这张卡</span>${iconSpan('pencil', 'bzrv-q-ic')}</button>` : ''}
           <button class="bzrv-icon-btn" data-act="mgr-suspend"><span class="bzrv-sr-only">挂起</span>${iconSpan('pause', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="mgr-bury"><span class="bzrv-sr-only">埋藏一天</span>${iconSpan('hourglass', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="mgr-restore"><span class="bzrv-sr-only">恢复</span>${iconSpan('rotate-ccw', 'bzrv-q-ic')}</button>
-          <button class="bzrv-icon-btn" data-act="mgr-schedule"><span class="bzrv-sr-only">手动排期</span>${iconSpan('calendar-days', 'bzrv-q-ic')}</button>
           <button class="bzrv-icon-btn" data-act="mgr-delete"><span class="bzrv-sr-only">移出复习</span>${iconSpan('trash-2', 'bzrv-q-ic')}</button>
+          <button class="bzrv-icon-btn bzrv-mgr-more" data-act="mgr-more"><span class="bzrv-sr-only">更多操作</span><span aria-hidden="true">⋯</span></button>
+          <div class="bzrv-mgr-more-menu">
+            ${it.card ? `<button class="bzrv-mgr-more-item" data-act="mgr-regen">重新生成 AI 内容</button>
+            <button class="bzrv-mgr-more-item" data-act="mgr-media">配置媒体与图片</button>
+            ${it.card.mode !== 'media' && it.card.mode !== 'occlusion' && it.card.mode !== 'quiz' ? `<button class="bzrv-mgr-more-item" data-act="mgr-template">自定义卡片模板</button>` : ''}
+            ${it.card.mode === 'flashcard' && !it.card.reverseOf && !String(it.card.key ?? '').endsWith('#rev') ? `<button class="bzrv-mgr-more-item" data-act="mgr-reverse">生成反向卡</button>` : ''}` : ''}
+            <button class="bzrv-mgr-more-item" data-act="mgr-deck">牌组与标签</button>
+            <button class="bzrv-mgr-more-item" data-act="mgr-bury">埋藏一天</button>
+            <button class="bzrv-mgr-more-item" data-act="mgr-restore">恢复</button>
+            <button class="bzrv-mgr-more-item" data-act="mgr-schedule">手动排期</button>
+          </div>
         </div>
       </div>`;
     })

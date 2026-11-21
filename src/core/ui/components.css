@@ -714,6 +714,24 @@ textarea.bzrv-input { height: auto; min-height: 80px; padding: 8px 10px; line-he
 .bzrv-dialog-title { font-size: var(--bzrv-font-emphasis); font-weight: var(--bzrv-weight-semibold); color: var(--bzrv-text-1); }
 .bzrv-dialog-body { display: flex; flex-direction: column; min-height: 0; }
 
+/* 弹窗宽度档 + 统一头尾（[data-bzrv] 锚点，特异性压过 core/styles.css 的第二版壳） */
+.bzrv-overlay-popup.bzrv-modal--sm:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-sm), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-sm), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--md:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-md), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-md), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--lg:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-lg), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-lg), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--full:is([data-bzrv], [data-bzrv] *) { width: min(var(--bzrv-modal-w-full), calc(100vw - 32px)); max-width: min(var(--bzrv-modal-w-full), calc(100vw - 32px)); }
+.bzrv-overlay-popup.bzrv-modal--flush:is([data-bzrv], [data-bzrv] *) { padding: 0; overflow: hidden; }
+.bzrv-overlay-popup.bzrv-modal--flush > .bzrv-dialog-body:is([data-bzrv], [data-bzrv] *) { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+
+/* 头行统一关闭钮：40px 触控档，✕ 视觉 + sr-only 名字（禁悬停气泡属性） */
+.bzrv-dialog-x:is([data-bzrv], [data-bzrv] *) {
+  flex: none; display: grid; place-items: center;
+  width: 30px; height: 30px; padding: 0;
+  border: 0; border-radius: var(--bzrv-radius-sm);
+  background: transparent; color: var(--bzrv-text-3);
+  font-size: 15px; line-height: 1; cursor: pointer;
+}
+.bzrv-dialog-x:is([data-bzrv], [data-bzrv] *):hover { background: var(--bzrv-surface-2); color: var(--bzrv-text-1); }
+
 /* ═══════════ 滑条 .bzrv-range（slider.ts） ═══════════
    自绘外观抗 Obsidian 全局 range 重置：appearance:none 时
    原生 track 不绘制，必须有显式 background + thumb 伪元素。

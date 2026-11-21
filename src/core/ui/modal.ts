@@ -67,8 +67,9 @@ export function closeAllModals(): void {
 
 export interface BzModalOpts {
   content: HTMLElement | string;   // 弹窗内容（元素或 HTML 片段）
-  maxWidth?: number;               // 像素宽度（默认 400，≤90vw）
-  head?: boolean;                  // 带标题头行——默认 false；头行只有标题，无关闭钮（issue 271：弹窗统一点遮罩/ESC 关闭）
+  maxWidth?: number;               // 像素宽度（默认 400，≤90vw）；与 size 二选一，size 优先由 CSS 修饰类控制
+  size?: 'sm' | 'md' | 'lg' | 'full'; // 宽度档 token（components.css 的 .bzrv-modal--*），统一 8 个弹窗体量
+  head?: boolean;                  // 带标题头行——默认 false；头行含标题 + 统一 ✕（原 issue 271「无关闭钮」已按上架一致性收口）
   title?: string;
   onClose?: () => void;            // 关闭回调（遮罩/ESC）
   /** 关闭意图拦截（issue 365 第 5 项，脏表单弹窗用）：提供时遮罩点击/ESC 改调 requestClose——
@@ -96,8 +97,9 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
   mask.style.zIndex = String(allocZ());
 
   const popup = createDiv();
-  popup.className = 'bzrv-overlay-popup' + (opts.className ? ' ' + opts.className : '');
-  if (opts.maxWidth) popup.style.maxWidth = `min(${opts.maxWidth}px, calc(100vw - 32px))`;
+  popup.className = 'bzrv-overlay-popup' + (opts.size ? ` bzrv-modal--${opts.size}` : '') + (opts.className ? ' ' + opts.className : '');
+  // 宽度统一走 size 修饰类；maxWidth 仅给未迁移到 size 的调用方兜底（两者同传时以行内样式为准，调用方不要混用）
+  if (opts.maxWidth && !opts.size) popup.style.maxWidth = `min(${opts.maxWidth}px, calc(100vw - 32px))`;
   // 读屏语义（对齐 flow-dialog 契约）：弹窗容器为模态 dialog，标题随 head 透出
   popup.setAttribute('role', 'dialog');
   popup.setAttribute('aria-modal', 'true');
@@ -110,6 +112,13 @@ export function uiModal(opts: BzModalOpts): { mask: HTMLElement; popup: HTMLElem
     title.className = 'bzrv-dialog-title';
     title.textContent = opts.title || '';
     head.appendChild(title);
+    // 统一关闭钮：sr-only 名字（禁 title/aria-label 悬停气泡），点击走 attemptClose（含 requestClose 拦截）
+    const closeX = createEl('button', { cls: 'bzrv-dialog-x' });
+    closeX.type = 'button';
+    closeX.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: '关闭' }));
+    closeX.createSpan({ text: '✕' });
+    closeX.addEventListener('click', () => attemptClose());
+    head.appendChild(closeX);
     popup.appendChild(head);
   }
 

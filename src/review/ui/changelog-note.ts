@@ -964,7 +964,8 @@ export function openChangelogNote(
 
   const modal = uiModal({
     content: html,
-    className: 'bzs-chgn-dialog',
+    className: 'bzs-chgn-dialog bzrv-modal--flush',
+    size: 'full',
     title: copy().title,
     onClose: () => {
       window.removeEventListener('resize', syncFade);
