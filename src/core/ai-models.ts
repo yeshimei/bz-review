@@ -206,7 +206,17 @@ export async function fetchProviderModels(
 
   const url = desc.id === 'ollama' ? `${endpoint}/api/tags` : `${endpoint}/models`;
   const headers: Record<string, string> = {};
-  if (key) headers['Authorization'] = `Bearer ${key}`;
+  /* 2026-11-22 对齐 bz 主仓：Anthropic 的 /models 与对话端点是一套鉴权
+     （x-api-key + 版本头），发 Bearer 会被 401；自定义通道看设置里的协议下拉。 */
+  const anthropic =
+    desc.protocol === 'anthropic' ||
+    (desc.id === 'custom' && String(tryGetSettings().aiCustomProtocol || '').toLowerCase() === 'anthropic');
+  if (key && anthropic) {
+    headers['x-api-key'] = key;
+    headers['anthropic-version'] = '2023-06-01';
+  } else if (key) {
+    headers['Authorization'] = `Bearer ${key}`;
+  }
   const timeoutMs = desc.id === 'ollama' ? OLLAMA_TIMEOUT_MS : MODELS_TIMEOUT_MS;
 
   const data = await fetchModelsJson(url, headers, timeoutMs, providerLabelOf(desc), deps);

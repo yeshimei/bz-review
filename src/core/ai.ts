@@ -72,11 +72,18 @@ function getQ3Settings(): AISettingsLike {
 
 // ---------------- 局部类型（消除 any：API 响应用最小接口 + 类型守卫逐字段收窄） ----------------
 
-/** OpenAI 兼容聊天响应（错误 / 完成 / 流式块共用的最小结构；字段可选，逐字段 typeof 收窄） */
+/** OpenAI 兼容聊天响应（错误 / 完成 / 流式块共用的最小结构；字段可选，逐字段 typeof 收窄）。
+ *  2026-11-22 起也收 Anthropic Messages 的帧形状（type / content / delta），两套协议共用一份宽松面。 */
 interface ChatApiResponse {
   error?: { message?: string; type?: string };
   message?: string;
-  choices?: Array<{ message?: { content?: string }; delta?: { content?: string } }>;
+  /** Anthropic 事件名（content_block_delta / message_stop / error / …） */
+  type?: string;
+  /** Anthropic 非流式正文（数组分段） */
+  content?: unknown;
+  /** Anthropic 流帧增量 */
+  delta?: { type?: string; text?: string };
+  choices?: Array<{ message?: { content?: unknown }; delta?: { content?: string } }>;
 }
 
 /** 聊天请求体（已知字段 + modelOptions 透传字段统一 unknown，不再用 any） */
@@ -182,6 +189,9 @@ export interface AIProviderDescriptor {
   apiKeyDescEn?: string;
   /** 该 provider 的思考档位表（缺省 = 不注入任何思考参数；设置面板选项与请求注入同源） */
   thinking?: AIThinkingSpec;
+  /** 请求协议（2026-11-22，对齐 bz 主仓）：缺省 openai 兼容 `/chat/completions`；
+   *  anthropic 走 `/messages`、`x-api-key` 与 `content_block_delta` 流事件 */
+  protocol?: 'openai' | 'anthropic';
 }
 
 /** 缺省服务商（注册表首位；设置未显式时用它，全仓不再散写字面量）。
@@ -399,6 +409,7 @@ export const AI_PROVIDER_REGISTRY: AIProviderDescriptor[] = [
   {
     id: 'anthropic',
     label: 'Claude（Anthropic）',
+    protocol: 'anthropic',
 
     labelEn: 'Claude (Anthropic)',
     endpoint: 'https://api.anthropic.com/v1',
@@ -608,6 +619,8 @@ interface AIProvider {
   extraHeaders?: Record<string, string>;
   /** 注册表默认 max_tokens（设置 per-provider 覆盖缺省时的兜底档） */
   defaultMaxTokens?: number;
+  /** 请求协议：缺省 openai；anthropic 走 /messages 与 x-api-key（2026-11-22 对齐 bz） */
+  protocol?: 'openai' | 'anthropic';
 }
 
 let _aiProviderCache: AIProvider | null = null;
@@ -656,6 +669,8 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
       model: override.model || undefined,
       extraHeaders: override.extraHeaders || undefined,
       defaultMaxTokens: override.defaultMaxTokens,
+      // 对象形态没有协议身份，按 OpenAI 兼容走（与 bz 主仓同口径）
+      protocol: 'openai',
     };
   }
   const name = (typeof override === 'string' && override.trim()) || resolveProviderId(s.aiProvider);
@@ -689,6 +704,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
       apiKey: customKey,
       model: effModel || undefined,
       defaultMaxTokens,
+      protocol: String(s.aiCustomProtocol || '').toLowerCase() === 'anthropic' ? 'anthropic' : 'openai',
     });
   }
   const legacyKey = desc.apiKeyKey ? s[desc.apiKeyKey] : undefined;
@@ -706,6 +722,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
           endpoint: String(provider.endpoint).replace(/\/+$/, ''),
           apiKey: provider.apiKey,
           defaultMaxTokens: desc.defaultMaxTokens,
+          protocol: 'openai',
         });
       }
     } catch { /* 读取失败由调用方提示 */ }
@@ -741,6 +758,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     apiKey: key || '',
     model: effModel || undefined,
     defaultMaxTokens,
+    protocol: desc.protocol === 'anthropic' ? 'anthropic' : 'openai',
   });
 }
 
@@ -785,16 +803,149 @@ function idleTimeoutOf(body: ChatBody): number {
   return hasImage ? AI_IMAGE_IDLE_TIMEOUT_MS : AI_IDLE_TIMEOUT_MS;
 }
 
-/** SSE 流式解析（fetch + ReadableStream）；signal 可中止，onDelta 逐段增量回调（ticket 141）。
- *  内部 AbortController 组合外部 signal 与空闲超时（C1）：建连不回包 / 流中途停发超时即中止
- *  （带图请求阈值放宽，见 idleTimeoutOf） */
-async function streamChatCompletions(provider: AIProvider, body: ChatBody, signal?: AbortSignal, onDelta?: (delta: string) => void): Promise<string> {
-  const idleMs = idleTimeoutOf(body);
-  const headers: Record<string, string> = {
+/* ---------------- 协议适配（OpenAI 兼容 / Anthropic Messages） ----------------
+ *
+ * 2026-11-22 从 bz 主仓 core/ai.ts 搬：一份协议只在四点分叉——端点、鉴权头、
+ * 报文转换、增量文本提取。超时、中止、流式读取、requestUrl 兜底共用一份实现，
+ * 避免两套协议各写一遍 60 行的超时逻辑（复制出来的两份早晚会漂移）。
+ * 本仓原有实现只认 OpenAI 一家：注册表里 Claude 那档端点写的是 /messages，
+ * 发到 /chat/completions 必然 404——这层把两套协议补齐。
+ */
+
+/** Anthropic 报文只接受这几个可选参数（其余字段服务端会以 400 拒绝，故白名单透传） */
+const ANTHROPIC_PASSTHROUGH = ['temperature', 'top_p', 'top_k', 'metadata'] as const;
+
+/** 中立 content（OpenAI 形态）→ Anthropic content：图片从 image_url 转 image/source */
+function toAnthropicContent(content: unknown): unknown {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return content;
+  const out: Array<Record<string, unknown>> = [];
+  for (const part of content) {
+    if (!part || typeof part !== 'object') continue;
+    const p = part as Record<string, unknown>;
+    if (p.type === 'text') {
+      out.push({ type: 'text', text: String(p.text ?? '') });
+    } else if (p.type === 'image_url') {
+      const url = String((p.image_url as Record<string, unknown> | undefined)?.url ?? '');
+      // data URL（本地图）→ base64 source；公网直链 → url source（Anthropic 两种都收）
+      const m = /^data:([^;,]+);base64,(.*)$/s.exec(url);
+      if (m) out.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
+      else if (url) out.push({ type: 'image', source: { type: 'url', url } });
+    }
+  }
+  return out;
+}
+
+/** 中立报文 → Anthropic Messages 报文：system 抽到顶层、图片换写法、参数走白名单 */
+function toAnthropicBody(body: ChatBody): Record<string, unknown> {
+  const out: Record<string, unknown> = { model: body?.model, stream: !!body?.stream };
+  if (typeof body?.max_tokens === 'number') out.max_tokens = body.max_tokens;
+  const sys: string[] = [];
+  const list: Array<Record<string, unknown>> = [];
+  const msgs = Array.isArray(body?.messages) ? body.messages : [];
+  for (const m of msgs) {
+    if (!m || typeof m !== 'object') continue;
+    // Anthropic 的 messages 只认 user/assistant——system 必须抽到顶层字段，塞在数组里会被 400
+    if (m.role === 'system') {
+      const text = typeof m.content === 'string' ? m.content : '';
+      if (text) sys.push(text);
+      continue;
+    }
+    list.push({ role: m.role === 'assistant' ? 'assistant' : 'user', content: toAnthropicContent(m.content) });
+  }
+  out.messages = list.length ? list : [{ role: 'user', content: '' }];
+  if (sys.length) out.system = sys.join('\n\n');
+  for (const k of ANTHROPIC_PASSTHROUGH) {
+    if (body?.[k] !== undefined) out[k] = body[k];
+  }
+  if (body?.stop !== undefined) out.stop_sequences = Array.isArray(body.stop) ? body.stop : [body.stop];
+  return out;
+}
+
+/** 一套协议的分叉点与响应语义 */
+interface ProtocolAdapter {
+  /** 完整对话端点（endpoint 已去尾斜杠） */
+  url(endpoint: string): string;
+  /** 鉴权与内容类型请求头 */
+  headers(provider: AIProvider): Record<string, string>;
+  /** 中立报文 → 该协议请求体 */
+  body(body: ChatBody): Record<string, unknown>;
+  /** SSE 单帧 → 本次增量文本（无增量返回空串） */
+  deltaOf(chunk: ChatApiResponse): string;
+  /** 流结束标记（OpenAI 走 [DONE] 哨兵，Anthropic 走 message_stop 事件） */
+  isDone(chunk: ChatApiResponse): boolean;
+  /** SSE 内联错误（Anthropic 把错误当事件发，OpenAI 走 HTTP 状态码） */
+  errorOf(chunk: ChatApiResponse): string | null;
+  /** 非流式完整响应 → 文本；缺 content 返回 null */
+  textOf(data: ChatApiResponse): string | null;
+}
+
+const OPENAI_ADAPTER: ProtocolAdapter = {
+  url: (endpoint) => `${endpoint}/chat/completions`,
+  headers: (provider) => ({
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${provider.apiKey}`,
     ...(provider.extraHeaders || {}),
-  };
+  }),
+  body: (body) => body,
+  deltaOf: (chunk) => chunk?.choices?.[0]?.delta?.content || '',
+  isDone: () => false, // OpenAI 以 data: [DONE] 收尾，由流解析单独判
+  errorOf: () => null,
+  textOf: (data) => contentTextOf(data?.choices?.[0]?.message?.content),
+};
+
+const ANTHROPIC_ADAPTER: ProtocolAdapter = {
+  url: (endpoint) => `${endpoint}/messages`,
+  headers: (provider) => ({
+    'Content-Type': 'application/json',
+    // Anthropic 不走 Bearer：密钥在 x-api-key，且必须声明 API 版本
+    'x-api-key': provider.apiKey,
+    'anthropic-version': '2023-06-01',
+    ...(provider.extraHeaders || {}),
+  }),
+  body: toAnthropicBody,
+  deltaOf: (chunk) =>
+    chunk?.type === 'content_block_delta' && chunk?.delta?.type === 'text_delta'
+      ? String(chunk.delta.text ?? '')
+      : '',
+  isDone: (chunk) => chunk?.type === 'message_stop',
+  errorOf: (chunk) =>
+    chunk?.type === 'error' ? String(chunk?.error?.message || chunk?.error?.type || t('ai.error.unknown')) : null,
+  textOf: (data) => {
+    const arr = Array.isArray(data?.content) ? data.content : [];
+    if (!arr.length) return null;
+    return arr
+      .filter((c) => (c as { type?: string })?.type === 'text')
+      .map((c) => String((c as { text?: unknown }).text ?? ''))
+      .join('');
+  },
+};
+
+/** 按 provider.protocol 取适配器（缺省 openai） */
+function adapterOf(provider: AIProvider): ProtocolAdapter {
+  return provider.protocol === 'anthropic' ? ANTHROPIC_ADAPTER : OPENAI_ADAPTER;
+}
+
+/** 正文提取：字符串原样，数组分段拼起来（兼容层可能回 [{type:'text'}]） */
+function contentTextOf(content: unknown): string | null {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return null;
+  let out = '';
+  for (const part of content) {
+    if (part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string') {
+      out += (part as { text: string }).text;
+    }
+  }
+  return out;
+}
+
+/** SSE 流式解析（fetch + ReadableStream）；两套协议共用本函数，差异全在 adapter。
+ *  signal 可中止，onDelta 逐段增量回调（ticket 141）。内部 AbortController 组合
+ *  外部 signal 与空闲超时（C1）：建连不回包 / 流中途停发超时即中止。 */
+async function streamChat(provider: AIProvider, body: ChatBody, signal?: AbortSignal, onDelta?: (delta: string) => void): Promise<string> {
+  const adapter = adapterOf(provider);
+  const idleMs = idleTimeoutOf(body);
+  const headers = adapter.headers(provider);
   // 内部 controller：外部 signal 转发 + 空闲超时；aborted 且外部未取消 ⇒ 超时
   const controller = new AbortController();
   const onOuterAbort = () => controller.abort();
@@ -813,10 +964,10 @@ async function streamChatCompletions(provider: AIProvider, body: ChatBody, signa
   };
   try {
     armIdle();
-    const resp = await window.fetch(`${provider.endpoint}/chat/completions`, {
+    const resp = await window.fetch(adapter.url(provider.endpoint), {
       method: 'POST',
       headers,
-      body: JSON.stringify(body),
+      body: JSON.stringify(adapter.body(body)),
       signal: controller.signal,
     });
     if (!resp.ok) {
@@ -830,7 +981,7 @@ async function streamChatCompletions(provider: AIProvider, body: ChatBody, signa
     // 响应无流（老 WebView / 非 SSE）→ 直接读完整 JSON（json() 期间空闲超时仍生效）
     if (!resp.body || typeof resp.body.getReader !== 'function') {
       const data = (await resp.json()) as ChatApiResponse;
-      return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+      return adapter.textOf(data) || '';
     }
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -847,16 +998,26 @@ async function streamChatCompletions(provider: AIProvider, body: ChatBody, signa
         if (!line.startsWith('data:')) continue;
         const payload = line.slice(5).trim();
         if (payload === '[DONE]') { try { void reader.cancel(); } catch { /* 忽略 */ } return full; }
+        let chunk: ChatApiResponse | null = null;
         try {
-          const chunk = JSON.parse(payload) as ChatApiResponse;
-          const delta = chunk.choices && chunk.choices[0] && chunk.choices[0].delta && chunk.choices[0].delta.content;
-          if (delta) {
-            full += delta;
-            try {
-              onDelta?.(delta); // 增量回调异常不影响流式解析
-            } catch { /* 忽略 */ }
-          }
-        } catch { /* 忽略坏 chunk */ }
+          chunk = JSON.parse(payload) as ChatApiResponse;
+        } catch {
+          continue; // 坏 chunk / 心跳行：跳过，不打断整条流
+        }
+        if (!chunk) continue;
+        const inlineError = adapter.errorOf(chunk);
+        if (inlineError) throw new Error(inlineError);
+        if (adapter.isDone(chunk)) {
+          try { void reader.cancel(); } catch { /* 忽略 */ }
+          return full;
+        }
+        const delta = adapter.deltaOf(chunk);
+        if (delta) {
+          full += delta;
+          try {
+            onDelta?.(delta); // 增量回调异常不影响流式解析
+          } catch { /* 忽略 */ }
+        }
       }
     }
     return full;
@@ -873,15 +1034,13 @@ async function streamChatCompletions(provider: AIProvider, body: ChatBody, signa
 
 /** 非流式（requestUrl：Obsidian 官方 API，无 CORS 限制）；requestUrl 不支持中止 → 前后查 signal，已取消按丢弃处理。
  *  C1：requestUrl 本身无超时也不可中止，这里以 race 兜底——超 60s 未应答 promise 先行 settle 报超时，
- *  调用方不再永久转圈（底层连接无法显式取消，迟到结果由 race 消费侧丢弃不产生 unhandled rejection） */
-async function chatCompletionsNonStream(provider: AIProvider, body: ChatBody, signal?: AbortSignal): Promise<string> {
+ *  调用方不再永久转圈（底层连接无法显式取消，迟到结果由 race 消费侧丢弃不产生 unhandled rejection）。
+ *  两套协议共用本函数，端点 / 头 / 报文由 adapter 决定（2026-11-22 对齐 bz 主仓）。 */
+async function chatNonStream(provider: AIProvider, body: ChatBody, signal?: AbortSignal): Promise<string> {
   if (signal?.aborted) throw abortError();
+  const adapter = adapterOf(provider);
   const idleMs = idleTimeoutOf(body);
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${provider.apiKey}`,
-    ...(provider.extraHeaders || {}),
-  };
+  const headers = adapter.headers(provider);
   const resp = await new Promise<RequestUrlResp>((resolve, reject) => {
     let timer: number | null = null;
     const settle = (fn: () => void) => {
@@ -890,10 +1049,10 @@ async function chatCompletionsNonStream(provider: AIProvider, body: ChatBody, si
     };
     timer = window.setTimeout(() => settle(() => reject(timeoutError(idleMs))), idleMs);
     requestUrl({
-      url: `${provider.endpoint}/chat/completions`,
+      url: adapter.url(provider.endpoint),
       method: 'POST',
       headers,
-      body: JSON.stringify({ ...body, stream: false }),
+      body: JSON.stringify({ ...adapter.body(body), stream: false }),
     }).then(
       (r) => settle(() => resolve(r)),
       (e: unknown) => settle(() => reject(asError(e)))
@@ -902,9 +1061,9 @@ async function chatCompletionsNonStream(provider: AIProvider, body: ChatBody, si
   if (signal?.aborted) throw abortError();
   const data = JSON.parse(resp.text) as ChatApiResponse;
   // 兼容 OpenAI 与部分第三方网关的错误格式（如 {type, error:{type,message}}）
-  const errMsg = (data.error && (data.error.message || data.error.type)) || (data.message && data.message);
+  const errMsg = (data.error && (data.error.message || data.error.type)) || data.message;
   if (errMsg) throw new Error(`API ${resp.status}: ${errMsg}`);
-  const content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  const content = adapter.textOf(data);
   if (content === undefined || content === null) throw new Error(t('ai.error.noContent', { status: resp.status }));
   return content;
 }
@@ -1048,21 +1207,23 @@ export class AIService {
     }
     // 思考档位注入（issue 411/ADR-0179）：档位与参数名由 provider 档位表决定（thinkingBodyFor）；
     // 调用方显式思考键优先；auto / 档位不在表内 / 无注册表身份（对象 override）一律不注入。
-    // 字符串 override 指定的 provider 以其自身档位表为准（provider.id 随解析带出）
-    if (!hasExplicitThinkingOption(mo)) {
+    // 字符串 override 指定的 provider 以其自身档位表为准（provider.id 随解析带出）。
+    // Anthropic 协议不注入（2026-11-22 对齐 bz）：它的 extended thinking 走 budget_tokens
+    // 且要与 max_tokens 联动折算，直接发 OpenAI 形态的 thinking / reasoning_effort 会被 400 拒绝。
+    if (provider.protocol !== 'anthropic' && !hasExplicitThinkingOption(mo)) {
       const thinking = thinkingBodyFor(provider.id, s.aiThinkingOverrides?.[provider.id || '']);
       if (thinking) Object.assign(body, thinking);
     }
     const signal = mergedOptions.signal instanceof AbortSignal ? mergedOptions.signal : undefined;
     const onDelta = typeof mergedOptions.onDelta === 'function' ? mergedOptions.onDelta : undefined;
     try {
-      const content = await streamChatCompletions(provider, body, signal, onDelta);
+      const content = await streamChat(provider, body, signal, onDelta);
       return content;
     } catch (streamError: unknown) {
       if (signal?.aborted) throw streamError; // 用户取消：不再走 requestUrl 兜底
       // fetch 失败（CORS/网络）→ requestUrl 非流式兜底
       try {
-        const content = await chatCompletionsNonStream(provider, body, signal);
+        const content = await chatNonStream(provider, body, signal);
         return content;
       } catch (e: unknown) {
         throw new Error(t('ai.error.requestFailed', { error: errorMessage(streamError), fallback: errorMessage(e) }));
