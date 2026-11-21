@@ -12,6 +12,7 @@ import type { ReviewItem } from './data';
 import { DEFAULT_W } from './fsrs';
 import { DEFAULT_R_THRESHOLD, partitionQueue } from './queue';
 import { isHiddenFromQueue } from './card-manager';
+import { t } from '../i18n/strings';
 
 export type GroupBy = 'folder' | 'book';
 
@@ -27,11 +28,11 @@ export function deckOf(item: ReviewItem): string {
   if (own) return own;
   if (isCardItem(item)) {
     const book = String(item.card?.bookTitle ?? '').trim();
-    return book || '未分组';
+    return book || t('deck.ungrouped');
   }
   const path = String(item.filePath ?? '');
   const cut = path.lastIndexOf('/');
-  if (cut <= 0) return '根目录';
+  if (cut <= 0) return t('deck.root');
   return path.slice(0, cut);
 }
 
@@ -169,12 +170,12 @@ export function isEmptyFilter(filter: ItemFilter = {}): boolean {
 export function describeFilter(filter: ItemFilter = {}): string {
   const bits: string[] = [];
   if (filter.deck) bits.push(filter.deck);
-  if (filter.kind === 'note') bits.push('只看笔记');
-  if (filter.kind === 'card') bits.push('只看划线');
+  if (filter.kind === 'note') bits.push(t('deck.onlyNotes'));
+  if (filter.kind === 'card') bits.push(t('deck.onlyCards'));
   if (filter.status && filter.status !== 'all') {
-    bits.push(filter.status === 'overdue' ? '只看逾期' : filter.status === 'today' ? '只看今天' : filter.status === 'hidden' ? '只看隐藏' : '只看未来');
+    bits.push(filter.status === 'overdue' ? t('deck.onlyOverdue') : filter.status === 'today' ? t('deck.onlyToday') : filter.status === 'hidden' ? t('deck.onlyHidden') : t('deck.onlyFuture'));
   }
   const q = String(filter.query ?? '').trim();
-  if (q) bits.push(`含「${q}」`);
+  if (q) bits.push(t('deck.contains', { q }));
   return bits.join(' · ');
 }

@@ -24,6 +24,7 @@ import { pickFolderNative } from './folder-pick';
 import { notifySaveError, notifyActionError } from './notice';
 
 import { markOwned } from './scope';
+import { t } from '../i18n/strings';
 export interface PathPickerOptions {
   /** 弹窗标题（缺省「选择文件夹」） */
   title?: string;
@@ -178,7 +179,7 @@ export function renderPathChips(
   container: HTMLElement,
   selected: string[],
   onChange: (list: string[]) => void,
-  emptyText = '未选择',
+  emptyText = t('pk.notChosen'),
   onChipClick?: (path: string) => void
 ): void {
   container.innerHTML = '';
@@ -192,7 +193,7 @@ export function renderPathChips(
     return;
   }
   for (const path of selected) {
-    const label = path === '' ? '（库根目录）' : path;
+    const label = path === '' ? t('pk.root') : path;
     const chip = createSpan();
     chip.className = 'bzrv-path-picker-chip' + (onChipClick ? ' bzrv-path-picker-chip--click' : '');
     const name = createSpan();
@@ -202,7 +203,7 @@ export function renderPathChips(
     const x = createEl('button');
     x.className = 'bzrv-path-picker-chip-x';
     x.textContent = '✕';
-    x.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: `移除 ${label}` }));
+    x.appendChild(Object.assign(createSpan(), { className: 'bzrv-sr-only', textContent: t('pk.removeLabel', { label }) }));
     x.onclick = () => onChange(selected.filter((p) => p !== path));
     chip.appendChild(name);
     chip.appendChild(x);
@@ -301,11 +302,11 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
   const pickPill = (parent: HTMLElement, label: string, empty: boolean): HTMLButtonElement => {
     const btn = parent.createEl('button', { cls: 'bzrv-path-pick', type: 'button' });
     if (empty) btn.classList.add('bzrv-path-pick--empty');
-    btn.createSpan({ cls: 'bzrv-sr-only', text: empty ? '选择文件夹' : `更换文件夹：${label}` });
+    btn.createSpan({ cls: 'bzrv-sr-only', text: empty ? t('pk.chooseFolder') : t('pk.changeFolder', { label }) });
     const icon = btn.createSpan({ cls: 'bzrv-path-pick-icon' });
     setIcon(icon, 'folder');
     btn.createSpan({ cls: 'bzrv-path-pick-name', text: label });
-    btn.createSpan({ cls: 'bzrv-path-pick-action', text: opts.buttonText || '选择' });
+    btn.createSpan({ cls: 'bzrv-path-pick-action', text: opts.buttonText || t('pk.choose') });
     btn.onclick = openPicker;
     return btn;
   };
@@ -313,14 +314,14 @@ export function renderPathSettingRow(opts: PathSettingRowOptions): { refresh: ()
   const render = () => {
     picks.empty();
     if (current.length === 0) {
-      pickPill(picks, opts.fallbackChip || '未选择', true);
+      pickPill(picks, opts.fallbackChip || t('pk.notChosen'), true);
       return;
     }
     for (const p of current) {
       const wrap = picks.createDiv({ cls: 'bzrv-path-pick-wrap' });
-      pickPill(wrap, p || '（库根目录）', false);
+      pickPill(wrap, p || t('pk.root'), false);
       const rm = wrap.createEl('button', { cls: 'bzrv-path-pick-remove', type: 'button' });
-      rm.createSpan({ cls: 'bzrv-sr-only', text: `移除文件夹：${p || '库根目录'}` });
+      rm.createSpan({ cls: 'bzrv-sr-only', text: t('pk.removeFolder', { path: p || t('deck.root') }) });
       setIcon(rm, 'x');
       rm.onclick = () => {
         void apply(current.filter((x) => x !== p));
@@ -490,7 +491,7 @@ async function nativePickSystemFolder(): Promise<string | null> {
   const dialog = remote?.dialog;
   if (dialog?.showOpenDialog) {
     const res = await dialog.showOpenDialog({
-      title: '选择文件夹',
+      title: t('pk.chooseFolder'),
       properties: ['openDirectory', 'dontAddToRecent'],
     });
     const picked = res?.filePaths?.[0];
@@ -507,7 +508,7 @@ export async function pickSystemFolder(): Promise<string | null> {
     const dir = await pick();
     return dir ? normalizeSystemPath(dir) : null;
   } catch (e) {
-    notifyActionError(e, '选择文件夹');
+    notifyActionError(e, t('pk.chooseFolder'));
     return null;
   }
 }
@@ -537,7 +538,7 @@ export async function pickSystemFiles(title: string, filters: PickFilesFilter[])
     if (res?.canceled) return [];
     return (res?.filePaths ?? []).map((p) => normalizeSystemPath(p)).filter(Boolean);
   } catch (e) {
-    notifyActionError(e, '选择文件');
+    notifyActionError(e, t('pk.chooseFile'));
     return [];
   }
 }
