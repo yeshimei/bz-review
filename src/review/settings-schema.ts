@@ -31,6 +31,9 @@ import {
   resetAIProviderCache,
   testAIConnectivity,
   thinkingLevelsOf,
+  providerLabelOf,
+  providerKeyLabelOf,
+  providerKeyDescOf,
 } from '../core/ai';
 import { resolveProviderId } from '../core/ai-provider-id';
 import { fetchProviderModels, providerDescriptorOf } from '../core/ai-models';
@@ -148,7 +151,7 @@ function providerModelRow(): SettingsRow {
             }
             await new Promise<void>((resolve) => {
               openModelPicker({
-                providerLabel: desc.label,
+                providerLabel: providerLabelOf(desc),
                 current: providerValue('model'),
                 models,
                 onPick: (m) => {
@@ -220,7 +223,7 @@ export function reviewLlmRows(): SettingsRow[] {
       name: t('settings.ai.provider'),
       desc: t('settings.ai.providerDesc'),
       binding: { key: 'aiProvider' },
-      options: AI_PROVIDER_REGISTRY.map((p) => ({ value: p.id, label: p.label })),
+      options: AI_PROVIDER_REGISTRY.map((p) => ({ value: p.id, label: providerLabelOf(p) })),
     },
     {
       type: 'text',
@@ -246,8 +249,8 @@ export function reviewLlmRows(): SettingsRow[] {
   for (const p of AI_PROVIDER_REGISTRY) {
     rows.push({
       type: 'secret',
-      name: p.apiKeyLabel,
-      desc: p.apiKeyDesc,
+      name: providerKeyLabelOf(p),
+      desc: providerKeyDescOf(p),
       binding: p.apiKeyKey
         ? { key: p.apiKeyKey as never }
         : {
