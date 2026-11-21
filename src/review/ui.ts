@@ -1320,6 +1320,16 @@ export class UIManager {
   }
 
   /**
+   * 点「复习」页签回三列卡牌主列表。独立页顶部页签与嵌入态宿主页签共用这一条，
+   * 从数据 / 设置等内置页点一下就回队列（嵌入态那条接线见 main.ts 的 embedInto）。
+   */
+  goHome(): void {
+    this.closeMoreMenu();
+    this.page = null;
+    void this.refreshPanel();
+  }
+
+  /**
    * 头行图标点击（2026-11-20 口径：点哪个图标直接打开对应页，幂等；只有「复习」
    * 页签回主列表）。主队列与内置页共用 panelHeadHtml，绑定也共用这一份。
    * 四个次级入口（arch/trash/books/manager）收进「更多」下拉菜单：点 more 开合，
@@ -1331,7 +1341,7 @@ export class UIManager {
       this.page = nextPanelPage(this.page, clicked);
       void this.refreshPanel();
     };
-    container.querySelector('[data-act="home"]')?.addEventListener('click', () => go('home'));
+    container.querySelector('[data-act="home"]')?.addEventListener('click', () => this.goHome());
     /* 头行图标与菜单项同名时都要响应：手机上 filter/data/settings 只从菜单进，
        桌面上两处都在。querySelectorAll 覆盖面板头 + 嵌入外置动作栏两套 DOM。 */
     container.querySelectorAll('[data-act="settings"]').forEach((el) => el.addEventListener('click', () => go('settings')));
@@ -1344,6 +1354,11 @@ export class UIManager {
     container.querySelectorAll('[data-act="trash"]').forEach((el) => el.addEventListener('click', () => go('trash')));
     /* 成就入口在更多菜单（桌面手机同一份） */
     container.querySelectorAll('[data-act="achv"]').forEach((el) => el.addEventListener('click', () => go('achv')));
+    /* 创建卡牌：手输文字走统一制卡流程。更多菜单唯一入口，嵌入态外置动作栏也走这里。 */
+    container.querySelectorAll('[data-act="create"]').forEach((el) => el.addEventListener('click', () => {
+      this.closeMoreMenu();
+      void import('./add-flow').then((m) => m.openCreateCardFlow(this.app));
+    }));
     /* 批量选择从底栏收进菜单后仍是唯一入口：勾不勾由这里切，不走 go()。 */
     container.querySelectorAll('[data-act="batch"]').forEach((el) => el.addEventListener('click', () => {
       this.closeMoreMenu();

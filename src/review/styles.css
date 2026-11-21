@@ -1268,6 +1268,32 @@
   .bzrv-folder-add-actions .bzrv-btn { width: 100%; min-height: 44px; }
 }
 
+/* 创建卡牌输入面板（2026-11-21）：手输文字 → 统一制卡流程 */
+.bzrv-create-card { display: flex; flex-direction: column; gap: 10px; }
+.bzrv-create-card-desc { font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); line-height: var(--bzrv-leading-normal); }
+.bzrv-create-card-input {
+  width: 100%; min-height: 160px; resize: vertical;
+  padding: 10px 12px; border: 1px solid var(--bzrv-border); border-radius: var(--bzrv-radius-sm);
+  background: var(--bzrv-surface-2); color: var(--bzrv-text-1);
+  font: inherit; font-size: var(--bzrv-font-label); line-height: var(--bzrv-leading-normal);
+}
+.bzrv-create-card-count { text-align: right; font-size: var(--bzrv-font-caption); color: var(--bzrv-text-3); }
+.bzrv-create-card-count.is-over { color: var(--bzrv-danger); }
+.bzrv-create-card-actions { justify-content: flex-end; }
+/* 宿主 reset 会把按钮底色 unset：弹窗里这颗主按钮自己把品牌底接回来 */
+[data-bzrv] .bzrv-create-card-actions button.bzrv-btn--primary {
+  background: var(--bzrv-brand);
+  color: var(--bzrv-on-brand);
+  border-color: transparent;
+}
+@media (hover: hover) {
+  [data-bzrv] .bzrv-create-card-actions button.bzrv-btn--primary:hover { background: var(--bzrv-brand-hover); }
+}
+@media (max-width: 768px) {
+  .bzrv-create-card-actions { flex-direction: column; }
+  .bzrv-create-card-actions .bzrv-btn { width: 100%; min-height: 44px; }
+}
+
 /* 自定义卡片模板：编辑弹窗的字段勾选项 + 复习时的正反面字段 */
 .bzrv-tpl-opt { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: var(--bzrv-font-label); color: var(--bzrv-text-2); cursor: pointer; }
 .bzrv-tpl-opt input { margin: 0; }

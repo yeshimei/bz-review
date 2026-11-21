@@ -134,13 +134,14 @@ export function sortColumn(items: ReviewItem[], now: number = Date.now(), w: num
 export const PANEL_HEAD_ACTS = ['filter', 'data', 'more', 'settings'] as const;
 export type PanelHeadAct = (typeof PANEL_HEAD_ACTS)[number];
 
-/** 「更多」菜单里的入口：复习操作（batch/achv）+ 复习记录（arch/trash）
+/** 「更多」菜单里的入口：复习操作（create/batch/achv）+ 复习记录（arch/trash）
  *  + 数据洞察（books/manager）+ 界面工具（filter/data/settings）。
  *  顺序即菜单里的呈现顺序；高亮仍走 panelActIsOn（与头行图标同一口径）。
  *  2026-11-20 二轮：手机上头行只留 more，filter/data/settings 只能从这里进；
- *  成就与批量选择也从底栏收进来——桌面和手机同一份菜单，不再各留一颗。 */
+ *  成就与批量选择也从底栏收进来——桌面和手机同一份菜单，不再各留一颗。
+ *  2026-11-21：「创建卡牌」加进复习操作组第一项，手输文字走统一制卡流程。 */
 export const MORE_MENU_ACTS = [
-  'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
+  'create', 'batch', 'achv', 'arch', 'trash', 'books', 'manager', 'filter', 'data', 'settings',
 ] as const;
 export type MoreMenuAct = (typeof MORE_MENU_ACTS)[number];
 
@@ -172,6 +173,7 @@ function moreMenuItem(act: MoreMenuAct, title: string, sub: string, icon: string
 export function panelMoreMenuHtml(activePage?: string | null): string {
   return `<div class="bzrv-more-menu" hidden>
   <div class="bzrv-more-group">复习操作</div>
+  ${moreMenuItem('create', '创建卡牌', '手动输入文字做成复习卡', 'plus', activePage)}
   ${moreMenuItem('batch', '批量选择', '勾选条目批量处理', 'square-check-big', activePage)}
   ${moreMenuItem('achv', '成就', '徽章进度单独成页', 'trophy', activePage)}
   <div class="bzrv-more-sep"></div>
@@ -199,7 +201,7 @@ export function panelHeadBtnsHtml(activePage?: string | null): string {
   const on = (act: PanelHeadAct): string => (panelActIsOn(act, activePage) ? ' is-on' : '');
   return `<button data-act="filter" class="bzrv-icon-btn"><span class="bzrv-sr-only">筛选（牌组 / 类型 / 状态）</span>${iconSpan('list-filter', 'bzrv-q-ic')}</button>
 <button data-act="data" class="bzrv-icon-btn${on('data')}"><span class="bzrv-sr-only">数据（统计与负荷）</span>${iconSpan('chart-column', 'bzrv-q-ic')}</button>
-<button data-act="more" class="bzrv-icon-btn bzrv-more-btn${on('more')}"><span class="bzrv-sr-only">更多（批量选择 / 成就 / 复习记录 / 数据洞察 / 界面工具）</span>${iconSpan('more-vertical', 'bzrv-q-ic')}</button>${panelMoreMenuHtml(activePage)}
+<button data-act="more" class="bzrv-icon-btn bzrv-more-btn${on('more')}"><span class="bzrv-sr-only">更多（创建卡牌 / 批量选择 / 成就 / 复习记录 / 数据洞察 / 界面工具）</span>${iconSpan('more-vertical', 'bzrv-q-ic')}</button>${panelMoreMenuHtml(activePage)}
 <button data-act="settings" class="bzrv-icon-btn${on('settings')}"><span class="bzrv-sr-only">设置</span>${iconSpan('settings', 'bzrv-q-ic')}</button>`;
 }
 

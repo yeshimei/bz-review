@@ -26,6 +26,7 @@ import {
   plannedPathsFrom,
 } from './add-flow-model';
 import { noteCardKey } from './note-source';
+import { MANUAL_BOOK_TITLE, MANUAL_TEXT_LIMIT, manualCardKey, normalizeManualText } from './manual-card';
 
 /** 所有「加入复习」入口的入参形状 */
 export type AddFlowInput =
@@ -45,7 +46,9 @@ export type AddFlowInput =
     sourceNote?: { path: string; from: number; to: number };
   }
   /** 从阅读器挑（整本书的划线 / 章节），挑的窗口住在 source-pick-ui */
-  | { kind: 'reader'; bookId?: string };
+  | { kind: 'reader'; bookId?: string }
+  /** 手动输入的一段文字（更多菜单「创建卡牌」），先弹输入面板再进统一制卡 */
+  | { kind: 'text' };
 
 /** 鸭子类型：测试与宿主都不必真的拿到 TFile */
 interface FileLike {
@@ -164,6 +167,10 @@ export async function openAddToReviewFlow(app: App, input: AddFlowInput): Promis
       mod.openSourcePicker(app, { bookId: input.bookId });
       return;
     }
+    if (input.kind === 'text') {
+      await openCreateCardFlow(app);
+      return;
+    }
     if (input.kind === 'selection') {
       const src = selectionSource(input);
       if (!src) {
@@ -224,8 +231,8 @@ async function addPaths(app: App, paths: readonly string[]): Promise<void> {
   deliver(app, got.sources);
 }
 
-/** 交付给统一制卡流程。 */
-function deliver(app: App, sources: CardWizardSource[]): void {
+/** 交付给统一制卡流程。focusKey：入库后回主列表并高亮这张卡（创建卡牌用）。 */
+function deliver(app: App, sources: CardWizardSource[], opts?: { focusKey?: string }): void {
   const api = getReviewPlanApi();
   if (!api) {
     notice('复习模块还没准备好，稍后再试一次', 'warning');
@@ -238,8 +245,85 @@ function deliver(app: App, sources: CardWizardSource[]): void {
   }, {
     sources,
     /* 入库之后才刷新列表与文件树；取消一个字节都没写，不该触发任何刷新 */
-    onAdded: () => void afterAdd(app),
+    onAdded: () => {
+      void afterAdd(app);
+      if (opts?.focusKey) void focusAfterAdd(opts.focusKey);
+    },
   });
+}
+
+/** 创建卡牌入库后：回三列卡牌主列表并高亮刚加的那张卡。面板没开就算了，不影响入库。 */
+async function focusAfterAdd(key: string): Promise<void> {
+  try {
+    const { uiManager } = await import('./index');
+    await uiManager?.focusCardKey(key);
+  } catch {
+    /* 面板没开不影响入库 */
+  }
+}
+
+/**
+ * 「创建卡牌」输入面板：写一段文字 → 选方式 / 出题面 / 确认入库（统一流程，无旁路）。
+ *
+ * 面板上给字数提示、空白禁提交（归一逻辑在 manual-card.ts，这里只管交互）；
+ * 提交前先按稳定钥匙查重，已在水里的同一段文字不重复加入。
+ */
+export async function openCreateCardFlow(app: App): Promise<void> {
+  const body = createDiv({ cls: 'bzrv-create-card' });
+  body.createDiv({ cls: 'bzrv-create-card-desc', text: '写点要记住的内容，下一步选复习方式、确认题面后加入计划。' });
+  const area = body.createEl('textarea', { cls: 'bzrv-create-card-input' });
+  area.rows = 8;
+  area.placeholder = '例如：光速约每秒 30 万公里，绕地球一圈约 7.5 圈。';
+  const counter = body.createDiv({ cls: 'bzrv-create-card-count' });
+
+  const modal = uiModal({
+    title: '创建卡牌',
+    head: true,
+    content: body,
+    size: 'md',
+    className: 'bzrv-create-card-modal',
+  });
+  const actions = modal.popup.createDiv({ cls: 'bzrv-edit-actions bzrv-create-card-actions' });
+  const cancel = actions.createEl('button', { cls: 'bzrv-btn', text: '取消' });
+  cancel.onclick = () => modal.close();
+  const ok = actions.createEl('button', { cls: 'bzrv-btn bzrv-btn--primary', text: '下一步' });
+
+  const paint = (): void => {
+    const r = normalizeManualText(area.value);
+    /* 计数按归一后的正文算，与截断口径一致：首尾空白不该让提示说「超限」而内容没被截 */
+    const n = Array.from(r.text).length;
+    counter.textContent = `${n} / ${MANUAL_TEXT_LIMIT} 字${r.clipped ? '（超出部分会被截掉）' : ''}`;
+    counter.classList.toggle('is-over', r.clipped);
+    ok.disabled = !!r.error;
+  };
+  area.oninput = paint;
+
+  ok.onclick = () => {
+    const r = normalizeManualText(area.value);
+    if (r.error) {
+      notice(r.error, 'info');
+      return;
+    }
+    const key = manualCardKey(r.text);
+    modal.close();
+    void (async () => {
+      const api = getReviewPlanApi();
+      if (api) {
+        try {
+          const rows = await api.statusOf([key]);
+          if (rows.some((row) => row.planned)) {
+            notice('这段文字已经在复习计划里了', 'info');
+            return;
+          }
+        } catch {
+          /* 查重读盘失败不挡路：入库时 addCards 还会再拦一次 */
+        }
+      }
+      deliver(app, [{ key, bookTitle: MANUAL_BOOK_TITLE, text: r.text }], { focusKey: key });
+    })();
+  };
+  paint();
+  window.setTimeout(() => area.focus(), 0);
 }
 
 /** 入库后的统一收尾：面板列表 + 文件树染色（两处都失败也不影响卡已经进了计划） */
