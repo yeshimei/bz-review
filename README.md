@@ -2,7 +2,7 @@
   <p><img src="logo.png" width="120" alt="bz Review 图标"></p>
   <h1>bz Review（复习）</h1>
   <p><b>bz Review 把制卡、整卡交给 AI，让你专注阅读与复习。</b><br>
-  <sub>内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。</sub></p>
+  <b>内置 FSRS 间隔重复算法，依据记忆稳定性动态排期，并按你的复习记录自适应拟合参数。用更少的复习次数，记得更牢。</b></p>
 
   <p>
     <a href="https://obsidian.md"><img src="https://img.shields.io/badge/OBSIDIAN-%E2%89%A5%201.8.7-8a6a3a?style=flat-square&logo=obsidian&logoColor=white" alt="Obsidian 1.8.7+"></a>
