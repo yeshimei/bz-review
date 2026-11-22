@@ -28,18 +28,58 @@ const arg = (name) => {
   return i >= 0 ? args[i + 1] : undefined;
 };
 const name = arg('name');
-const days = Number(arg('days') || 0);
+const preset = arg('preset');
+
+/* 预设（2026-11-22，与 bz Reader 同款）：群里发码最常用的两种，少手滑。
+   `7d` / `30d` → 从签发时刻算死；`expired` → 昨天，用于演示与测试。 */
+let presetDays = 0;
+let presetExpired = false;
+if (preset) {
+  const m = /^(\d+)d$/.exec(preset);
+  if (m) presetDays = Number(m[1]);
+  else if (preset === 'expired') presetExpired = true;
+  else {
+    console.error(`--preset 只认 7d / 30d 这类天数，或 expired；收到 ${preset}`);
+    process.exit(1);
+  }
+}
+
+const days = Number(arg('days') || 0) || presetDays;
 const until = arg('until');
-const plan = arg('plan') || (days > 0 || until ? 'year' : 'lifetime');
+
+/* 不给 --plan 时按参数推断：有截止日期才算短期码；预设按试用码签
+   （`--days 365` 这种老用法仍记 year，行为不变）。
+   2026-11-22 口径：试用码里不写版本——运行期要求「必须是最新版」。 */
+let plan = arg('plan');
+if (!plan) {
+  const dated = days > 0 || !!until || presetExpired;
+  plan = dated ? (presetDays > 0 || presetExpired ? 'trial' : 'year') : 'lifetime';
+}
+if (presetExpired && plan !== 'trial') {
+  console.error('--preset expired 是试用码预设，不能配 --plan lifetime。');
+  process.exit(1);
+}
+if (plan === 'trial' && !days && !until && !presetExpired) {
+  console.error('试用码必须有截止日期：加 --days 7 或 --until YYYY-MM-DD（或 --preset 7d）。');
+  process.exit(1);
+}
+
 function stamp() {
   const d = new Date();
   const p = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
 }
-const id = arg('id') || `REV-${stamp()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+/* 试用码走独立号段 REV-TR-，不占付费码的连续序号 */
+const prefix = plan === 'trial' ? 'REV-TR' : 'REV';
+const id = arg('id') || `${prefix}-${stamp()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
 let exp = 0;
-if (until) exp = new Date(`${until}T23:59:59`).getTime();
+if (presetExpired) {
+  /* 昨天 23:59:59：签出来就是「已过期」，用来演示过期提示与做测试 */
+  const d = new Date(Date.now() - 86_400_000);
+  d.setHours(23, 59, 59, 0);
+  exp = d.getTime();
+} else if (until) exp = new Date(`${until}T23:59:59`).getTime();
 else if (days > 0) exp = Date.now() + days * 86_400_000;
 if (Number.isNaN(exp)) {
   console.error('--until 的日期看不懂，要 YYYY-MM-DD');
@@ -86,5 +126,7 @@ const code = `BZP2.${b64url(payloadBytes)}.${b64url(sig)}`;
 
 console.log(code);
 console.error(
-  `--- ${name || '未署名'} · ${plan} · ${id} · ${exp ? new Date(exp).toLocaleDateString() : '永久'}`,
+  `--- ${name || '未署名'} · ${plan} · ${id} · ${exp ? new Date(exp).toLocaleDateString() : '永久'}${
+    plan === 'trial' ? ' · 需保持最新版' : ''
+  }`,
 );

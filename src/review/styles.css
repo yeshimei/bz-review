@@ -1815,3 +1815,80 @@
   .bzrv-pick-foot { padding: 12px 16px 16px; }
 }
 
+
+/* ==================== 更新提醒弹窗（2026-11-22，与 bz Reader 同款） ====================
+   只提醒、不自更新：版本号 + 去 Obsidian 设置里检查更新 + 「忽略此版本」。
+   弹层挂 body，局部令牌直接读宿主主题变量；构建期会补 [data-bzrv] 作用域。 */
+.bzrv-upd-dialog {
+  --upd-accent: var(--bzrv-accent, var(--interactive-accent, var(--text-accent, #7856d6)));
+  --upd-ink: var(--text-normal, #1f1f23);
+  --upd-ink-2: var(--text-muted, #5a5a63);
+  --upd-line: var(--background-modifier-border, rgba(0, 0, 0, 0.1));
+  --upd-hover: var(--background-modifier-hover, rgba(0, 0, 0, 0.05));
+}
+
+.bzrv-upd-dialog .bzrv-dialog-head {
+  padding: 18px 20px 0;
+}
+
+.bzrv-upd-dialog .bzrv-dialog-title {
+  color: var(--upd-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.bzrv-upd-dialog .bzrv-dialog-body {
+  padding: 14px 20px 18px;
+}
+
+.bzrv-upd {
+  color: var(--upd-ink);
+}
+
+.bzrv-upd-ver {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 8px;
+}
+
+.bzrv-upd-ver b {
+  font-size: 26px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+}
+
+.bzrv-upd-ver span {
+  color: var(--upd-ink-2);
+  font-size: 12px;
+}
+
+.bzrv-upd-note {
+  margin: 0 0 18px;
+  color: var(--upd-ink-2);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.bzrv-upd-acts {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.bzrv-upd-btn {
+  appearance: none;
+  border: 1px solid var(--upd-line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--upd-ink);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 16px;
+  cursor: pointer;
+}
+
+.bzrv-upd-btn:hover {
+  background: var(--upd-hover);
+}

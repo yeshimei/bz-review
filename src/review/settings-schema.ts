@@ -47,6 +47,8 @@ import {
   getLicenseState,
   licenseRevoked,
   currentLicenseCode,
+  trialBanner,
+  trialDaysLeft,
 } from '../data/entitlement';
 import { refreshRevoked } from '../data/revoked';
 import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
@@ -371,7 +373,20 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                  右栏只留一句能一眼读完的状态，避免在窄控制区里折行被裁。 */
               const state = setting.controlEl.createSpan({ cls: 'bzrv-license-state' });
               const paint = (): void => {
-                state.textContent = isPaid() ? t('settings.license.proState') : t('settings.license.baseState', { n: FREE_ITEM_LIMIT });
+                /* 试用码单独给短标签：它既不是「基础版」也不是买断的「高级版」，
+                   说错会让用户以为码丢了或已经买过。 */
+                const banner = trialBanner();
+                if (banner === 'outdated') {
+                  state.textContent = t('settings.license.outdatedState');
+                } else if (banner === 'unknown') {
+                  state.textContent = t('settings.license.needLatestState');
+                } else if (banner === 'active') {
+                  state.textContent = t('settings.license.trialState', { days: trialDaysLeft() });
+                } else {
+                  state.textContent = isPaid()
+                    ? t('settings.license.proState')
+                    : t('settings.license.baseState', { n: FREE_ITEM_LIMIT });
+                }
                 state.classList.toggle('is-paid', isPaid());
               };
               paint();

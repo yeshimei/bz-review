@@ -95,6 +95,10 @@ export const ZH = {
   'settings.license.state': '当前状态',
   'settings.license.proState': '高级版 · 不限数量',
   'settings.license.baseState': '基础版 · {n} 条上限',
+  /* 试用码（2026-11-22）：右栏只留一眼能读完的短标签，长句在状态行与弹窗里。 */
+  'settings.license.trialState': '试用版 · 剩 {days} 天',
+  'settings.license.outdatedState': '需要最新版',
+  'settings.license.needLatestState': '待联网确认',
   'settings.license.code': '激活码',
   'settings.license.placeholder': 'BZP2.… 或 BZR2.…',
   'settings.license.activate': '激活',
@@ -948,6 +952,11 @@ export const ZH = {
   'ent.until': '有效期到 {date}',
   'ent.forever': '永久有效',
   'ent.proActive': '高级版已激活{who}：{until}，数量不限、所有功能可用。',
+  /* 试用码（2026-11-22）：必须是最新版才能用；三种状态都要说清楚，
+     否则用户会把「不是最新版」当成「码丢了」。 */
+  'ent.trialActive': '试用版已激活{who} · 剩余 {days} 天 · 需保持最新版',
+  'ent.trialOutdated': '这枚试用码要求最新版（v{latest}），当前 v{now} · 请先在设置里更新插件。',
+  'ent.trialNeedLatest': '这枚试用码需要联网确认最新版，网络没通 · 请连网后重启。',
   'lic.noCode': '还没有填激活码。',
   'lic.noPublicKey': '发行方还没配置公钥。',
   'lic.badFormat': '激活码格式不对：应为 BZP1 / BZP2 / BZR1 / BZR2 开头的三段式。',
@@ -956,6 +965,16 @@ export const ZH = {
   'lic.expired': '激活码已于 {date} 过期。',
   'lic.revoked': '这枚激活码已被停用，不能再用来激活高级版。',
   'lic.needOnline': '首次激活需要联网核对一次；网络没通，请检查网络后重试。',
+  'lic.needLatest': '这枚试用码需要联网确认最新版；网络没通，请连网后重试。',
+  'lic.outdated': '这枚试用码要求最新版（v{latest}），当前是 v{now}。请先在 Obsidian 设置里更新插件。',
+
+  /* 更新提醒（2026-11-22，与 bz Reader 同款）：只提醒、不自更新，
+     告诉用户去 Obsidian 设置里检查更新。 */
+  'update.title': '发现新版本',
+  'update.current': '当前 v{now}',
+  'update.hint': '在 Obsidian 的「设置 → 第三方插件」里点「检查更新」即可升级。',
+  'update.keep': '书架、复习进度和卡片都会保留。',
+  'update.ignore': '忽略此版本',
   'lic.until': '有效期到 {date}',
   'lic.forever': '永久有效',
   'lic.activated': '已激活{who}，{until}。',

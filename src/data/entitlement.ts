@@ -15,7 +15,9 @@
  * 能力位保留为登记清单（PRO_CAPABILITIES / CAPABILITY_LABELS），
  * 供界面文案、用量口径与测试引用；门控本身恒放行，架构上不再有功能差异。
  */
-import { parseLicense, verifyLicense } from './license';
+import { compareVersions } from '../core/version';
+import { isTrialCode, parseLicense, verifyLicense } from './license';
+import { ensureLatestVersion } from './plugin-update';
 import { checkRevoked, revokedCode } from './revoked';
 import { t } from '../i18n/strings';
 
@@ -30,6 +32,8 @@ export const FREE_ITEM_LIMIT = 50;
 export interface LicenseState {
   /** 是否已解锁高级版（**不含停用判定**：停用那层在 isPaid() 里现算） */
   paid: boolean;
+  /** 这枚码是不是试用码（plan === 'trial'） */
+  trial?: boolean;
   /** 激活码里的署名 */
   name?: string;
   plan?: string;
@@ -43,6 +47,62 @@ const EMPTY: LicenseState = { paid: false, checkedAt: 0 };
 
 let state: LicenseState = EMPTY;
 let cachedCode = '';
+
+/**
+ * 当前插件版本（manifest.version）。main.ts 启动时注入。
+ *
+ * 空串 = 拿不到（纯函数测试 / 开发构建）：此时不判版本，否则所有试用码
+ * 都会变成「不是最新版」。
+ */
+let pluginVersion = '';
+
+/** 线上最新版。启动 / 激活 / 更新检查时由 ensureLatestVersion 写入。 */
+let latestVersion = '';
+
+export function setPluginVersion(v: string): void {
+  pluginVersion = String(v || '').trim();
+}
+
+export function setLatestVersion(v: string): void {
+  latestVersion = String(v || '').trim();
+}
+
+/**
+ * 试用码的「必须最新版」判定（2026-11-22）。
+ *
+ *   none      不是试用码，或已确认当前就是最新版
+ *   outdated  线上有新版本 → 锁
+ *   unknown   还没拿到线上版本（离线 / 两个源都不通）→ 锁，提示联网
+ *
+ * 永久码与赞助人码不受影响：它们不看这个门。
+ */
+function trialGate(): 'none' | 'outdated' | 'unknown' {
+  if (!state.trial) return 'none';
+  if (!latestVersion) return 'unknown';
+  if (pluginVersion && compareVersions(pluginVersion, latestVersion) < 0) return 'outdated';
+  return 'none';
+}
+
+/**
+ * 设置页状态行用的短标签（与 Reader 的状态行同一口径，但收得更短）：
+ *   none     不是试用码 → 交给原来的「基础版 / 高级版」判断
+ *   active   试用可用
+ *   outdated 不是最新版
+ *   unknown  还没拿到线上版本
+ */
+export function trialBanner(): 'none' | 'active' | 'outdated' | 'unknown' {
+  if (!state.trial) return 'none';
+  const gate = trialGate();
+  if (gate === 'outdated') return 'outdated';
+  if (gate === 'unknown') return 'unknown';
+  return 'active';
+}
+
+/** 试用剩余天数（向上取整）；非试用 / 无到期时间为 0 */
+export function trialDaysLeft(): number {
+  if (!state.trial || !state.exp) return 0;
+  return Math.max(0, Math.ceil((state.exp - Date.now()) / 86_400_000));
+}
 
 /** main.ts 启动时与激活后写入 */
 export function setLicenseState(next: LicenseState, code = ''): void {
@@ -79,7 +139,7 @@ function revokedNow(): boolean {
  * 用户不用回头翻邮件找码。
  */
 export function isPaid(): boolean {
-  return state.paid && !revokedNow();
+  return state.paid && !revokedNow() && trialGate() === 'none';
 }
 
 /** 两类条目的当前计数（由调用方从排期表里数，别在这里读盘） */
@@ -243,6 +303,17 @@ export function licenseSummary(): string {
     return t('ent.baseFree', { limit: FREE_ITEM_LIMIT });
   }
   const who = state.name ? `（${state.name}）` : '';
+  /* 试用码三种状态单独说清楚：能用的写剩余天数；不是最新版让用户先更新；
+     拿不到最新版让用户联网。三者都不是「基础版」，否则用户以为码丢了。 */
+  if (state.trial) {
+    const gate = trialGate();
+    if (gate === 'outdated') {
+      return t('ent.trialOutdated', { now: pluginVersion, latest: latestVersion });
+    }
+    if (gate === 'unknown') return t('ent.trialNeedLatest');
+    const days = state.exp ? Math.max(0, Math.ceil((state.exp - Date.now()) / 86_400_000)) : 0;
+    return t('ent.trialActive', { who, days });
+  }
   const until = state.exp ? t('ent.until', { date: new Date(state.exp).toLocaleDateString() }) : t('ent.forever');
   return t('ent.proActive', { who, until });
 }
@@ -287,11 +358,18 @@ export async function refreshLicense(code: string, commitFailure = true): Promis
   cachedCode = code;
   state = {
     paid: true,
+    trial: isTrialCode(r.payload),
     name: r.payload.name,
     plan: r.payload.plan,
     exp: r.payload.exp ?? 0,
     checkedAt: Date.now(),
   };
+  /* 试用码要联网确认最新版。等这一次：isPaid() 首帧就要正确结论，
+     先放行再锁会闪一下；永久码不走这里，启动不受影响。 */
+  if (state.trial) {
+    const latest = await ensureLatestVersion();
+    if (latest) setLatestVersion(latest);
+  }
   return state;
 }
 
@@ -329,9 +407,21 @@ export async function activateLicense(
   if (verdict === 'hit') return { ok: false, message: t('lic.revoked'), revoked: true };
   if (verdict === 'unknown') return { ok: false, message: t('lic.needOnline') };
 
+  /* 试用码必须是最新版。跟停用名单分开报：一个是「这码被叫停」，
+     一个是「码没问题，你先把插件更新了」。 */
+  if (isTrialCode(r.payload)) {
+    const latest = await ensureLatestVersion();
+    if (latest) setLatestVersion(latest);
+    if (!latest) return { ok: false, message: t('lic.needLatest') };
+    if (pluginVersion && compareVersions(pluginVersion, latest) < 0) {
+      return { ok: false, message: t('lic.outdated', { now: pluginVersion, latest }) };
+    }
+  }
+
   cachedCode = clean;
   state = {
     paid: true,
+    trial: isTrialCode(r.payload),
     name: r.payload.name,
     plan: r.payload.plan,
     exp: r.payload.exp ?? 0,

@@ -42,8 +42,12 @@ import {
   refreshLicense,
   licenseRevoked,
   licenseSummary as licenseSummaryOf,
+  setLatestVersion,
+  setPluginVersion,
 } from './data/entitlement';
 import { refreshRevoked } from './data/revoked';
+import { ensureLatestVersion, hasUpdate, readUpdateState, shouldNotify, writeUpdateState } from './data/plugin-update';
+import { openUpdateNote } from './core/update-note';
 import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
@@ -243,11 +247,15 @@ export default class ReviewPlugin extends Plugin {
       void uiManager?.openSettings(anchorKey);
     });
 
-    // 启动时静默验一次码（离线，不发网络请求）
+    // 启动时静默验一次码（离线验签；试用码会再联网确认一次最新版）
+    setPluginVersion(String(this.manifest?.version || ''));
     await refreshLicense(this.settings.licenseKey);
     /* 停用名单的后台核对（2026-11-22）：24 小时内不重复，不 await、不阻塞
        启动。拉不到就放行——离线用户不该被这道门卡住。 */
     this.watchRevoked();
+    /* 检查更新（2026-11-22）：默认自动查，24 小时最多一次，有新版弹一次。
+       与试用码共用同一份「最新版」缓存，不重复联网。 */
+    void this.checkUpdateInBackground();
 
     this.addRibbonIcon('calendar-check', t('ribbon.review'), () => {
       ensureReview(this.app);
@@ -632,6 +640,44 @@ export default class ReviewPlugin extends Plugin {
    *
    * 码本身不删：解封后下次启动自动恢复，用户不必回头翻邮件找码。
    */
+  /**
+   * 检查线上有没有新版本（2026-11-22，与 bz Reader 同款）。
+   *
+   * 三条口径：默认自动查（没有开关）、24 小时最多一次、每个新版本只弹一次。
+   * 失败静默：离线 / 被墙 / 清单坏了，一个字都不说，下次启动再试。
+   *
+   * 延迟 4 秒再查：不跟首帧、停用名单抢网络和注意力。弹窗只提醒「去
+   * Obsidian 设置里检查更新」，不下载、不替换任何文件。
+   */
+  private async checkUpdateInBackground(): Promise<void> {
+    try {
+      const state = readUpdateState();
+      /* 不再看 24 小时节流：`ensureLatestVersion` 自己会决定要不要请求，
+         拿到版本后由 `notified` 保证「每个新版本只弹一次」。这里若再加一道
+         `shouldCheck`，试用码用户启动时那次 refresh 刚写热缓存，更新提醒会
+         被误判成「刚查过」而永远不弹。 */
+      await new Promise<void>((done) => window.setTimeout(done, 4_000));
+      const latest = await ensureLatestVersion();
+      if (!latest) return;
+      /* 启动早期网络未必就绪，refreshLicense 那次可能没拿到；这里拿到后
+         同步给授权判定，设置页下一次重绘就是正确状态。 */
+      setLatestVersion(latest);
+      const current = String(this.manifest?.version || '');
+      const checkedAt = Date.now();
+      if (!hasUpdate(current, latest)) {
+        writeUpdateState({ checkedAt, notified: state.notified, latest });
+        return;
+      }
+      if (!shouldNotify(state, latest)) return;
+      /* 先记账再弹：弹窗期间崩溃也不会下次启动再骚扰一遍 */
+      writeUpdateState({ checkedAt, notified: latest, latest });
+      openUpdateNote(current, latest);
+    } catch (e) {
+      /* 更新检查是附加功能：出错只记一条 warn，绝不能影响插件启动 */
+      console.warn('[bz-review] update check failed:', e);
+    }
+  }
+
   private watchRevoked(): void {
     /* 上次启动的结论先落盘：命中过的设备这次可能 24 小时内不再拉名单 */
     void this.syncRevokedFlag();

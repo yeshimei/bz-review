@@ -196,3 +196,13 @@ export async function verifyLicense(code: string): Promise<LicenseCheck> {
     };
   }
 }
+
+/**
+ * 这枚码是不是试用码（2026-11-22）。
+ *
+ * 只有试用码受「必须最新版」约束；买断码与赞助人码什么都不限制。
+ * 判定放在唯一入口，entitlement 与签发脚本共用同一口径。
+ */
+export function isTrialCode(payload: LicensePayload | null | undefined): boolean {
+  return payload?.plan === 'trial';
+}
