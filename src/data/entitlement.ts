@@ -16,7 +16,8 @@
  * 供界面文案、用量口径与测试引用；门控本身恒放行，架构上不再有功能差异。
  */
 import { parseLicense, verifyLicense } from './license';
-import { checkRevoked, revokedCode } from './revoked';
+import type { LicenseFail } from './license';
+import { checkRevoked, revokedCheckedAt, revokedCode, revokedDeadAt } from './revoked';
 import { t } from '../i18n/strings';
 
 /** 购买页（与 bz Reader / 归物本同一个店铺） */
@@ -26,6 +27,27 @@ export const GROUP_ID = '1130883117';
 
 /** 基础版：复习条目合计上限（笔记 + 划线卡） */
 export const FREE_ITEM_LIMIT = 50;
+
+/* ── 授权事实（2026-11-22，给 bz 的探针读）─────────────────────────
+ * 「现在是基础版」底下有四种完全不同的处境：没买 / 到期 / 被封 / 码坏了。
+ * 处理方式完全不同（引导购买 / 续费提醒 / 查误封 / 修粘贴），所以要把成因
+ * 写进 data.json，让 bz 那边采得到。
+ *
+ * 这三个类型与 bz 主仓 `src/core/usage/types.ts` 里的同名类型逐字一致——
+ * 那边会用白名单校验，多一个字就会被丢掉。改这里必须同时改那边。
+ */
+export type TierReasonLite = 'ok' | 'none' | 'expired' | 'revoked' | 'invalid' | 'unknown';
+export type ActivateFailLite = 'format' | 'invalid' | 'offline' | 'revoked' | 'expired';
+
+/** 一次授权状态的快照（派生值 + 上次激活失败的历史） */
+export interface LicenseFactsLite {
+  /** true 被判死 / false 核对过没问题 / 缺省 从没成功核对过（别拿 false 冒充） */
+  revoked?: boolean;
+  revokedAt?: number;
+  tierReason: TierReasonLite;
+  activateFail?: ActivateFailLite;
+  activateFailAt?: number;
+}
 
 export interface LicenseState {
   /** 是否已解锁高级版（**不含停用判定**：停用那层在 isPaid() 里现算） */
@@ -37,12 +59,39 @@ export interface LicenseState {
   exp?: number;
   /** 上次验签时间（仅用于设置页人话） */
   checkedAt: number;
+  /** 上次验签没过时的原因（'expired' / 'invalid' / …）；过了就是 undefined */
+  failReason?: LicenseFail;
 }
 
 const EMPTY: LicenseState = { paid: false, checkedAt: 0 };
 
 let state: LicenseState = EMPTY;
 let cachedCode = '';
+
+/** 上次激活失败的原因与时刻（内存 + 由 main.ts 从 data.json 灌回历史） */
+let lastFail: ActivateFailLite | undefined;
+let lastFailAt = 0;
+
+/** 授权事实变了就通知一声（main.ts 收到后落盘到 data.json，bz 探针读它） */
+let factsHook: (() => void) | null = null;
+
+export function setLicenseFactsHook(fn: (() => void) | null): void {
+  factsHook = fn;
+}
+
+function notifyFacts(): void {
+  try {
+    factsHook?.();
+  } catch {
+    /* 落盘失败不该反过来影响授权判定 */
+  }
+}
+
+/** 启动时把上次的失败历史灌回来，否则重启一次就看不出「他上次激活栽在哪」 */
+export function setLicenseFailHistory(fail: ActivateFailLite | undefined, at: number): void {
+  lastFail = fail;
+  lastFailAt = Number.isFinite(at) && at > 0 ? at : 0;
+}
 
 /** main.ts 启动时与激活后写入 */
 export function setLicenseState(next: LicenseState, code = ''): void {
@@ -80,6 +129,63 @@ function revokedNow(): boolean {
  */
 export function isPaid(): boolean {
   return state.paid && !revokedNow();
+}
+
+/**
+ * 档位成因：把「现在是基础版」拆成四种不同的处境。
+ *
+ * 顺序有讲究：**停用排在到期前面**。一枚码既过期又被封时，作者真正该知道的是
+ * 「这枚被封了」（要查是不是误封 / 盗版），而不是「它到期了」（那是正常流失）。
+ */
+function tierReasonNow(): TierReasonLite {
+  if (!cachedCode.trim()) return 'none';
+  if (revokedNow()) return 'revoked';
+  if (state.paid) return 'ok';
+  if (state.failReason === 'expired') return 'expired';
+  return 'invalid';
+}
+
+/**
+ * 当前授权事实（给 bz 的探针读，main.ts 负责落盘到 data.json）。
+ *
+ * 只输出分类与时间戳，**不含码原文 / 昵称 / 订单号**——那份文件会被同库的
+ * 另一个插件读走，码原文出门就等于泄露。
+ */
+export function licenseFacts(): LicenseFactsLite {
+  const dead = licenseRevoked();
+  const out: LicenseFactsLite = { tierReason: tierReasonNow() };
+  if (dead) {
+    out.revoked = true;
+    const at = revokedDeadAt();
+    if (at > 0) out.revokedAt = at;
+  } else if (revokedCheckedAt() > 0) {
+    /* 核对成功过、名单里没有它 —— 这才是「核对过没问题」。
+       从没核对过（网络一直不通）时**不带这个键**，否则探针会把
+       「还没查」算成「查了没事」。 */
+    out.revoked = false;
+  }
+  if (lastFail) {
+    out.activateFail = lastFail;
+    if (lastFailAt > 0) out.activateFailAt = lastFailAt;
+  }
+  return out;
+}
+
+/**
+ * 记一次激活失败。
+ *
+ * 只记分类和时间，**绝不记码原文**。成功一次就清空——几个月前的一次手滑
+ * 不该永远挂在设备档案上。
+ */
+function noteActivateFail(fail: ActivateFailLite | undefined): void {
+  if (fail) {
+    lastFail = fail;
+    lastFailAt = Date.now();
+  } else {
+    lastFail = undefined;
+    lastFailAt = 0;
+  }
+  notifyFacts();
 }
 
 /** 两类条目的当前计数（由调用方从排期表里数，别在这里读盘） */
@@ -279,9 +385,9 @@ export async function refreshLicense(code: string, commitFailure = true): Promis
   }
   const r = await verifyLicense(code);
   if (!r.ok || !r.payload) {
-    if (!commitFailure) return { paid: false, checkedAt: Date.now() };
+    if (!commitFailure) return { paid: false, checkedAt: Date.now(), failReason: r.reason };
     cachedCode = code;
-    state = { paid: false, checkedAt: Date.now() };
+    state = { paid: false, checkedAt: Date.now(), failReason: r.reason };
     return state;
   }
   cachedCode = code;
@@ -313,21 +419,38 @@ export async function refreshLicense(code: string, commitFailure = true): Promis
  */
 export async function activateLicense(
   code: string,
-): Promise<{ ok: boolean; message: string; revoked?: boolean }> {
+): Promise<{ ok: boolean; message: string; revoked?: boolean; fail?: ActivateFailLite }> {
   const clean = code.trim();
-  if (!clean) return { ok: false, message: t('lic.noCode') };
+  if (!clean) {
+    noteActivateFail('format');
+    return { ok: false, message: t('lic.noCode'), fail: 'format' };
+  }
 
   /* 本地已判死的码：断网也贴不回来，不必再等一次网络 */
   if (revokedCode().trim() === clean) {
-    return { ok: false, message: t('lic.revoked'), revoked: true };
+    noteActivateFail('revoked');
+    return { ok: false, message: t('lic.revoked'), revoked: true, fail: 'revoked' };
   }
 
   const r = await verifyLicense(clean);
-  if (!r.ok || !r.payload) return { ok: false, message: r.message };
+  if (!r.ok || !r.payload) {
+    /* 验签失败的原因按「用户该做什么」归类：格式不对让他检查粘贴，
+       其余（签名改过 / 公钥缺失 / 环境异常）都归「码不认」 */
+    const fail: ActivateFailLite =
+      r.reason === 'expired' ? 'expired' : r.reason === 'format' || r.reason === 'empty' ? 'format' : 'invalid';
+    noteActivateFail(fail);
+    return { ok: false, message: r.message, fail };
+  }
 
   const verdict = await checkRevoked(clean);
-  if (verdict === 'hit') return { ok: false, message: t('lic.revoked'), revoked: true };
-  if (verdict === 'unknown') return { ok: false, message: t('lic.needOnline') };
+  if (verdict === 'hit') {
+    noteActivateFail('revoked');
+    return { ok: false, message: t('lic.revoked'), revoked: true, fail: 'revoked' };
+  }
+  if (verdict === 'unknown') {
+    noteActivateFail('offline');
+    return { ok: false, message: t('lic.needOnline'), fail: 'offline' };
+  }
 
   cachedCode = clean;
   state = {
@@ -337,5 +460,7 @@ export async function activateLicense(
     exp: r.payload.exp ?? 0,
     checkedAt: Date.now(),
   };
+  /* 成功一次就把失败历史清干净：几个月前的一次手滑不该永远挂在档案上 */
+  noteActivateFail(undefined);
   return { ok: true, message: r.message };
 }
