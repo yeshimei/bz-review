@@ -37,7 +37,13 @@ import {
 import type { CardWizardOptions } from './review/card-wizard';
 import { openAddToReviewFlow } from './review/add-flow';
 import { bindStudyReviewTab } from './review/embedded-home';
-import { refreshLicense, licenseSummary as licenseSummaryOf } from './data/entitlement';
+import {
+  activateLicense as activateLicenseOf,
+  refreshLicense,
+  licenseRevoked,
+  licenseSummary as licenseSummaryOf,
+} from './data/entitlement';
+import { refreshRevoked } from './data/revoked';
 import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
 import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
@@ -239,6 +245,9 @@ export default class ReviewPlugin extends Plugin {
 
     // 启动时静默验一次码（离线，不发网络请求）
     await refreshLicense(this.settings.licenseKey);
+    /* 停用名单的后台核对（2026-11-22）：24 小时内不重复，不 await、不阻塞
+       启动。拉不到就放行——离线用户不该被这道门卡住。 */
+    this.watchRevoked();
 
     this.addRibbonIcon('calendar-check', t('ribbon.review'), () => {
       ensureReview(this.app);
@@ -596,20 +605,58 @@ export default class ReviewPlugin extends Plugin {
     resetAIProviderCache();
   }
 
-  /** 设置页「激活」按钮：失败不动当前授权，也不写盘——真码要留着 */
+  /**
+   * 设置页「激活」按钮：失败不动当前授权，也不写盘——真码要留着。
+   *
+   * 2026-11-22 起走 entitlement 的 activateLicense：验签之后还要联网核对一次
+   * 停用名单。首次激活必须能拉到名单，拉不到明确要求联网（不悄悄放行）。
+   */
   async activateLicense(code: string): Promise<{ ok: boolean; message: string }> {
-    const state = await refreshLicense(code, false);
-    if (!state.paid) {
-      return { ok: false, message: t('notice.license.invalid') };
-    }
+    const res = await activateLicenseOf(code);
+    if (!res.ok) return { ok: false, message: res.message };
     this.settings.licenseKey = code.trim();
     await this.saveSettings();
-    return {
-      ok: true,
-      message:
-        (state.name ? t('notice.license.activatedName', { name: state.name }) : t('notice.license.activated')) +
-        t('notice.license.unlimitedNote'),
-    };
+    await this.syncRevokedFlag();
+    return { ok: true, message: res.message };
+  }
+
+  /**
+   * 停用名单的后台看守（2026-11-22，与 bz Reader 同口径）。
+   *
+   * **只在启动时查一次**，24 小时内不重复（节流在 data/revoked 里，靠本地
+   * 记下的 `checkedAt`）。反复启停、切库、插件重载都不会把两个 CDN 当接口刷。
+   *
+   * 命中只做两件事：说一句「这枚码已停用」（不弹窗、不打断复习），并把结论
+   * 同步进 data.json——bz 的探针靠那个字段读真实授权状态，否则被封的设备在
+   * 看板上还是「高级版」，封码到底有没有生效就只能靠猜。
+   *
+   * 码本身不删：解封后下次启动自动恢复，用户不必回头翻邮件找码。
+   */
+  private watchRevoked(): void {
+    /* 上次启动的结论先落盘：命中过的设备这次可能 24 小时内不再拉名单 */
+    void this.syncRevokedFlag();
+    const code = this.settings.licenseKey;
+    if (!code) return;
+    void refreshRevoked(code)
+      .then((verdict) => {
+        if (verdict === 'hit') {
+          void import('./core/notice').then(({ notice }) => {
+            notice(t('notice.license.revoked'), 'error');
+          });
+        }
+        if (verdict === 'hit' || verdict === 'clear') void this.syncRevokedFlag();
+      })
+      .catch(() => {
+        /* 拉名单失败什么都不说：离线用户不该被打扰 */
+      });
+  }
+
+  /** 把「这枚码被停用」的结论同步进 data.json（bz 探针读它） */
+  private async syncRevokedFlag(): Promise<void> {
+    const dead = licenseRevoked();
+    if (this.settings.licenseRevoked === dead) return;
+    this.settings.licenseRevoked = dead;
+    await this.saveSettings();
   }
 
   licenseSummary(): string {

@@ -36,6 +36,14 @@ export default interface BzSettings {
   accent: AccentMode;
   /** 高级版激活码（离线验签） */
   licenseKey: string;
+  /**
+   * 这枚码是否已被停用名单判死（2026-11-22）。
+   *
+   * 不参与任何本地判定（真相在 data/revoked 的本地标记里，每次启动重算），
+   * 只做一件事：让**外部工具**（bz 主插件的探针）能读到真实授权状态。
+   * 没有它，被封的设备在看板上仍然是「高级版」，封码有没有生效就只能靠猜。
+   */
+  licenseRevoked?: boolean;
 
   // ===== 复习 =====
   /** 有笔记到期待复习时自动提醒 */
@@ -170,6 +178,7 @@ export const DEFAULT_SETTINGS: BzSettings = {
   language: 'auto',
   accent: DEFAULT_ACCENT,
   licenseKey: '',
+  licenseRevoked: false,
 
   enableAutoNotify: true,
   forceQuizForReview: true,

@@ -73,6 +73,9 @@ export const ZH = {
   'notice.license.activated': '已激活高级版',
   'notice.license.activatedName': '已激活高级版（{name}）',
   'notice.license.unlimitedNote': '，数量不限。',
+  'notice.license.revoked': '这枚激活码已被停用，已切回基础版。',
+  'notice.license.rechecked': '核对完成，授权正常。',
+  'notice.license.recheckFailed': '核对失败：网络没通，稍后再试。',
 
   /* ── 设置页：语言 ────────────────────────────────────────── */
   'settings.language': '语言',
@@ -100,6 +103,9 @@ export const ZH = {
   'settings.license.invalid': '激活码无效或已过期，原来的激活码已保留。',
   'settings.license.features': '高级版功能',
   'settings.license.featuresDesc': '两版功能完全一样，只有数量上限不同。',
+  'settings.license.recheck': '停用名单',
+  'settings.license.recheckDesc': '每天自动核对一次。想立刻确认这枚码有没有被停用，点这里。',
+  'settings.license.recheckBtn': '核对',
 
   /* ── 设置页：数据 ────────────────────────────────────────── */
   'settings.data.dir': '数据目录',
@@ -938,6 +944,7 @@ export const ZH = {
   'ent.capManager': '卡片管理器',
   'ent.baseExpired': '基础版：笔记 + 划线合计 {limit} 条，所有功能可用。当前激活码已过期。',
   'ent.baseFree': '基础版：笔记 + 划线合计 {limit} 条，所有功能可用；填激活码解锁不限数量。',
+  'ent.revoked': '基础版：笔记 + 划线合计 {limit} 条，所有功能可用。当前激活码已被停用。',
   'ent.until': '有效期到 {date}',
   'ent.forever': '永久有效',
   'ent.proActive': '高级版已激活{who}：{until}，数量不限、所有功能可用。',
@@ -947,6 +954,8 @@ export const ZH = {
   'lic.badSignature': '激活码验签失败：内容或签名被改过。',
   'lic.wrongPlugin': '这是 bz Reader 的高级版激活码。只有赞助人与专属定制码可跨插件使用；两款插件的高级版码请分别在各自的插件激活。',
   'lic.expired': '激活码已于 {date} 过期。',
+  'lic.revoked': '这枚激活码已被停用，不能再用来激活高级版。',
+  'lic.needOnline': '首次激活需要联网核对一次；网络没通，请检查网络后重试。',
   'lic.until': '有效期到 {date}',
   'lic.forever': '永久有效',
   'lic.activated': '已激活{who}，{until}。',

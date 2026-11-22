@@ -4,7 +4,7 @@
  * 弹窗只做引导（去购买 / 交流群）；填激活码统一走设置页「授权」组，别在两处各做一份。
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
-import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, getLicenseState } from '../../data/entitlement';
+import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, isPaid } from '../../data/entitlement';
 import { openExternalUrl } from './links-bridge';
 import { t, type MsgKey } from '../../i18n';
 
@@ -119,7 +119,7 @@ export function unlockDialogHtml(paid: boolean, reason = ''): string {
 
 /** 打开高级功能弹窗（设置页授权组入口 / 额度到顶时自动弹出） */
 export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
-  const paid = getLicenseState().paid;
+  const paid = isPaid();
   const modal = uiModal({
     content: unlockDialogHtml(paid, opts.reason),
     className: 'bzs-unlock-dialog',

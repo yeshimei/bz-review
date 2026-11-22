@@ -69,6 +69,9 @@ export const EN: Record<MsgKey, string> = {
   'notice.license.activated': 'Pro activated',
   'notice.license.activatedName': 'Pro activated ({name})',
   'notice.license.unlimitedNote': ', unlimited cards.',
+  'notice.license.revoked': 'This license code has been revoked. Switched back to Basic.',
+  'notice.license.rechecked': 'Check complete. Your license is valid.',
+  'notice.license.recheckFailed': 'Check failed: no network. Try again later.',
 
   /* ── Settings: language ─────────────────────────────────── */
   'settings.language': 'Language',
@@ -96,6 +99,9 @@ export const EN: Record<MsgKey, string> = {
   'settings.license.invalid': 'Invalid or expired code. Your previous code was kept.',
   'settings.license.features': 'Pro features',
   'settings.license.featuresDesc': 'Both editions have identical features; only the item limit differs.',
+  'settings.license.recheck': 'Revocation list',
+  'settings.license.recheckDesc': 'Checked automatically once a day. Tap here to confirm right now that this code has not been revoked.',
+  'settings.license.recheckBtn': 'Check',
 
   /* ── Settings: data ─────────────────────────────────────── */
   'settings.data.dir': 'Data folder',
@@ -934,6 +940,7 @@ export const EN: Record<MsgKey, string> = {
   'ent.capManager': 'card manager',
   'ent.baseExpired': 'Basic: up to {limit} notes + highlights combined, all features available. The current license has expired.',
   'ent.baseFree': 'Basic: up to {limit} notes + highlights combined, all features available; enter a license for unlimited items.',
+  'ent.revoked': 'Basic: up to {limit} notes + highlights combined, all features available. The current license code has been revoked.',
   'ent.until': 'valid until {date}',
   'ent.forever': 'permanent',
   'ent.proActive': 'Pro is active{who}: {until}, unlimited items and all features.',
@@ -943,6 +950,8 @@ export const EN: Record<MsgKey, string> = {
   'lic.badSignature': 'License verification failed: the content or signature was modified.',
   'lic.wrongPlugin': 'This is a bz Reader Pro license. Only sponsor and custom codes work across plugins; activate each plugin\u2019s Pro code in its own plugin.',
   'lic.expired': 'The license expired on {date}.',
+  'lic.revoked': 'This license code has been revoked and can no longer activate Pro.',
+  'lic.needOnline': 'The first activation needs one online check. No network reached; check your connection and retry.',
   'lic.until': 'valid until {date}',
   'lic.forever': 'permanent',
   'lic.activated': 'Activated{who}, {until}.',

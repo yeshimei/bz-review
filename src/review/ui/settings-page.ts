@@ -9,7 +9,7 @@
 import type { App } from 'obsidian';
 import manifest from '../../../manifest.json';
 import { notice } from '../../core/notice';
-import { getLicenseState } from '../../data/entitlement';
+import { getLicenseState, isPaid } from '../../data/entitlement';
 import { openExternalUrl, openVideoTutorial, REVIEW_REPO_URL } from './links-bridge';
 import { isMobileEnv } from '../../core/mobile';
 import { openHotkeySettings, readHotkeys } from '../../core/hotkeys';
@@ -132,7 +132,9 @@ export async function renderReviewSettingsPage(
 
   const license = getLicenseState();
   const about = createDiv();
-  setHtml(about, aboutBarHtml(manifest.version, license.paid, license.name || ''));
+  /* 徽章用 isPaid() 而不是 license.paid：停用名单命中后 state.paid 还是 true
+     （验签过了，只是码被叫停），直接读它会把被封的用户显示成高级版。 */
+  setHtml(about, aboutBarHtml(manifest.version, isPaid(), license.name || ''));
   if (about.firstElementChild) container.appendChild(about.firstElementChild);
   if (!licenseBound.has(container)) {
     licenseBound.add(container);
@@ -140,7 +142,7 @@ export async function renderReviewSettingsPage(
       if (!container.isConnected) return;
       const current = getLicenseState();
       const fresh = createDiv();
-      setHtml(fresh, aboutBarHtml(manifest.version, current.paid, current.name || ''));
+      setHtml(fresh, aboutBarHtml(manifest.version, isPaid(), current.name || ''));
       const old = container.querySelector('.bzs-about');
       if (old && fresh.firstElementChild) old.replaceWith(fresh.firstElementChild);
     });

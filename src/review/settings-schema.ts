@@ -42,10 +42,13 @@ import { tryGetSettings } from '../core/settings-provider';
 import type { ReviewDataManager } from './data';
 import {
   FREE_ITEM_LIMIT,
+  activateLicense,
   isPaid,
-  refreshLicense,
+  getLicenseState,
+  licenseRevoked,
   currentLicenseCode,
 } from '../data/entitlement';
+import { refreshRevoked } from '../data/revoked';
 import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
 import { isBzPluginEnabled } from '../core/plugin-path';
 import { panelModeOf } from './panel-mode';
@@ -400,7 +403,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 const paid = isPaid();
                 const locked = paid && !relicense;
                 input.readOnly = locked;
-                input.value = locked ? currentLicenseCode() : licenseDraft;
+                /* 停用的码也要填进输入框：用户总得看见被停的是哪一枚。
+                   草稿优先；没有草稿时，未解锁就回显当前码（含停用那枚）。 */
+                input.value = locked ? currentLicenseCode() : licenseDraft || (paid ? '' : currentLicenseCode());
                 btn.setText(locked ? t('settings.license.reactivate') : t('settings.license.activate'));
                 wrap.classList.toggle('is-paid', locked);
               };
@@ -423,9 +428,12 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                     return;
                   }
                   btn.disabled = true;
-                  const state = await refreshLicense(code, false);
+                  /* activateLicense 而不是 refreshLicense：首次激活要联网核对
+                     停用名单（2026-11-22）。失败不碰当前授权，也不写盘。 */
+                  const res = await activateLicense(code);
                   btn.disabled = false;
-                  if (state.paid) {
+                  if (res.ok) {
+                    const state = getLicenseState();
                     licenseDraft = '';
                     relicense = false;
                     getSettings().licenseKey = code;
@@ -440,10 +448,12 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                     );
                     return;
                   }
-                  /* 失败：授权状态和落盘码都没被这枚错码碰过，输入框回显生效码。 */
+                  /* 失败：授权状态和落盘码都没被这枚错码碰过，输入框回显生效码。
+                     提示用 res.message——「码无效」「已停用」「需要联网」是三件
+                     不同的事，不该都压成一句「无效」。 */
                   licenseDraft = '';
                   paint();
-                  notice(t('settings.license.invalid'), 'warning');
+                  notice(res.message, res.revoked ? 'error' : 'warning');
                 })();
               });
               paint();
@@ -458,6 +468,35 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             buttonText: t('common.view'),
             onClick: () => {
               void import('./ui/unlock-dialog').then((m) => m.openReviewUnlockDialog());
+            },
+          },
+          {
+            /* 停用名单的手动核对（2026-11-22）：自动核对每天只跑一次，想立刻
+               看到封 / 解封结果就点它。没有码时整行不显示——没东西可核对。 */
+            type: 'button',
+            name: t('settings.license.recheck'),
+            desc: t('settings.license.recheckDesc'),
+            buttonText: t('settings.license.recheckBtn'),
+            visibleWhen: (s) => !!s.licenseKey,
+            onClick: (ctx) => {
+              void (async () => {
+                const code = currentLicenseCode();
+                if (!code) {
+                  notice(t('settings.license.needCode'), 'info');
+                  return;
+                }
+                const verdict = await refreshRevoked(code, { force: true });
+                if (verdict === 'hit') {
+                  notice(t('notice.license.revoked'), 'error');
+                } else if (verdict === 'clear') {
+                  notice(t('notice.license.rechecked'), 'success');
+                } else {
+                  notice(t('notice.license.recheckFailed'), 'error');
+                }
+                /* 结论可能刚把授权从高级版翻成基础版（或反过来）：让状态行
+                   与「高级版功能」徽章一起重绘。 */
+                ctx.rowEl.dispatchEvent(new Event('bz-review:license-changed', { bubbles: true }));
+              })();
             },
           },
         ],

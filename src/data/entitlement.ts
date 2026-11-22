@@ -16,6 +16,7 @@
  * 供界面文案、用量口径与测试引用；门控本身恒放行，架构上不再有功能差异。
  */
 import { parseLicense, verifyLicense } from './license';
+import { checkRevoked, revokedCode } from './revoked';
 import { t } from '../i18n/strings';
 
 /** 购买页（与 bz Reader / 归物本同一个店铺） */
@@ -27,7 +28,7 @@ export const GROUP_ID = '1130883117';
 export const FREE_ITEM_LIMIT = 50;
 
 export interface LicenseState {
-  /** 是否已解锁高级版 */
+  /** 是否已解锁高级版（**不含停用判定**：停用那层在 isPaid() 里现算） */
   paid: boolean;
   /** 激活码里的署名 */
   name?: string;
@@ -53,8 +54,32 @@ export function getLicenseState(): LicenseState {
   return state;
 }
 
+/**
+ * 这枚码当前是否被停用名单判死（同步，只读本地那份标记）。
+ *
+ * 为什么不把结论写进 state：名单核算是**后台异步**的（启动后几十秒、或
+ * 用户点设置页「核对」才回来），而 state 只在启动与激活时写一次。若把
+ * `paid` 在写 state 时定死，命中停用后界面要等下次重启才降级。改成现算，
+ * 后台把标记一落盘，下一次重绘就是基础版。
+ *
+ * 比较的是**码原文全等**：码被换掉（重新激活一枚新码）时旧标记自然失效，
+ * 不会把新码误伤。
+ */
+function revokedNow(): boolean {
+  const dead = revokedCode().trim();
+  const mine = cachedCode.trim();
+  return !!dead && !!mine && dead === mine;
+}
+
+/**
+ * 当前是不是高级版。
+ *
+ * 两层：验签通过（state.paid）**且**没被停用。停用与过期同一档——签名还是
+ * 真的，只是作者叫停了这枚码：保留码、只降级，解封后下次启动自动恢复，
+ * 用户不用回头翻邮件找码。
+ */
 export function isPaid(): boolean {
-  return state.paid;
+  return state.paid && !revokedNow();
 }
 
 /** 两类条目的当前计数（由调用方从排期表里数，别在这里读盘） */
@@ -207,6 +232,9 @@ export function capabilityBlock(_cap: ProCapability): { ok: boolean; message: st
 
 /** 设置页的授权状态行 */
 export function licenseSummary(): string {
+  if (licenseRevoked()) {
+    return t('ent.revoked', { limit: FREE_ITEM_LIMIT });
+  }
   if (!state.paid) {
     const parsed = cachedCode ? parseLicense(cachedCode) : null;
     if (parsed?.payload?.exp && Date.now() > parsed.payload.exp) {
@@ -222,6 +250,16 @@ export function licenseSummary(): string {
 /** 当前真正生效的码（上次验签通过的那枚）。激活失败时用它恢复输入框与落盘值。 */
 export function currentLicenseCode(): string {
   return cachedCode;
+}
+
+/**
+ * 这枚码验签通过了、但被停用名单判死。
+ *
+ * 单独给出去，是因为界面要分清「没买」和「被封」：两者都是基础版，
+ * 但用户看到的说明完全不同——前者引导去购买，后者要告诉他码被叫停了。
+ */
+export function licenseRevoked(): boolean {
+  return state.paid && revokedNow();
 }
 
 /**
@@ -255,4 +293,49 @@ export async function refreshLicense(code: string, commitFailure = true): Promis
     checkedAt: Date.now(),
   };
   return state;
+}
+
+/**
+ * 激活一枚码的完整入口：验签 → 联网核对停用名单 → 通过才落状态。
+ *
+ * 与 Reader 的 `activateLicense` 同口径（2026-11-22 起）。设置页那枚
+ * 「激活」按钮走这里，不再直接调 refreshLicense：离线签名只能证明
+ * 「这枚码是作者发的」，证明不了「它现在还有效」。
+ *
+ * 三档结论：
+ *   · 验签不过 → 说码无效（哪一步不过由 verifyLicense 给人话）
+ *   · 名单命中 → 说已停用，**不落状态**
+ *   · 拉不到 / 验签不过 / 旧名单 → 要求联网，不悄悄放行
+ *     （否则断网激活一枚已停用的码，就绕过了整套封码）
+ *
+ * 与 Reader 的差别只有一处：Review 的码是**可选**的，激活失败只是继续用
+ * 基础版，不会把人挡在门外，所以这里不需要额外的兜底出口。
+ */
+export async function activateLicense(
+  code: string,
+): Promise<{ ok: boolean; message: string; revoked?: boolean }> {
+  const clean = code.trim();
+  if (!clean) return { ok: false, message: t('lic.noCode') };
+
+  /* 本地已判死的码：断网也贴不回来，不必再等一次网络 */
+  if (revokedCode().trim() === clean) {
+    return { ok: false, message: t('lic.revoked'), revoked: true };
+  }
+
+  const r = await verifyLicense(clean);
+  if (!r.ok || !r.payload) return { ok: false, message: r.message };
+
+  const verdict = await checkRevoked(clean);
+  if (verdict === 'hit') return { ok: false, message: t('lic.revoked'), revoked: true };
+  if (verdict === 'unknown') return { ok: false, message: t('lic.needOnline') };
+
+  cachedCode = clean;
+  state = {
+    paid: true,
+    name: r.payload.name,
+    plan: r.payload.plan,
+    exp: r.payload.exp ?? 0,
+    checkedAt: Date.now(),
+  };
+  return { ok: true, message: r.message };
 }
