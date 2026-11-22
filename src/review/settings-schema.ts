@@ -375,9 +375,18 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 state.classList.toggle('is-paid', isPaid());
               };
               paint();
-              /* 激活码行在自己的 settingEl 上派发事件，状态行是兄弟节点；
-                 监听整组容器才能收到冒泡上来的授权变化。 */
-              body.addEventListener('bz-review:license-changed', paint);
+              /* 授权变化用事件通知，**监听挂 document 而不是本行容器**：
+                 「激活」「核对」两颗按钮在兄弟行上，事件从它们那儿冒泡只会
+                 经过共同祖先，本行自己的 body 永远收不到。挂 document 能收，
+                 并在本行被销毁时自摘，不留监听器。 */
+              const onLicenseChanged = (): void => {
+                if (!body.isConnected) {
+                  document.removeEventListener('bz-review:license-changed', onLicenseChanged);
+                  return;
+                }
+                paint();
+              };
+              document.addEventListener('bz-review:license-changed', onLicenseChanged);
             },
           },
           {
@@ -421,7 +430,10 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                     input.focus();
                     return;
                   }
-                  const code = licenseDraft.trim();
+                  /* 读输入框本身，不读草稿变量：停用后框里回显着那枚码，
+                     而草稿是空的——用户看着码在框里、点激活却说「先填」，
+                     这种自相矛盾比报错更让人犯迷糊。 */
+                  const code = input.value.trim();
                   if (!code) {
                     notice(t('settings.license.needCode'), 'info');
                     input.focus();
