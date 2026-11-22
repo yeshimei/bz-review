@@ -469,6 +469,16 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 })();
               });
               paint();
+              /* 和状态行同一个道理：核对 / 激活在兄弟行上派发，本行容器收不到。
+                 不挂这条，「核对」刚把授权翻成基础版，右边按钮还写着「重新激活」。 */
+              const onCodeChanged = (): void => {
+                if (!body.isConnected) {
+                  document.removeEventListener('bz-review:license-changed', onCodeChanged);
+                  return;
+                }
+                paint();
+              };
+              document.addEventListener('bz-review:license-changed', onCodeChanged);
             },
           },
           {
