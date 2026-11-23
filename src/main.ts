@@ -40,7 +40,9 @@ import { bindStudyReviewTab } from './review/embedded-home';
 import {
   activateLicense as activateLicenseOf,
   refreshLicense,
-  licenseRevoked,
+  licenseFacts,
+  setLicenseFailHistory,
+  setLicenseFactsHook,
   licenseSummary as licenseSummaryOf,
   setLatestVersion,
   setPluginVersion,
@@ -245,6 +247,14 @@ export default class ReviewPlugin extends Plugin {
     setSettingsPanelOpener((_domainId, anchorKey) => {
       ensureReview(this.app);
       void uiManager?.openSettings(anchorKey);
+    });
+
+    /* 授权事实（封没封 / 为什么掉级 / 上次激活栽在哪）由 entitlement 算，
+       这里负责写进 data.json——bz 的探针从那份文件读，它读不到内存。
+       失败历史先灌回去：重启一次就看不出「他上次激活栽在哪」了。 */
+    setLicenseFailHistory(this.settings.licenseActivateFail, this.settings.licenseActivateFailAt ?? 0);
+    setLicenseFactsHook(() => {
+      void this.syncLicenseFacts();
     });
 
     // 启动时静默验一次码（离线验签；试用码会再联网确认一次最新版）
@@ -585,6 +595,9 @@ export default class ReviewPlugin extends Plugin {
 
   onunload(): void {
     unloadReview();
+    /* 卸载后 entitlement 还活着（模块级单例），它再触发落盘就是对着已卸载的实例
+       写文件：把钩子摘掉。重载时 onload 会重新注册。 */
+    setLicenseFactsHook(null);
     /* 原生页：插件卸了，挂在工作区里的标签页也要一起摘（否则留下一个空白 tab）。
        unloadReview 里 uiManager.destroy() 已先把 onRequestClose 置空，此时 detach
        触发的视图 onClose 不会再反向操作已销毁的面板。 */
@@ -624,7 +637,7 @@ export default class ReviewPlugin extends Plugin {
     if (!res.ok) return { ok: false, message: res.message };
     this.settings.licenseKey = code.trim();
     await this.saveSettings();
-    await this.syncRevokedFlag();
+    await this.syncLicenseFacts();
     return { ok: true, message: res.message };
   }
 
@@ -680,7 +693,7 @@ export default class ReviewPlugin extends Plugin {
 
   private watchRevoked(): void {
     /* 上次启动的结论先落盘：命中过的设备这次可能 24 小时内不再拉名单 */
-    void this.syncRevokedFlag();
+    void this.syncLicenseFacts();
     const code = this.settings.licenseKey;
     if (!code) return;
     void refreshRevoked(code)
@@ -690,18 +703,36 @@ export default class ReviewPlugin extends Plugin {
             notice(t('notice.license.revoked'), 'error');
           });
         }
-        if (verdict === 'hit' || verdict === 'clear') void this.syncRevokedFlag();
+        if (verdict === 'hit' || verdict === 'clear') void this.syncLicenseFacts();
       })
       .catch(() => {
         /* 拉名单失败什么都不说：离线用户不该被打扰 */
       });
   }
 
-  /** 把「这枚码被停用」的结论同步进 data.json（bz 探针读它） */
-  private async syncRevokedFlag(): Promise<void> {
-    const dead = licenseRevoked();
-    if (this.settings.licenseRevoked === dead) return;
-    this.settings.licenseRevoked = dead;
+  /**
+   * 把授权事实同步进 data.json（bz 探针读它）。
+   *
+   * 四样：封没封、什么时候封的、为什么是这个档位、上次激活栽在哪。
+   * 逐字段比对后再写盘——这几样一天变不了几次，没必要每次启动都动文件。
+   */
+  private async syncLicenseFacts(): Promise<void> {
+    const f = licenseFacts();
+    const s = this.settings;
+    if (
+      s.licenseRevoked === f.revoked &&
+      s.licenseRevokedAt === f.revokedAt &&
+      s.licenseTierReason === f.tierReason &&
+      s.licenseActivateFail === f.activateFail &&
+      s.licenseActivateFailAt === f.activateFailAt
+    ) {
+      return;
+    }
+    s.licenseRevoked = f.revoked;
+    s.licenseRevokedAt = f.revokedAt;
+    s.licenseTierReason = f.tierReason;
+    s.licenseActivateFail = f.activateFail;
+    s.licenseActivateFailAt = f.activateFailAt;
     await this.saveSettings();
   }
 

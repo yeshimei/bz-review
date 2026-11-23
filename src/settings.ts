@@ -8,6 +8,8 @@
  * 编译期约束，所以字段名必须与 bz 那份逐字一致——改了会让面板尺寸记忆静默失效。
  */
 import { DEFAULT_REVIEW_DIR } from './core/storage-dir';
+/* 类型只用于约束上面几个授权事实字段：type-only import，编译后不产生运行时依赖 */
+import type { ActivateFailLite, TierReasonLite } from './data/entitlement';
 
 /** 强调色档位：auto 跟随 Obsidian，其余为固定色板。落盘值，body 挂 data-bzaccent 供 CSS 选档。 */
 export type AccentMode = 'auto' | 'copper' | 'indigo' | 'moss';
@@ -44,6 +46,29 @@ export default interface BzSettings {
    * 没有它，被封的设备在看板上仍然是「高级版」，封码有没有生效就只能靠猜。
    */
   licenseRevoked?: boolean;
+  /**
+   * 这枚码被判死的时刻（毫秒，2026-11-22）。
+   *
+   * 与 `licenseRevoked` 一起给 bz 的探针用：光知道「被封了」看不出封了几天、
+   * 还剩几台没掉下来，有时刻才排得出「封了之后多久才真停」。
+   */
+  licenseRevokedAt?: number;
+  /**
+   * 当前档位的成因（2026-11-22）：没买 / 到期 / 被封 / 码坏了。
+   *
+   * 四者都是「基础版」，但该做的事完全不同——引导购买、续费提醒、查误封、
+   * 修粘贴。分不清就只能一律当「没买」处理，那是错的。
+   */
+  licenseTierReason?: TierReasonLite;
+  /**
+   * 上次激活失败的原因（2026-11-22）。
+   *
+   * 激活过程只有本插件看得见，bz 那边无从得知。**只记分类，绝不记码原文**。
+   * 激活成功一次就清掉。
+   */
+  licenseActivateFail?: ActivateFailLite;
+  /** 上次激活失败的时刻（毫秒） */
+  licenseActivateFailAt?: number;
 
   // ===== 复习 =====
   /** 有笔记到期待复习时自动提醒 */
@@ -178,7 +203,6 @@ export const DEFAULT_SETTINGS: BzSettings = {
   language: 'auto',
   accent: DEFAULT_ACCENT,
   licenseKey: '',
-  licenseRevoked: false,
 
   enableAutoNotify: true,
   forceQuizForReview: true,

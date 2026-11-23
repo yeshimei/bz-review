@@ -81,9 +81,15 @@ interface State {
   at: number;
   /** 上次成功拉到名单的时刻（0 = 从没成功过）：24 小时节流用它 */
   checkedAt: number;
+  /**
+   * 这枚码被判死的时刻（0 = 没判死过）。与 `at` 不是一回事：
+   * `at` 是名单版本号，用来防重放；这个才是「什么时候被停的」，
+   * 探针要靠它算「封了几天了、还有几台在用」。
+   */
+  deadAt: number;
 }
 
-const EMPTY: State = { code: '', at: 0, checkedAt: 0 };
+const EMPTY: State = { code: '', at: 0, checkedAt: 0, deadAt: 0 };
 
 let cached: State | null = null;
 let inflight: Promise<RevokedVerdict> | null = null;
@@ -102,6 +108,8 @@ function readState(): State {
         typeof o?.checkedAt === 'number' && Number.isFinite(o.checkedAt) && o.checkedAt > 0
           ? o.checkedAt
           : 0,
+      deadAt:
+        typeof o?.deadAt === 'number' && Number.isFinite(o.deadAt) && o.deadAt > 0 ? o.deadAt : 0,
     };
   } catch {
     return EMPTY;
@@ -139,7 +147,13 @@ export function revokedCheckedAt(): number {
 /** 记下这枚码已停用。`at` 只往大里走，别被旧名单顶回去 */
 export function markRevoked(code: string, at: number): void {
   const cur = st();
-  const next: State = { code: code.trim(), at: Math.max(at, cur.at), checkedAt: cur.checkedAt };
+  const next: State = {
+    code: code.trim(),
+    at: Math.max(at, cur.at),
+    checkedAt: cur.checkedAt,
+    /* 同一枚码再判一次不刷新时刻：探针要的是「第一次被判死是什么时候」 */
+    deadAt: cur.code === code.trim() && cur.deadAt > 0 ? cur.deadAt : Date.now(),
+  };
   cached = next;
   writeState(next);
 }
@@ -148,9 +162,14 @@ export function markRevoked(code: string, at: number): void {
 export function clearRevoked(): void {
   const cur = st();
   if (!cur.code) return;
-  const next: State = { code: '', at: cur.at, checkedAt: cur.checkedAt };
+  const next: State = { code: '', at: cur.at, checkedAt: cur.checkedAt, deadAt: 0 };
   cached = next;
   writeState(next);
+}
+
+/** 这枚码被判死的时刻（0 = 没判死过） */
+export function revokedDeadAt(): number {
+  return st().deadAt;
 }
 
 /* ── 解析与验签 ───────────────────────────────────────────── */
@@ -347,6 +366,7 @@ export async function checkRevoked(
     code: st().code,
     at: Math.max(seen, doc.updatedAt),
     checkedAt: Date.now(),
+    deadAt: st().deadAt,
   };
   cached = next;
   writeState(next);
