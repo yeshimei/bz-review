@@ -60,6 +60,10 @@ export interface LicenseState {
   trial?: boolean;
   /** 激活码里的署名 */
   name?: string;
+  /** 码的公开编号（payload.id）：停用状态行要报出来，申诉时直接报这个号 */
+  licenseId?: string;
+  /** 赞助人 / 专属定制码（payload.patron）：状态行与关于条的身份标记 */
+  patron?: boolean;
   plan?: string;
   /** 过期毫秒戳；0/缺省 = 永久 */
   exp?: number;
@@ -191,6 +195,46 @@ function revokedNow(): boolean {
  */
 export function isPaid(): boolean {
   return state.paid && !revokedNow() && trialGate() === 'none';
+}
+
+/**
+ * 授权状态行的整句（2026-11-25 起与 bz Reader 的 tierText 逐字同口径）。
+ *
+ * 顺序固定：停用 > 试用过期 > 试用版本门槛 > 高级版 / 试用 / 基础版。
+ * 设置页状态行直接显示这一句，不再另做短标签——两边文案必须一致，
+ * 用户在哪边看到的都是同一套说法。
+ */
+export function licenseTierText(): string {
+  /* 停用优先于「基础版」：用户手里明明有一枚签名合法的码，只说「基础版」
+     会让他以为插件坏了。这里报码号，方便他申诉时直接报这个号。 */
+  if (licenseRevoked()) {
+    const id = state.licenseId ? t('tier.revokedId', { id: state.licenseId }) : '';
+    return t('tier.revoked', { id });
+  }
+  /* 试用码要先于「基础版」判断：码还在、只是过期或不是最新版，说「基础版」
+     会让用户以为码丢了。过期排在最前面——时间到了比版本更根本。 */
+  if (state.trial && state.exp && state.exp <= Date.now()) {
+    return t('tier.trialExpired', { date: new Date(state.exp).toLocaleDateString() });
+  }
+  const banner = trialBanner();
+  if (banner === 'outdated') {
+    return t('tier.trialOutdated', { now: pluginVersion, latest: latestVersion });
+  }
+  if (banner === 'unknown') {
+    return t('tier.trialNeedLatest');
+  }
+  if (state.paid) {
+    const who = state.name ? t('tier.who', { name: state.name }) : '';
+    /* 试用码单独一段：说「高级版已激活」等于告诉用户已经买断了。 */
+    if (state.trial) {
+      return t('tier.trial', { who, days: trialDaysLeft() });
+    }
+    const until = state.exp ? t('tier.until', { date: new Date(state.exp).toLocaleDateString() }) : t('tier.forever');
+    /* 赞助人码多一段身份说明（商品页承诺的那句），模板单独一条，避免在
+       句子中间插词——两种语言的语序不同。 */
+    return t(state.patron ? 'tier.paidPatron' : 'tier.paid', { who, until });
+  }
+  return t('tier.base');
 }
 
 /**
@@ -455,6 +499,8 @@ export async function refreshLicense(code: string, commitFailure = true): Promis
     paid: true,
     trial: isTrialCode(r.payload),
     name: r.payload.name,
+    licenseId: r.payload.id,
+    patron: r.payload.patron === true,
     plan: r.payload.plan,
     exp: r.payload.exp ?? 0,
     checkedAt: Date.now(),
@@ -537,6 +583,8 @@ export async function activateLicense(
     paid: true,
     trial: isTrialCode(r.payload),
     name: r.payload.name,
+    licenseId: r.payload.id,
+    patron: r.payload.patron === true,
     plan: r.payload.plan,
     exp: r.payload.exp ?? 0,
     checkedAt: Date.now(),

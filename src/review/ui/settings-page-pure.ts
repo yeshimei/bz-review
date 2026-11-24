@@ -112,8 +112,18 @@ const esc = (s: string | number | null | undefined): string =>
 /**
  * 关于条 HTML（通栏，位于两列网格之上）。
  * 身份徽章三种：赞助人（带昵称则用昵称）/ 高级版 / 基础版，与 reader 同一口径。
+ *
+ * `chinese` = 真简体用户（与购买分流同一判定）：只有简体界面才挂「视频教程 +
+ * QQ 交流群」两个中文生态出口，其余语言只留 GitHub / 支持作者 / 更新日志——
+ * 与 bz Reader 的 aboutBar 完全同款（2026-11-25）。
  */
-export function aboutBarHtml(version: string, paid: boolean, name: string, groupId = '1130883117'): string {
+export function aboutBarHtml(
+  version: string,
+  paid: boolean,
+  name: string,
+  groupId = '1130883117',
+  chinese = true,
+): string {
   const label = paid ? (name ? esc(name) : t('about.pro')) : t('about.base');
   const cls = `bzs-about-badge${paid ? '' : ' is-base'}`;
   const seal = paid ? '<span class="seal">✦</span>' : '';
@@ -126,11 +136,15 @@ export function aboutBarHtml(version: string, paid: boolean, name: string, group
       </span>
       <span class="sp"></span>
       <button class="bzs-about-link" type="button" data-act="aboutgithub">${GITHUB_SVG}<b>GitHub</b><span class="bzs-sr-only">${esc(t('about.githubSr'))}</span></button>
-      <span class="dot"></span>
+      ${
+        chinese
+          ? `<span class="dot"></span>
       <button class="bzs-about-link" type="button" data-act="aboutvideo">${VIDEO_SVG}<b>${esc(t('about.video'))}</b><span class="bzs-sr-only">${esc(t('about.videoSr'))}</span></button>
       <span class="dot"></span>
       <button class="bzs-about-link" type="button" data-act="copygroup">${GROUP_SVG}<b>${esc(t('about.group'))}</b><i>${esc(groupId)}</i><span class="bzs-sr-only">${esc(t('about.copyGroupSr'))}</span></button>
-      <span class="dot"></span>
+      <span class="dot"></span>`
+          : ''
+      }
       <button class="bzs-about-link" type="button" data-act="support">${HEART_SVG}<b>${esc(t('settings.about.support'))}</b><span class="bzs-sr-only">${esc(t('settings.about.supportTip'))}</span></button>
       <span class="dot"></span>
       <button class="bzs-about-link" type="button" data-act="changelog">${HISTORY_SVG}<b>${esc(t('settings.about.changelog'))}</b><span class="bzs-sr-only">${esc(t('settings.about.changelogTip'))}</span></button>

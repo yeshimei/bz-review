@@ -21,7 +21,7 @@ import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
 import { openVideoTutorial, openExternalUrl, REVIEW_REPO_URL, BZ_REPO_URL, GROUP_ID } from './links-bridge';
-import { changelogLang } from '../../i18n';
+import { changelogLang, isChinesePurchase } from '../../i18n';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
 import { currentPatrons, onPatronsChange, refreshPatrons } from './patrons';
@@ -530,8 +530,10 @@ function issueLinkHtml(n?: number): string {
   return `<a class="bzs-chgn-issue" href="${esc(REVIEW_REPO_URL)}/issues/${n}" target="_blank" rel="noopener">#${n} ↗</a>`;
 }
 
-/** 条目尾部的 QQ 频道帖子链接：白名单校验通过才渲染成可点链接 */
+/** 条目尾部的 QQ 频道帖子链接：白名单校验通过才渲染成可点链接。
+ *  2026-11-25：非简体不渲染——QQ 频道是中文生态，与 bz Reader 同款。 */
 function qqLinkHtml(raw?: string): string {
+  if (!isChinesePurchase()) return '';
   const href = safeFeedbackUrl(raw ?? '');
   if (!href) return '';
   return `<a class="bzs-chgn-qq" href="${esc(href)}" target="_blank" rel="noopener">QQ 频道 ↗</a>`;
@@ -638,8 +640,14 @@ function linksHtml(): string {
   const c = copy();
   const items = [
     { act: 'chgnrepo', label: c.github, icon: githubIcon(15) },
-    { act: 'chgnqq', label: c.qqHint(GROUP_ID), icon: QQ_SVG },
-    { act: 'chgnvideo', label: c.video, icon: BILI_SVG },
+    /* 2026-11-25：QQ 群与 B 站教程都是中文生态，非简体一律不渲染，只留 GitHub
+       ——与 bz Reader 的更新日志 footer 同款。 */
+    ...(isChinesePurchase()
+      ? [
+          { act: 'chgnqq', label: c.qqHint(GROUP_ID), icon: QQ_SVG },
+          { act: 'chgnvideo', label: c.video, icon: BILI_SVG },
+        ]
+      : []),
   ];
   return items
     .map(
@@ -1126,8 +1134,9 @@ export function openChangelogNote(
     if (target.closest('[data-role="chgnsupport"]')) { openSupportDialog(); return; }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
     if (act === 'chgnrepo') window.open(REVIEW_REPO_URL, '_blank', 'noopener,noreferrer');
-    else if (act === 'chgnvideo') openVideoTutorial();
-    else if (act === 'chgnqq') void copyReviewGroupId();
+    /* 第二道闸：旧 DOM / 脚本注入的入口也按语言拦一次（与 bz Reader 同款）。 */
+    else if (act === 'chgnvideo' && isChinesePurchase()) openVideoTutorial();
+    else if (act === 'chgnqq' && isChinesePurchase()) void copyReviewGroupId();
   });
 
   body?.addEventListener('scroll', syncFade, { passive: true });
