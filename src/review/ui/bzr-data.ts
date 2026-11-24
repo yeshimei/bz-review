@@ -145,7 +145,10 @@ export interface BzrLinks {
 export interface BzrData {
   version: number;
   updatedAt: string;
+  /** reader 的版本日志（review 不展示，仅随数据保留） */
   changelog: BzrChangelogRelease[];
+  /** review 自己的版本日志；在线有这块时按版本整块覆盖内置日志 */
+  reviewChangelog: BzrChangelogRelease[];
   roadmap: RoadmapTheme[];
   /** 用户反馈两组；老数据 / 老缓存可能没有，读时按空组兜底 */
   feedback?: BzrFeedbackGroup[];
@@ -443,6 +446,15 @@ export function parseBzrData(raw: unknown): BzrData | null {
     const v = changelogRelease(it);
     if (v) changelog.push(v);
   }
+  /* review 专属日志：和 changelog 用同一个解析器，但完全独立——老数据没这块
+     就留空（走内置日志），不能因为缺它就把整份数据判无效。 */
+  const reviewChangelogIn = Array.isArray(o.reviewChangelog) ? o.reviewChangelog : [];
+  const reviewChangelog: BzrChangelogRelease[] = [];
+  for (const it of reviewChangelogIn) {
+    if (reviewChangelog.length >= MAX_ITEMS) break;
+    const v = changelogRelease(it);
+    if (v) reviewChangelog.push(v);
+  }
   const roadmapIn = Array.isArray(o.roadmap) ? o.roadmap : [];
   const roadmap: RoadmapTheme[] = [];
   for (const it of roadmapIn) {
@@ -467,6 +479,7 @@ export function parseBzrData(raw: unknown): BzrData | null {
     version: typeof o.version === 'number' ? o.version : 1,
     updatedAt: typeof o.updatedAt === 'string' && isIsoDate(o.updatedAt) ? o.updatedAt : '',
     changelog,
+    reviewChangelog,
     roadmap,
     feedback: feedbackGroups(o.feedback),
     stats: { reward: nonneg(st.reward), pro: nonneg(st.pro), patrons: nonneg(st.patrons) },
@@ -480,6 +493,7 @@ const BUILTIN: BzrData = {
   version: 1,
   updatedAt: '',
   changelog: [],
+  reviewChangelog: [],
   roadmap: [
     { theme: '路线图', color: '#7856d6', order: 1, items: [
       { title: '路线图数据已更新，请联网查看', state: 'plan', src: 'builtin', plugin: 'review',
@@ -589,6 +603,14 @@ export function purchaseUrlFor(isChinese: boolean, d: BzrData | null): string {
   const remote = isChinese ? d?.links.buyCn : d?.links.buyIntl;
   if (remote) return remote;
   return isChinese ? PURCHASE_URL : PURCHASE_URL_INTL;
+}
+
+/**
+ * 支持作者弹层「赞助商店」按钮的落点（与购买按钮同机制）。
+ * 简中走国内赞助店；非简中走 buyIntl（海外店），远程换渠道自动跟随。
+ */
+export function sponsorUrlFor(isChinese: boolean, d: BzrData | null): string {
+  return isChinese ? SPONSOR_URL : purchaseUrlFor(false, d);
 }
 export function bzrDataStatus(): BzrStatus {
   ensureLoaded();

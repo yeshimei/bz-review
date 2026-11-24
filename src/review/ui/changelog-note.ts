@@ -21,7 +21,7 @@ import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
 import { openVideoTutorial, openExternalUrl, REVIEW_REPO_URL, BZ_REPO_URL, GROUP_ID } from './links-bridge';
-import { changelogLang, locale } from '../../i18n';
+import { changelogLang, isChinesePurchase } from '../../i18n';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
 import { currentPatrons, onPatronsChange, refreshPatrons } from './patrons';
@@ -772,9 +772,9 @@ export function changelogNoteHtml(
   data: BzrData | null = viewData(),
 ): string {
   const c = copy();
-  /* 在线 data.changelog 是 bz-reader 的版本日志，不是 Review 的：合并进来会把
-     Reader 的条目混进 Review 的版本历史。Review 只用自己的内置 releases。 */
-  const merged = mergeReleases(releases, []);
+  /* 在线 data.reviewChangelog 是 Review 自己的版本日志：有的版本整块覆盖内置，
+     没有的保留内置。data.changelog 是 reader 的，绝不混进来。 */
+  const merged = mergeReleases(releases, data?.reviewChangelog ?? []);
   const list = usable(merged);
   if (!list.length) return '';
   const at = activeIndex(list, expectVersion);
@@ -894,7 +894,7 @@ function unmountConfirmDialog(): void {
  * 「去购买」同一套机制；打赏走 support 老字段，兜底国内赞助店。
  */
 export function resolveConfirmTarget(kind: 'buy' | 'support', d: BzrData | null): string {
-  if (kind === 'buy') return purchaseUrlFor(locale() === 'zh', d);
+  if (kind === 'buy') return purchaseUrlFor(isChinesePurchase(), d);
   return safeFeedbackUrl(d?.links.support ?? '') || SPONSOR_URL;
 }
 
@@ -949,9 +949,10 @@ export function openChangelogNote(
   expectVersion = '',
   data?: BzrData | null,
 ): ChangelogNoteHandle {
-  /* 同上：不合并在线 changelog，避免 Review 日志里出现 Reader 的版本。 */
-  const list = usable(mergeReleases(releases, []));
-  const html = changelogNoteHtml(list, expectVersion, currentPatrons(), data);
+  /* 合并在线 reviewChangelog（有的版本覆盖内置），reader 的 changelog 不混进来。 */
+  const d = data ?? viewData();
+  const list = usable(mergeReleases(releases, d?.reviewChangelog ?? []));
+  const html = changelogNoteHtml(list, expectVersion, currentPatrons(), d);
   if (!html) return { close: () => undefined };
 
   liveNote?.close();

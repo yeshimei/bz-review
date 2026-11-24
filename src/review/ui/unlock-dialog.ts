@@ -7,7 +7,7 @@ import { uiModal } from '../../core/ui/modal';
 import { FREE_ITEM_LIMIT, GROUP_ID, isPaid } from '../../data/entitlement';
 import { openExternalUrl } from './links-bridge';
 import { currentBzrData, purchaseUrlFor } from './bzr-data';
-import { locale, t, type MsgKey } from '../../i18n';
+import { isChinesePurchase, t, type MsgKey } from '../../i18n';
 
 const YES = '✓';
 
@@ -148,8 +148,8 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
   modal.popup.scrollTop = 0;
   modal.popup.addEventListener('click', (e) => {
     const act = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-act]')?.dataset.act;
-    /* 简中跳国内店、英文跳 Creem，远程换渠道自动跟随；和更新日志统计卡同一套 */
-    if (act === 'unlockbuy') openExternalUrl(purchaseUrlFor(locale() === 'zh', currentBzrData()));
+    /* 真简体跳国内店、繁体/英文跳 Creem，远程换渠道自动跟随；和更新日志统计卡同一套 */
+    if (act === 'unlockbuy') openExternalUrl(purchaseUrlFor(isChinesePurchase(), currentBzrData()));
     else if (act === 'unlockgroup') openExternalUrl(`https://qm.qq.com/q/${GROUP_ID}`);
   });
 }

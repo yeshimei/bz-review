@@ -23,8 +23,9 @@
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
 import { openExternalUrl, REVIEW_REPO_URL } from './links-bridge';
-import { t } from '../../i18n';
-import { SPONSOR_URL, formatRewardDate, type RewardName } from './reward';
+import { currentBzrData, sponsorUrlFor } from './bzr-data';
+import { isChinesePurchase, t } from '../../i18n';
+import { formatRewardDate, type RewardName } from './reward';
 import {
   currentPatrons,
   onPatronsChange,
@@ -205,7 +206,8 @@ export function openSupportDialog(): SupportDialogHandle {
       return;
     }
     if (target.closest('[data-role="supsponsor"]')) {
-      openExternalUrl(SPONSOR_URL);
+      /* 简中走国内赞助店、非简中走海外店（与购买按钮同款语言分流） */
+      openExternalUrl(sponsorUrlFor(isChinesePurchase(), currentBzrData()));
       return;
     }
     if (target.closest('[data-role="supstar"]')) {

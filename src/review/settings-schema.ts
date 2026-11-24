@@ -17,7 +17,7 @@ import { setHtml } from './ui/set-html';
 import { attachHelpTip } from '../core/ui/help-tip';
 import { withSrText } from '../core/ui/sr-text';
 import { DEFAULT_ACCENT, applyAccent } from '../settings';
-import { LOCALES, LOCALE_NAMES, hostLanguageCode, isLocale, resolveLocale, setLocale, t, type LanguagePref, type MsgKey } from '../i18n';
+import { LOCALES, LOCALE_NAMES, hostLanguageCode, initLocale, isLocale, locale, t, type LanguagePref, type MsgKey } from '../i18n';
 
 import { openFlowDialog } from '../core/flow-dialog';
 import { DEFAULT_REVIEW_DIR } from '../core/storage-dir';
@@ -682,7 +682,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                   const next: LanguagePref = isLocale(m.value) ? m.value : 'auto';
                   getSettings().language = next;
                   void saveSettings();
-                  const changed = setLocale(resolveLocale(next, hostLanguageCode()));
+                  const before = locale();
+                  initLocale(next, hostLanguageCode());
+                  const changed = locale() !== before;
                   /* 整页重开：设置页每行文案都是渲染时取的，只重画这一行不够。 */
                   requestSettingsPanel(undefined, '界面');
                   if (changed) notice(t('notice.language.changed'));

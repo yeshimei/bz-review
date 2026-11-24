@@ -67,6 +67,37 @@ export function locale(): Locale {
   return current;
 }
 
+/**
+ * 宿主原始语言码是不是**真简体中文**（购买分流用，与界面语言档位脱钩）。
+ *
+ * Review 只有 zh / en 两档界面，`normalizeLocale` 把 zh-TW 这类繁体折成 zh，
+ * 界面仍是简体——但繁体用户没有 QQ / 微信支付，购买该走 Creem。所以付款
+ * 判定不能看折叠后的界面语言，得看宿主给的原始码：简体系列（zh / zh-CN /
+ * zh-Hans）算简体，繁体（地区 tw/hk/mo 或脚本 Hant）、英文、空都不算。
+ */
+export function isSimplifiedHostCode(code: string | null | undefined): boolean {
+  const raw = String(code ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/_/g, '-');
+  if (!raw) return false;
+  if (raw.split('-')[0] !== 'zh') return false;
+  if (/^zh-(tw|hk|mo)\b/.test(raw) || raw.includes('hant')) return false;
+  return true;
+}
+
+/**
+ * 购买分流用的「是不是简体中文用户」。
+ *
+ * 手动选了语言就按手动的来：选中文走国内、选英文走海外；跟随宿主时看原始
+ * 语言码是不是真简体。这样繁体宿主的 auto 用户看到简体界面、购买却走海外，
+ * 与 bz Reader 的 isChineseUI() 口径一致。
+ */
+export function resolvePurchaseChinese(pref: LanguagePref, hostCode?: string | null): boolean {
+  if (pref !== 'auto') return pref === 'zh';
+  return isSimplifiedHostCode(hostCode);
+}
+
 /** 切换界面语言。返回「是否真的变了」——调用方据此决定要不要重绘。 */
 export function setLocale(next: Locale): boolean {
   const code = normalizeLocale(next);
