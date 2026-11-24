@@ -8716,16 +8716,25 @@ body.theme-dark .bzrv-settings-content .bzs-brand:is([data-bzrv], [data-bzrv] *)
   .bzrv-settings-content .bzs-plugin-grp .bzs-capnote a:is([data-bzrv], [data-bzrv] *):hover { border-bottom-color: currentColor; }
 }
 
-/* 授权组（2026-11-21）：状态文字在右、激活码输入 + 按钮在右，三行都是标准设置行 */
+/* 授权组（2026-11-25 与 bz Reader 对齐）：状态句在左、核对/下载新版按钮贴右，
+   付费时只有状态 + 激活码两行；免费时多一行「高级版 + 查看功能对照」。 */
 .bzrv-settings-content .bzrv-license-state:is([data-bzrv], [data-bzrv] *) {
   padding-right: 4px;
   font-size: 12px;
   color: var(--bzsp-t2);
-  max-width: 52%;
+  flex: 1 1 auto;
+  min-width: 0;
   text-align: right;
   line-height: 1.6;
 }
 .bzrv-settings-content .bzrv-license-state.is-paid:is([data-bzrv], [data-bzrv] *) { color: var(--bzsp-accent); }
+.bzrv-settings-content .bzrv-license-acts:is([data-bzrv], [data-bzrv] *) {
+  display: flex;
+  flex: none;
+  gap: 6px;
+  margin-left: 8px;
+}
+.bzrv-settings-content .bzrv-license-acts button[hidden]:is([data-bzrv], [data-bzrv] *) { display: none; }
 .bzrv-settings-content .bzrv-license-code:is([data-bzrv], [data-bzrv] *) {
   display: flex;
   align-items: center;
