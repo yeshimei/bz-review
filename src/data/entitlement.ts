@@ -385,19 +385,6 @@ export const CAPABILITY_LABELS: Record<ProCapability, string> = {
   cardManager: t('ent.capManager'),
 };
 
-/**
- * 能力恒放行（产品决策 2026-11-18）：基础版与高级版功能完全一致，只限数量。
- * 连未知能力名也放行，这样未来新增功能不会被误锁成高级版专属。
- */
-export function canUseCapability(_cap: ProCapability): boolean {
-  return true;
-}
-
-/** 不再有功能拦截：任何入口都不弹升级提示，只保留数量上限的 quotaBlock */
-export function capabilityBlock(_cap: ProCapability): { ok: boolean; message: string } {
-  return { ok: true, message: '' };
-}
-
 /** 设置页的授权状态行 */
 export function licenseSummary(): string {
   if (licenseRevoked()) {
@@ -522,25 +509,27 @@ export async function activateLicense(
     return { ok: false, message: r.message, fail };
   }
 
+  /* 试用码的版本判定先算出来，但停用名单命中仍然优先：封掉的码无论版本多新都不放行。
+     这样离线但本地已有最新版缓存时，用户拿到的是「请更新」而不是笼统的「请联网」。 */
+  let trialIssue = '';
+  if (isTrialCode(r.payload)) {
+    const latest = await ensureLatestVersion();
+    if (latest) setLatestVersion(latest);
+    if (!latest) trialIssue = t('lic.needLatest');
+    else if (pluginVersion && compareVersions(pluginVersion, latest) < 0) {
+      trialIssue = t('lic.outdated', { now: pluginVersion, latest });
+    }
+  }
+
   const verdict = await checkRevoked(clean);
   if (verdict === 'hit') {
     noteActivateFail('revoked');
     return { ok: false, message: t('lic.revoked'), revoked: true, fail: 'revoked' };
   }
+  if (trialIssue) return { ok: false, message: trialIssue };
   if (verdict === 'unknown') {
     noteActivateFail('offline');
     return { ok: false, message: t('lic.needOnline'), fail: 'offline' };
-  }
-
-  /* 试用码必须是最新版。跟停用名单分开报：一个是「这码被叫停」，
-     一个是「码没问题，你先把插件更新了」。 */
-  if (isTrialCode(r.payload)) {
-    const latest = await ensureLatestVersion();
-    if (latest) setLatestVersion(latest);
-    if (!latest) return { ok: false, message: t('lic.needLatest') };
-    if (pluginVersion && compareVersions(pluginVersion, latest) < 0) {
-      return { ok: false, message: t('lic.outdated', { now: pluginVersion, latest }) };
-    }
   }
 
   cachedCode = clean;

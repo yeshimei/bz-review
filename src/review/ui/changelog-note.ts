@@ -21,13 +21,13 @@ import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
 import { openVideoTutorial, openExternalUrl, REVIEW_REPO_URL, BZ_REPO_URL, GROUP_ID } from './links-bridge';
-import { changelogLang, isChinesePurchase } from '../../i18n';
+import { changelogLang } from '../../i18n';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
 import { currentPatrons, onPatronsChange, refreshPatrons } from './patrons';
 import {
+  activePurchaseUrl,
   currentBzrData,
-  purchaseUrlFor,
   feedbackCommitUrl,
   onBzrDataChange,
   refreshBzrData,
@@ -894,7 +894,7 @@ function unmountConfirmDialog(): void {
  * 「去购买」同一套机制；打赏走 support 老字段，兜底国内赞助店。
  */
 export function resolveConfirmTarget(kind: 'buy' | 'support', d: BzrData | null): string {
-  if (kind === 'buy') return purchaseUrlFor(isChinesePurchase(), d);
+  if (kind === 'buy') return activePurchaseUrl(d);
   return safeFeedbackUrl(d?.links.support ?? '') || SPONSOR_URL;
 }
 
@@ -904,7 +904,7 @@ function openConfirm(kind: 'buy' | 'support'): void {
   const c = copy();
   const d = viewData();
   const isBuy = kind === 'buy';
-  /* 兜底一定给得出地址：purchaseUrlFor / resolveConfirmTarget 永远返回地址，
+  /* 兜底一定给得出地址：activePurchaseUrl / resolveConfirmTarget 永远返回地址，
      绝不出现「点了没反应」——那一类最伤信任（2026-11-18 真机）。 */
   confirmTarget = resolveConfirmTarget(kind, d);
   setHtml(el.querySelector<HTMLElement>('[data-confirm-icon]')!, isBuy ? '★' : '♥');

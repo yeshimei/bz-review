@@ -6,7 +6,8 @@
  *   exp 是毫秒时间戳，缺省/0 = 永久；
  *   sig = ECDSA P-256 + SHA-256，IEEE-P1363 裸格式（r||s 各 32 字节）。
  *
- * 离线验签，不联网：公钥内嵌在包里，激活一次管到 exp 为止。
+ * 验签本身离线：公钥内嵌在包里。停用名单核对与试用码最新版检查另走网络，
+ * 那两道门在 entitlement 里做，与这里的签名验证分开。
  * 这套机制与 bz / bz Reader / 归物本同源，前缀与密钥对各自独立：
  * 普通高级版码只在本插件有效；**例外**是赞助人 / 专属定制码
  * （payload.patron === true，Reader 私钥签发），两款插件都能激活。
@@ -69,7 +70,8 @@ export interface LicenseCheck {
   reason?: LicenseFail;
 }
 
-function b64urlToBytes(s: string): Uint8Array {
+/** base64url → 字节。停用名单验签也用它，放在这里只留一份实现。 */
+export function b64urlToBytes(s: string): Uint8Array {
   const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
   const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
   const bin = atob(b64 + pad);

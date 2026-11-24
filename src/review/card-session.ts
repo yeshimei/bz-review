@@ -39,7 +39,6 @@ import { noteSourceOf } from './note-source';
 import { jumpToSourceNote } from './note-jump';
 import { readerJumpUrl } from '../core/reader-link';
 import { openExternalUrl } from '../core/utils';
-import { canUseCapability, capabilityBlock } from '../data/entitlement';
 import { ratingName, t } from '../i18n';
 
 /* 提示面与它的状态机住在 card-prompt.ts —— 那里不碰 obsidian 和 DOM，node 里
@@ -1078,15 +1077,7 @@ export class CardSession {
     });
     /* 听卡片 / 跳回原文：判定与文案见文件头的纯函数，这里只接线。 */
     host.querySelector('[data-act="speak"]')?.addEventListener('click', () => this.speak());
-    host.querySelector('[data-act="speak-locked"]')?.addEventListener('click', () => {
-      this.notice = capabilityBlock('speech').message;
-      this.render();
-    });
     host.querySelector('[data-act="back"]')?.addEventListener('click', () => this.back());
-    host.querySelector('[data-act="back-locked"]')?.addEventListener('click', () => {
-      this.notice = capabilityBlock('sourceLink').message;
-      this.render();
-    });
   }
 
   // ==================== 听卡片 / 跳回原文 ====================
@@ -1101,7 +1092,7 @@ export class CardSession {
   private footActionsHtml(item: ReviewItem): string {
     const card = item.card;
     const back = card ? backlinkOfCard(card, readerJumpUrl) : '';
-    return `<div class="bzrv-cs-foot-actions">${backButtonHtml(!!back, canUseCapability('sourceLink'))}${this.speakHtml()}</div>`;
+    return `<div class="bzrv-cs-foot-actions">${backButtonHtml(!!back, true)}${this.speakHtml()}</div>`;
   }
 
   private speakState(): SpeakState {

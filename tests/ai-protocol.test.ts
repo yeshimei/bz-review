@@ -121,7 +121,7 @@ describe('AI 协议适配（anthropic / openai 两家同源）', () => {
     useProvider('custom', {
       aiCustomEndpoint: 'https://gateway.example/v1',
       aiCustomApiKey: 'sk-gw',
-      aiCustomHeaders: 'x-opencode-session: sess-1',
+      aiCustomHeaders: 'x-opencode-session: sess-1\nAuthorization: Bearer fake',
       aiModelOverrides: { custom: 'gw-model' },
     });
     const fetchMock = vi.fn().mockResolvedValue({
@@ -134,6 +134,7 @@ describe('AI 协议适配（anthropic / openai 两家同源）', () => {
     await createAI().prompt('x');
     const init = fetchMock.mock.calls[0][1] as { headers: Record<string, string> };
     expect(init.headers['x-opencode-session']).toBe('sess-1');
+    /* 用户填了 Authorization 也盖不掉真密钥 */
     expect(init.headers.Authorization).toBe('Bearer sk-gw');
 
     /* 代发通道同样要带 */

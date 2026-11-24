@@ -23,7 +23,6 @@ import { noteCardKey, selectionRange } from './note-source';
 import { panelModeOf, REVIEW_VIEW_TYPE } from './panel-mode';
 import { embeddedReviewRoute } from './reader-embed';
 import { tryGetSettings } from '../core/settings-provider';
-import { canUseCapability, capabilityBlock } from '../data/entitlement';
 import {
   applyCardContent,
   cardModeOf,
@@ -389,23 +388,15 @@ export async function openReviewReport(app: App): Promise<void> {
   await showStatsModal(app, dataManager!);
 }
 
-/** 按书档案（review-book-report）：高级档入口，未解锁弹能力位文案，不偷开页面。 */
+/** 按书档案（review-book-report）：基础版与高级版都能直接打开。 */
 export async function openReviewBooks(app: App): Promise<void> {
   ensureReview(app);
-  if (!canUseCapability('bookReport')) {
-    notice(capabilityBlock('bookReport').message, 'warning');
-    return;
-  }
   await uiManager!.openBooks();
 }
 
-/** 卡片管理器（review-card-manager）：高级档入口，未解锁弹能力位文案。 */
+/** 卡片管理器（review-card-manager）：全部档位可用，不再有能力门控。 */
 export async function openReviewCardManager(app: App): Promise<void> {
   ensureReview(app);
-  if (!canUseCapability('cardManager')) {
-    notice(capabilityBlock('cardManager').message, 'warning');
-    return;
-  }
   await uiManager!.openManager();
 }
 

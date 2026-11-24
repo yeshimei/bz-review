@@ -56,6 +56,27 @@ export function releaseEntryCount(release: ChangelogRelease): number {
  */
 export const CHANGELOG_RELEASES: readonly ChangelogRelease[] = [
   {
+    version: '1.0.3',
+    date: '2026-11-24',
+    added: [
+      { domain: '停用名单', text: '作者停掉的激活码会联网核对并当场降级，断网重启也贴不回来。' },
+      { domain: '授权档案', text: '是否被停用、为什么掉级、上次激活失败都写进本地数据，方便排查。' },
+      { domain: '试用码门槛', text: '试用码必须是最新版才能解锁，落后就先更新插件。' },
+      { domain: '自定义请求头', text: '自定义 AI 通道可以填附加请求头，兼容需要会话头的网关。' },
+      { domain: '海外购买', text: '购买与赞助按钮按界面语言分流，繁体和英文用户走海外店。' },
+    ],
+    improved: [
+      { domain: '在线更新日志', text: '更新日志改读在线的复习条目，远程有新条目不用等插件更新。' },
+      { domain: '试用码提示', text: '版本落后时明确提示先更新，不再笼统地要求联网。' },
+      { domain: '联网说明', text: '说明里写清首次激活与试用码的联网核对，不再宣称完全离线。' },
+    ],
+    fixed: [
+      { domain: '鉴权头保护', text: '自定义请求头不能再盖掉密钥，填错也不会把请求变成 401。' },
+      { domain: '在线日志兼容', text: '只有复习日志、没有阅读器日志的远程数据也能正常显示。' },
+      { domain: 'Claude 通道', text: 'Anthropic 协议真正走 /messages，带正确的鉴权头与流事件。' },
+    ],
+  },
+  {
     version: '1.0.2',
     date: '2026-11-21',
     fixed: [

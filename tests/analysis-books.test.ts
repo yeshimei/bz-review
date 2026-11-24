@@ -3,7 +3,7 @@
  *
  * 纯层（book-summary / card-manager）另有单测；这里盯的是接线：
  * 渲染视图的字段与按钮、queue.active() 的隐藏口径、deck 的 hidden 筛选、
- * 高级档入口门控，以及新字段不会被 store-format 剥掉。
+ * 以及新字段不会被 store-format 剥掉。
  */
 import { describe, expect, it } from 'vitest';
 import { bookSummariesOf } from '../src/review/book-summary';
@@ -12,7 +12,6 @@ import { DEFAULT_R_THRESHOLD, forecastLoad, partitionQueue, roundQueue } from '.
 import { applyFilter, matchesQuery } from '../src/review/deck';
 import { stripRuntime } from '../src/review/store-format';
 import { DEFAULT_W } from '../src/review/fsrs';
-import { canUseCapability, capabilityBlock } from '../src/data/entitlement';
 import type { ReviewItem } from '../src/review/data';
 
 const NOW = new Date('2026-11-18T12:00:00.000Z');
@@ -159,10 +158,4 @@ describe('新字段持久化与高级档门控', () => {
     expect(out.isOverdue).toBeUndefined();
   });
 
-  it('bookReport / cardManager 全部放开，基础版也能用', () => {
-    expect(canUseCapability('bookReport')).toBe(true);
-    expect(canUseCapability('cardManager')).toBe(true);
-    expect(capabilityBlock('bookReport').ok).toBe(true);
-    expect(capabilityBlock('cardManager').ok).toBe(true);
-  });
 });

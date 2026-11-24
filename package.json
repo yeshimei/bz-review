@@ -1,6 +1,6 @@
 {
   "name": "bz-review",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "复习 · 把要记住的笔记和划线排进复习计划（Obsidian 插件）",
   "main": "src/main.ts",
   "author": "叫我包仔",

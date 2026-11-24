@@ -32,7 +32,7 @@
  * 名单内容本身不落盘：每次启动重拉。
  * ============================================================ */
 import { requestUrl } from 'obsidian';
-import { parseLicense, verifySignedBytes } from './license';
+import { b64urlToBytes, parseLicense, verifySignedBytes } from './license';
 
 /** 两条下载通道：GitHub raw 主源、码云 raw 国内直连 */
 export const REVOKED_URLS: readonly string[] = [
@@ -129,6 +129,17 @@ function st(): State {
   return cached;
 }
 
+/** 在当前状态上改几个字段，四件套只在一处列，别每处手抄一遍 */
+function stateWith(patch: Partial<State>): State {
+  return { ...st(), ...patch };
+}
+
+/** 统一落盘：内存与 localStorage 一步不落 */
+function commitState(next: State): void {
+  cached = next;
+  writeState(next);
+}
+
 /** 当前已被判死的码（同步，给 entitlement 的每帧判定用） */
 export function revokedCode(): string {
   return st().code;
@@ -147,24 +158,21 @@ export function revokedCheckedAt(): number {
 /** 记下这枚码已停用。`at` 只往大里走，别被旧名单顶回去 */
 export function markRevoked(code: string, at: number): void {
   const cur = st();
-  const next: State = {
-    code: code.trim(),
-    at: Math.max(at, cur.at),
-    checkedAt: cur.checkedAt,
-    /* 同一枚码再判一次不刷新时刻：探针要的是「第一次被判死是什么时候」 */
-    deadAt: cur.code === code.trim() && cur.deadAt > 0 ? cur.deadAt : Date.now(),
-  };
-  cached = next;
-  writeState(next);
+  const clean = code.trim();
+  commitState(
+    stateWith({
+      code: clean,
+      at: Math.max(at, cur.at),
+      /* 同一枚码再判一次不刷新时刻：探针要的是「第一次被判死是什么时候」 */
+      deadAt: cur.code === clean && cur.deadAt > 0 ? cur.deadAt : Date.now(),
+    }),
+  );
 }
 
 /** 解封（名单里已经没有这枚码了）：清掉码，但版本号留着防重放 */
 export function clearRevoked(): void {
-  const cur = st();
-  if (!cur.code) return;
-  const next: State = { code: '', at: cur.at, checkedAt: cur.checkedAt, deadAt: 0 };
-  cached = next;
-  writeState(next);
+  if (!st().code) return;
+  commitState(stateWith({ code: '', deadAt: 0 }));
 }
 
 /** 这枚码被判死的时刻（0 = 没判死过） */
@@ -244,15 +252,6 @@ export function parseRevoked(raw: unknown): RevokedDoc | null {
     hashes.push(h);
   }
   return { v: 1, updatedAt: o.updatedAt, ids, hashes, sig: o.sig };
-}
-
-function b64urlToBytes(s: string): Uint8Array {
-  const b64 = s.replace(/-/g, '+').replace(/_/g, '/');
-  const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-  const bin = atob(b64 + pad);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i += 1) out[i] = bin.charCodeAt(i);
-  return out;
 }
 
 /** 验签。任何异常都算「不过」，不能把「验不了」当成「验过了」 */
@@ -362,14 +361,7 @@ export async function checkRevoked(
   /* 拉到可用的名单 = 这次核对成功：版本号与「上次核对时间」一起更新。
      24 小时节流只看 checkedAt，所以失败（网络/验签/旧名单）不会把下一次
      自动核对推迟一天。 */
-  const next: State = {
-    code: st().code,
-    at: Math.max(seen, doc.updatedAt),
-    checkedAt: Date.now(),
-    deadAt: st().deadAt,
-  };
-  cached = next;
-  writeState(next);
+  commitState(stateWith({ at: Math.max(seen, doc.updatedAt), checkedAt: Date.now() }));
 
   if (await revokedHit(clean, doc)) {
     markRevoked(clean, doc.updatedAt);

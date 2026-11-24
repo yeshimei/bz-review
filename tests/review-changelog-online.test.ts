@@ -46,6 +46,21 @@ describe('review 在线日志 · 解析', () => {
     expect(data?.reviewChangelog[0].version).toBe('1.0.3');
   });
 
+  it('只有 review 在线日志、没有 reader 日志时整份数据仍然合法', () => {
+    const onlyReview = JSON.stringify({
+      version: 1, updatedAt: '2026-11-24',
+      reviewChangelog: [{ version: '1.0.3', fixed: [
+        { domain: { zh: '修复', en: 'Fix' }, text: { zh: '只有复习日志', en: 'review only' } },
+      ] }],
+      roadmap: [], stats: { reward: 0, pro: 0, patrons: 0 },
+      links: { support: 'https://afdian.net/a/x', buy: 'https://wzyp.cn/shop/IFCEI5I3' },
+    });
+    const data = parseBzrData(onlyReview);
+    expect(data).not.toBeNull();
+    expect(data?.reviewChangelog[0].version).toBe('1.0.3');
+    expect(data?.changelog).toEqual([]);
+  });
+
   it('老数据没有 reviewChangelog 时降级为空数组，不影响整份数据合法', () => {
     const old = JSON.stringify({
       version: 1, updatedAt: '2026-11-21',
@@ -103,6 +118,6 @@ describe('review 在线日志 · 合并与渲染', () => {
     setLocale('zh');
     const html = changelogNoteHtml(REVIEW_RELEASES, '1.0.2', [], null);
     expect(html).toContain('修正依赖版本声明与锁文件');
-    expect(html).not.toContain('在线');
+    expect(html).not.toContain('在线新增条目');
   });
 });

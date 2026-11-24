@@ -45,7 +45,6 @@ import {
   activateLicense,
   isPaid,
   getLicenseState,
-  licenseRevoked,
   currentLicenseCode,
   trialBanner,
   trialDaysLeft,

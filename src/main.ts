@@ -533,12 +533,7 @@ export default class ReviewPlugin extends Plugin {
       id: 'review-export-book-report',
       name: t('cmd.exportBookReport'),
       callback: withReview(async (app) => {
-        const { canUseCapability, capabilityBlock } = await import('./data/entitlement');
         const { notice } = await import('./core/notice');
-        if (!canUseCapability('bookReport')) {
-          notice(capabilityBlock('bookReport').message, 'warning');
-          return;
-        }
         try {
           const { reviewApp } = await import('./review/app');
           const { exportBookReportMarkdown } = await import('./review/export-actions');

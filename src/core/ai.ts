@@ -634,6 +634,19 @@ export function resetAIProviderCache(): void {
   _aiProviderCache = null;
 }
 
+/** 协议字面量只在这里写一次：设置字符串、注册表、适配器与 thinking 注入共用同一套归一 */
+type ChatProtocol = 'openai' | 'anthropic';
+const ANTHROPIC_PROTOCOL: ChatProtocol = 'anthropic';
+const OPENAI_PROTOCOL: ChatProtocol = 'openai';
+
+function normalizeProtocol(raw: unknown): ChatProtocol {
+  return typeof raw === 'string' && raw.toLowerCase() === ANTHROPIC_PROTOCOL ? ANTHROPIC_PROTOCOL : OPENAI_PROTOCOL;
+}
+
+function isAnthropicProtocol(protocol: ChatProtocol | undefined | null): boolean {
+  return protocol === ANTHROPIC_PROTOCOL;
+}
+
 /** 对象形态 override（调用方直给完整配置，如脚本内指定第三方端点/key） */
 interface AIOverrideObject {
   endpoint?: string;
@@ -708,7 +721,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
       apiKey: customKey,
       model: effModel || undefined,
       defaultMaxTokens,
-      protocol: String(s.aiCustomProtocol || '').toLowerCase() === 'anthropic' ? 'anthropic' : 'openai',
+      protocol: normalizeProtocol(s.aiCustomProtocol),
       extraHeaders: parseExtraHeaders(String(s.aiCustomHeaders || '')),
     });
   }
@@ -763,7 +776,7 @@ export async function getAIProvider(override?: string | AIOverrideObject): Promi
     apiKey: key || '',
     model: effModel || undefined,
     defaultMaxTokens,
-    protocol: desc.protocol === 'anthropic' ? 'anthropic' : 'openai',
+    protocol: normalizeProtocol(desc.protocol),
   });
 }
 
@@ -829,9 +842,10 @@ function toAnthropicContent(content: unknown): unknown {
     if (!part || typeof part !== 'object') continue;
     const p = part as Record<string, unknown>;
     if (p.type === 'text') {
-      out.push({ type: 'text', text: String(p.text ?? '') });
+      out.push({ type: 'text', text: typeof p.text === 'string' ? p.text : '' });
     } else if (p.type === 'image_url') {
-      const url = String((p.image_url as Record<string, unknown> | undefined)?.url ?? '');
+      const image = p.image_url as Record<string, unknown> | undefined;
+      const url = typeof image?.url === 'string' ? image.url : '';
       // data URL（本地图）→ base64 source；公网直链 → url source（Anthropic 两种都收）
       const m = /^data:([^;,]+);base64,(.*)$/s.exec(url);
       if (m) out.push({ type: 'image', source: { type: 'base64', media_type: m[1], data: m[2] } });
@@ -889,8 +903,9 @@ const OPENAI_ADAPTER: ProtocolAdapter = {
   url: (endpoint) => `${endpoint}/chat/completions`,
   headers: (provider) => ({
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${provider.apiKey}`,
     ...(provider.extraHeaders || {}),
+    /* 密钥永远最后写：即使将来有人往解析白名单里加了鉴权头，也盖不掉真密钥 */
+    'Authorization': `Bearer ${provider.apiKey}`,
   }),
   body: (body) => body,
   deltaOf: (chunk) => chunk?.choices?.[0]?.delta?.content || '',
@@ -903,10 +918,10 @@ const ANTHROPIC_ADAPTER: ProtocolAdapter = {
   url: (endpoint) => `${endpoint}/messages`,
   headers: (provider) => ({
     'Content-Type': 'application/json',
-    // Anthropic 不走 Bearer：密钥在 x-api-key，且必须声明 API 版本
+    ...(provider.extraHeaders || {}),
+    // Anthropic 不走 Bearer：密钥在 x-api-key，且必须声明 API 版本。放在最后防止被覆盖。
     'x-api-key': provider.apiKey,
     'anthropic-version': '2023-06-01',
-    ...(provider.extraHeaders || {}),
   }),
   body: toAnthropicBody,
   deltaOf: (chunk) =>
@@ -921,14 +936,17 @@ const ANTHROPIC_ADAPTER: ProtocolAdapter = {
     if (!arr.length) return null;
     return arr
       .filter((c) => (c as { type?: string })?.type === 'text')
-      .map((c) => String((c as { text?: unknown }).text ?? ''))
+      .map((c) => {
+        const text = (c as { text?: unknown }).text;
+        return typeof text === 'string' ? text : '';
+      })
       .join('');
   },
 };
 
 /** 按 provider.protocol 取适配器（缺省 openai） */
 function adapterOf(provider: AIProvider): ProtocolAdapter {
-  return provider.protocol === 'anthropic' ? ANTHROPIC_ADAPTER : OPENAI_ADAPTER;
+  return isAnthropicProtocol(provider.protocol) ? ANTHROPIC_ADAPTER : OPENAI_ADAPTER;
 }
 
 /** 正文提取：字符串原样，数组分段拼起来（兼容层可能回 [{type:'text'}]） */
@@ -1215,7 +1233,7 @@ export class AIService {
     // 字符串 override 指定的 provider 以其自身档位表为准（provider.id 随解析带出）。
     // Anthropic 协议不注入（2026-11-22 对齐 bz）：它的 extended thinking 走 budget_tokens
     // 且要与 max_tokens 联动折算，直接发 OpenAI 形态的 thinking / reasoning_effort 会被 400 拒绝。
-    if (provider.protocol !== 'anthropic' && !hasExplicitThinkingOption(mo)) {
+    if (!isAnthropicProtocol(provider.protocol) && !hasExplicitThinkingOption(mo)) {
       const thinking = thinkingBodyFor(provider.id, s.aiThinkingOverrides?.[provider.id || '']);
       if (thinking) Object.assign(body, thinking);
     }

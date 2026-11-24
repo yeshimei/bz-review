@@ -14,8 +14,12 @@
 /** HTTP 头名允许的字符（RFC 7230 token）；比它宽的名字 requestUrl 也会拒绝 */
 const HEADER_NAME_RE = /^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/;
 
-/** 这些头交给运行时自己算，用户填了只会把请求弄坏，直接丢 */
-const FORBIDDEN = new Set(['host', 'content-length', 'transfer-encoding', 'connection', 'keep-alive', 'upgrade']);
+/** 这些头交给运行时自己算，用户填了只会把请求弄坏，直接丢。
+ *  鉴权头也在内：密钥由通道自己写，用户再填一份只会把真密钥盖掉，报出莫名其妙的 401。 */
+const FORBIDDEN = new Set([
+  'host', 'content-length', 'transfer-encoding', 'connection', 'keep-alive', 'upgrade',
+  'authorization', 'proxy-authorization', 'x-api-key',
+]);
 
 /** 附加请求头文本 → 头字典（解析失败的行走跳过，不抛错——一行写坏不该让整份配置不可用） */
 export function parseExtraHeaders(text: string): Record<string, string> {

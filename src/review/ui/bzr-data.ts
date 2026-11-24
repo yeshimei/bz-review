@@ -15,6 +15,7 @@
  * 不合法的地址不渲染成可点链接（渲染层只用 safeFeedbackUrl 的结果）。
  * ============================================================ */
 import { requestUrl } from 'obsidian';
+import { isChinesePurchase } from '../../i18n';
 import { PURCHASE_URL, PURCHASE_URL_INTL } from '../../data/entitlement';
 import { SPONSOR_URL } from './reward';
 
@@ -471,8 +472,10 @@ export function parseBzrData(raw: unknown): BzrData | null {
     buyCn: safePurchaseUrl(typeof li.buyCn === 'string' ? li.buyCn : '') ?? '',
     buyIntl: safePurchaseUrl(typeof li.buyIntl === 'string' ? li.buyIntl : '') ?? '',
   };
-  /* 路线图允许为空（作者会清掉演示数据）：只要日志与跳转地址还在，这份数据就可用 */
-  if (!changelog.length || !links.support || !links.buy) return null;
+  /* 路线图允许为空（作者会清掉演示数据）；两份日志只要有一份非空就可用——
+     review 可以先于 reader 更新，只有 reviewChangelog 的远程数据也必须认。 */
+  if (!changelog.length && !reviewChangelog.length) return null;
+  if (!links.support || !links.buy) return null;
 
   const st = o.stats && typeof o.stats === 'object' ? o.stats as Record<string, unknown> : {};
   return {
@@ -612,6 +615,19 @@ export function purchaseUrlFor(isChinese: boolean, d: BzrData | null): string {
 export function sponsorUrlFor(isChinese: boolean, d: BzrData | null): string {
   return isChinese ? SPONSOR_URL : purchaseUrlFor(false, d);
 }
+
+/**
+ * 页面真正用的两个入口：语言判定只在这里做一次。
+ * 购买按钮、赞助按钮、更新日志确认框都调这两个，不再各自算「是不是简体」。
+ */
+export function activePurchaseUrl(d: BzrData | null = currentBzrData()): string {
+  return purchaseUrlFor(isChinesePurchase(), d);
+}
+
+export function activeSponsorUrl(d: BzrData | null = currentBzrData()): string {
+  return sponsorUrlFor(isChinesePurchase(), d);
+}
+
 export function bzrDataStatus(): BzrStatus {
   ensureLoaded();
   return status;

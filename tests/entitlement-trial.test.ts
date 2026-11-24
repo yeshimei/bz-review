@@ -118,13 +118,14 @@ describe('试用码必须最新版', () => {
     expect(licenseSummary()).toContain('过期');
   });
 
-  it('激活入口：版本落后拒绝，且不落授权', async () => {
+  it('激活入口：即使停用名单拉不到，版本落后也明确提示更新', async () => {
     setPluginVersion('1.0.1');
     seedLatest('1.0.2');
-    /* 停用名单在测试里拉不到 → 会先被「需要联网」挡住；这条只验版本检查
-       自己那一段的文案，不依赖名单。 */
+    /* 名单在测试里拉不到，但本地有最新版缓存——要给的是「请更新」不是「请联网」 */
     const res = await activateLicense(trial());
     expect(res.ok).toBe(false);
-    expect(res.message).toMatch(/最新版|联网/);
+    expect(res.message).toContain('v1.0.2');
+    expect(res.message).toContain('v1.0.1');
+    expect(res.message).not.toContain('网络没通');
   });
 });

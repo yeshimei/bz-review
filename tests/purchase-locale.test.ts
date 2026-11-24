@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { initLocale, locale, setLocale } from '../src/i18n';
 import { isSimplifiedHostCode, resolvePurchaseChinese } from '../src/i18n/strings';
-import { purchaseUrlFor, sponsorUrlFor, _resetBzrDataForTests, _setBzrHttpForTests, refreshBzrData, type BzrData } from '../src/review/ui/bzr-data';
+import { activePurchaseUrl, activeSponsorUrl, purchaseUrlFor, sponsorUrlFor, _resetBzrDataForTests, _setBzrHttpForTests, refreshBzrData, type BzrData } from '../src/review/ui/bzr-data';
 import { resolveConfirmTarget } from '../src/review/ui/changelog-note';
 import { PURCHASE_URL, PURCHASE_URL_INTL } from '../src/data/entitlement';
 import { SPONSOR_URL } from '../src/review/ui/reward';
@@ -90,6 +90,17 @@ describe('购买分流 · 更新日志统计卡', () => {
     const d = { links: { support: 'https://afdian.net/a/x', buy: '', buyCn: '', buyIntl: '' } } as BzrData;
     setLocale('en');
     expect(resolveConfirmTarget('support', d)).toBe('https://afdian.net/a/x');
+  });
+});
+
+describe('页面入口 · 语言判定只做一次', () => {
+  it('购买与赞助共用同一套宿主语言判定', () => {
+    initLocale('zh', 'zh-CN');
+    expect(activePurchaseUrl(null)).toBe(PURCHASE_URL);
+    expect(activeSponsorUrl(null)).toBe(SPONSOR_URL);
+    initLocale('auto', 'zh-TW');
+    expect(activePurchaseUrl(null)).toBe(PURCHASE_URL_INTL);
+    expect(activeSponsorUrl(null)).toBe(PURCHASE_URL_INTL);
   });
 });
 
