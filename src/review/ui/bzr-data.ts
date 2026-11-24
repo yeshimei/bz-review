@@ -15,6 +15,7 @@
  * 不合法的地址不渲染成可点链接（渲染层只用 safeFeedbackUrl 的结果）。
  * ============================================================ */
 import { requestUrl } from 'obsidian';
+import { PURCHASE_URL, PURCHASE_URL_INTL } from '../../data/entitlement';
 import { SPONSOR_URL } from './reward';
 
 /* ── 类型 ─────────────────────────────────────────────────── */
@@ -133,8 +134,12 @@ export interface BzrStats {
 export interface BzrLinks {
   /** 赞助跳转地址 */
   support: string;
-  /** 购买激活码跳转地址 */
+  /** 购买激活码跳转地址（老字段，保留兼容） */
   buy: string;
+  /** 简体中文购买链接 */
+  buyCn: string;
+  /** 非简体中文购买链接（海外 / 繁体） */
+  buyIntl: string;
 }
 
 export interface BzrData {
@@ -190,6 +195,21 @@ export function safeFeedbackUrl(raw: string): string | null {
     const u = new URL(raw.trim());
     if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
     return FEEDBACK_HOSTS.has(u.hostname.toLowerCase()) ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 购买链接校验：只验 http(s)，不套反馈白名单——作者在远程换支付渠道 /
+ * 店铺域名后必须能立刻生效，套白名单会导致整份数据作废。与 reader 同款。
+ */
+export function safePurchaseUrl(raw: string): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  try {
+    const u = new URL(raw.trim());
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    return u.toString();
   } catch {
     return null;
   }
@@ -434,6 +454,10 @@ export function parseBzrData(raw: unknown): BzrData | null {
   const links: BzrLinks = {
     support: safeFeedbackUrl(typeof li.support === 'string' ? li.support : '') ?? '',
     buy: safeFeedbackUrl(typeof li.buy === 'string' ? li.buy : '') ?? '',
+    /* buyCn / buyIntl 是后加字段：老远程数据可能没有，缺了走内置兜底，不算无效。
+       购买链接不套反馈白名单（换渠道要能立刻生效），只挡危险协议。 */
+    buyCn: safePurchaseUrl(typeof li.buyCn === 'string' ? li.buyCn : '') ?? '',
+    buyIntl: safePurchaseUrl(typeof li.buyIntl === 'string' ? li.buyIntl : '') ?? '',
   };
   /* 路线图允许为空（作者会清掉演示数据）：只要日志与跳转地址还在，这份数据就可用 */
   if (!changelog.length || !links.support || !links.buy) return null;
@@ -470,6 +494,8 @@ const BUILTIN: BzrData = {
   links: {
     support: SPONSOR_URL,
     buy: SPONSOR_URL,
+    buyCn: PURCHASE_URL,
+    buyIntl: PURCHASE_URL_INTL,
   },
 };
 
@@ -550,6 +576,19 @@ function notify(): void {
 export function currentBzrData(): BzrData {
   ensureLoaded();
   return memory ?? fallback();
+}
+
+/**
+ * 按界面语言取购买链接（纯函数，弹层与更新日志统计卡共用）。
+ *
+ * 远程优先：links.buyCn / buyIntl 有值就用远程的，作者在远程换支付渠道后
+ * 联网拉到新数据就自动跳新店。老数据没这字段或离线时用内置兜底：简中国内店、
+ * 其余语言 Creem。参数传 boolean，data 层不依赖 i18n，语言判断在调用方。
+ */
+export function purchaseUrlFor(isChinese: boolean, d: BzrData | null): string {
+  const remote = isChinese ? d?.links.buyCn : d?.links.buyIntl;
+  if (remote) return remote;
+  return isChinese ? PURCHASE_URL : PURCHASE_URL_INTL;
 }
 export function bzrDataStatus(): BzrStatus {
   ensureLoaded();

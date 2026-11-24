@@ -4,9 +4,10 @@
  * 弹窗只做引导（去购买 / 交流群）；填激活码统一走设置页「授权」组，别在两处各做一份。
  * ============================================================ */
 import { uiModal } from '../../core/ui/modal';
-import { FREE_ITEM_LIMIT, GROUP_ID, PURCHASE_URL, isPaid } from '../../data/entitlement';
+import { FREE_ITEM_LIMIT, GROUP_ID, isPaid } from '../../data/entitlement';
 import { openExternalUrl } from './links-bridge';
-import { t, type MsgKey } from '../../i18n';
+import { currentBzrData, purchaseUrlFor } from './bzr-data';
+import { locale, t, type MsgKey } from '../../i18n';
 
 const YES = '✓';
 
@@ -147,7 +148,8 @@ export function openReviewUnlockDialog(opts: { reason?: string } = {}): void {
   modal.popup.scrollTop = 0;
   modal.popup.addEventListener('click', (e) => {
     const act = (e.target as HTMLElement | null)?.closest<HTMLElement>('[data-act]')?.dataset.act;
-    if (act === 'unlockbuy') openExternalUrl(PURCHASE_URL);
+    /* 简中跳国内店、英文跳 Creem，远程换渠道自动跟随；和更新日志统计卡同一套 */
+    if (act === 'unlockbuy') openExternalUrl(purchaseUrlFor(locale() === 'zh', currentBzrData()));
     else if (act === 'unlockgroup') openExternalUrl(`https://qm.qq.com/q/${GROUP_ID}`);
   });
 }

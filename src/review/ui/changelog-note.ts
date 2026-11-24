@@ -21,12 +21,13 @@ import { escManager } from '../../core/esc-manager';
 import { allocZAbove } from '../../core/z-order';
 import { markOwned } from '../../core/scope';
 import { openVideoTutorial, openExternalUrl, REVIEW_REPO_URL, BZ_REPO_URL, GROUP_ID } from './links-bridge';
-import { changelogLang } from '../../i18n';
+import { changelogLang, locale } from '../../i18n';
 import { setHtml } from './set-html';
 import { esc, githubIcon } from './html-bridge';
 import { currentPatrons, onPatronsChange, refreshPatrons } from './patrons';
 import {
   currentBzrData,
+  purchaseUrlFor,
   feedbackCommitUrl,
   onBzrDataChange,
   refreshBzrData,
@@ -887,15 +888,25 @@ function unmountConfirmDialog(): void {
   confirmTarget = '';
 }
 
+/**
+ * 更新日志「统计卡 → 二次确认」的跳转目标（纯函数，便于测试）。
+ * 购买按界面语言取 buyCn / buyIntl，远程优先、内置兜底，和解锁弹层那颗
+ * 「去购买」同一套机制；打赏走 support 老字段，兜底国内赞助店。
+ */
+export function resolveConfirmTarget(kind: 'buy' | 'support', d: BzrData | null): string {
+  if (kind === 'buy') return purchaseUrlFor(locale() === 'zh', d);
+  return safeFeedbackUrl(d?.links.support ?? '') || SPONSOR_URL;
+}
+
 function openConfirm(kind: 'buy' | 'support'): void {
   const el = confirmEl;
   if (!el) return;
   const c = copy();
   const d = viewData();
   const isBuy = kind === 'buy';
-  /* 兜底一定给得出地址：数据里 links 缺失 / 没白名单时退回店铺主页，
+  /* 兜底一定给得出地址：purchaseUrlFor / resolveConfirmTarget 永远返回地址，
      绝不出现「点了没反应」——那一类最伤信任（2026-11-18 真机）。 */
-  confirmTarget = safeFeedbackUrl(isBuy ? (d?.links.buy ?? '') : (d?.links.support ?? '')) || SPONSOR_URL;
+  confirmTarget = resolveConfirmTarget(kind, d);
   setHtml(el.querySelector<HTMLElement>('[data-confirm-icon]')!, isBuy ? '★' : '♥');
   const title = el.querySelector<HTMLElement>('[data-confirm-title]');
   const desc = el.querySelector<HTMLElement>('[data-confirm-desc]');

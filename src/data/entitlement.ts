@@ -24,6 +24,8 @@ import { t } from '../i18n/strings';
 
 /** 购买页（与 bz Reader / 归物本同一个店铺） */
 export const PURCHASE_URL = 'https://wzyp.cn/shop/IFCEI5I3';
+/** 海外购买页：Creem 商店（与 bz Reader 同一个海外店；简中走国内、英文走这里） */
+export const PURCHASE_URL_INTL = 'https://www.creem.io/stores/baizai';
 /** 交流群（与 bz Reader 同一个群） */
 export const GROUP_ID = '1130883117';
 
