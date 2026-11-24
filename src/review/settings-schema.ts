@@ -41,14 +41,14 @@ import { openModelPicker } from '../core/settings-model-picker';
 import { tryGetSettings } from '../core/settings-provider';
 import type { ReviewDataManager } from './data';
 import {
-  FREE_ITEM_LIMIT,
   activateLicense,
-  isPaid,
-  getLicenseState,
   currentLicenseCode,
+  getLicenseState,
+  isPaid,
+  licenseTierText,
   trialBanner,
-  trialDaysLeft,
 } from '../data/entitlement';
+import { REVIEW_REPO_URL, openExternalUrl } from './ui/links-bridge';
 import { refreshRevoked } from '../data/revoked';
 import { copyReviewData, importFromBzWithConfirm } from '../data/migrate';
 import { isBzPluginEnabled } from '../core/plugin-path';
@@ -371,38 +371,53 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
         name: '授权',
         rows: [
           {
-            /* 2026-11-21：按 bz Reader 的授权组布局排——三行标准设置行，
-               标签在左、控件在右；购买 / 交流群收进「高级版功能」弹窗底部，
-               不再往状态行塞两颗按钮。 */
+            /* 2026-11-25：整组照 bz Reader 的授权组对齐——付费时只有「状态 + 激活码」
+               两行；「核对」挂在状态行右侧，不再单独占一行；免费时才多出「高级版」行。
+               状态行用整句（licenseTierText），与 reader 的 tierText 逐字同款。 */
             type: 'custom',
-            name: t('settings.license.state'),
-            render: (body) => {
-              const setting = new Setting(body).setName(t('settings.license.state'));
-              /* Reader 的状态行只有「基础版 / 高级版」这么短；把长句收进弹窗和激活提示，
-                 右栏只留一句能一眼读完的状态，避免在窄控制区里折行被裁。 */
+            name: t('settings.lic.status'),
+            render: (body, ctx) => {
+              const setting = new Setting(body).setName(t('settings.lic.status'));
               const state = setting.controlEl.createSpan({ cls: 'bzrv-license-state' });
+              const acts = setting.controlEl.createDiv({ cls: 'bzrv-license-acts' });
+              /* 核对 / 下载新版两颗动作按钮：按当前处境显隐，位置在状态句右侧。 */
+              const recheckBtn = acts.createEl('button', {
+                cls: 'bzrv-btn',
+                text: t('settings.lic.recheck'),
+                type: 'button',
+              });
+              const updateBtn = acts.createEl('button', {
+                cls: 'bzrv-btn',
+                text: t('settings.lic.update'),
+                type: 'button',
+              });
               const paint = (): void => {
-                /* 试用码单独给短标签：它既不是「基础版」也不是买断的「高级版」，
-                   说错会让用户以为码丢了或已经买过。 */
-                const banner = trialBanner();
-                if (banner === 'outdated') {
-                  state.textContent = t('settings.license.outdatedState');
-                } else if (banner === 'unknown') {
-                  state.textContent = t('settings.license.needLatestState');
-                } else if (banner === 'active') {
-                  state.textContent = t('settings.license.trialState', { days: trialDaysLeft() });
-                } else {
-                  state.textContent = isPaid()
-                    ? t('settings.license.proState')
-                    : t('settings.license.baseState', { n: FREE_ITEM_LIMIT });
-                }
+                state.textContent = licenseTierText();
                 state.classList.toggle('is-paid', isPaid());
+                /* 核对：有码才给（没码没东西可核对）；下载新版：试用码落后于线上时才给。 */
+                recheckBtn.hidden = !currentLicenseCode();
+                updateBtn.hidden = trialBanner() !== 'outdated';
               };
               paint();
+              recheckBtn.addEventListener('click', () => {
+                void (async () => {
+                  const code = currentLicenseCode();
+                  if (!code) return;
+                  const verdict = await refreshRevoked(code, { force: true });
+                  if (verdict === 'hit') notice(t('notice.license.revoked'), 'error');
+                  else if (verdict === 'clear') notice(t('notice.license.rechecked'), 'success');
+                  else notice(t('notice.license.recheckFailed'), 'error');
+                  /* 结论可能刚把授权翻成基础版（或反过来）：状态行与「高级版」行一起重绘。 */
+                  ctx.refreshVisibility();
+                  paint();
+                })();
+              });
+              updateBtn.addEventListener('click', () => {
+                openExternalUrl(`${REVIEW_REPO_URL}/releases/latest`);
+              });
               /* 授权变化用事件通知，**监听挂 document 而不是本行容器**：
-                 「激活」「核对」两颗按钮在兄弟行上，事件从它们那儿冒泡只会
-                 经过共同祖先，本行自己的 body 永远收不到。挂 document 能收，
-                 并在本行被销毁时自摘，不留监听器。 */
+                 激活按钮在兄弟行上，事件从它那儿冒泡只会经过共同祖先，本行自己的
+                 body 永远收不到。挂 document 能收，并在本行被销毁时自摘。 */
               const onLicenseChanged = (): void => {
                 if (!body.isConnected) {
                   document.removeEventListener('bz-review:license-changed', onLicenseChanged);
@@ -415,9 +430,9 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
           },
           {
             type: 'custom',
-            name: t('settings.license.code'),
-            render: (body) => {
-              const setting = new Setting(body).setName(t('settings.license.code'));
+            name: t('settings.lic.code'),
+            render: (body, ctx) => {
+              const setting = new Setting(body).setName(t('settings.lic.code'));
               const wrap = setting.controlEl.createDiv({ cls: 'bzrv-license-code' });
               const input = wrap.createEl('input', {
                 type: 'text',
@@ -426,7 +441,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
               });
               const btn = wrap.createEl('button', {
                 cls: 'bzrv-btn bzrv-btn--primary',
-                text: t('settings.license.activate'),
+                text: t('settings.lic.activate'),
                 type: 'button',
               });
               /* paid + 未点「重新激活」时输入框只读，避免手滑改掉生效码；
@@ -439,7 +454,7 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                 /* 停用的码也要填进输入框：用户总得看见被停的是哪一枚。
                    草稿优先；没有草稿时，未解锁就回显当前码（含停用那枚）。 */
                 input.value = locked ? currentLicenseCode() : licenseDraft || (paid ? '' : currentLicenseCode());
-                btn.setText(locked ? t('settings.license.reactivate') : t('settings.license.activate'));
+                btn.setText(locked ? t('settings.lic.relicense') : t('settings.lic.activate'));
                 wrap.classList.toggle('is-paid', locked);
               };
               input.addEventListener('input', () => {
@@ -478,6 +493,8 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
                     setting.settingEl.dispatchEvent(
                       new Event('bz-review:license-changed', { bubbles: true })
                     );
+                    /* 授权从基础版翻成高级版：让「高级版」行按新状态显隐。 */
+                    ctx.refreshVisibility();
                     notice(
                       (state.name ? t('notice.license.activatedName', { name: state.name }) : t('notice.license.activated')) + t('notice.license.unlimitedNote'),
                       'success'
@@ -506,43 +523,15 @@ export function reviewSettingsSchema(deps: { app: App; dataManager: ReviewDataMa
             },
           },
           {
-            /* 和 bz Reader 一样，授权组里给一颗「看看包含什么」的入口。
-               弹窗按需加载，只有点开才付那一份 DOM/CSS 的代价。 */
+            /* 与 bz Reader 同款：只在免费版显示「高级版 + 权益 + 查看功能对照」。
+               付费后这行收起来——已经买断的人不需要再被推销一次。 */
             type: 'button',
-            name: t('settings.license.features'),
-            desc: t('settings.license.featuresDesc'),
-            buttonText: t('common.view'),
+            name: t('settings.lic.paid'),
+            desc: t('settings.lic.benefits'),
+            buttonText: t('settings.lic.compare'),
+            visibleWhen: () => !isPaid(),
             onClick: () => {
               void import('./ui/unlock-dialog').then((m) => m.openReviewUnlockDialog());
-            },
-          },
-          {
-            /* 停用名单的手动核对（2026-11-22）：自动核对每天只跑一次，想立刻
-               看到封 / 解封结果就点它。没有码时整行不显示——没东西可核对。 */
-            type: 'button',
-            name: t('settings.license.recheck'),
-            desc: t('settings.license.recheckDesc'),
-            buttonText: t('settings.license.recheckBtn'),
-            visibleWhen: (s) => !!s.licenseKey,
-            onClick: (ctx) => {
-              void (async () => {
-                const code = currentLicenseCode();
-                if (!code) {
-                  notice(t('settings.license.needCode'), 'info');
-                  return;
-                }
-                const verdict = await refreshRevoked(code, { force: true });
-                if (verdict === 'hit') {
-                  notice(t('notice.license.revoked'), 'error');
-                } else if (verdict === 'clear') {
-                  notice(t('notice.license.rechecked'), 'success');
-                } else {
-                  notice(t('notice.license.recheckFailed'), 'error');
-                }
-                /* 结论可能刚把授权从高级版翻成基础版（或反过来）：让状态行
-                   与「高级版功能」徽章一起重绘。 */
-                ctx.rowEl.dispatchEvent(new Event('bz-review:license-changed', { bubbles: true }));
-              })();
             },
           },
         ],

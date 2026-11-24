@@ -9,7 +9,7 @@
 import type { App } from 'obsidian';
 import manifest from '../../../manifest.json';
 import { notice } from '../../core/notice';
-import { getLicenseState, isPaid } from '../../data/entitlement';
+import { getLicenseState, GROUP_ID, isPaid } from '../../data/entitlement';
 import { openExternalUrl, openVideoTutorial, REVIEW_REPO_URL } from './links-bridge';
 import { isMobileEnv } from '../../core/mobile';
 import { openHotkeySettings, readHotkeys } from '../../core/hotkeys';
@@ -17,7 +17,7 @@ import { enableReaderPlugin, installReaderPlugin, openReaderShelf, readReaderIns
 import { copyReviewGroupId } from './group-bridge';
 import { aboutBarHtml, groupColumns, GROUP_SUBTITLES, GROUP_WEIGHTS, orderGroups, pluginGroupHtml, type ReaderPluginState } from './settings-page-pure';
 import { setHtml } from './set-html';
-import { locale, t, type MsgKey } from '../../i18n';
+import { isChinesePurchase, locale, t, type MsgKey } from '../../i18n';
 import type { ReviewDataManager } from '../data';
 
 /** 分组名：schema 里的 name 是内部标识（GROUP_ORDER / 权重 / 锚点都按它走），
@@ -134,7 +134,7 @@ export async function renderReviewSettingsPage(
   const about = createDiv();
   /* 徽章用 isPaid() 而不是 license.paid：停用名单命中后 state.paid 还是 true
      （验签过了，只是码被叫停），直接读它会把被封的用户显示成高级版。 */
-  setHtml(about, aboutBarHtml(manifest.version, isPaid(), license.name || ''));
+  setHtml(about, aboutBarHtml(manifest.version, isPaid(), license.name || '', GROUP_ID, isChinesePurchase()));
   if (about.firstElementChild) container.appendChild(about.firstElementChild);
   if (!licenseBound.has(container)) {
     licenseBound.add(container);
@@ -142,7 +142,7 @@ export async function renderReviewSettingsPage(
       if (!container.isConnected) return;
       const current = getLicenseState();
       const fresh = createDiv();
-      setHtml(fresh, aboutBarHtml(manifest.version, isPaid(), current.name || ''));
+      setHtml(fresh, aboutBarHtml(manifest.version, isPaid(), current.name || '', GROUP_ID, isChinesePurchase()));
       const old = container.querySelector('.bzs-about');
       if (old && fresh.firstElementChild) old.replaceWith(fresh.firstElementChild);
     });
