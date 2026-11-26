@@ -8,6 +8,10 @@
 import type { MsgKey } from './zh';
 
 export const EN: Record<MsgKey, string> = {
+  /* ── Native settings-tab doorplate (2026-11-26) ───────────── */
+  'settings.tab.open': 'Open settings panel',
+  'settings.tab.openDesc': 'Press the button below to open the settings page of the review panel — all settings (review, AI, data, license) are gathered there',
+
   /* ── Common ─────────────────────────────────────────────── */
   'common.untitled': 'Untitled',
   'common.close': 'Close',

@@ -77,6 +77,12 @@ export const ZH = {
   'notice.license.rechecked': '核对完成，授权正常。',
   'notice.license.recheckFailed': '核对失败：网络没通，稍后再试。',
 
+  /* ── 原生设置页门牌（2026-11-26）─────────────────────────────
+     Obsidian 自带设置里的 bz Review 页只有一行按钮，点了进复习面板的设置页。
+     Reader 开了内嵌复习页时，按钮落在那个内嵌面板上，不另开一个。 */
+  'settings.tab.open': '打开设置面板',
+  'settings.tab.openDesc': '点下面的按钮，在复习面板的设置页里打开——全部设置（复习、AI、数据、授权）都集中在那里',
+
   /* ── 设置页：语言 ────────────────────────────────────────── */
   'settings.language': '语言',
   'settings.language.desc': '界面显示中文还是英文',

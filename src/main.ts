@@ -61,6 +61,7 @@ import { REVIEW_VIEW_TYPE } from './review/panel-mode';
 import { importFromBzWithConfirm } from './data/migrate';
 import { isBzPluginEnabled } from './core/plugin-path';
 import { hostLanguageCode, initLocale, isLocale, t } from './i18n';
+import { BzReviewSettingTab } from './settings-tab';
 import { installScopeGuard, markOwned } from './core/scope';
 import { setNoticeEmbedded } from './core/notice';
 import { devAutoOpen } from './core/dev-auto-open';
@@ -578,8 +579,10 @@ export default class ReviewPlugin extends Plugin {
       });
     }
 
-    /* 设置不再走 addSettingTab：插件设置页从「选项 → 第三方插件 → 齿轮」里消失，
-       改到主面板右上角的 ⚙️（openSettingsModal），与 bz Reader 一致。 */
+    /* 原生设置页门牌（2026-11-26 加回）：只放一行「打开设置面板」按钮，点了
+       先收宿主设置 Modal，再按 Reader 有没有开内嵌复习页分流（见 settings-tab.ts）。
+       真正的设置仍在主面板内置的「设置」页，这层不重复一份。 */
+    this.addSettingTab(new BzReviewSettingTab(this.app, this));
 
     this.app.workspace.onLayoutReady(() => {
       if (this.settings.enableAutoNotify !== false) ensureReview(this.app);
