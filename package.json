@@ -20,7 +20,8 @@
     "lint:css": "node scripts/lint-css.mjs",
     "lint:tooltip": "node scripts/check-tooltip-attrs.mjs",
     "lint:obsidian": "node scripts/lint-obsidian.mjs",
-    "lint": "npm run lint:css && npm run lint:tooltip && npm run lint:obsidian"
+    "lint": "npm run lint:css && npm run lint:tooltip && npm run lint:obsidian",
+    "gen:revoked": "node scripts/gen-revoked-builtin.mjs"
   },
   "devDependencies": {
     "@types/node": "^22.20.4",

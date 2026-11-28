@@ -360,4 +360,23 @@ describe.runIf(hasKey)('后台刷新与持久化', () => {
     // 版本号不清：解封后也不能拿旧名单回放
     expect(revokedSeenAt()).toBe(1_800_000_000_000);
   });
+
+  /* 2026-11-28 审计：`now - checkedAt` 为负数时恒小于 24 小时，
+     一次「把系统时间调到未来」就能让撤销名单永远不再核对。 */
+  it('本地核对时刻在未来：不能当成「刚查过」，照常拉一次', async () => {
+    storage.setItem(
+      REVOKED_STATE_KEY,
+      JSON.stringify({ code: '', at: 0, checkedAt: Date.now() + 400 * 86_400_000, deadAt: 0 }),
+    );
+    _resetRevokedForTests();
+
+    let n = 0;
+    setHttp(() => {
+      n += 1;
+      return signed([], [], 1_800_000_000_000);
+    });
+
+    expect(await refreshRevoked(CODE)).toBe('clear');
+    expect(n).toBe(2);
+  });
 });

@@ -19,7 +19,7 @@ import { compareVersions } from '../core/version';
 import { isTrialCode, parseLicense, verifyLicense } from './license';
 import type { LicenseFail } from './license';
 import { ensureLatestVersion } from './plugin-update';
-import { checkRevoked, revokedCheckedAt, revokedCode, revokedDeadAt } from './revoked';
+import { checkRevoked, revokedCheckedAt, revokedCode, revokedDeadAt, builtinRevokedHit } from './revoked';
 import { trustedNow } from './trusted-clock';
 import { t } from '../i18n/strings';
 
@@ -184,7 +184,11 @@ export function getLicenseState(): LicenseState {
 function revokedNow(): boolean {
   const dead = revokedCode().trim();
   const mine = cachedCode.trim();
-  return !!dead && !!mine && dead === mine;
+  if (!mine) return false;
+  if (dead && dead === mine) return true;
+  /* 第二层：内置名单（随包发布的快照）。断网、清 localStorage、屏蔽两个
+     域名都绕不过它；设备联网拿到不早于它的线上名单后自动让位（解封出口）。 */
+  return builtinRevokedHit(mine);
 }
 
 /**

@@ -725,12 +725,18 @@ export default class ReviewPlugin extends Plugin {
   private async syncLicenseFacts(): Promise<void> {
     const f = licenseFacts();
     const s = this.settings;
+    /* 高水位也要一起比：只比四个授权事实时，绝大多数用户每次启动都「没变」，
+       于是 data.json 里的 licenseSeenAt 永远停在激活那天——清掉 localStorage
+       之后高水位就退回到很久以前，双写实际退化成单写。seenAt 每次启动都会
+       前进，所以这一条会让启动时稳定落一次盘。 */
+    const seen = clockSeenAt();
     if (
       s.licenseRevoked === f.revoked &&
       s.licenseRevokedAt === f.revokedAt &&
       s.licenseTierReason === f.tierReason &&
       s.licenseActivateFail === f.activateFail &&
-      s.licenseActivateFailAt === f.activateFailAt
+      s.licenseActivateFailAt === f.activateFailAt &&
+      s.licenseSeenAt === seen
     ) {
       return;
     }

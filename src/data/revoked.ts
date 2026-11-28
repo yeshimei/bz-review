@@ -33,6 +33,7 @@
  * ============================================================ */
 import { requestUrl } from 'obsidian';
 import { b64urlToBytes, parseLicense, verifySignedBytes } from './license';
+import { BUILTIN_REVOKED_IDS, BUILTIN_REVOKED_UPDATED_AT } from './revoked-builtin';
 import { noteServerDateHeader } from './trusted-clock';
 
 /** 两条下载通道：GitHub raw 主源、码云 raw 国内直连 */
@@ -287,6 +288,31 @@ export async function revokedHit(code: string, doc: RevokedDoc): Promise<boolean
   return doc.hashes.includes(await codeHash(code));
 }
 
+/**
+ * 内置名单（随包发布的那份快照）是否命中。**同步**，给每帧判定用。
+ *
+ * 闸门：设备已经拿到过不早于内置版本的线上名单（`revokedSeenAt() >=
+ * BUILTIN_REVOKED_UPDATED_AT`）时直接返回 false，以联网结果为准。
+ * 这是解封的唯一出口——内置名单只能加不能减，没有这道闸门，被解封的
+ * 用户会被旧版本永久锁死。
+ *
+ * 这份名单除了 Review 自己的 `REV-` 号，还合并了 bz-reader 的 `BZR-` 号
+ * （赞助人码一枚两插件通用，封的时候必须两边都到）。合并发生在生成期，
+ * 见 scripts/gen-revoked-builtin.mjs。
+ *
+ * 只认码号：老码（BZP1 / BZR1）没有 id，摘要要异步算，交给联网名单那条路。
+ */
+export function builtinRevokedHit(code: string): boolean {
+  const clean = code.trim();
+  if (!clean) return false;
+  if (!BUILTIN_REVOKED_UPDATED_AT) return false;
+  if (revokedSeenAt() >= BUILTIN_REVOKED_UPDATED_AT) return false;
+  const payload = parseLicense(clean)?.payload;
+  const id = typeof payload?.id === 'string' ? payload.id.trim().toUpperCase() : '';
+  if (!id) return false;
+  return BUILTIN_REVOKED_IDS.includes(id);
+}
+
 /* ── 拉取 ─────────────────────────────────────────────────── */
 
 /** `?t=` 破缓存：两个域名各自会缓存一份，旧名单会把已封的码救活 */
@@ -393,7 +419,11 @@ export async function refreshRevoked(
   if (!clean) return 'unknown';
 
   const now = Date.now();
-  if (!opts.force && now - revokedCheckedAt() < REVOKED_CHECK_GAP_MS) return 'skipped';
+  /* `since < 0` = 本地记的核对时刻比现在还晚（系统时间被调到过未来、
+     或手改了 checkedAt）。这时**不能**当成「刚查过」——否则一次未来时间就把
+     撤销名单永久冻住，被封的码永远不会再核对。负数一律重查。 */
+  const since = now - revokedCheckedAt();
+  if (!opts.force && since >= 0 && since < REVOKED_CHECK_GAP_MS) return 'skipped';
 
   inflight = (async () => {
     try {
