@@ -69,6 +69,15 @@ export default interface BzSettings {
   licenseActivateFail?: ActivateFailLite;
   /** 上次激活失败的时刻（毫秒） */
   licenseActivateFailAt?: number;
+  /**
+   * 可信时间的高水位（毫秒，2026-11-28）。
+   *
+   * 与 localStorage 里那份互为备份：判断激活码到期时用
+   * `max(系统时间, 高水位)`，把系统时钟往回拨不会让过期码复活。
+   * localStorage 被清掉时从这份恢复；两处都清 = 回到没记录的状态，
+   * 但重新激活要求联网，那一步会用服务器时间把锚点顶正。
+   */
+  licenseSeenAt?: number;
 
   // ===== 复习 =====
   /** 有笔记到期待复习时自动提醒 */

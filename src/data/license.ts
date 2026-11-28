@@ -145,8 +145,14 @@ function dateText(ms: number): string {
   return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
 }
 
-/** 验一枚激活码。任何一步不过都给人话，不抛。 */
-export async function verifyLicense(code: string): Promise<LicenseCheck> {
+/**
+ * 验一枚激活码。任何一步不过都给人话，不抛。
+ *
+ * `now` 由调用方传 `trustedNow()`：到期判定不能直接读系统时钟，
+ * 否则把时间往回拨就能让过期码一直「还没到」。默认值只给纯函数测试
+ * 与不关心时钟的调用方留一条退路。
+ */
+export async function verifyLicense(code: string, now: number = Date.now()): Promise<LicenseCheck> {
   if (!code.trim()) return { ok: false, reason: 'empty', message: t('lic.noCode') };
   if (!PUBKEY_SPKI_B64 && !testLocalPubB64) {
     return { ok: false, reason: 'no-pubkey', message: t('lic.noPublicKey') };
@@ -184,7 +190,7 @@ export async function verifyLicense(code: string): Promise<LicenseCheck> {
       };
     }
     const exp = parsed.payload.exp ?? 0;
-    if (exp && Date.now() > exp) {
+    if (exp && now > exp) {
       return { ok: false, reason: 'expired', message: t('lic.expired', { date: dateText(exp) }) };
     }
     const who = parsed.payload.name ? `，${parsed.payload.name}` : '';

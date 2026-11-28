@@ -20,6 +20,7 @@ import { isTrialCode, parseLicense, verifyLicense } from './license';
 import type { LicenseFail } from './license';
 import { ensureLatestVersion } from './plugin-update';
 import { checkRevoked, revokedCheckedAt, revokedCode, revokedDeadAt } from './revoked';
+import { trustedNow } from './trusted-clock';
 import { t } from '../i18n/strings';
 
 /** 购买页（与 bz Reader / 归物本同一个店铺） */
@@ -131,7 +132,7 @@ export function trialBanner(): 'none' | 'active' | 'outdated' | 'unknown' {
 /** 试用剩余天数（向上取整）；非试用 / 无到期时间为 0 */
 export function trialDaysLeft(): number {
   if (!state.trial || !state.exp) return 0;
-  return Math.max(0, Math.ceil((state.exp - Date.now()) / 86_400_000));
+  return Math.max(0, Math.ceil((state.exp - trustedNow()) / 86_400_000));
 }
 
 /** 上次激活失败的原因与时刻（内存 + 由 main.ts 从 data.json 灌回历史） */
@@ -213,7 +214,7 @@ export function licenseTierText(): string {
   }
   /* 试用码要先于「基础版」判断：码还在、只是过期或不是最新版，说「基础版」
      会让用户以为码丢了。过期排在最前面——时间到了比版本更根本。 */
-  if (state.trial && state.exp && state.exp <= Date.now()) {
+  if (state.trial && state.exp && state.exp <= trustedNow()) {
     return t('tier.trialExpired', { date: new Date(state.exp).toLocaleDateString() });
   }
   const banner = trialBanner();
@@ -436,7 +437,7 @@ export function licenseSummary(): string {
   }
   if (!state.paid) {
     const parsed = cachedCode ? parseLicense(cachedCode) : null;
-    if (parsed?.payload?.exp && Date.now() > parsed.payload.exp) {
+    if (parsed?.payload?.exp && trustedNow() > parsed.payload.exp) {
       return t('ent.baseExpired', { limit: FREE_ITEM_LIMIT });
     }
     return t('ent.baseFree', { limit: FREE_ITEM_LIMIT });
@@ -450,7 +451,7 @@ export function licenseSummary(): string {
       return t('ent.trialOutdated', { now: pluginVersion, latest: latestVersion });
     }
     if (gate === 'unknown') return t('ent.trialNeedLatest');
-    const days = state.exp ? Math.max(0, Math.ceil((state.exp - Date.now()) / 86_400_000)) : 0;
+    const days = state.exp ? Math.max(0, Math.ceil((state.exp - trustedNow()) / 86_400_000)) : 0;
     return t('ent.trialActive', { who, days });
   }
   const until = state.exp ? t('ent.until', { date: new Date(state.exp).toLocaleDateString() }) : t('ent.forever');
@@ -487,11 +488,14 @@ export async function refreshLicense(code: string, commitFailure = true): Promis
     cachedCode = '';
     return state;
   }
-  const r = await verifyLicense(code);
+  /* 到期判定用可信时间：系统时钟被往回拨过时，这里仍是上次见过的最晚时刻，
+     过期码不会因为「拨回去」重新变成有效。 */
+  const now = trustedNow();
+  const r = await verifyLicense(code, now);
   if (!r.ok || !r.payload) {
-    if (!commitFailure) return { paid: false, checkedAt: Date.now(), failReason: r.reason };
+    if (!commitFailure) return { paid: false, checkedAt: now, failReason: r.reason };
     cachedCode = code;
-    state = { paid: false, checkedAt: Date.now(), failReason: r.reason };
+    state = { paid: false, checkedAt: now, failReason: r.reason };
     return state;
   }
   cachedCode = code;
@@ -503,7 +507,7 @@ export async function refreshLicense(code: string, commitFailure = true): Promis
     patron: r.payload.patron === true,
     plan: r.payload.plan,
     exp: r.payload.exp ?? 0,
-    checkedAt: Date.now(),
+    checkedAt: now,
   };
   /* 试用码要联网确认最新版。等这一次：isPaid() 首帧就要正确结论，
      先放行再锁会闪一下；永久码不走这里，启动不受影响。 */
@@ -545,7 +549,10 @@ export async function activateLicense(
     return { ok: false, message: t('lic.revoked'), revoked: true, fail: 'revoked' };
   }
 
-  const r = await verifyLicense(clean);
+  /* 激活也走可信时间：用户先把系统时间调回到期日之前再贴码，
+     高水位会让他过不了「到期」这一关；联网时还会用服务器时间把锚点顶正。 */
+  const now = trustedNow();
+  const r = await verifyLicense(clean, now);
   if (!r.ok || !r.payload) {
     /* 验签失败的原因按「用户该做什么」归类：格式不对让他检查粘贴，
        其余（签名改过 / 公钥缺失 / 环境异常）都归「码不认」 */
@@ -587,7 +594,7 @@ export async function activateLicense(
     patron: r.payload.patron === true,
     plan: r.payload.plan,
     exp: r.payload.exp ?? 0,
-    checkedAt: Date.now(),
+    checkedAt: now,
   };
   /* 成功一次就把失败历史清干净：几个月前的一次手滑不该永远挂在档案上 */
   noteActivateFail(undefined);

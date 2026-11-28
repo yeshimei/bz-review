@@ -33,6 +33,7 @@
  * ============================================================ */
 import { requestUrl } from 'obsidian';
 import { b64urlToBytes, parseLicense, verifySignedBytes } from './license';
+import { noteServerDateHeader } from './trusted-clock';
 
 /** 两条下载通道：GitHub raw 主源、码云 raw 国内直连 */
 export const REVOKED_URLS: readonly string[] = [
@@ -301,6 +302,10 @@ async function requestText(url: string, timeoutMs: number): Promise<string | nul
     });
     const req = requestUrl({ url, method: 'GET', throw: false }).then((resp) => {
       if (!resp || resp.status < 200 || resp.status >= 300) return null;
+      /* 顺手校时：停用名单是激活时必经的联网请求，响应头的 Date 是
+         不受本地系统时钟影响的真实时间。拿它把可信时间的锚点顶正，
+         「激活前先把时间调早」就绕不过去了。拿不到也不影响名单判定。 */
+      noteServerDateHeader(resp.headers);
       return resp.text;
     });
     return await Promise.race([req, timeout]);

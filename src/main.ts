@@ -51,6 +51,7 @@ import { refreshRevoked } from './data/revoked';
 import { ensureLatestVersion, hasUpdate, readUpdateState, shouldNotify, writeUpdateState } from './data/plugin-update';
 import { openUpdateNote } from './core/update-note';
 import { readLicenseMirror, writeLicenseMirror, type CodeStorage } from './data/license-mirror';
+import { clockSeenAt, noteSeen, seedClock } from './data/trusted-clock';
 import { getReviewPlanApi } from './review/reader-api';
 import type { ReviewAddSummary, ReviewCardInput, ReviewNoteStatus } from './review/reader-api';
 import { ReviewPanelView } from './review/panel-view';
@@ -616,9 +617,16 @@ export default class ReviewPlugin extends Plugin {
         await this.saveData(this.settings); // 顺手写回 data.json，下次不必再借镜像
       }
     }
+    /* 可信时间：先把 data.json 里的高水位灌回来，再把「现在」顶上去。
+       两处存储互为备份——只清 localStorage 或只清 data.json，都不会让
+       系统时钟往回拨变成「时间倒流」。 */
+    seedClock(this.settings.licenseSeenAt ?? 0);
+    noteSeen(Date.now());
   }
 
   async saveSettings(): Promise<void> {
+    /* 高水位跟着设置一起落盘：localStorage 是另一份，两边同时写。 */
+    this.settings.licenseSeenAt = clockSeenAt();
     await this.saveData(this.settings);
     writeLicenseMirror(localStorageOf(), this.settings.licenseKey);
     resetAIProviderCache();

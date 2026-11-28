@@ -1,6 +1,13 @@
 import { describe, expect, it, afterEach } from 'vitest';
 import { parseLicense, verifyLicense } from '../src/data/license';
+import { refreshLicense } from '../src/data/entitlement';
+import { _resetClockForTests, noteSeen } from '../src/data/trusted-clock';
 import { HAS_KEYS, HAS_READER_KEYS, signCode, signReaderCode } from './helpers/sign';
+
+/* 可信时间是模块级内存状态：每个用例跑完清掉，别让高水位串到别的用例。 */
+afterEach(() => {
+  _resetClockForTests();
+});
 
 describe.runIf(HAS_KEYS)('激活码验签', () => {
   it('自己签的码能验通过，并带回署名与方案', async () => {
@@ -97,5 +104,27 @@ describe('parseLicense', () => {
   it('v 不是 1 / 2 的载荷不认', () => {
     const body = Buffer.from(JSON.stringify({ v: 3, id: 'x' })).toString('base64url');
     expect(parseLicense(`BZP2.${body}.sig`)).toBeNull();
+  });
+});
+
+/* 到期判定走「传给 verifyLicense 的那个 now」，不再直接读系统时钟。
+   调用方传的是 trustedNow()：把系统时间往回拨，高水位仍是上次见过的最晚时刻。 */
+describe.runIf(HAS_KEYS)('到期判定用可信时间', () => {
+  it('同一枚过期码：传过去的时刻能过，传未来的时刻过期', async () => {
+    const exp = Date.UTC(2026, 0, 1);
+    const code = signCode({ id: 'REV-2026-0098', exp });
+    expect((await verifyLicense(code, exp - 86_400_000)).ok).toBe(true);
+    const r = await verifyLicense(code, exp + 86_400_000);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('expired');
+  });
+
+  it('集成层：高水位已越过到期日，把系统时间拨回去也不复活', async () => {
+    const exp = Date.UTC(2026, 0, 1);
+    noteSeen(Date.UTC(2027, 0, 1));
+    const s = await refreshLicense(signCode({ id: 'REV-2026-0097', exp }));
+    expect(s.paid).toBe(false);
+    expect(s.failReason).toBe('expired');
+    await refreshLicense('');
   });
 });

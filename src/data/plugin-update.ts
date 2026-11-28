@@ -14,6 +14,7 @@
  * ============================================================ */
 import { requestUrl } from 'obsidian';
 import { compareVersions } from '../core/version';
+import { noteServerDateHeader } from './trusted-clock';
 
 /** 自动检查的间隔：24 小时 */
 export const UPDATE_CHECK_GAP_MS = 24 * 60 * 60 * 1000;
@@ -56,6 +57,9 @@ async function requestText(url: string, timeoutMs: number): Promise<string | nul
     });
     const req = requestUrl({ url, method: 'GET', throw: false }).then((resp) => {
       if (!resp || resp.status < 200 || resp.status >= 300) return null;
+      /* 更新检查每天都会联网，顺带把服务器时间灌进可信时钟：
+         这是「本地时间被调过」的第二条校准通道，不额外发请求。 */
+      noteServerDateHeader(resp.headers);
       return resp.text;
     });
     return await Promise.race([req, timeout]);
